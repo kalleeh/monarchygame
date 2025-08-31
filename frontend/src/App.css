@@ -1,0 +1,149 @@
+/* Monarchy Game Styling */
+.app {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  color: #ffffff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 2px solid #d4af37;
+  backdrop-filter: blur(10px);
+}
+
+.app-header h1 {
+  margin: 0;
+  color: #d4af37;
+  font-size: 2rem;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-info span {
+  color: #e0e0e0;
+  font-weight: 500;
+}
+
+.sign-out-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.sign-out-btn:hover {
+  background: #c82333;
+}
+
+.game-content {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.kingdom-overview {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 2rem;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.kingdom-overview h2 {
+  color: #d4af37;
+  margin-top: 0;
+  font-size: 1.8rem;
+  border-bottom: 2px solid #d4af37;
+  padding-bottom: 0.5rem;
+}
+
+.kingdom-overview h3 {
+  color: #f0c040;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.user-details {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin: 1.5rem 0;
+}
+
+.user-details ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.user-details li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-details li:last-child {
+  border-bottom: none;
+}
+
+.next-steps {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin: 1.5rem 0;
+}
+
+.next-steps ul {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0 0;
+}
+
+.next-steps li {
+  padding: 0.5rem 0;
+  font-size: 1.1rem;
+}
+
+/* Amplify UI Customizations */
+[data-amplify-theme] {
+  --amplify-colors-brand-primary-60: #d4af37;
+  --amplify-colors-brand-primary-80: #f0c040;
+  --amplify-colors-brand-primary-90: #f5d060;
+  --amplify-colors-brand-primary-100: #ffd700;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .app-header {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .app-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .game-content {
+    padding: 1rem;
+  }
+  
+  .kingdom-overview {
+    padding: 1.5rem;
+  }
+}
