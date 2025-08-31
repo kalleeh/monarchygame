@@ -1,53 +1,68 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 
-/*== STEP 1 ===============================================================
-The section below creates a Todo database table with a "content" field. Try
-adding a new "isDone" field as a boolean. The authorization rule below
-specifies that any unauthenticated user can "create", "read", "update", 
-and "delete" any "Todo" records.
-=========================================================================*/
+/**
+ * Monarchy Game Data Schema - Amplify Gen 2
+ * Defines Kingdom, Territory, and BattleReport models for the game
+ */
 const schema = a.schema({
-  Todo: a
+  Kingdom: a
     .model({
-      content: a.string(),
+      name: a.string().required(),
+      race: a.enum(['Human', 'Elven', 'Goblin', 'Droben', 'Vampire', 'Elemental', 'Centaur', 'Sidhe', 'Dwarven', 'Fae']),
+      // Resources stored as JSON for flexibility
+      resources: a.json().required(), // { gold, population, land, turns }
+      // Race stats and bonuses
+      stats: a.json().required(), // Racial bonuses and modifiers
+      // Game state
+      isActive: a.boolean().default(true),
+      createdAt: a.datetime(),
+      lastActive: a.datetime(),
+      // Relationships
+      territories: a.hasMany('Territory', 'kingdomId'),
     })
-    .authorization((allow) => [allow.guest()]),
-});
+    .authorization((allow) => [allow.owner()]),
+
+  Territory: a
+    .model({
+      name: a.string().required(),
+      // Coordinates on the game map
+      coordinates: a.json().required(), // { x, y }
+      // Buildings and their levels
+      buildings: a.json().required(), // Building counts and levels
+      // Military units stationed
+      units: a.json().required(), // Unit counts by type
+      // Defensive structures
+      fortifications: a.integer().default(0),
+      // Territory type and resources
+      terrainType: a.string().default('plains'),
+      // Relationships
+      kingdomId: a.id().required(),
+      kingdom: a.belongsTo('Kingdom', 'kingdomId'),
+    })
+    .authorization((allow) => [allow.owner()]),
+
+  // Battle reports for combat history
+  BattleReport: a
+    .model({
+      attackerKingdomId: a.id().required(),
+      defenderKingdomId: a.id().required(),
+      attackerName: a.string().required(),
+      defenderName: a.string().required(),
+      battleType: a.enum(['raid', 'siege', 'controlled_strike']),
+      // Battle details stored as JSON
+      battleDetails: a.json().required(), // Army compositions, casualties, etc.
+      result: a.enum(['attacker_victory', 'defender_victory', 'draw']),
+      timestamp: a.datetime().required(),
+    })
+    .authorization((allow) => [allow.owner()]),
+})
+.authorization((allow) => [allow.owner()]);
 
 export type Schema = ClientSchema<typeof schema>;
 
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: 'identityPool',
+    defaultAuthorizationMode: 'userPool',
   },
 });
-
-/*== STEP 2 ===============================================================
-Go to your frontend source code. From your client-side code, generate a
-Data client to make CRUDL requests to your table. (THIS SNIPPET WILL ONLY
-WORK IN THE FRONTEND CODE FILE.)
-
-Using JavaScript or Next.js React Server Components, Middleware, Server 
-Actions or Pages Router? Review how to generate Data clients for those use
-cases: https://docs.amplify.aws/gen2/build-a-backend/data/connect-to-API/
-=========================================================================*/
-
-/*
-"use client"
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "@/amplify/data/resource";
-
-const client = generateClient<Schema>() // use this Data client for CRUDL requests
-*/
-
-/*== STEP 3 ===============================================================
-Fetch records from the database and use them in your frontend component.
-(THIS SNIPPET WILL ONLY WORK IN THE FRONTEND CODE FILE.)
-=========================================================================*/
-
-/* For example, in a React component, you can use this snippet in your
-  function's RETURN statement */
-// const { data: todos } = await client.models.Todo.list()
-
-// return <ul>{todos.map(todo => <li key={todo.id}>{todo.content}</li>)}</ul>
