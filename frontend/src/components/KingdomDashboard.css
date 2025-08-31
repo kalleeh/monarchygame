@@ -1,0 +1,235 @@
+.kingdom-dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #d4af37;
+}
+
+.back-btn {
+  background: #333;
+  color: #d4af37;
+  border: 1px solid #d4af37;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+  background: #d4af37;
+  color: #000;
+}
+
+.dashboard-header h1 {
+  flex: 1;
+  margin: 0;
+  color: #d4af37;
+}
+
+.race-badge {
+  background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
+  color: #000;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.resources-panel, .race-stats-panel, .territories-panel, .actions-panel {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border: 2px solid #d4af37;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.resources-panel h2, .race-stats-panel h2, .territories-panel h2, .actions-panel h2 {
+  color: #d4af37;
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.resources-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.resource-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(212, 175, 55, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.resource-icon {
+  font-size: 1.5rem;
+}
+
+.resource-value {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #d4af37;
+}
+
+.resource-label {
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+.special-ability {
+  color: #e0e0e0;
+  font-style: italic;
+  margin-bottom: 1rem;
+}
+
+.stats-mini {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.stat-mini {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stat-name {
+  font-size: 0.8rem;
+  color: #ccc;
+  min-width: 60px;
+}
+
+.stat-bar-mini {
+  flex: 1;
+  height: 8px;
+  background: #333;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.stat-fill-mini {
+  height: 100%;
+  background: linear-gradient(90deg, #d4af37 0%, #b8941f 100%);
+  transition: width 0.3s ease;
+}
+
+.no-territories {
+  text-align: center;
+  padding: 2rem;
+  color: #888;
+}
+
+.claim-territory-btn {
+  background: linear-gradient(135deg, #4a9eff 0%, #0066cc 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.claim-territory-btn:hover {
+  background: linear-gradient(135deg, #66b3ff 0%, #4a9eff 100%);
+  transform: translateY(-1px);
+}
+
+.territories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.territory-item {
+  padding: 1rem;
+  background: rgba(212, 175, 55, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.territory-item h4 {
+  margin: 0 0 0.5rem 0;
+  color: #d4af37;
+}
+
+.territory-item p {
+  margin: 0.25rem 0;
+  color: #ccc;
+  font-size: 0.9rem;
+}
+
+.action-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.action-btn {
+  padding: 0.75rem 1rem;
+  border: 2px solid #555;
+  background: #333;
+  color: #e0e0e0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.action-btn:hover {
+  border-color: #d4af37;
+  color: #d4af37;
+  transform: translateY(-1px);
+}
+
+.action-btn.primary {
+  background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
+  color: #000;
+  border-color: #d4af37;
+}
+
+.action-btn.primary:hover {
+  background: linear-gradient(135deg, #e6c547 0%, #d4af37 100%);
+}
+
+.action-btn.danger {
+  border-color: #cc4444;
+  color: #cc4444;
+}
+
+.action-btn.danger:hover {
+  background: #cc4444;
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .resources-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .action-buttons {
+    grid-template-columns: 1fr;
+  }
+}
