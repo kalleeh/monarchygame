@@ -56,7 +56,15 @@
   margin: 0 auto;
 }
 
-.kingdom-overview {
+.loading {
+  text-align: center;
+  padding: 4rem;
+  color: #e0e0e0;
+  font-size: 1.2rem;
+}
+
+/* Kingdom Management Styles */
+.kingdom-management {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 2rem;
@@ -65,40 +73,112 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
-.kingdom-overview h2 {
+.kingdoms-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.kingdoms-header h2 {
   color: #d4af37;
-  margin-top: 0;
+  margin: 0;
   font-size: 1.8rem;
   border-bottom: 2px solid #d4af37;
   padding-bottom: 0.5rem;
 }
 
-.kingdom-overview h3 {
-  color: #f0c040;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-}
-
-.user-details {
-  background: rgba(0, 0, 0, 0.2);
-  padding: 1.5rem;
+.create-new-btn, .create-first-btn {
+  background: linear-gradient(135deg, #d4af37, #f0c040);
+  color: #1a1a2e;
+  border: none;
+  padding: 0.75rem 1.5rem;
   border-radius: 8px;
-  margin: 1.5rem 0;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.user-details ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+.create-new-btn:hover, .create-first-btn:hover {
+  background: linear-gradient(135deg, #f0c040, #ffd700);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4);
 }
 
-.user-details li {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+.no-kingdoms {
+  text-align: center;
+  padding: 4rem;
+  color: #e0e0e0;
 }
 
-.user-details li:last-child {
-  border-bottom: none;
+.no-kingdoms p {
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.kingdoms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.kingdom-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.kingdom-card:hover {
+  border-color: #d4af37;
+  box-shadow: 0 5px 20px rgba(212, 175, 55, 0.2);
+  transform: translateY(-2px);
+}
+
+.kingdom-card h3 {
+  color: #d4af37;
+  margin: 0 0 1rem 0;
+  font-size: 1.4rem;
+  text-align: center;
+}
+
+.kingdom-info {
+  margin-bottom: 1.5rem;
+}
+
+.kingdom-info p {
+  margin: 0.5rem 0;
+  color: #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+}
+
+.kingdom-info strong {
+  color: #f0c040;
+}
+
+.kingdom-actions {
+  text-align: center;
+}
+
+.enter-kingdom-btn {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.enter-kingdom-btn:hover {
+  background: linear-gradient(135deg, #20c997, #17a2b8);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
 }
 
 .next-steps {
@@ -106,6 +186,12 @@
   padding: 1.5rem;
   border-radius: 8px;
   margin: 1.5rem 0;
+}
+
+.next-steps h3 {
+  color: #f0c040;
+  margin-top: 0;
+  margin-bottom: 1rem;
 }
 
 .next-steps ul {
@@ -143,7 +229,114 @@
     padding: 1rem;
   }
   
-  .kingdom-overview {
+  .kingdom-management {
     padding: 1.5rem;
   }
+  
+  .kingdoms-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .kingdoms-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.kingdoms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.kingdom-card {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border: 2px solid #d4af37;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kingdom-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.3);
+}
+
+.kingdom-info p {
+  margin: 0.5rem 0;
+  color: #e0e0e0;
+}
+
+.kingdom-actions {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.enter-kingdom-btn {
+  background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
+  color: #000;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.enter-kingdom-btn:hover {
+  background: linear-gradient(135deg, #e6c547 0%, #d4af37 100%);
+  transform: translateY(-1px);
+}
+
+.kingdoms-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.create-new-btn, .create-first-btn {
+  background: linear-gradient(135deg, #4a9eff 0%, #0066cc 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.create-new-btn:hover, .create-first-btn:hover {
+  background: linear-gradient(135deg, #66b3ff 0%, #4a9eff 100%);
+  transform: translateY(-1px);
+}
+
+.no-kingdoms {
+  text-align: center;
+  padding: 3rem;
+  color: #888;
+}
+
+.next-steps {
+  margin-top: 3rem;
+  padding: 2rem;
+  background: rgba(212, 175, 55, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.next-steps h3 {
+  color: #d4af37;
+  margin-bottom: 1rem;
+}
+
+.next-steps ul {
+  list-style: none;
+  padding: 0;
+}
+
+.next-steps li {
+  padding: 0.5rem 0;
+  color: #e0e0e0;
 }
