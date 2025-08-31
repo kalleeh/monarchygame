@@ -1,0 +1,266 @@
+.territory-management {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.territory-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #d4af37;
+}
+
+.territory-header h1 {
+  flex: 1;
+  margin: 0;
+  color: #d4af37;
+}
+
+.create-territory-btn {
+  background: linear-gradient(135deg, #4a9eff 0%, #0066cc 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.create-territory-btn:hover {
+  background: linear-gradient(135deg, #66b3ff 0%, #4a9eff 100%);
+  transform: translateY(-1px);
+}
+
+.create-form-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.create-territory-form {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border: 2px solid #d4af37;
+  border-radius: 8px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 500px;
+}
+
+.create-territory-form h2 {
+  color: #d4af37;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  color: #e0e0e0;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-group input, .form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  background: #333;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 1rem;
+}
+
+.form-group input:focus, .form-group select:focus {
+  outline: none;
+  border-color: #d4af37;
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+}
+
+.coordinates-group label {
+  display: block;
+  color: #e0e0e0;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.coordinates-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.submit-btn {
+  flex: 1;
+  background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
+  color: #000;
+  border: none;
+  padding: 0.75rem;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.submit-btn:hover {
+  background: linear-gradient(135deg, #e6c547 0%, #d4af37 100%);
+}
+
+.cancel-btn {
+  flex: 1;
+  background: #555;
+  color: #e0e0e0;
+  border: none;
+  padding: 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancel-btn:hover {
+  background: #666;
+}
+
+.no-territories {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #888;
+}
+
+.no-territories h2 {
+  color: #d4af37;
+  margin-bottom: 1rem;
+}
+
+.claim-first-btn {
+  background: linear-gradient(135deg, #4a9eff 0%, #0066cc 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1.1rem;
+}
+
+.claim-first-btn:hover {
+  background: linear-gradient(135deg, #66b3ff 0%, #4a9eff 100%);
+  transform: translateY(-2px);
+}
+
+.territories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.territory-card {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border: 2px solid #d4af37;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.territory-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.3);
+}
+
+.territory-header-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.territory-header-card h3 {
+  margin: 0;
+  color: #d4af37;
+}
+
+.terrain-badge {
+  background: linear-gradient(135deg, #4a9eff 0%, #0066cc 100%);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.territory-info {
+  margin-bottom: 1.5rem;
+}
+
+.territory-info p {
+  margin: 0.5rem 0;
+  color: #e0e0e0;
+  font-size: 0.9rem;
+}
+
+.territory-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.manage-btn, .build-btn, .fortify-btn {
+  padding: 0.5rem;
+  border: 1px solid #555;
+  background: #333;
+  color: #e0e0e0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.manage-btn:hover {
+  border-color: #d4af37;
+  color: #d4af37;
+}
+
+.build-btn:hover {
+  border-color: #4a9eff;
+  color: #4a9eff;
+}
+
+.fortify-btn:hover {
+  border-color: #cc4444;
+  color: #cc4444;
+}
+
+@media (max-width: 768px) {
+  .territories-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .create-territory-form {
+    width: 95%;
+    padding: 1.5rem;
+  }
+  
+  .coordinates-inputs {
+    grid-template-columns: 1fr;
+  }
+}
