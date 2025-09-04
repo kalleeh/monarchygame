@@ -1,7 +1,26 @@
 .territory-management {
+  width: calc(100vw - 4rem);
   max-width: 1200px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: var(--space-xl);
+  background: var(--bg-primary);
+  backdrop-filter: var(--blur);
+  min-height: 100vh;
+  color: var(--text-primary);
+}
+
+/* Fix oversized images */
+.territory-management img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Territory action button icons should be small */
+.territory-actions img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
 }
 
 .territory-header {
@@ -10,18 +29,18 @@
   gap: 1rem;
   margin-bottom: 2rem;
   padding-bottom: 1rem;
-  border-bottom: 2px solid #d4af37;
+  border-bottom: 2px solid var(--text-accent);
 }
 
 .territory-header h1 {
   flex: 1;
   margin: 0;
-  color: #d4af37;
+  color: var(--text-accent);
 }
 
 .create-territory-btn {
   background: linear-gradient(135deg, #4a9eff 0%, #0066cc 100%);
-  color: white;
+  color: var(--text-primary);
   border: none;
   padding: 0.75rem 1.5rem;
   border-radius: 4px;
@@ -50,7 +69,7 @@
 
 .create-territory-form {
   background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
-  border: 2px solid #d4af37;
+  border: 2px solid var(--text-accent);
   border-radius: 8px;
   padding: 2rem;
   width: 90%;
@@ -58,7 +77,7 @@
 }
 
 .create-territory-form h2 {
-  color: #d4af37;
+  color: var(--text-accent);
   margin-top: 0;
   margin-bottom: 1.5rem;
 }
@@ -69,7 +88,7 @@
 
 .form-group label {
   display: block;
-  color: #e0e0e0;
+  color: var(--text-secondary);
   margin-bottom: 0.5rem;
   font-weight: 500;
 }
@@ -77,22 +96,22 @@
 .form-group input, .form-group select {
   width: 100%;
   padding: 0.75rem;
-  background: #333;
-  border: 1px solid #555;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
   border-radius: 4px;
-  color: #e0e0e0;
+  color: var(--text-secondary);
   font-size: 1rem;
 }
 
 .form-group input:focus, .form-group select:focus {
   outline: none;
-  border-color: #d4af37;
+  border-color: var(--text-accent);
   box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
 }
 
 .coordinates-group label {
   display: block;
-  color: #e0e0e0;
+  color: var(--text-secondary);
   margin-bottom: 0.5rem;
   font-weight: 500;
 }
@@ -111,7 +130,7 @@
 
 .submit-btn {
   flex: 1;
-  background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
+  background: linear-gradient(135deg, var(--text-accent) 0%, #b8941f 100%);
   color: #000;
   border: none;
   padding: 0.75rem;
@@ -122,13 +141,13 @@
 }
 
 .submit-btn:hover {
-  background: linear-gradient(135deg, #e6c547 0%, #d4af37 100%);
+  background: linear-gradient(135deg, #e6c547 0%, var(--text-accent) 100%);
 }
 
 .cancel-btn {
   flex: 1;
-  background: #555;
-  color: #e0e0e0;
+  background: var(--border-primary);
+  color: var(--text-secondary);
   border: none;
   padding: 0.75rem;
   border-radius: 4px;
@@ -143,17 +162,17 @@
 .no-territories {
   text-align: center;
   padding: 4rem 2rem;
-  color: #888;
+  color: var(--text-muted);
 }
 
 .no-territories h2 {
-  color: #d4af37;
+  color: var(--text-accent);
   margin-bottom: 1rem;
 }
 
 .claim-first-btn {
   background: linear-gradient(135deg, #4a9eff 0%, #0066cc 100%);
-  color: white;
+  color: var(--text-primary);
   border: none;
   padding: 1rem 2rem;
   border-radius: 4px;
@@ -176,7 +195,7 @@
 
 .territory-card {
   background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
-  border: 2px solid #d4af37;
+  border: 2px solid var(--text-accent);
   border-radius: 8px;
   padding: 1.5rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -196,12 +215,12 @@
 
 .territory-header-card h3 {
   margin: 0;
-  color: #d4af37;
+  color: var(--text-accent);
 }
 
 .terrain-badge {
   background: linear-gradient(135deg, #4a9eff 0%, #0066cc 100%);
-  color: white;
+  color: var(--text-primary);
   padding: 0.25rem 0.75rem;
   border-radius: 12px;
   font-size: 0.8rem;
@@ -214,7 +233,7 @@
 
 .territory-info p {
   margin: 0.5rem 0;
-  color: #e0e0e0;
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
@@ -226,9 +245,9 @@
 
 .manage-btn, .build-btn, .fortify-btn {
   padding: 0.5rem;
-  border: 1px solid #555;
-  background: #333;
-  color: #e0e0e0;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -236,8 +255,8 @@
 }
 
 .manage-btn:hover {
-  border-color: #d4af37;
-  color: #d4af37;
+  border-color: var(--text-accent);
+  color: var(--text-accent);
 }
 
 .build-btn:hover {
@@ -246,11 +265,17 @@
 }
 
 .fortify-btn:hover {
-  border-color: #cc4444;
-  color: #cc4444;
+  border-color: var(--error);
+  color: var(--error);
 }
 
 @media (max-width: 768px) {
+  .territory-management {
+    width: calc(100vw - 2rem);
+    margin: 1rem auto;
+    padding: var(--space-lg);
+  }
+  
   .territories-grid {
     grid-template-columns: 1fr;
   }
@@ -261,6 +286,16 @@
   }
   
   .coordinates-inputs {
+    grid-template-columns: 1fr;
+  }
+  
+  .territory-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .territory-actions {
     grid-template-columns: 1fr;
   }
 }
