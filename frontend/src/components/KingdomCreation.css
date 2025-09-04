@@ -1,19 +1,43 @@
 /* Kingdom Creation Styles */
 .kingdom-creation {
-  max-width: 800px;
+  width: calc(100vw - 4rem);
+  max-width: 1200px;
   margin: 2rem auto;
   padding: 2rem;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  backdrop-filter: var(--blur-light);
+  border: 2px solid var(--border-accent);
 }
 
 .kingdom-creation h2 {
-  color: #d4af37;
+  color: var(--text-accent);
   text-align: center;
   margin-bottom: 2rem;
   font-size: 2rem;
+}
+
+/* Fix oversized images */
+.kingdom-creation img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Resource icons should be small */
+.resources-grid img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+/* Race images should be constrained */
+.race-selection img {
+  width: 120px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
 }
 
 .creation-form {
@@ -38,26 +62,112 @@
   padding: 0.75rem;
   border: 2px solid rgba(212, 175, 55, 0.3);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.3);
-  color: white;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
   font-size: 1rem;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #d4af37;
+  border-color: var(--text-accent);
   box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
 }
 
-.race-selection {
+/* Race grid layout */
+.race-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-lg);
+  margin-top: var(--space-lg);
+}
+
+/* Race card styling */
+.race-card {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  cursor: pointer;
+  transition: var(--transition);
+  backdrop-filter: var(--blur-light);
+}
+
+.race-card:hover {
+  border-color: var(--border-accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.race-card.selected {
+  border-color: var(--primary);
+  background: var(--hover);
+  box-shadow: var(--shadow-glow);
+}
+
+.race-card img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.race-card h4 {
+  color: var(--text-accent);
+  margin: 0 0 var(--space-sm) 0;
+  font-size: 1.2rem;
+}
+
+.race-card p {
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-md) 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+/* Race stats with proper bars */
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xs);
+  font-size: 0.85rem;
+  margin-top: var(--space-sm);
+}
+
+.stats > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.3rem 0;
+}
+
+.stats span {
+  color: var(--text-secondary);
+  min-width: 80px;
+}
+
+.stat-bar {
+  display: flex;
+  gap: 3px;
+}
+
+.stat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+}
+
+.stat-dot.filled {
+  background: var(--text-accent);
+  border-color: var(--text-accent);
+  box-shadow: 0 0 4px rgba(78, 205, 196, 0.5);
 }
 
 .race-option {
   padding: 1rem;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid var(--border-secondary);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.2);
   cursor: pointer;
@@ -70,7 +180,7 @@
 }
 
 .race-option.selected {
-  border-color: #d4af37;
+  border-color: var(--text-accent);
   background: rgba(212, 175, 55, 0.2);
   box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
 }
@@ -83,19 +193,19 @@
 
 .race-option p {
   margin: 0;
-  color: #e0e0e0;
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
 .race-details {
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-tertiary);
   padding: 1.5rem;
   border-radius: 8px;
   border: 1px solid rgba(212, 175, 55, 0.2);
 }
 
 .race-details h3 {
-  color: #d4af37;
+  color: var(--text-accent);
   margin-top: 0;
   margin-bottom: 1rem;
 }
@@ -115,27 +225,27 @@
 
 .stat span {
   min-width: 100px;
-  color: #e0e0e0;
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
 .stat-bar {
   flex: 1;
   height: 8px;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--border-secondary);
   border-radius: 4px;
   overflow: hidden;
 }
 
 .stat-fill {
   height: 100%;
-  background: linear-gradient(90deg, #d4af37, #f0c040);
+  background: linear-gradient(90deg, var(--text-accent), #f0c040);
   transition: width 0.3s ease;
 }
 
 .unit-types {
   margin-top: 1rem;
-  color: #e0e0e0;
+  color: var(--text-secondary);
 }
 
 .unit-types ul {
@@ -150,7 +260,7 @@
 
 .create-button {
   padding: 1rem 2rem;
-  background: linear-gradient(135deg, #d4af37, #f0c040);
+  background: linear-gradient(135deg, var(--text-accent), #f0c040);
   color: #1a1a2e;
   border: none;
   border-radius: 8px;
@@ -176,45 +286,73 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .kingdom-creation {
-    margin: 1rem;
+    width: calc(100vw - 2rem);
+    margin: 1rem auto;
     padding: 1.5rem;
   }
   
-  .race-selection {
+  .race-grid {
     grid-template-columns: 1fr;
   }
   
-  .stats-grid {
+  .resources-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .stats {
     grid-template-columns: 1fr;
-  }
-  
-  .stat {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-  
-  .stat span {
-    min-width: auto;
   }
 }
+/* Starting Resources Section */
 .starting-resources {
-  margin-top: 1rem;
+  background: linear-gradient(135deg, var(--hover), rgba(78, 205, 196, 0.05));
+  border: 2px solid var(--border-accent);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-bottom: var(--space-lg);
+  backdrop-filter: var(--blur-light);
+}
+
+.starting-resources h4 {
+  color: var(--text-accent);
+  margin: 0 0 var(--space-sm) 0;
+  text-align: center;
+  font-size: 1rem;
 }
 
 .resources-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  padding: 0.75rem;
-  background: rgba(212, 175, 55, 0.1);
-  border-radius: 4px;
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-sm);
 }
 
-.resources-grid > div {
-  font-size: 0.9rem;
-  color: #d4af37;
-  font-weight: 500;
+.resource-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: var(--space-xs);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-primary);
+  justify-content: center;
+}
+
+.resource-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.resource-value {
+  font-size: 1rem;
+  font-weight: bold;
+  color: var(--text-accent);
+  line-height: 1;
+}
+
+.resource-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1;
 }

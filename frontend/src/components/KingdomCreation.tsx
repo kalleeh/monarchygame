@@ -1,158 +1,199 @@
-import { useState } from 'react';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../../amplify/data/resource';
-import { RACES } from '../../../game-data/races';
-import type { RaceType } from '../types/amplify';
+import React, { useState } from 'react';
+import { RACES } from '@game-data/races';
+import './KingdomCreation.css';
 
-const client = generateClient<Schema>();
+// Simple random name generator
+const generateRandomName = (): string => {
+  const prefixes = ['North', 'South', 'East', 'West', 'High', 'Low', 'Great', 'New', 'Old'];
+  const bases = ['haven', 'shire', 'land', 'realm', 'kingdom', 'empire', 'domain', 'territory'];
+  const suffixes = ['ia', 'burg', 'ton', 'ford', 'wick', 'ham', 'dale', 'moor'];
+  
+  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  const base = bases[Math.floor(Math.random() * bases.length)];
+  const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
+  
+  return `${prefix}${base}${suffix}`;
+};
 
-type RaceKey = keyof typeof RACES;
-
-interface KingdomCreationProps {
-  onKingdomCreated: () => void;
+interface RaceData {
+  id: string;
+  name: string;
+  description: string;
+  stats: { warOffense: number; warDefense: number; sorcery: number; economy: number };
+  specialAbility: { description: string };
+  unitTypes: { name: string }[];
+  startingResources: { gold: number; population: number; land: number; turns: number };
 }
 
-export function KingdomCreation({ onKingdomCreated }: KingdomCreationProps) {
-  const [selectedRace, setSelectedRace] = useState<RaceKey>('Human');
+// Convert game-data races to component format  
+const races = Object.values(RACES).map(race => ({
+  id: race.id,
+  name: race.name,
+  description: race.description,
+  image: `/output/${race.id}-kingdom.png`,
+  specialAbility: race.specialAbility.description,
+  stats: race.stats,
+  unitTypes: race.unitTypes?.map(u => u.name) || ['Basic Units'],
+  startingResources: race.startingResources || { gold: 1000, population: 500, land: 100, turns: 50 },
+  gameplayTips: {
+    strengths: [race.specialAbility.strategicValue || 'Balanced approach'],
+    weaknesses: [race.specialAbility.limitations || 'No major weaknesses'], 
+    strategy: race.specialAbility.strategicValue || 'Adapt to situation'
+  }
+}));
+
+interface Race {
+  id: string;
+  name: string;
+  description: string;
+  image: string;
+  specialAbility: string;
+  stats: {
+    warOffense: number;
+    warDefense: number;
+    sorcery: number;
+    economy: number;
+  };
+  unitTypes: string[];
+  startingResources: {
+    gold: number;
+    population: number;
+    land: number;
+    turns: number;
+  };
+  gameplayTips: {
+    strengths: string[];
+    weaknesses: string[];
+    strategy: string;
+  };
+}
+
+interface KingdomCreationProps {
+  onKingdomCreated: (kingdomName: string, race: string) => void;
+}
+
+export const KingdomCreation: React.FC<KingdomCreationProps> = ({ onKingdomCreated }) => {
   const [kingdomName, setKingdomName] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
+  const [selectedRace, setSelectedRace] = useState<Race | null>(races[0]);
+  const [showTooltip, setShowTooltip] = useState<string | null>(null);
 
-  const handleCreateKingdom = async () => {
-    if (!kingdomName.trim()) {
-      alert('Please enter a kingdom name');
-      return;
-    }
-
-    setIsCreating(true);
-    try {
-      const race = RACES[selectedRace];
-      
-      // Create kingdom with race's starting resources
-      await client.models.Kingdom.create({
-        name: kingdomName.trim(),
-        race: selectedRace as RaceType,
-        resources: race.startingResources,
-        stats: race.stats,
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        lastActive: new Date().toISOString()
-      });
-
-      onKingdomCreated();
-    } catch (error) {
-      console.error('Failed to create kingdom:', error);
-      alert('Failed to create kingdom. Please try again.');
-    } finally {
-      setIsCreating(false);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (kingdomName.trim() && selectedRace) {
+      onKingdomCreated(kingdomName.trim(), selectedRace.id);
     }
   };
 
-  const selectedRaceData = RACES[selectedRace];
+  const renderStatBar = (value: number, statType: string, max: number = 5) => {
+    return (
+      <div className="stat-bar">
+        {Array.from({ length: max }, (_, i) => (
+          <div
+            key={i}
+            className={`stat-dot ${i < value ? `filled ${statType}` : ''}`}
+          />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="kingdom-creation">
       <h2>Create Your Kingdom</h2>
-      
-      <div className="creation-form">
+      <form className="creation-form" onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="kingdom-name">Kingdom Name:</label>
-          <input
-            id="kingdom-name"
-            type="text"
-            value={kingdomName}
-            onChange={(e) => setKingdomName(e.target.value)}
-            placeholder="Enter your kingdom name"
-            maxLength={50}
-          />
+          <div className="name-input-group">
+            <input
+              type="text"
+              id="kingdom-name"
+              value={kingdomName}
+              onChange={(e) => setKingdomName(e.target.value)}
+              placeholder="Enter your kingdom name"
+              required
+            />
+            <button 
+              type="button" 
+              className="random-name-btn"
+              onClick={() => setKingdomName(generateRandomName())}
+              title="Generate random kingdom name"
+            >
+              🎲
+            </button>
+          </div>
         </div>
+        
+        {selectedRace && (
+          <div className="starting-resources">
+            <h4>Starting Resources for {selectedRace.name}</h4>
+            <div className="resources-grid">
+              <div className="resource-item">
+                <img src="/gold-resource-icon.png" alt="Gold" className="resource-icon" />
+                <div className="resource-info">
+                  <span className="resource-value">{selectedRace.startingResources.gold}</span>
+                  <span className="resource-label">Gold</span>
+                </div>
+              </div>
+              <div className="resource-item">
+                <img src="/population-resource-icon.png" alt="Population" className="resource-icon" />
+                <div className="resource-info">
+                  <span className="resource-value">{selectedRace.startingResources.population}</span>
+                  <span className="resource-label">Population</span>
+                </div>
+              </div>
+              <div className="resource-item">
+                <img src="/land-resource-icon.png" alt="Land" className="resource-icon" />
+                <div className="resource-info">
+                  <span className="resource-value">{selectedRace.startingResources.land}</span>
+                  <span className="resource-label">Land</span>
+                </div>
+              </div>
+              <div className="resource-item">
+                <img src="/time-turns-icon.png" alt="Turns" className="resource-icon" />
+                <div className="resource-info">
+                  <span className="resource-value">{selectedRace.startingResources.turns}</span>
+                  <span className="resource-label">Turns</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-        <div className="form-group">
-          <label>Choose Your Race:</label>
-          <div className="race-selection">
-            {Object.entries(RACES).map(([raceKey, raceData]) => (
+        <div className="race-selection">
+          <h3>Choose Your Race</h3>
+          
+          <div className="race-grid">
+            {races.map((race) => (
               <div
-                key={raceKey}
-                className={`race-option ${selectedRace === raceKey ? 'selected' : ''}`}
-                onClick={() => setSelectedRace(raceKey as RaceKey)}
+                key={race.id}
+                className={`race-card ${selectedRace?.id === race.id ? 'selected' : ''}`}
+                onClick={() => setSelectedRace(race)}
               >
-                <h3>{raceData.name}</h3>
-                <p>{raceData.description}</p>
+                <img src={race.image} alt={race.name} />
+                <h4>{race.name}</h4>
+                <p>{race.description}</p>
+
+                <div className="stats">
+                  <div><span>War Offense:</span> {renderStatBar(race.stats.warOffense, 'offense')}</div>
+                  <div><span>War Defense:</span> {renderStatBar(race.stats.warDefense, 'defense')}</div>
+                  <div><span>Sorcery:</span> {renderStatBar(race.stats.sorcery, 'sorcery')}</div>
+                  <div><span>Scum:</span> {renderStatBar(race.stats.scum, 'scum')}</div>
+                  <div><span>Forts:</span> {renderStatBar(race.stats.forts, 'forts')}</div>
+                  <div><span>Tithe:</span> {renderStatBar(race.stats.tithe, 'tithe')}</div>
+                  <div><span>Training:</span> {renderStatBar(race.stats.training, 'training')}</div>
+                  <div><span>Siege:</span> {renderStatBar(race.stats.siege, 'siege')}</div>
+                  <div><span>Economy:</span> {renderStatBar(race.stats.economy, 'economy')}</div>
+                  <div><span>Building:</span> {renderStatBar(race.stats.building, 'building')}</div>
+                </div>
               </div>
             ))}
           </div>
         </div>
-
-        <div className="race-details">
-          <h3>{selectedRaceData.name} Details</h3>
-          <p><strong>Special Ability:</strong> {selectedRaceData.specialAbility}</p>
-          
-          <div className="stats-grid">
-            <div className="stat">
-              <span>War Offense:</span>
-              <div className="stat-bar">
-                <div 
-                  className="stat-fill" 
-                  style={{ width: `${selectedRaceData.stats.warOffense * 20}%` }}
-                />
-              </div>
-            </div>
-            <div className="stat">
-              <span>War Defense:</span>
-              <div className="stat-bar">
-                <div 
-                  className="stat-fill" 
-                  style={{ width: `${selectedRaceData.stats.warDefense * 20}%` }}
-                />
-              </div>
-            </div>
-            <div className="stat">
-              <span>Sorcery:</span>
-              <div className="stat-bar">
-                <div 
-                  className="stat-fill" 
-                  style={{ width: `${selectedRaceData.stats.sorcery * 20}%` }}
-                />
-              </div>
-            </div>
-            <div className="stat">
-              <span>Economy:</span>
-              <div className="stat-bar">
-                <div 
-                  className="stat-fill" 
-                  style={{ width: `${selectedRaceData.stats.economy * 20}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="unit-types">
-            <strong>Unit Types:</strong>
-            <ul>
-              {selectedRaceData.unitTypes.map((unit, index) => (
-                <li key={index}>{unit}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="starting-resources">
-            <strong>Starting Resources:</strong>
-            <div className="resources-grid">
-              <div>Gold: {selectedRaceData.startingResources.gold}</div>
-              <div>Population: {selectedRaceData.startingResources.population}</div>
-              <div>Land: {selectedRaceData.startingResources.land}</div>
-              <div>Turns: {selectedRaceData.startingResources.turns}</div>
-            </div>
-          </div>
-        </div>
-
-        <button 
-          className="create-button"
-          onClick={handleCreateKingdom}
-          disabled={isCreating || !kingdomName.trim()}
-        >
-          {isCreating ? 'Creating Kingdom...' : 'Create Kingdom'}
+        
+        <button type="submit" disabled={!kingdomName.trim() || !selectedRace}>
+          Create Kingdom
         </button>
-      </div>
+      </form>
     </div>
   );
-}
+};
