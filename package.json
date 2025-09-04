@@ -1,25 +1,14 @@
 {
-  "name": "y",
+  "name": "monarchygame",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "devDependencies": {
-    "@aws-amplify/backend": "^1.16.1",
-    "@aws-amplify/backend-cli": "^1.8.0",
-    "aws-cdk-lib": "^2.204.0",
-    "constructs": "^10.4.2",
-    "esbuild": "^0.25.9",
-    "tsx": "^4.20.5",
-    "typescript": "^5.9.2"
+    "@aws-amplify/backend-cli": "^1.8.0"
   },
   "dependencies": {
-    "aws-amplify": "^6.15.5"
+    "@aws-amplify/backend": "^1.16.1",
+    "@aws-amplify/backend-auth": "^1.7.1",
+    "@aws-amplify/backend-data": "^1.6.1",
+    "@aws-amplify/backend-function": "^1.14.1"
   }
 }

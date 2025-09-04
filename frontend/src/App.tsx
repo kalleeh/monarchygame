@@ -1,47 +1,125 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Amplify } from 'aws-amplify';
 import { Authenticator } from '@aws-amplify/ui-react';
 import { generateClient } from 'aws-amplify/data';
 import '@aws-amplify/ui-react/styles.css';
 import outputs from '../amplify_outputs.json';
+import { WelcomePage } from './components/WelcomePage';
 import { KingdomCreation } from './components/KingdomCreation';
 import { KingdomDashboard } from './components/KingdomDashboard';
 import { TerritoryManagement } from './components/TerritoryManagement';
+import { CombatPage } from './components/CombatPage';
+import { AllianceManagement } from './components/AllianceManagement';
+import { WorldMap } from './components/WorldMap';
+import { MagicSystem } from './components/MagicSystem';
+import { TradeEconomy } from './components/TradeEconomy';
 import './App.css';
 import './components/KingdomCreation.css';
 import './components/KingdomDashboard.css';
 import './components/TerritoryManagement.css';
+import './components/WelcomePage.css';
 import type { Schema } from '../../amplify/data/resource';
 import type { AuthenticatorProps, KingdomResources } from './types/amplify';
 
 Amplify.configure(outputs);
 const client = generateClient<Schema>();
 
-type AppView = 'kingdoms' | 'creation' | 'dashboard' | 'territories';
+type AppView = 'welcome' | 'kingdoms' | 'creation' | 'dashboard' | 'territories' | 'combat' | 'alliance' | 'worldmap' | 'magic' | 'trade';
 
 function App() {
   const [kingdoms, setKingdoms] = useState<Schema['Kingdom']['type'][]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentView, setCurrentView] = useState<AppView>('kingdoms');
+  const [currentView, setCurrentView] = useState<AppView>('welcome');
   const [selectedKingdom, setSelectedKingdom] = useState<Schema['Kingdom']['type'] | null>(null);
+  const [showAuth, setShowAuth] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    // Check for demo mode
+    const isDemoMode = localStorage.getItem('demo-mode') === 'true';
+    setDemoMode(isDemoMode);
+    
+    // If in demo mode, fetch kingdoms immediately
+    if (isDemoMode) {
+      fetchKingdoms();
+    }
+  }, []);
+
+  // Handle authenticated user changes
+  useEffect(() => {
+    if (currentUser && !demoMode) {
+      setLoading(true);
+      // Add a small delay to ensure authentication tokens are properly set
+      setTimeout(() => {
+        fetchKingdoms();
+      }, 1000);
+    }
+  }, [currentUser, demoMode]);
 
   const fetchKingdoms = async () => {
     try {
+      // Skip backend calls in demo mode
+      if (demoMode) {
+        setKingdoms([]);
+        setCurrentView('creation');
+        setLoading(false);
+        return;
+      }
+      
       const { data } = await client.models.Kingdom.list();
       setKingdoms(data);
       if (data.length === 0) {
         setCurrentView('creation');
+      } else {
+        setCurrentView('kingdoms');
       }
     } catch (error) {
       console.error('Failed to fetch kingdoms:', error);
+      // In case of error (including auth issues), go to creation
+      setKingdoms([]);
+      setCurrentView('creation');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleGetStarted = () => {
+    const isDemoMode = localStorage.getItem('demo-mode') === 'true';
+    if (isDemoMode) {
+      setDemoMode(true);
+      setLoading(true);
+      // Immediately fetch kingdoms for demo mode
+      setTimeout(() => {
+        fetchKingdoms();
+      }, 100);
+    } else {
+      setShowAuth(true);
+    }
+  };
+
   const handleKingdomCreated = () => {
-    setCurrentView('kingdoms');
-    fetchKingdoms();
+    const isDemoMode = localStorage.getItem('demo-mode') === 'true';
+    
+    if (isDemoMode) {
+      // In demo mode, create a mock kingdom and go to dashboard
+      const mockKingdom = {
+        id: 'demo-kingdom-1',
+        name: 'Demo Kingdom',
+        race: 'Human',
+        resources: {
+          gold: 1000,
+          population: 500,
+          land: 100,
+          turns: 50
+        }
+      };
+      setSelectedKingdom(mockKingdom as any);
+      setCurrentView('dashboard');
+    } else {
+      setCurrentView('kingdoms');
+      fetchKingdoms();
+    }
   };
 
   const handleEnterKingdom = (kingdom: Schema['Kingdom']['type']) => {
@@ -53,6 +131,14 @@ function App() {
     setCurrentView('territories');
   };
 
+  const handleManageCombat = () => {
+    setCurrentView('combat');
+  };
+
+  const handleManageAlliance = () => {
+    setCurrentView('alliance');
+  };
+
   const handleBackToKingdoms = () => {
     setCurrentView('kingdoms');
     setSelectedKingdom(null);
@@ -62,11 +148,15 @@ function App() {
     setCurrentView('dashboard');
   };
 
-  useEffect(() => {
-    fetchKingdoms();
-  }, []);
+  const renderGameContent = () => {
+    if (loading) {
+      return (
+        <div className="loading">
+          <p>Loading your kingdoms...</p>
+        </div>
+      );
+    }
 
-  const renderCurrentView = () => {
     switch (currentView) {
       case 'creation':
         return <KingdomCreation onKingdomCreated={handleKingdomCreated} />;
@@ -76,12 +166,58 @@ function App() {
           <KingdomDashboard 
             kingdom={selectedKingdom} 
             onBack={handleBackToKingdoms}
+            onManageTerritories={handleManageTerritories}
+            onManageCombat={handleManageCombat}
+            onManageAlliance={handleManageAlliance}
+            onViewWorldMap={() => setCurrentView('worldmap')}
+            onCastSpells={() => setCurrentView('magic')}
+            onManageTrade={() => setCurrentView('trade')}
           />
         ) : null;
       
       case 'territories':
         return selectedKingdom ? (
           <TerritoryManagement 
+            kingdom={selectedKingdom} 
+            onBack={handleBackToDashboard}
+          />
+        ) : null;
+
+      case 'combat':
+        return selectedKingdom ? (
+          <CombatPage 
+            kingdom={selectedKingdom} 
+            onBack={handleBackToDashboard}
+          />
+        ) : null;
+
+      case 'alliance':
+        return selectedKingdom ? (
+          <AllianceManagement 
+            kingdom={selectedKingdom} 
+            onBack={handleBackToDashboard}
+          />
+        ) : null;
+
+      case 'worldmap':
+        return selectedKingdom ? (
+          <WorldMap 
+            kingdom={selectedKingdom} 
+            onBack={handleBackToDashboard}
+          />
+        ) : null;
+
+      case 'magic':
+        return selectedKingdom ? (
+          <MagicSystem 
+            kingdom={selectedKingdom} 
+            onBack={handleBackToDashboard}
+          />
+        ) : null;
+
+      case 'trade':
+        return selectedKingdom ? (
+          <TradeEconomy 
             kingdom={selectedKingdom} 
             onBack={handleBackToDashboard}
           />
@@ -136,15 +272,14 @@ function App() {
             )}
 
             <div className="next-steps">
-              <h3>🚧 Epic 3: Kingdom Management Interface - IN PROGRESS ⏳</h3>
+              <h3>🚧 Epic 4: Combat System - COMPLETE ✅</h3>
               <ul>
-                <li>✅ Kingdom overview dashboard</li>
-                <li>✅ Resource management display</li>
-                <li>✅ Territory management interface</li>
-                <li>✅ Race abilities and stats display</li>
-                <li>⏳ Building and unit management</li>
-                <li>⏳ Combat system integration</li>
-                <li>⏳ Real-time updates</li>
+                <li>✅ Combat interface with attack planning</li>
+                <li>✅ Defense management system</li>
+                <li>✅ Battle reports and history</li>
+                <li>✅ Real-time combat notifications</li>
+                <li>✅ Backend integration with Lambda functions</li>
+                <li>✅ Comprehensive testing suite</li>
               </ul>
             </div>
           </div>
@@ -152,33 +287,73 @@ function App() {
     }
   };
 
+  // Show welcome page if not authenticated and not in demo mode
+  if (!showAuth && !demoMode) {
+    return <WelcomePage onGetStarted={handleGetStarted} />;
+  }
+
+  // Demo mode - skip authentication
+  if (demoMode) {
+    return (
+      <main className="app">
+        <header className="app-header">
+          <h1>🏰 Monarchy Game - Demo Mode</h1>
+          <div className="user-info">
+            <span>Demo Player</span>
+            <button 
+              onClick={() => {
+                localStorage.removeItem('demo-mode');
+                window.location.reload();
+              }} 
+              className="sign-out-btn"
+            >
+              Exit Demo
+            </button>
+          </div>
+        </header>
+        
+        <div className="game-content">
+          {renderGameContent()}
+        </div>
+      </main>
+    );
+  }
+
+  // Authenticated app component
+  const AuthenticatedApp = ({ user, signOut }: { user: any, signOut: () => void }) => {
+    useEffect(() => {
+      if (user && user !== currentUser) {
+        setCurrentUser(user);
+      }
+    }, [user]);
+
+    return (
+      <main className="app">
+        <header className="app-header">
+          <h1>🏰 Monarchy Game</h1>
+          <div className="user-info">
+            <span>Welcome, {user?.attributes?.preferred_username || user?.attributes?.email}</span>
+            <button onClick={signOut} className="sign-out-btn">
+              Sign Out
+            </button>
+          </div>
+        </header>
+        
+        <div className="game-content">
+          {renderGameContent()}
+        </div>
+      </main>
+    );
+  };
+
+  // Show authenticated game
   return (
     <Authenticator
       signUpAttributes={['email', 'preferred_username', 'given_name', 'family_name']}
       loginMechanisms={['email']}
     >
       {({ signOut, user }: AuthenticatorProps) => (
-        <main className="app">
-          <header className="app-header">
-            <h1>🏰 Monarchy Game</h1>
-            <div className="user-info">
-              <span>Welcome, {user?.attributes?.preferred_username || user?.attributes?.email}</span>
-              <button onClick={signOut} className="sign-out-btn">
-                Sign Out
-              </button>
-            </div>
-          </header>
-          
-          <div className="game-content">
-            {loading ? (
-              <div className="loading">
-                <p>Loading your kingdoms...</p>
-              </div>
-            ) : (
-              renderCurrentView()
-            )}
-          </div>
-        </main>
+        <AuthenticatedApp user={user} signOut={signOut} />
       )}
     </Authenticator>
   );
