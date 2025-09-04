@@ -2,6 +2,16 @@ import { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 
+// Minimal game data - TODO: Fix import from game-data
+const BUILDING_TYPES = {
+  quarry: { id: 'quarry', name: 'Quarry', cost: 100, description: 'Generates stone' },
+  farm: { id: 'farm', name: 'Farm', cost: 80, description: 'Generates food' }
+};
+const GAME_FORMULAS = {
+  landAcquisition: { baseRate: 0.07, maxRate: 0.073 },
+  buildRate: { optimal: 18 }
+};
+
 const client = generateClient<Schema>();
 
 interface TerritoryManagementProps {
@@ -13,17 +23,31 @@ interface TerritoryFormData {
   name: string;
   terrainType: string;
   coordinates: { x: number; y: number };
+  buildings: Record<string, number>;
 }
 
 export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProps) {
   const [territories, setTerritories] = useState<Schema['Territory']['type'][]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [selectedBuilding, setSelectedBuilding] = useState<string>('quarries');
   const [formData, setFormData] = useState<TerritoryFormData>({
     name: '',
     terrainType: 'plains',
-    coordinates: { x: 0, y: 0 }
+    coordinates: { x: 0, y: 0 },
+    buildings: {}
   });
+
+  // Get authentic building types from game-data
+  const availableBuildings = Object.values(BUILDING_TYPES).filter(building => 
+    building.isAuthentic && building.category !== 'special'
+  );
+
+  // UI-ONLY preview calculation - not used for actual game state
+  const previewBuildRate = (buildings: Record<string, number>, totalLand: number) => {
+    const totalStructures = Object.values(buildings).reduce((sum, count) => sum + count, 0);
+    return GAME_FORMULAS.calculateBuildRate(totalStructures, totalLand);
+  };
 
   useEffect(() => {
     fetchTerritories();

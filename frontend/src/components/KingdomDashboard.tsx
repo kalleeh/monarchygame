@@ -2,16 +2,37 @@ import { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import type { KingdomResources } from '../types/amplify';
-import { RACES } from '../../../game-data/races';
+
+// Minimal RACES data - TODO: Fix import from game-data  
+const RACES = {
+  human: {
+    id: 'human',
+    name: 'Human',
+    description: 'Balanced race with strong economic focus',
+    stats: { warOffense: 3, warDefense: 3, sorcery: 3, economy: 5 }
+  },
+  elven: {
+    id: 'elven',
+    name: 'Elven',
+    description: 'Skilled warriors and mages', 
+    stats: { warOffense: 4, warDefense: 3, sorcery: 4, economy: 3 }
+  }
+};
 
 const client = generateClient<Schema>();
 
 interface KingdomDashboardProps {
   kingdom: Schema['Kingdom']['type'];
   onBack: () => void;
+  onManageTerritories?: () => void;
+  onManageCombat?: () => void;
+  onManageAlliance?: () => void;
+  onViewWorldMap?: () => void;
+  onCastSpells?: () => void;
+  onManageTrade?: () => void;
 }
 
-export function KingdomDashboard({ kingdom, onBack }: KingdomDashboardProps) {
+export function KingdomDashboard({ kingdom, onBack, onManageTerritories, onManageCombat, onManageAlliance, onViewWorldMap, onCastSpells, onManageTrade }: KingdomDashboardProps) {
   const [territories, setTerritories] = useState<Schema['Territory']['type'][]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -50,28 +71,28 @@ export function KingdomDashboard({ kingdom, onBack }: KingdomDashboardProps) {
           <h2>Resources</h2>
           <div className="resources-grid">
             <div className="resource-item">
-              <span className="resource-icon">💰</span>
+              <img src="/gold-resource-icon.png" alt="Gold" className="resource-icon-img" />
               <div>
                 <div className="resource-value">{resources?.gold || 0}</div>
                 <div className="resource-label">Gold</div>
               </div>
             </div>
             <div className="resource-item">
-              <span className="resource-icon">👥</span>
+              <img src="/population-resource-icon.png" alt="Population" className="resource-icon-img" />
               <div>
                 <div className="resource-value">{resources?.population || 0}</div>
                 <div className="resource-label">Population</div>
               </div>
             </div>
             <div className="resource-item">
-              <span className="resource-icon">🏞️</span>
+              <img src="/land-resource-icon.png" alt="Land" className="resource-icon-img" />
               <div>
                 <div className="resource-value">{resources?.land || 0}</div>
                 <div className="resource-label">Land</div>
               </div>
             </div>
             <div className="resource-item">
-              <span className="resource-icon">⏰</span>
+              <img src="/time-turns-icon.png" alt="Turns" className="resource-icon-img" />
               <div>
                 <div className="resource-value">{resources?.turns || 0}</div>
                 <div className="resource-label">Turns</div>
@@ -129,15 +150,58 @@ export function KingdomDashboard({ kingdom, onBack }: KingdomDashboardProps) {
           <div className="action-buttons">
             <button 
               className="action-btn primary"
-              onClick={() => window.location.hash = 'territories'}
+              onClick={onManageTerritories}
             >
+              <img src="/territories-icon.png" alt="Territories" className="action-icon" />
               Manage Territories
             </button>
-            <button className="action-btn">Train Units</button>
-            <button className="action-btn">Cast Spells</button>
-            <button className="action-btn">Diplomacy</button>
-            <button className="action-btn">Trade</button>
-            <button className="action-btn danger">Battle Reports</button>
+            <button 
+              className="action-btn primary"
+              onClick={onViewWorldMap}
+            >
+              <img src="/world-map-icon.png" alt="World Map" className="action-icon" />
+              World Map
+            </button>
+            <button 
+              className="action-btn"
+              onClick={onManageCombat}
+            >
+              <img src="/combat-icon.png" alt="Combat" className="action-icon" />
+              Combat Operations
+            </button>
+            <button 
+              className="action-btn"
+              onClick={onManageAlliance}
+            >
+              <img src="/alliance-icon.png" alt="Alliance" className="action-icon" />
+              Alliance Management
+            </button>
+            <button 
+              className="action-btn"
+              onClick={onCastSpells}
+            >
+              <img src="/magic-spells-icon.png" alt="Magic" className="action-icon" />
+              Cast Spells
+            </button>
+            <button className="action-btn">
+              <img src="/train-units-icon.png" alt="Train Units" className="action-icon" />
+              Train Units
+            </button>
+            <button 
+              className="action-btn trade-btn"
+              onClick={onManageTrade}
+            >
+              <img src="/trade-economy-icon.png" alt="Trade" className="action-icon" />
+              Trade
+            </button>
+            <button className="action-btn">
+              <img src="/diplomacy-icon.png" alt="Diplomacy" className="action-icon" />
+              Diplomacy
+            </button>
+            <button className="action-btn danger">
+              <img src="/battle-reports-icon.png" alt="Battle Reports" className="action-icon" />
+              Battle Reports
+            </button>
           </div>
         </div>
       </div>
