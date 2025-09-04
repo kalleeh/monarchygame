@@ -1,6 +1,6 @@
 /**
  * Building definitions for Monarchy game
- * Based on original Monarchy/Canon game mechanics
+ * Combines authentic Monarchy building names with comprehensive building system
  */
 
 export interface BuildingStats {
@@ -19,6 +19,7 @@ export interface BuildingStats {
     defenseBonus?: number    // Defensive bonus
     trainingSpeed?: number   // Unit training speed bonus
     researchPoints?: number  // Technology research points
+    buildRateContribution?: number // Contribution to Build Rate (BR)
   }
   capacity?: number     // Maximum number that can be built
   requirements?: {
@@ -27,6 +28,7 @@ export interface BuildingStats {
     population?: number
     land?: number
   }
+  vulnerability: 'permanent' | 'perishable' // Survives attacks or vulnerable to destruction
 }
 
 export interface BuildingType {
@@ -36,9 +38,429 @@ export interface BuildingType {
   category: 'economic' | 'military' | 'magical' | 'defensive' | 'special'
   stats: BuildingStats
   maxLevel?: number     // If building can be upgraded
+  isAuthentic?: boolean // True for original Monarchy building names
 }
 
 export const BUILDING_TYPES: Record<string, BuildingType> = {
+  // === AUTHENTIC MONARCHY BUILDINGS (from NPAC Elite documentation) ===
+  
+  // Core Infrastructure Buildings (Permanent - 60-70% allocation)
+  quarries: {
+    id: 'quarries',
+    name: 'Quarries',
+    description: 'Primary income generation structures (30-35% of total)',
+    category: 'economic',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 100,
+        turns: 1
+      },
+      upkeep: 5,
+      effects: {
+        goldIncome: 20,
+        buildRateContribution: 1
+      },
+      vulnerability: 'permanent'
+    }
+  },
+
+  barracks: {
+    id: 'barracks',
+    name: 'Barracks',
+    description: 'Military training and housing facilities (30-35% of total)',
+    category: 'military',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 120,
+        turns: 1
+      },
+      upkeep: 8,
+      effects: {
+        trainingSpeed: 0.15,
+        militaryBonus: 0.1,
+        buildRateContribution: 1
+      },
+      vulnerability: 'permanent'
+    }
+  },
+
+  hovels: {
+    id: 'hovels',
+    name: 'Hovels',
+    description: 'Population housing and basic economic structures (10% of total)',
+    category: 'economic',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 80,
+        turns: 1
+      },
+      upkeep: 3,
+      effects: {
+        populationGrowth: 10,
+        goldIncome: 8,
+        buildRateContribution: 1
+      },
+      vulnerability: 'permanent'
+    }
+  },
+
+  guildhalls: {
+    id: 'guildhalls',
+    name: 'Guildhalls',
+    description: 'Administrative centers providing income bonuses (10% of total)',
+    category: 'economic',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 200,
+        turns: 1
+      },
+      upkeep: 15,
+      effects: {
+        goldIncome: 35,
+        buildRateContribution: 1
+      },
+      vulnerability: 'perishable'
+    }
+  },
+
+  temples: {
+    id: 'temples',
+    name: 'Temples',
+    description: 'Religious structures providing magical protection (12% of total)',
+    category: 'magical',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 150,
+        turns: 1
+      },
+      upkeep: 10,
+      effects: {
+        goldIncome: 12,
+        magicBonus: 0.2,
+        buildRateContribution: 1
+      },
+      vulnerability: 'perishable'
+    }
+  },
+
+  forts: {
+    id: 'forts',
+    name: 'Forts',
+    description: 'Defensive fortifications protecting the realm (5-6% of total)',
+    category: 'defensive',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 300,
+        turns: 1
+      },
+      upkeep: 25,
+      effects: {
+        defenseBonus: 0.3,
+        buildRateContribution: 1
+      },
+      vulnerability: 'perishable'
+    }
+  },
+
+  // Race-specific authentic building names from documentation
+  waterfalls: {
+    id: 'waterfalls',
+    name: 'Waterfalls',
+    description: 'Droben-specific income structures (equivalent to Quarries)',
+    category: 'economic',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 100,
+        turns: 1
+      },
+      upkeep: 5,
+      effects: {
+        goldIncome: 20,
+        buildRateContribution: 1
+      },
+      vulnerability: 'permanent'
+    }
+  },
+
+  timoton: {
+    id: 'timoton',
+    name: 'TimoTon',
+    description: 'Specialized economic structures',
+    category: 'economic',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 180,
+        turns: 1
+      },
+      upkeep: 12,
+      effects: {
+        goldIncome: 28,
+        buildRateContribution: 1
+      },
+      vulnerability: 'permanent'
+    }
+  },
+
+  baklavs: {
+    id: 'baklavs',
+    name: 'Baklavs',
+    description: 'Advanced economic structures',
+    category: 'economic',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 220,
+        turns: 1
+      },
+      upkeep: 18,
+      effects: {
+        goldIncome: 32,
+        buildRateContribution: 1
+      },
+      vulnerability: 'permanent'
+    }
+  },
+
+  rumana: {
+    id: 'rumana',
+    name: 'RumaNa',
+    description: 'High-value economic structures',
+    category: 'economic',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 250,
+        turns: 1
+      },
+      upkeep: 20,
+      effects: {
+        goldIncome: 38,
+        buildRateContribution: 1
+      },
+      vulnerability: 'permanent'
+    }
+  },
+
+  arches: {
+    id: 'arches',
+    name: 'Arches',
+    description: 'Architectural structures with mixed benefits',
+    category: 'economic',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 160,
+        turns: 1
+      },
+      upkeep: 10,
+      effects: {
+        goldIncome: 22,
+        populationGrowth: 5,
+        buildRateContribution: 1
+      },
+      vulnerability: 'permanent'
+    }
+  },
+
+  enclaves: {
+    id: 'enclaves',
+    name: 'Enclaves',
+    description: 'Specialized community structures',
+    category: 'economic',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 190,
+        turns: 1
+      },
+      upkeep: 14,
+      effects: {
+        goldIncome: 26,
+        militaryBonus: 0.05,
+        buildRateContribution: 1
+      },
+      vulnerability: 'permanent'
+    }
+  },
+
+  // === VAMPIRE-SPECIFIC BUILDINGS ===
+  underwoods: {
+    id: 'underwoods',
+    name: 'Underwoods',
+    description: 'Vampire-specific income structures (equivalent to Quarries)',
+    category: 'economic',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 100,
+        turns: 1
+      },
+      upkeep: 5,
+      effects: {
+        goldIncome: 20,
+        buildRateContribution: 1
+      },
+      requirements: {
+        race: ['vampire']
+      },
+      vulnerability: 'permanent'
+    }
+  },
+
+  tombs: {
+    id: 'tombs',
+    name: 'Tombs',
+    description: 'Vampire-specific military structures (equivalent to Barracks)',
+    category: 'military',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 120,
+        turns: 1
+      },
+      upkeep: 8,
+      effects: {
+        trainingSpeed: 0.15,
+        militaryBonus: 0.1,
+        buildRateContribution: 1
+      },
+      requirements: {
+        race: ['vampire']
+      },
+      vulnerability: 'permanent'
+    }
+  },
+
+  great_halls: {
+    id: 'great_halls',
+    name: 'Great Halls',
+    description: 'Vampire-specific administrative centers (equivalent to Guildhalls)',
+    category: 'economic',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 200,
+        turns: 1
+      },
+      upkeep: 15,
+      effects: {
+        goldIncome: 35,
+        buildRateContribution: 1
+      },
+      requirements: {
+        race: ['vampire']
+      },
+      vulnerability: 'perishable'
+    }
+  },
+
+  bloodbaths: {
+    id: 'bloodbaths',
+    name: 'Bloodbaths',
+    description: 'Vampire-specific training facilities (enhanced Barracks)',
+    category: 'military',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 150,
+        turns: 1
+      },
+      upkeep: 12,
+      effects: {
+        trainingSpeed: 0.20,
+        militaryBonus: 0.15,
+        buildRateContribution: 1
+      },
+      requirements: {
+        race: ['vampire']
+      },
+      vulnerability: 'permanent'
+    }
+  },
+
+  // === GOBLIN-SPECIFIC BUILDINGS ===
+  smithies: {
+    id: 'smithies',
+    name: 'Smithies',
+    description: 'Goblin-specific crafting structures',
+    category: 'economic',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 140,
+        turns: 1
+      },
+      upkeep: 8,
+      effects: {
+        goldIncome: 22,
+        militaryBonus: 0.05,
+        buildRateContribution: 1
+      },
+      requirements: {
+        race: ['goblin']
+      },
+      vulnerability: 'permanent'
+    }
+  },
+
+  warrens: {
+    id: 'warrens',
+    name: 'Warrens',
+    description: 'Goblin-specific population and military structures',
+    category: 'military',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 110,
+        turns: 1
+      },
+      upkeep: 6,
+      effects: {
+        populationGrowth: 8,
+        trainingSpeed: 0.12,
+        buildRateContribution: 1
+      },
+      requirements: {
+        race: ['goblin']
+      },
+      vulnerability: 'permanent'
+    }
+  },
+
+  shrines: {
+    id: 'shrines',
+    name: 'Shrines',
+    description: 'Goblin-specific religious structures (equivalent to Temples)',
+    category: 'magical',
+    isAuthentic: true,
+    stats: {
+      cost: {
+        gold: 150,
+        turns: 1
+      },
+      upkeep: 10,
+      effects: {
+        goldIncome: 12,
+        magicBonus: 0.2,
+        buildRateContribution: 1
+      },
+      requirements: {
+        race: ['goblin']
+      },
+      vulnerability: 'perishable'
+    }
+  },
+
+  // === ADDITIONAL COMPREHENSIVE BUILDINGS ===
+
   // Economic Buildings
   farm: {
     id: 'farm',
@@ -53,8 +475,10 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
       upkeep: 2,
       effects: {
         populationGrowth: 5,
-        goldIncome: 3
-      }
+        goldIncome: 3,
+        buildRateContribution: 1
+      },
+      vulnerability: 'permanent'
     }
   },
 
@@ -70,8 +494,10 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
       },
       upkeep: 5,
       effects: {
-        goldIncome: 15
-      }
+        goldIncome: 15,
+        buildRateContribution: 1
+      },
+      vulnerability: 'permanent'
     }
   },
 
@@ -87,11 +513,13 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
       },
       upkeep: 8,
       effects: {
-        goldIncome: 25
+        goldIncome: 25,
+        buildRateContribution: 1
       },
       requirements: {
         technologies: ['mining']
-      }
+      },
+      vulnerability: 'permanent'
     }
   },
 
@@ -107,35 +535,19 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
       },
       upkeep: 15,
       effects: {
-        goldIncome: 50
+        goldIncome: 50,
+        buildRateContribution: 1
       },
       capacity: 5,
       requirements: {
         buildings: ['market'],
         technologies: ['economics']
-      }
+      },
+      vulnerability: 'perishable'
     }
   },
 
   // Military Buildings
-  barracks: {
-    id: 'barracks',
-    name: 'Barracks',
-    description: 'Trains and houses military units',
-    category: 'military',
-    stats: {
-      cost: {
-        gold: 150,
-        turns: 4
-      },
-      upkeep: 10,
-      effects: {
-        trainingSpeed: 0.2, // 20% faster training
-        militaryBonus: 0.1  // 10% combat bonus
-      }
-    }
-  },
-
   armory: {
     id: 'armory',
     name: 'Armory',
@@ -148,11 +560,13 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
       },
       upkeep: 15,
       effects: {
-        militaryBonus: 0.15 // 15% combat bonus
+        militaryBonus: 0.15,
+        buildRateContribution: 1
       },
       requirements: {
         buildings: ['barracks']
-      }
+      },
+      vulnerability: 'permanent'
     }
   },
 
@@ -168,11 +582,13 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
       },
       upkeep: 12,
       effects: {
-        trainingSpeed: 0.15 // Cavalry training bonus
+        trainingSpeed: 0.15,
+        buildRateContribution: 1
       },
       requirements: {
         buildings: ['barracks']
-      }
+      },
+      vulnerability: 'permanent'
     }
   },
 
@@ -188,8 +604,10 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
       },
       upkeep: 8,
       effects: {
-        trainingSpeed: 0.1
-      }
+        trainingSpeed: 0.1,
+        buildRateContribution: 1
+      },
+      vulnerability: 'permanent'
     }
   },
 
@@ -205,12 +623,14 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
       },
       upkeep: 20,
       effects: {
-        militaryBonus: 0.25 // Bonus vs fortifications
+        militaryBonus: 0.25,
+        buildRateContribution: 1
       },
       requirements: {
         buildings: ['armory'],
         technologies: ['siege_warfare']
-      }
+      },
+      vulnerability: 'permanent'
     }
   },
 
@@ -228,8 +648,10 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
       },
       upkeep: 5,
       effects: {
-        defenseBonus: 0.2 // 20% per level
-      }
+        defenseBonus: 0.2,
+        buildRateContribution: 1
+      },
+      vulnerability: 'permanent'
     }
   },
 
@@ -245,8 +667,10 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
       },
       upkeep: 8,
       effects: {
-        defenseBonus: 0.1
-      }
+        defenseBonus: 0.1,
+        buildRateContribution: 1
+      },
+      vulnerability: 'permanent'
     }
   },
 
@@ -263,35 +687,19 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
       upkeep: 50,
       effects: {
         defenseBonus: 0.5,
-        militaryBonus: 0.2
+        militaryBonus: 0.2,
+        buildRateContribution: 1
       },
       capacity: 1,
       requirements: {
         buildings: ['walls'],
         land: 200
-      }
+      },
+      vulnerability: 'perishable'
     }
   },
 
   // Magical Buildings
-  temple: {
-    id: 'temple',
-    name: 'Temple',
-    description: 'Provides spiritual guidance and magical energy',
-    category: 'magical',
-    stats: {
-      cost: {
-        gold: 200,
-        turns: 5
-      },
-      upkeep: 10,
-      effects: {
-        magicBonus: 0.1,
-        goldIncome: 8 // Tithe income
-      }
-    }
-  },
-
   mage_tower: {
     id: 'mage_tower',
     name: 'Mage Tower',
@@ -305,12 +713,14 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
       upkeep: 25,
       effects: {
         magicBonus: 0.25,
-        researchPoints: 5
+        researchPoints: 5,
+        buildRateContribution: 1
       },
       requirements: {
-        buildings: ['temple'],
+        buildings: ['temples'],
         technologies: ['basic_magic']
-      }
+      },
+      vulnerability: 'perishable'
     }
   },
 
@@ -327,8 +737,10 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
       upkeep: 15,
       effects: {
         researchPoints: 10,
-        magicBonus: 0.1
-      }
+        magicBonus: 0.1,
+        buildRateContribution: 1
+      },
+      vulnerability: 'perishable'
     }
   },
 
@@ -348,14 +760,16 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
         goldIncome: 100,
         populationGrowth: 20,
         militaryBonus: 0.15,
-        defenseBonus: 0.3
+        defenseBonus: 0.3,
+        buildRateContribution: 1
       },
       capacity: 1,
       requirements: {
         buildings: ['fortress', 'bank'],
         population: 1000,
         land: 500
-      }
+      },
+      vulnerability: 'perishable'
     }
   },
 
@@ -371,11 +785,13 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
       },
       upkeep: 5,
       effects: {
-        populationGrowth: 10
+        populationGrowth: 10,
+        buildRateContribution: 1
       },
       requirements: {
         buildings: ['farm']
-      }
+      },
+      vulnerability: 'permanent'
     }
   },
 
@@ -392,10 +808,45 @@ export const BUILDING_TYPES: Record<string, BuildingType> = {
       upkeep: 8,
       effects: {
         goldIncome: 12,
-        militaryBonus: 0.05
-      }
+        militaryBonus: 0.05,
+        buildRateContribution: 1
+      },
+      vulnerability: 'permanent'
     }
   }
+}
+
+// Build Rate (BR) System - Core Monarchy mechanic
+export interface BuildRateSystem {
+  calculateBR: (totalStructures: number, totalLand: number) => number
+  getOptimalBRRange: () => { min: number, max: number }
+  getMaxSustainableBR: () => number
+  calculateDevelopmentCost: (acres: number) => number
+}
+
+export const BUILD_RATE_SYSTEM: BuildRateSystem = {
+  calculateBR: (totalStructures: number, totalLand: number): number => {
+    if (totalLand === 0) return 0
+    return Math.floor((totalStructures / totalLand) * 100)
+  },
+
+  getOptimalBRRange: () => ({ min: 16, max: 20 }),
+  
+  getMaxSustainableBR: () => 28,
+  
+  calculateDevelopmentCost: (acres: number): number => {
+    return acres * 317.5 // 310-325 gold per acre average
+  }
+}
+
+// Optimal building ratios for 30k acre kingdoms (from NPAC Elite documentation)
+export const OPTIMAL_BUILDING_RATIOS = {
+  quarries: { min: 0.30, max: 0.35 },      // 30-35%
+  barracks: { min: 0.30, max: 0.35 },      // 30-35%
+  guildhalls: { min: 0.10, max: 0.10 },    // 10%
+  hovels: { min: 0.10, max: 0.10 },        // 10%
+  forts: { min: 0.05, max: 0.06 },         // 5-6%
+  temples: { min: 0.12, max: 0.12 }        // 12%
 }
 
 // Building upgrade costs (for buildings with maxLevel)
@@ -404,6 +855,11 @@ export const UPGRADE_COST_MULTIPLIER = 1.5
 // Helper functions
 export const getBuildingType = (buildingId: string): BuildingType | undefined => {
   return BUILDING_TYPES[buildingId]
+}
+
+export const calculateBuildRate = (buildings: Record<string, number>, totalLand: number): number => {
+  const totalStructures = Object.values(buildings).reduce((sum, count) => sum + count, 0)
+  return BUILD_RATE_SYSTEM.calculateBR(totalStructures, totalLand)
 }
 
 export const calculateBuildingCost = (
@@ -419,56 +875,28 @@ export const calculateBuildingCost = (
 
   return {
     gold: Math.ceil(baseCost.gold * levelMultiplier * buildingModifier * economyModifier),
-    turns: Math.ceil(baseCost.turns * levelMultiplier * buildingModifier)
+    turns: Math.ceil((baseCost.turns || 1) * levelMultiplier * buildingModifier)
   }
 }
 
-export const calculateBuildingEffects = (
-  buildings: Record<string, number>,
-  raceStats: { tithe: number, building: number }
-): {
-  goldIncome: number
-  populationGrowth: number
-  militaryBonus: number
-  magicBonus: number
-  defenseBonus: number
-  trainingSpeed: number
-  researchPoints: number
-} => {
-  let totalEffects = {
-    goldIncome: 0,
-    populationGrowth: 0,
-    militaryBonus: 0,
-    magicBonus: 0,
-    defenseBonus: 0,
-    trainingSpeed: 0,
-    researchPoints: 0
+export const calculateOptimalDistribution = (totalStructures: number): Record<string, number> => {
+  return {
+    quarries: Math.floor(totalStructures * 0.325),      // 32.5% average
+    barracks: Math.floor(totalStructures * 0.325),      // 32.5% average
+    guildhalls: Math.floor(totalStructures * 0.10),     // 10%
+    hovels: Math.floor(totalStructures * 0.10),         // 10%
+    forts: Math.floor(totalStructures * 0.055),         // 5.5% average
+    temples: Math.floor(totalStructures * 0.12)         // 12%
   }
+}
 
-  Object.entries(buildings).forEach(([buildingId, count]) => {
-    const buildingType = getBuildingType(buildingId)
-    if (buildingType && count > 0) {
-      const effects = buildingType.stats.effects
-      
-      totalEffects.goldIncome += (effects.goldIncome || 0) * count
-      totalEffects.populationGrowth += (effects.populationGrowth || 0) * count
-      totalEffects.militaryBonus += (effects.militaryBonus || 0) * count
-      totalEffects.magicBonus += (effects.magicBonus || 0) * count
-      totalEffects.defenseBonus += (effects.defenseBonus || 0) * count
-      totalEffects.trainingSpeed += (effects.trainingSpeed || 0) * count
-      totalEffects.researchPoints += (effects.researchPoints || 0) * count
-    }
-  })
+export const isOptimalBuildRate = (br: number): boolean => {
+  const optimal = BUILD_RATE_SYSTEM.getOptimalBRRange()
+  return br >= optimal.min && br <= optimal.max
+}
 
-  // Apply racial modifiers
-  const titheModifier = 1 + (raceStats.tithe - 1) * 0.15 // 15% income bonus per tithe point above 1
-  const buildingModifier = 1 + (raceStats.building - 1) * 0.1 // 10% building efficiency per point above 1
-
-  totalEffects.goldIncome *= titheModifier
-  totalEffects.populationGrowth *= buildingModifier
-  totalEffects.researchPoints *= buildingModifier
-
-  return totalEffects
+export const getAuthenticBuildings = (): BuildingType[] => {
+  return Object.values(BUILDING_TYPES).filter(building => building.isAuthentic)
 }
 
 export const canBuildBuilding = (
