@@ -348,6 +348,18 @@ const TradeEconomyContent: React.FC<TradeEconomyProps> = ({ kingdom, onBack }) =
           border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
+        .trade-title {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .trade-icon {
+          width: 32px;
+          height: 32px;
+          object-fit: contain;
+        }
+
         .tab {
           flex: 1;
           padding: 1rem;
@@ -357,6 +369,23 @@ const TradeEconomyContent: React.FC<TradeEconomyProps> = ({ kingdom, onBack }) =
           cursor: pointer;
           transition: all 0.3s ease;
           border-bottom: 3px solid transparent;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          justify-content: center;
+        }
+
+        .tab-icon {
+          width: 20px;
+          height: 20px;
+          object-fit: contain;
+          opacity: 0.7;
+          transition: opacity 0.3s ease;
+        }
+
+        .tab:hover .tab-icon,
+        .tab.active .tab-icon {
+          opacity: 1;
         }
 
         .tab:hover {
