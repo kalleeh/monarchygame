@@ -3,22 +3,27 @@ import { generateClient } from 'aws-amplify/data';
 
 export const handler = async (event: any) => {
   try {
+    // Validate input
+    if (!event.kingdomId) {
+      return { success: false, error: 'Kingdom ID required' };
+    }
+
     const config = await getAmplifyDataClientConfig(process.env);
     const client = generateClient({ config });
 
     const kingdom = await client.models.Kingdom.get({ id: event.kingdomId });
-    if (!kingdom.data) throw new Error('Kingdom not found');
+    if (!kingdom?.data) {
+      return { success: false, error: 'Kingdom not found' };
+    }
 
-    let updatedResources = { ...kingdom.data.resources };
+    let updatedResources = { ...kingdom.data.resources } || {};
 
     if (event.operation === 'generate') {
-      // Generate turns (3 per hour)
       if (event.resourceType === 'generate_turns') {
         updatedResources.turns = (updatedResources.turns || 0) + 3;
       }
-      // Generate income
       if (event.resourceType === 'generate_income') {
-        const income = 1000; // Game-data formula
+        const income = 1000;
         updatedResources.gold = (updatedResources.gold || 0) + income;
       }
     }
@@ -29,14 +34,15 @@ export const handler = async (event: any) => {
     });
 
     return {
-      statusCode: 200,
-      body: JSON.stringify({ success: true, resourcesUpdated: true })
+      success: true,
+      message: 'Resources updated successfully',
+      resources: updatedResources
     };
   } catch (error) {
     console.error('Resource update failed:', error);
     return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Resource update failed' })
+      success: false,
+      error: error instanceof Error ? error.message : 'Resource update failed'
     };
   }
 };
