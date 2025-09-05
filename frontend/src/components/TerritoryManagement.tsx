@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
+import { TopNavigation } from './TopNavigation';
 
 // Minimal game data - TODO: Fix import from game-data
 const BUILDING_TYPES = {
@@ -95,16 +96,19 @@ export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProp
 
   return (
     <div className="territory-management">
-      <header className="territory-header">
-        <button onClick={onBack} className="back-btn">← Back to Dashboard</button>
-        <h1>Territory Management</h1>
-        <button 
-          onClick={() => setShowCreateForm(true)}
-          className="create-territory-btn"
-        >
-          + Claim Territory
-        </button>
-      </header>
+      <TopNavigation
+        title="Territory Management"
+        onBack={onBack}
+        backLabel="← Back to Dashboard"
+        actions={
+          <button 
+            onClick={() => setShowCreateForm(true)}
+            className="create-territory-btn"
+          >
+            + Claim Territory
+          </button>
+        }
+      />
 
       {showCreateForm && (
         <div className="create-form-overlay">

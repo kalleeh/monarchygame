@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AllianceService, type AllianceData, type AllianceMessage, type AllianceInvitation } from '../services/AllianceService';
 import { ErrorBoundary } from './ErrorBoundary';
+import { TopNavigation } from './TopNavigation';
 import type { Schema } from '../../../amplify/data/resource';
 
 interface AllianceManagementProps {
@@ -145,12 +146,12 @@ const AllianceManagementContent: React.FC<AllianceManagementProps> = ({ kingdom,
 
   return (
     <div className="alliance-management">
-      <header className="alliance-header">
-        <button className="back-btn" onClick={onBack}>
-          ← Back to Kingdom
-        </button>
-        <h2>🤝 Alliance Management</h2>
-      </header>
+      <TopNavigation
+        title="🤝 Alliance Management"
+        subtitle={currentAlliance ? `${currentAlliance.name} [${currentAlliance.tag}]` : 'Diplomatic Relations'}
+        onBack={onBack}
+        backLabel="← Back to Kingdom"
+      />
 
       <nav className="alliance-nav">
         <button 

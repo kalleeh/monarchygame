@@ -6,6 +6,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { CombatInterface } from './CombatInterface';
 import { CombatService } from '../services/combatService';
+import { TopNavigation } from './TopNavigation';
 import type { Kingdom, AttackRequest } from '../types/combat';
 import type { Schema } from '../../../amplify/data/resource';
 
@@ -76,15 +77,12 @@ export const CombatPage: React.FC<CombatPageProps> = ({ kingdom, onBack }) => {
 
   return (
     <div className="combat-page">
-      <div className="page-header">
-        <button className="back-button" onClick={onBack}>
-          ← Back to Kingdom
-        </button>
-        <h1>⚔️ Combat Operations</h1>
-        <p className="page-description">
-          Plan attacks, manage defenses, and review battle reports for {kingdom.name}.
-        </p>
-      </div>
+      <TopNavigation
+        title="⚔️ Combat Operations"
+        subtitle={`${kingdom.name} - Battle Management`}
+        onBack={onBack}
+        backLabel="← Back to Kingdom"
+      />
 
       {lastAttackResult && (
         <div 

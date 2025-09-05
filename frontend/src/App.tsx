@@ -18,6 +18,7 @@ import './components/KingdomCreation.css';
 import './components/KingdomDashboard.css';
 import './components/TerritoryManagement.css';
 import './components/WelcomePage.css';
+import './components/TopNavigation.css';
 import type { Schema } from '../../amplify/data/resource';
 import type { AuthenticatorProps, KingdomResources } from './types/amplify';
 

@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useSpring, useTransition, animated, config } from '@react-spring/web';
 import { ErrorBoundary } from './ErrorBoundary';
+import { TopNavigation } from './TopNavigation';
 import type { Schema } from '../../../amplify/data/resource';
 
 // Minimal SPELLS data - TODO: Fix import from game-data
@@ -119,21 +120,22 @@ const MagicSystemContent: React.FC<MagicSystemProps> = ({ kingdom, onBack }) => 
 
   return (
     <div className="magic-system">
-      <animated.div style={headerSpring} className="magic-header">
-        <button onClick={onBack} className="back-button">
-          ← Back to Kingdom
-        </button>
-        <h1>🔮 Magic System</h1>
-        <div className="mana-display">
-          <div className="mana-bar">
-            <animated.div 
-              className="mana-fill" 
-              style={manaSpring}
-            />
+      <TopNavigation
+        title="🔮 Magic System"
+        subtitle={`Mana: ${mana}/300`}
+        onBack={onBack}
+        backLabel="← Back to Kingdom"
+        actions={
+          <div className="mana-display">
+            <div className="mana-bar">
+              <animated.div 
+                className="mana-fill" 
+                style={manaSpring}
+              />
+            </div>
           </div>
-          <span className="mana-text">{mana}/300 Mana</span>
-        </div>
-      </animated.div>
+        }
+      />
 
       <div className="magic-content">
         <div className="spells-grid">

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import type { KingdomResources } from '../types/amplify';
+import { TopNavigation } from './TopNavigation';
 
 // Minimal RACES data - TODO: Fix import from game-data  
 const RACES = {
@@ -58,13 +59,17 @@ export function KingdomDashboard({ kingdom, onBack, onManageTerritories, onManag
 
   return (
     <div className="kingdom-dashboard">
-      <header className="dashboard-header">
-        <button onClick={onBack} className="back-btn">← Back to Kingdoms</button>
-        <h1>{kingdom.name}</h1>
-        <div className="kingdom-race">
-          <span className="race-badge">{kingdom.race}</span>
-        </div>
-      </header>
+      <TopNavigation
+        title={kingdom.name}
+        subtitle={`${kingdom.race} Kingdom`}
+        onBack={onBack}
+        backLabel="← Back to Kingdoms"
+        actions={
+          <div className="kingdom-race">
+            <span className="race-badge">{kingdom.race}</span>
+          </div>
+        }
+      />
 
       <div className="dashboard-grid">
         <div className="resources-panel">
