@@ -202,7 +202,7 @@ export const calculateScumCasualties = (
     burn: 1.5        // Highest risk
   }
 
-  const finalRate = adjustedRate * (operationMultipliers[operationType] || 1.0)
+  const finalRate = adjustedRate * (operationMultipliers[operationType.toLowerCase() as keyof typeof operationMultipliers] || 1.0)
   return Math.floor(scumCount * finalRate)
 }
 

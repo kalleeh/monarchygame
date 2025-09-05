@@ -10,9 +10,22 @@ export * from './buildings'
 export * from './spells'
 export * from './balance'
 
+// Import specific items for GAME_DATA object
+import { RACES } from './races'
+import { UNIT_TYPES } from './units'
+import { BUILDING_TYPES } from './buildings'
+import { SPELLS } from './spells'
+import { 
+  COMBAT_BALANCE,
+  SORCERY_BALANCE,
+  THIEVERY_BALANCE,
+  BUILDING_BALANCE,
+  BOUNTY_BALANCE,
+  RESTORATION_BALANCE
+} from './balance'
+
 // Mechanics systems exports
 export * from './mechanics/combat-mechanics'
-export * from './mechanics/sorcery-mechanics'
 export * from './mechanics/thievery-mechanics'
 export * from './mechanics/bounty-mechanics'
 export * from './mechanics/restoration-mechanics'

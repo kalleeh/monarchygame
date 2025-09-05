@@ -4,17 +4,28 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['tests/**/*.test.ts'],
-    exclude: ['amplify/functions/**/__tests__/**'],
+    include: ['amplify/functions/**/*.test.ts'],
+    setupFiles: ['amplify/functions/test-utils.ts'],
+    clearMocks: true,
+    restoreMocks: true,
+    unstubGlobals: true,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
+      include: ['amplify/functions/**/handler.ts'],
       exclude: [
-        'node_modules/',
-        'tests/',
-        'amplify/functions/**/__tests__/**',
-        '**/*.config.*'
-      ]
+        'amplify/functions/**/*.test.ts', 
+        'amplify/functions/test-utils.ts',
+        'amplify/functions/node_modules/**'
+      ],
+      thresholds: {
+        global: {
+          branches: 80,
+          functions: 80,
+          lines: 80,
+          statements: 80
+        }
+      }
     }
   }
 });

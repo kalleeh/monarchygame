@@ -62,7 +62,7 @@ export const RACIAL_SPELL_EFFECTIVENESS = {
     HURRICANE: { structures: 0.0563, forts: 0.075, backlash: 0.09 },
     LIGHTNING_LANCE: { structures: 0, forts: 0.10, backlash: 0.07 },
     BANSHEE_DELUGE: { structures: 0.0625, forts: 0, backlash: 0.07 },
-    FOUL_LIGHT: { peasantKillRate: 0.08, backlash: 0.07 }
+    FOUL_LIGHT: { structures: 0, forts: 0, backlash: 0.07, peasantKillRate: 0.08 }
   },
 
   // Tier 2 sorcery races - good magical capability
@@ -188,7 +188,12 @@ export const calculateSpellDamage = (
     return { structureDamage: 0, fortDamage: 0, peasantKills: 0, backlashChance: 0, elanCost: 0 }
   }
 
-  const spellData = raceEffectiveness[spellName.toUpperCase() as keyof typeof raceEffectiveness]
+  const spellData = raceEffectiveness[spellName.toUpperCase() as keyof typeof raceEffectiveness] as {
+    structures?: number;
+    forts?: number;
+    backlash: number;
+    peasantKillRate?: number;
+  }
   
   if (!spellData) {
     return { structureDamage: 0, fortDamage: 0, peasantKills: 0, backlashChance: 0, elanCost: 0 }
@@ -225,7 +230,7 @@ export const calculateParkingLotProgression = (
 ): Array<{ turn: number, structures: number, forts: number, trainRate: number }> => {
   let currentStructures = initialStructures
   let currentForts = initialForts
-  const progression = []
+  const progression: Array<{ turn: number, structures: number, forts: number, trainRate: number }> = []
   
   spellSequence.forEach((spell, index) => {
     const damage = calculateSpellDamage(spell, casterRace, currentStructures, currentForts, 0)

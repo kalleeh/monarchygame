@@ -9,7 +9,7 @@ export const territoryManager = defineFunction({
   logging: {
     format: 'json',
     level: 'info',
-    retention: 'ONE_WEEK'
+    retention: '1 week'
   },
   bundling: {
     minify: true

@@ -168,7 +168,7 @@ export const calculateCombatResult = (
 }
 
 // Summon calculation that creates networth inflation strategy
-export const calculateSummonTroops = (
+export const calculateCombatSummonTroops = (
   raceId: string,
   totalNetworth: number,
   cashMultiplier: number = 1.0,

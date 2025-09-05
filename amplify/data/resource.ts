@@ -1,4 +1,10 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
+import { combatProcessor } from '../functions/combat-processor/resource';
+import { territoryManager } from '../functions/territory-manager/resource';
+import { buildingConstructor } from '../functions/building-constructor/resource';
+import { unitTrainer } from '../functions/unit-trainer/resource';
+import { spellCaster } from '../functions/spell-caster/resource';
+import { resourceManager } from '../functions/resource-manager/resource';
 
 /**
  * Monarchy Game Data Schema - Amplify Gen 2
@@ -16,14 +22,14 @@ const schema = a.schema({
       // Buildings using authentic names from game-data
       buildings: a.json().required(), // { quarries, waterfalls, timoton, etc. }
       // Game state
-      isActive: a.boolean().default(true),
+      isActive: a.boolean(),
       createdAt: a.datetime(),
       lastActive: a.datetime(),
       // Combat-specific fields
       totalUnits: a.json().required(), // Total army composition
-      isOnline: a.boolean().default(false),
+      isOnline: a.boolean(),
       // Age system support
-      currentAge: a.enum(['early', 'middle', 'late']).default('early'),
+      currentAge: a.enum(['early', 'middle', 'late']),
       ageStartTime: a.datetime(),
       // Alliance relationship
       allianceId: a.id(),
@@ -52,7 +58,7 @@ const schema = a.schema({
       turnCost: a.integer().required(),
       templeThreshold: a.float().required(),
       lastCast: a.datetime(),
-      timesUsed: a.integer().default(0)
+      timesUsed: a.integer()
     })
     .authorization((allow) => [allow.owner()]),
 
@@ -67,7 +73,7 @@ const schema = a.schema({
       landReward: a.integer().required(),
       structureBonus: a.integer().required(),
       turnSavings: a.integer().required(),
-      isClaimed: a.boolean().default(false),
+      isClaimed: a.boolean(),
       claimedAt: a.datetime(),
       createdAt: a.datetime().required()
     })
@@ -78,7 +84,7 @@ const schema = a.schema({
     .model({
       kingdomId: a.id().required(),
       kingdom: a.belongsTo('Kingdom', 'kingdomId'),
-      isActive: a.boolean().default(false),
+      isActive: a.boolean(),
       restorationType: a.enum(['damage_based', 'death_based']),
       startTime: a.datetime(),
       endTime: a.datetime(),
@@ -97,11 +103,11 @@ const schema = a.schema({
       // Military units stationed
       units: a.json().required(), // Unit counts by type
       // Defensive structures
-      fortifications: a.integer().default(0),
+      fortifications: a.integer(),
       // Territory type and resources
-      terrainType: a.string().default('plains'),
+      terrainType: a.string(),
       // Combat-specific fields
-      isCapital: a.boolean().default(false),
+      isCapital: a.boolean(),
       // Relationships
       kingdomId: a.id().required(),
       kingdom: a.belongsTo('Kingdom', 'kingdomId'),
@@ -140,7 +146,7 @@ const schema = a.schema({
       attackType: a.enum(['raid', 'siege', 'controlled_strike']),
       estimatedArrival: a.datetime(),
       battleResult: a.json(),
-      isRead: a.boolean().default(false),
+      isRead: a.boolean(),
       kingdomId: a.id(),
       kingdom: a.belongsTo('Kingdom', 'kingdomId'),
       timestamp: a.datetime().required()
@@ -150,10 +156,10 @@ const schema = a.schema({
   // Defense settings for combat preferences
   DefenseSettings: a
     .model({
-      stance: a.enum(['aggressive', 'balanced', 'defensive']).default('balanced'),
+      stance: a.enum(['aggressive', 'balanced', 'defensive']),
       unitDistribution: a.json().required(),
-      autoRetaliate: a.boolean().default(false),
-      alertAlliance: a.boolean().default(true),
+      autoRetaliate: a.boolean(),
+      alertAlliance: a.boolean(),
       kingdomId: a.id(),
       kingdom: a.belongsTo('Kingdom', 'kingdomId')
     })
@@ -167,10 +173,10 @@ const schema = a.schema({
       tag: a.string().required(), // Short alliance tag (3-5 chars)
       leaderId: a.string().required(),
       leaderName: a.string().required(),
-      isPublic: a.boolean().default(true),
-      maxMembers: a.integer().default(20),
-      memberCount: a.integer().default(1),
-      totalPower: a.integer().default(0),
+      isPublic: a.boolean(),
+      maxMembers: a.integer(),
+      memberCount: a.integer(),
+      totalPower: a.integer(),
       createdAt: a.datetime(),
       // Relationships
       kingdoms: a.hasMany('Kingdom', 'allianceId'),
@@ -187,7 +193,7 @@ const schema = a.schema({
       targetKingdomName: a.string().required(),
       invitedBy: a.string().required(),
       inviterName: a.string().required(),
-      status: a.enum(['PENDING', 'ACCEPTED', 'DECLINED', 'EXPIRED']).default('PENDING'),
+      status: a.enum(['PENDING', 'ACCEPTED', 'DECLINED', 'EXPIRED']),
       message: a.string(),
       expiresAt: a.datetime(),
       createdAt: a.datetime(),
@@ -201,13 +207,11 @@ const schema = a.schema({
       senderId: a.string().required(),
       senderName: a.string().required(),
       content: a.string().required(),
-      messageType: a.enum(['CHAT', 'ANNOUNCEMENT', 'SYSTEM']).default('CHAT'),
+      messageType: a.enum(['CHAT', 'ANNOUNCEMENT', 'SYSTEM']),
       createdAt: a.datetime(),
     })
     .authorization((allow) => [allow.owner(), allow.authenticated().to(['read'])]),
-})
-.authorization((allow) => [allow.owner()])
-.addToSchema({
+
   // GraphQL mutations that trigger Lambda functions
   processCombat: a
     .mutation()
@@ -215,7 +219,7 @@ const schema = a.schema({
       input: a.json().required()
     })
     .returns(a.json())
-    .handler(a.handler.function('combatProcessor'))
+    .handler(a.handler.function(combatProcessor))
     .authorization((allow) => [allow.authenticated()]),
     
   claimTerritory: a
@@ -224,7 +228,7 @@ const schema = a.schema({
       input: a.json().required()
     })
     .returns(a.json())
-    .handler(a.handler.function('territoryManager'))
+    .handler(a.handler.function(territoryManager))
     .authorization((allow) => [allow.authenticated()]),
     
   constructBuildings: a
@@ -233,7 +237,7 @@ const schema = a.schema({
       input: a.json().required()
     })
     .returns(a.json())
-    .handler(a.handler.function('buildingConstructor'))
+    .handler(a.handler.function(buildingConstructor))
     .authorization((allow) => [allow.authenticated()]),
     
   trainUnits: a
@@ -242,7 +246,7 @@ const schema = a.schema({
       input: a.json().required()
     })
     .returns(a.json())
-    .handler(a.handler.function('unitTrainer'))
+    .handler(a.handler.function(unitTrainer))
     .authorization((allow) => [allow.authenticated()]),
     
   castSpell: a
@@ -251,7 +255,7 @@ const schema = a.schema({
       input: a.json().required()
     })
     .returns(a.json())
-    .handler(a.handler.function('spellCaster'))
+    .handler(a.handler.function(spellCaster))
     .authorization((allow) => [allow.authenticated()]),
     
   updateResources: a
@@ -260,9 +264,18 @@ const schema = a.schema({
       input: a.json().required()
     })
     .returns(a.json())
-    .handler(a.handler.function('resourceManager'))
+    .handler(a.handler.function(resourceManager))
     .authorization((allow) => [allow.authenticated()])
-});
+})
+.authorization((allow) => [
+  allow.owner(),
+  allow.resource(combatProcessor),
+  allow.resource(territoryManager),
+  allow.resource(buildingConstructor),
+  allow.resource(unitTrainer),
+  allow.resource(spellCaster),
+  allow.resource(resourceManager)
+]);
 
 export type Schema = ClientSchema<typeof schema>;
 

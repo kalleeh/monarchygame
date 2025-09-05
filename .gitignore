@@ -12,6 +12,10 @@ amplifyconfiguration*
 .Trashes
 ehthumbs.db
 Thumbs.db
+*.tmp
+*.bak
+temp_*
+backup_*
 
 # Logs
 *.log
@@ -24,13 +28,20 @@ lerna-debug.log*
 playwright-report/
 test-results/
 coverage/
+.nyc_output/
 
 # Build artifacts
 dist/
 build/
+out/
+target/
+bin/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Development artifacts
+test-integration.js

@@ -27,6 +27,7 @@ export interface BuildingStats {
     technologies?: string[]
     population?: number
     land?: number
+    race?: string[]  // Add missing race property
   }
   vulnerability: 'permanent' | 'perishable' // Survives attacks or vulnerable to destruction
 }
@@ -39,6 +40,7 @@ export interface BuildingType {
   stats: BuildingStats
   maxLevel?: number     // If building can be upgraded
   isAuthentic?: boolean // True for original Monarchy building names
+  capacity?: number     // Add missing capacity property
 }
 
 export const BUILDING_TYPES: Record<string, BuildingType> = {

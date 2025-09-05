@@ -12,6 +12,7 @@ export interface SpellCost {
 export interface SpellEffect {
   type: 'structure_damage' | 'fort_damage' | 'peasant_kill' | 'shield_removal' | 'utility'
   damagePercentage?: number    // Percentage of target destroyed
+  peasantKillRate?: number     // Rate of peasant kills for peasant_kill spells
   backlashChance: number       // Chance of spell backfiring
   racialVariations: Record<string, { damage?: number, backlash?: number }>
 }
@@ -23,7 +24,7 @@ export interface Spell {
   tier: number          // 1-4, determines temple requirements
   cost: SpellCost
   effects: SpellEffect
-  targetType: 'enemy_kingdom' | 'enemy_structures' | 'enemy_forts' | 'enemy_peasants' | 'enemy_shields'
+  targetType: 'enemy_kingdom' | 'enemy_structures' | 'enemy_forts' | 'enemy_peasants' | 'enemy_shields' | 'self'
 }
 
 // Authentic Monarchy spells with exact mechanics from documentation

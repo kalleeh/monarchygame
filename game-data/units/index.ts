@@ -577,17 +577,17 @@ export const getOptimalUnitForRole = (
   
   switch (role) {
     case 'offense':
-      return raceUnits.reduce((best, unit) => 
-        unit.stats.offense > (best?.stats.offense || 0) ? unit : best, undefined)
+      return raceUnits.reduce((best: UnitType | undefined, unit) => 
+        unit.stats.offense > (best?.stats.offense || 0) ? unit : best, undefined as UnitType | undefined)
     case 'defense':
-      return raceUnits.reduce((best, unit) => 
-        unit.stats.defense > (best?.stats.defense || 0) ? unit : best, undefined)
+      return raceUnits.reduce((best: UnitType | undefined, unit) => 
+        unit.stats.defense > (best?.stats.defense || 0) ? unit : best, undefined as UnitType | undefined)
     case 'efficiency':
-      return raceUnits.reduce((best, unit) => {
-        const efficiency = unit.stats.offense / unit.cost.turns
-        const bestEfficiency = best ? best.stats.offense / best.cost.turns : 0
+      return raceUnits.reduce((best: UnitType | undefined, unit) => {
+        const efficiency = unit.stats.offense / unit.stats.cost.turns
+        const bestEfficiency = best ? best.stats.offense / best.stats.cost.turns : 0
         return efficiency > bestEfficiency ? unit : best
-      }, undefined)
+      }, undefined as UnitType | undefined)
     case 'raids':
       return raceUnits.find(unit => unit.tier === 1 && unit.stats.offense > 20) || 
              raceUnits.find(unit => unit.tier === 1)

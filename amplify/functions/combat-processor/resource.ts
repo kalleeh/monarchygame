@@ -10,7 +10,7 @@ export const combatProcessor = defineFunction({
   logging: {
     format: 'json',
     level: 'info',
-    retention: 'ONE_WEEK'
+    retention: '1 week'
   },
   // Best Practice: Bundling optimization
   bundling: {

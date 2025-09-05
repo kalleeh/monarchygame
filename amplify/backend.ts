@@ -18,11 +18,3 @@ export const backend = defineBackend({
   spellCaster,
   resourceManager
 });
-
-// Grant all Lambda functions access to the data layer
-backend.data.addDatabaseAccess(backend.combatProcessor);
-backend.data.addDatabaseAccess(backend.territoryManager);
-backend.data.addDatabaseAccess(backend.buildingConstructor);
-backend.data.addDatabaseAccess(backend.unitTrainer);
-backend.data.addDatabaseAccess(backend.spellCaster);
-backend.data.addDatabaseAccess(backend.resourceManager);

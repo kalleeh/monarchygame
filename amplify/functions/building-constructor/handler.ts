@@ -1,42 +1,59 @@
-import { getAmplifyDataClientConfig } from '@aws-amplify/backend-function/runtime';
+import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../data/resource';
+import { env } from '$amplify/env/building-constructor';
+
+// Configure Amplify client for Lambda
+Amplify.configure({
+  API: {
+    GraphQL: {
+      endpoint: env.AMPLIFY_DATA_GRAPHQL_ENDPOINT || '',
+      region: env.AWS_REGION || 'us-east-1',
+      defaultAuthMode: 'iam'
+    }
+  }
+}, {
+  Auth: {
+    credentialsProvider: {
+      getCredentialsAndIdentityId: async () => ({
+        credentials: {
+          accessKeyId: env.AWS_ACCESS_KEY_ID || '',
+          secretAccessKey: env.AWS_SECRET_ACCESS_KEY || '',
+          sessionToken: env.AWS_SESSION_TOKEN || '',
+        },
+      }),
+      clearCredentialsAndIdentityId: () => {
+        /* noop */
+      },
+    },
+  },
+});
+
+const client = generateClient<Schema>();
 
 export const handler = async (event: any) => {
   try {
-    const config = await getAmplifyDataClientConfig(process.env);
-    const client = generateClient({ config });
-
     const kingdom = await client.models.Kingdom.get({ id: event.kingdomId });
     if (!kingdom.data) throw new Error('Kingdom not found');
 
     const cost = event.quantity * 100; // Game-data formula
-    if (kingdom.data.resources.gold < cost) {
+    const resources = kingdom.data.resources as { gold: number; [key: string]: number };
+    
+    if (resources.gold < cost) {
       throw new Error('Insufficient gold');
     }
 
-    const currentBuildings = kingdom.data.buildings[event.buildingType] || 0;
-    
     await client.models.Kingdom.update({
       id: event.kingdomId,
       resources: {
-        ...kingdom.data.resources,
-        gold: kingdom.data.resources.gold - cost
-      },
-      buildings: {
-        ...kingdom.data.buildings,
-        [event.buildingType]: currentBuildings + event.quantity
+        ...resources,
+        gold: resources.gold - cost
       }
     });
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: true, buildingsConstructed: event.quantity })
-    };
+    return { success: true, cost };
   } catch (error) {
-    console.error('Building construction failed:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Building construction failed' })
-    };
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { success: false, error: errorMessage };
   }
 };
