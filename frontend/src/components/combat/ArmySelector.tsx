@@ -74,18 +74,19 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
   }), []);
 
   const totalSelected = useMemo(() => 
-    Object.values(selectedArmy).reduce((sum, count) => sum + count, 0)
+    Object.values(selectedArmy).reduce((sum, count) => (sum ?? 0) + (count ?? 0), 0)
   , [selectedArmy]);
 
   const totalAvailable = useMemo(() => 
-    Object.values(availableArmy).reduce((sum, count) => sum + count, 0)
+    Object.values(availableArmy).reduce((sum, count) => (sum ?? 0) + (count ?? 0), 0)
   , [availableArmy]);
 
   const combatPower = useMemo(() => {
     return Object.entries(selectedArmy).reduce((power, [unitType, count]) => {
       const unitInfo = unitTypes[unitType];
-      if (unitInfo) {
-        return power + (count * (unitInfo.stats.offense + unitInfo.stats.defense));
+      const unitCount = count ?? 0;
+      if (unitInfo && unitCount > 0) {
+        return power + (unitCount * (unitInfo.stats.offense + unitInfo.stats.defense));
       }
       return power;
     }, 0);
@@ -96,7 +97,7 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
     const clampedValue = Math.max(0, Math.min(value, available));
     
     const newArmy = { ...selectedArmy, [unitType]: clampedValue };
-    const newTotal = Object.values(newArmy).reduce((sum, count) => sum + count, 0);
+    const newTotal = Object.values(newArmy).reduce((sum, count) => (sum ?? 0) + (count ?? 0), 0) as number;
     
     if (newTotal <= maxUnits) {
       onArmyChange(newArmy);
@@ -106,20 +107,21 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
   const handlePresetChange = useCallback((percentage: number) => {
     setPresetPercentage(percentage);
     
-    const newArmy: Army = {};
+    const newArmy: Army = { peasants: 0, militia: 0, knights: 0, cavalry: 0 };
     Object.entries(availableArmy).forEach(([unitType, available]) => {
-      const selectedCount = Math.floor(available * (percentage / 100));
+      const selectedCount = Math.floor((available ?? 0) * (percentage / 100));
       if (selectedCount > 0) {
-        newArmy[unitType] = selectedCount;
+        newArmy[unitType as keyof Army] = selectedCount;
       }
     });
     
     // Ensure we don't exceed maxUnits
-    const total = Object.values(newArmy).reduce((sum, count) => sum + count, 0);
+    const total = Object.values(newArmy).reduce((sum, count) => (sum ?? 0) + (count ?? 0), 0) as number;
     if (total > maxUnits) {
       const ratio = maxUnits / total;
       Object.keys(newArmy).forEach(unitType => {
-        newArmy[unitType] = Math.floor(newArmy[unitType] * ratio);
+        const currentValue = newArmy[unitType as keyof Army] ?? 0;
+        newArmy[unitType as keyof Army] = Math.floor(currentValue * ratio);
       });
     }
     
@@ -128,12 +130,13 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
 
   const handleSelectAll = useCallback(() => {
     const newArmy: Army = { ...availableArmy };
-    const total = Object.values(newArmy).reduce((sum, count) => sum + count, 0);
+    const total = Object.values(newArmy).reduce((sum, count) => (sum ?? 0) + (count ?? 0), 0) as number;
     
     if (total > maxUnits) {
       const ratio = maxUnits / total;
       Object.keys(newArmy).forEach(unitType => {
-        newArmy[unitType] = Math.floor(newArmy[unitType] * ratio);
+        const currentValue = newArmy[unitType as keyof Army] ?? 0;
+        newArmy[unitType as keyof Army] = Math.floor(currentValue * ratio);
       });
     }
     
@@ -142,9 +145,14 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
   }, [availableArmy, maxUnits, onArmyChange]);
 
   const handleClearAll = useCallback(() => {
-    const clearedArmy: Army = {};
+    const clearedArmy: Army = {
+      peasants: 0,
+      militia: 0,
+      knights: 0,
+      cavalry: 0
+    };
     Object.keys(availableArmy).forEach(unitType => {
-      clearedArmy[unitType] = 0;
+      clearedArmy[unitType as keyof Army] = 0;
     });
     onArmyChange(clearedArmy);
     setPresetPercentage(0);
@@ -152,8 +160,10 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
 
   // Update preset percentage when army changes externally
   useEffect(() => {
-    if (totalAvailable > 0) {
-      const currentPercentage = Math.round((totalSelected / totalAvailable) * 100);
+    const totalAvailableValue = totalAvailable ?? 0;
+    const totalSelectedValue = totalSelected ?? 0;
+    if (totalAvailableValue > 0) {
+      const currentPercentage = Math.round((totalSelectedValue / totalAvailableValue) * 100);
       setPresetPercentage(currentPercentage);
     }
   }, [totalSelected, totalAvailable]);
@@ -166,11 +176,11 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
         <div className="army-summary">
           <div className="summary-stat">
             <span className="stat-label">Selected:</span>
-            <span className="stat-value">{totalSelected.toLocaleString()}</span>
+            <span className="stat-value">{(totalSelected ?? 0).toLocaleString()}</span>
           </div>
           <div className="summary-stat">
             <span className="stat-label">Available:</span>
-            <span className="stat-value">{totalAvailable.toLocaleString()}</span>
+            <span className="stat-value">{(totalAvailable ?? 0).toLocaleString()}</span>
           </div>
           <div className="summary-stat">
             <span className="stat-label">Power:</span>
@@ -218,9 +228,10 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
         {Object.entries(availableArmy).map(([unitType, available]) => {
           const unitInfo = unitTypes[unitType];
           const selected = selectedArmy[unitType] || 0;
-          const percentage = available > 0 ? (selected / available) * 100 : 0;
+          const availableCount = available ?? 0;
+          const percentage = availableCount > 0 ? (selected / availableCount) * 100 : 0;
           
-          if (!unitInfo || available === 0) return null;
+          if (!unitInfo || availableCount === 0) return null;
 
           return (
             <div key={unitType} className="unit-selector">
@@ -247,7 +258,7 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
 
               <div className="unit-controls">
                 <div className="unit-count">
-                  <span className="count-label">Available: {available.toLocaleString()}</span>
+                  <span className="count-label">Available: {availableCount.toLocaleString()}</span>
                   <span className="count-selected">Selected: {selected.toLocaleString()}</span>
                 </div>
 
@@ -255,7 +266,7 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
                   <button
                     type="button"
                     className="quantity-button"
-                    onClick={() => handleUnitChange(unitType, selected - Math.max(1, Math.floor(available * 0.1)))}
+                    onClick={() => handleUnitChange(unitType, selected - Math.max(1, Math.floor(availableCount * 0.1)))}
                     disabled={selected === 0}
                     aria-label={`Decrease ${unitInfo.name}`}
                   >
@@ -268,15 +279,15 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
                     value={selected}
                     onChange={(e) => handleUnitChange(unitType, parseInt(e.target.value) || 0)}
                     min="0"
-                    max={available}
+                    max={availableCount}
                     aria-label={`Number of ${unitInfo.name}`}
                   />
                   
                   <button
                     type="button"
                     className="quantity-button"
-                    onClick={() => handleUnitChange(unitType, selected + Math.max(1, Math.floor(available * 0.1)))}
-                    disabled={selected >= available || totalSelected >= maxUnits}
+                    onClick={() => handleUnitChange(unitType, selected + Math.max(1, Math.floor(availableCount * 0.1)))}
+                    disabled={selected >= availableCount || (totalSelected ?? 0) >= maxUnits}
                     aria-label={`Increase ${unitInfo.name}`}
                   >
                     +
@@ -290,13 +301,13 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
                     value={selected}
                     onChange={(e) => handleUnitChange(unitType, parseInt(e.target.value))}
                     min="0"
-                    max={available}
+                    max={availableCount}
                     aria-label={`Select ${unitInfo.name} with slider`}
                   />
                   <div className="slider-labels">
                     <span>0</span>
                     <span className="percentage">{percentage.toFixed(0)}%</span>
-                    <span>{available.toLocaleString()}</span>
+                    <span>{availableCount.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -305,7 +316,7 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
         })}
       </div>
 
-      {totalSelected > maxUnits && (
+      {(totalSelected ?? 0) > maxUnits && (
         <div className="warning-message" role="alert">
           <span className="warning-icon">⚠️</span>
           <span>Army size exceeds maximum limit of {maxUnits.toLocaleString()} units</span>

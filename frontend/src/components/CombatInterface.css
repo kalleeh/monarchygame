@@ -3,10 +3,10 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--space-xl);
-  background: var(--bg-primary);
+  background: var(--bg-primary) !important;
   backdrop-filter: var(--blur);
   min-height: 100vh;
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
 }
 
 /* Fix oversized images */

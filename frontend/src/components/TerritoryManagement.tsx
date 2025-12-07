@@ -1,17 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
+import type { Territory } from '../types/territory';
+import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { ToastService } from '../services/toastService';
 import { TopNavigation } from './TopNavigation';
-
-// Minimal game data - TODO: Fix import from game-data
-const BUILDING_TYPES = {
-  quarry: { id: 'quarry', name: 'Quarry', cost: 100, description: 'Generates stone' },
-  farm: { id: 'farm', name: 'Farm', cost: 80, description: 'Generates food' }
-};
-const GAME_FORMULAS = {
-  landAcquisition: { baseRate: 0.07, maxRate: 0.073 },
-  buildRate: { optimal: 18 }
-};
+import { LoadingButton, SkeletonCard } from './ui/loading';
 
 const client = generateClient<Schema>();
 
@@ -31,7 +25,7 @@ export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProp
   const [territories, setTerritories] = useState<Schema['Territory']['type'][]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [selectedBuilding, setSelectedBuilding] = useState<string>('quarries');
+  const [buildingLoading, setBuildingLoading] = useState(false);
   const [formData, setFormData] = useState<TerritoryFormData>({
     name: '',
     terrainType: 'plains',
@@ -39,22 +33,7 @@ export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProp
     buildings: {}
   });
 
-  // Get authentic building types from game-data
-  const availableBuildings = Object.values(BUILDING_TYPES).filter(building => 
-    building.isAuthentic && building.category !== 'special'
-  );
-
-  // UI-ONLY preview calculation - not used for actual game state
-  const previewBuildRate = (buildings: Record<string, number>, totalLand: number) => {
-    const totalStructures = Object.values(buildings).reduce((sum, count) => sum + count, 0);
-    return GAME_FORMULAS.calculateBuildRate(totalStructures, totalLand);
-  };
-
-  useEffect(() => {
-    fetchTerritories();
-  }, [kingdom.id]);
-
-  const fetchTerritories = async () => {
+  const fetchTerritories = useCallback(async () => {
     try {
       const { data } = await client.models.Territory.list({
         filter: { kingdomId: { eq: kingdom.id } }
@@ -65,28 +44,73 @@ export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProp
     } finally {
       setLoading(false);
     }
-  };
+  }, [kingdom.id]);
+
+  useEffect(() => {
+    fetchTerritories();
+  }, [fetchTerritories]);
 
   const handleCreateTerritory = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     
     try {
-      await client.models.Territory.create({
-        name: formData.name,
-        terrainType: formData.terrainType,
-        coordinates: formData.coordinates,
-        buildings: {},
-        units: {},
-        fortifications: 0,
-        kingdomId: kingdom.id!
-      });
+      const result = await ToastService.promise(
+        AmplifyFunctionService.claimTerritory({
+          kingdomId: kingdom.id,
+          name: formData.name,
+          terrainType: formData.terrainType,
+          coordinates: formData.coordinates
+        }),
+        {
+          loading: 'Claiming territory...',
+          success: 'Territory claimed successfully!',
+          error: (error) => `Failed to claim territory: ${error.message}`
+        }
+      ) as { success: boolean };
 
-      setShowCreateForm(false);
-      setFormData({ name: '', terrainType: 'plains', coordinates: { x: 0, y: 0 } });
-      fetchTerritories();
+      if (result && result.success) {
+        setShowCreateForm(false);
+        setFormData({ 
+          name: '', 
+          terrainType: 'plains', 
+          coordinates: { x: 0, y: 0 },
+          buildings: {}
+        });
+        fetchTerritories();
+      }
     } catch (error) {
       console.error('Failed to create territory:', error);
-      alert('Failed to create territory. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBuildConstruction = async (territoryId: string, buildingType: string, quantity: number) => {
+    setBuildingLoading(true);
+    
+    try {
+      const result = await ToastService.promise(
+        AmplifyFunctionService.constructBuildings({
+          kingdomId: kingdom.id,
+          territoryId,
+          buildingType,
+          quantity
+        }),
+        {
+          loading: `Constructing ${quantity} ${buildingType}...`,
+          success: `Successfully constructed ${quantity} ${buildingType}!`,
+          error: (error) => `Construction failed: ${error.message}`
+        }
+      ) as { success: boolean };
+
+      if (result && result.success) {
+        fetchTerritories();
+      }
+    } catch (error) {
+      console.error('Failed to construct buildings:', error);
+    } finally {
+      setBuildingLoading(false);
     }
   };
 
@@ -167,11 +191,18 @@ export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProp
             </div>
 
             <div className="form-actions">
-              <button type="submit" className="submit-btn">Claim Territory</button>
+              <LoadingButton 
+                type="submit" 
+                loading={loading}
+                className="submit-btn"
+              >
+                Claim Territory
+              </LoadingButton>
               <button 
                 type="button" 
                 onClick={() => setShowCreateForm(false)}
                 className="cancel-btn"
+                disabled={loading}
               >
                 Cancel
               </button>
@@ -182,7 +213,11 @@ export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProp
 
       <div className="territories-content">
         {loading ? (
-          <div className="loading">Loading territories...</div>
+          <div className="territories-grid">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <SkeletonCard key={index} />
+            ))}
+          </div>
         ) : territories.length === 0 ? (
           <div className="no-territories">
             <h2>No Territories Claimed</h2>
@@ -204,13 +239,19 @@ export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProp
                 </div>
                 
                 <div className="territory-info">
-                  <p><strong>Coordinates:</strong> ({territory.coordinates?.x}, {territory.coordinates?.y})</p>
-                  <p><strong>Fortifications:</strong> Level {territory.fortifications}</p>
+                  <p><strong>Coordinates:</strong> ({(territory.coordinates as { x?: number; y?: number })?.x || 0}, {(territory.coordinates as { x?: number; y?: number })?.y || 0})</p>
+                  <p><strong>Fortifications:</strong> Level {(territory as Territory & { fortifications?: number }).fortifications || 0}</p>
                 </div>
 
                 <div className="territory-actions">
                   <button className="manage-btn">Manage</button>
-                  <button className="build-btn">Build</button>
+                  <LoadingButton
+                    onClick={() => handleBuildConstruction(territory.id!, 'quarries', 1)}
+                    loading={buildingLoading}
+                    className="build-btn"
+                  >
+                    Build
+                  </LoadingButton>
                   <button className="fortify-btn">Fortify</button>
                 </div>
               </div>

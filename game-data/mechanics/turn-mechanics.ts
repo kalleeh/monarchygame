@@ -157,7 +157,7 @@ export const updateEncampStatus = (
   }
 }
 
-export const calculateTurnCost = (
+export const calculateActionTurnCost = (
   actionType: keyof typeof TURN_MECHANICS.TURN_COSTS,
   quantity: number = 1,
   actionSpecificModifiers: Record<string, number> = {}
@@ -187,7 +187,7 @@ export const calculateOptimalEncampTiming = (
   
   // Calculate total turn cost of planned actions
   const totalTurnCost = plannedActions.reduce((total, action) => {
-    return total + calculateTurnCost(action.type, action.quantity)
+    return total + calculateActionTurnCost(action.type, action.quantity)
   }, 0)
   
   const turnsNeeded = totalTurnCost - currentTurns

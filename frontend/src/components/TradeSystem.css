@@ -1,0 +1,444 @@
+/* Trade System Styles - Dark Theme Compliant */
+
+.trade-system {
+  padding: 1.5rem;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* Error Banner */
+.error-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid #ef4444;
+  border-radius: 0.5rem;
+  color: #ef4444;
+}
+
+.error-banner button {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+}
+
+/* Market Overview */
+.market-overview {
+  margin-bottom: 2rem;
+}
+
+.market-overview h2 {
+  color: var(--text-accent);
+  margin-bottom: 1.5rem;
+}
+
+/* Economic Indicators */
+.economic-indicators {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.indicator-card {
+  padding: 1rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.5rem;
+}
+
+.indicator-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.indicator-name {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.indicator-trend {
+  font-size: 1.2rem;
+}
+
+.indicator-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.indicator-change {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.indicator-change.positive {
+  color: #10b981;
+}
+
+.indicator-change.negative {
+  color: #ef4444;
+}
+
+/* Resource Market */
+.resource-market h3 {
+  color: var(--text-accent);
+  margin-bottom: 1rem;
+}
+
+.resource-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.resource-card {
+  padding: 1rem;
+  background-color: var(--bg-card);
+  border: 2px solid var(--border-primary);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.resource-card:hover {
+  background-color: var(--hover);
+  transform: translateY(-2px);
+}
+
+.resource-card.selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(79, 172, 254, 0.3);
+}
+
+.resource-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.resource-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.trend-indicator {
+  font-size: 1.2rem;
+}
+
+.resource-price {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.current-price {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--primary);
+}
+
+.price-change {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.price-change.positive {
+  color: #10b981;
+}
+
+.price-change.negative {
+  color: #ef4444;
+}
+
+.resource-supply-demand {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* Charts */
+.price-chart-section,
+.market-distribution {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.5rem;
+}
+
+.price-chart-section h3,
+.market-distribution h3 {
+  color: var(--text-accent);
+  margin-bottom: 1rem;
+}
+
+.chart-container {
+  background-color: var(--bg-tertiary);
+  border-radius: 0.375rem;
+  padding: 1rem;
+}
+
+/* Active Offers */
+.active-offers {
+  margin-bottom: 2rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.section-header h3 {
+  color: var(--text-accent);
+}
+
+.create-offer-btn {
+  padding: 0.5rem 1rem;
+  background-color: var(--primary);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.create-offer-btn:hover {
+  background-color: var(--primary-hover);
+}
+
+.offers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.offer-card {
+  padding: 1rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.5rem;
+}
+
+.offer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.resource-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.offer-status {
+  padding: 0.25rem 0.5rem;
+  background-color: var(--bg-tertiary);
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.offer-details {
+  margin-bottom: 1rem;
+}
+
+.offer-quantity,
+.offer-price,
+.offer-total {
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.offer-total {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.offer-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.accept-btn,
+.cancel-btn {
+  flex: 1;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.accept-btn {
+  background-color: #10b981;
+  color: white;
+}
+
+.accept-btn:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+.accept-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancel-btn {
+  background-color: #ef4444;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background-color: #dc2626;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.5rem;
+  padding: 2rem;
+  min-width: 400px;
+  max-width: 90vw;
+}
+
+.modal-content h3 {
+  color: var(--text-accent);
+  margin-bottom: 1.5rem;
+}
+
+.offer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-select,
+.form-input {
+  padding: 0.75rem;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.375rem;
+  font-size: 1rem;
+}
+
+.form-select:focus,
+.form-input:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.create-btn {
+  flex: 1;
+  padding: 0.75rem;
+  background-color: var(--primary);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.create-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.create-btn:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+}
+
+.modal-actions .cancel-btn {
+  flex: 1;
+  padding: 0.75rem;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+
+.modal-actions .cancel-btn:hover {
+  background-color: var(--hover);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .economic-indicators,
+  .resource-grid,
+  .offers-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .modal-content {
+    min-width: auto;
+    margin: 1rem;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+  }
+}
+
+/* Accessibility */
+.resource-card:focus,
+.offer-card:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .resource-card {
+    transition: none;
+  }
+  
+  .resource-card:hover {
+    transform: none;
+  }
+}

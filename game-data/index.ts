@@ -28,6 +28,7 @@ import {
 export * from './mechanics/combat-mechanics'
 export * from './mechanics/thievery-mechanics'
 export * from './mechanics/bounty-mechanics'
+export * from './mechanics/elan-mechanics'
 export * from './mechanics/restoration-mechanics'
 export * from './mechanics/age-mechanics'
 export * from './mechanics/turn-mechanics'
@@ -59,12 +60,6 @@ export type {
   SpellCost,
   SpellId
 } from './spells'
-
-export type {
-  CombatResult,
-  AttackForce,
-  DefenseForce
-} from './mechanics/combat-mechanics'
 
 export type {
   SorceryResult,
@@ -351,13 +346,18 @@ export interface WorldState {
 
 // Error types for game operations
 export class GameError extends Error {
+  code: string;
+  details?: any;
+
   constructor(
     message: string,
-    public code: string,
-    public details?: any
+    code: string,
+    details?: any
   ) {
     super(message)
     this.name = 'GameError'
+    this.code = code
+    this.details = details
   }
 }
 

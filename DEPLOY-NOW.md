@@ -11,7 +11,7 @@
 
 ### Step 1: Open AWS Amplify Console
 ```
-https://console.aws.amazon.com/amplify/home?region=us-east-1
+https://console.aws.amazon.com/amplify/home?region=eu-west-1
 ```
 
 ### Step 2: Create New App

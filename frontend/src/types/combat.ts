@@ -1,256 +1,218 @@
-/**
- * Combat System Types
- * TypeScript definitions for the Monarchy game combat system
- */
+// Terrain types
+export const TerrainType = {
+  PLAINS: 'PLAINS',
+  FOREST: 'FOREST',
+  MOUNTAINS: 'MOUNTAINS',
+  SWAMP: 'SWAMP',
+  DESERT: 'DESERT',
+} as const;
 
-import type { RaceType } from './amplify';
+export type TerrainType = typeof TerrainType[keyof typeof TerrainType];
 
+// Army composition
 export interface Army {
-  peasants: number;
-  militia: number;
-  knights: number;
-  cavalry: number;
-  archers?: number;
-  siege?: number;
-  [unitType: string]: number | undefined;
+  [key: string]: number | undefined;
+  peasants?: number;
+  militia?: number;
+  knights?: number;
+  cavalry?: number;
+  tier1?: number;
+  tier2?: number;
+  tier3?: number;
+  tier4?: number;
+  tier5?: number;
 }
 
-export interface CombatStats {
-  offense: number;
-  defense: number;
-  totalUnits: number;
-  powerRating: number;
-}
+// Attack types
+export type AttackType = 'controlled_strike' | 'ambush' | 'guerilla_raid' | 'mob_assault' | 'full_attack';
 
-export interface Territory {
-  id: string;
-  name: string;
-  coordinates: { x: number; y: number };
-  kingdomId: string;
-  kingdomName: string;
-  fortificationLevel: number;
-  buildings: Record<string, number>;
+// Attack request
+export interface AttackRequest {
+  attackerId: string;
+  defenderId: string;
+  targetKingdomId?: string;
+  targetTerritoryId?: string;
+  attackType: AttackType;
   units: Army;
-  isCapital: boolean;
+  formation?: string;
 }
 
-export interface Kingdom {
+// Battle history
+export interface BattleHistory {
   id: string;
-  name: string;
-  race: RaceType;
-  owner: string;
-  resources: {
+  timestamp: Date;
+  attackerId: string;
+  defenderId: string;
+  attacker: { 
+    kingdomName: string;
+    race?: string;
+    armyBefore?: Army;
+    armyAfter?: Army;
+    casualties?: Army;
+    fortificationLevel?: number;
+  };
+  defender: { 
+    kingdomName: string;
+    race?: string;
+    armyBefore?: Army;
+    armyAfter?: Army;
+    casualties?: Army;
+    fortificationLevel?: number;
+  };
+  outcome: 'victory' | 'defeat' | 'draw';
+  result: {
+    outcome: 'victory' | 'defeat' | 'draw';
+    attacker: { 
+      kingdomName: string;
+      race?: string;
+      armyBefore?: Army;
+      armyAfter?: Army;
+      casualties?: Army;
+      fortificationLevel?: number;
+    };
+    defender: { 
+      kingdomName: string;
+      race?: string;
+      armyBefore?: Army;
+      armyAfter?: Army;
+      casualties?: Army;
+      fortificationLevel?: number;
+    };
+    attackType: AttackType;
+    success?: boolean;
+    spoils?: Record<string, number>;
+    landGained?: number;
+    battleReport?: {
+      duration?: number;
+      rounds?: number;
+      details?: string;
+    };
+  };
+  casualties: Record<string, number>;
+  netGain?: {
+    gold: number;
+    land: number;
+    population: number;
+  };
+  isAttacker?: boolean;
+  attackType?: AttackType;
+}
+
+// Combat notification
+export interface CombatNotification {
+  id: string;
+  type: 'attack' | 'defense' | 'victory' | 'defeat' | 'incoming_attack' | 'attack_result' | 'defense_result';
+  message: string;
+  timestamp: Date;
+  read: boolean;
+  isRead?: boolean;
+  estimatedArrival?: Date;
+  kingdomName?: string;
+  attackType?: AttackType;
+  result?: {
+    outcome: 'victory' | 'defeat' | 'draw';
+    attacker: string;
+    defender: string;
+    success?: boolean;
+    spoils?: Record<string, number>;
+  };
+}
+
+// Defense settings
+export interface DefenseSettings {
+  stance: 'aggressive' | 'balanced' | 'defensive';
+  autoRecruit: boolean;
+  alertThreshold: number;
+  autoRetaliate?: boolean;
+  alertAlliance?: boolean;
+  unitDistribution?: {
+    tier1?: number;
+    tier2?: number;
+    tier3?: number;
+    tier4?: number;
+    frontline?: number;
+    reserves?: number;
+    fortifications?: number;
+  };
+}
+
+// Combat result
+export interface CombatResult {
+  success: boolean;
+  outcome: 'victory' | 'defeat' | 'draw';
+  landGained?: number;
+  spoils?: {
     gold: number;
     population: number;
     land: number;
-    turns: number;
-    mana?: number;
   };
-  stats: {
-    warOffense: number;
-    warDefense: number;
-    sorcery: number;
-    scum: number;
-    forts: number;
-    tithe: number;
-    training: number;
-    siege: number;
-    economy: number;
-    building: number;
-  };
-  territories: Territory[];
-  totalUnits: Army;
-  isOnline: boolean;
-  lastActive: Date;
-}
-
-export type AttackType = 'raid' | 'siege' | 'controlled_strike';
-
-export interface AttackRequest {
-  targetKingdomId: string;
-  targetTerritoryId?: string;
-  attackType: AttackType;
-  army: Army;
-  estimatedCasualties?: {
+  casualties?: {
     attacker: Army;
     defender: Army;
   };
-  estimatedOutcome?: 'victory' | 'defeat' | 'pyrrhic';
+  message?: string;
 }
 
-export interface CombatResult {
-  success: boolean;
-  attackType: AttackType;
-  attacker: {
-    kingdomId: string;
-    kingdomName: string;
-    race: RaceType;
-    armyBefore: Army;
-    armyAfter: Army;
-    casualties: Army;
-  };
-  defender: {
-    kingdomId: string;
-    kingdomName: string;
-    race: RaceType;
-    armyBefore: Army;
-    armyAfter: Army;
-    casualties: Army;
-    fortificationLevel: number;
-  };
-  spoils: {
-    gold: number;
-    population: number;
-    land: number;
-    buildings?: Record<string, number>;
-  };
-  battleReport: {
-    rounds: BattleRound[];
-    duration: number;
-    terrain: string;
-    weather?: string;
-  };
-  timestamp: Date;
-}
+// Re-export Kingdom and Territory from kingdom.ts to avoid duplication
+export type { Kingdom, Territory } from './kingdom';
 
-export interface BattleRound {
-  round: number;
-  attackerDamage: number;
-  defenderDamage: number;
-  attackerLosses: Army;
-  defenderLosses: Army;
+// Formation types
+export const FormationType = {
+  DEFENSIVE_WALL: 'DEFENSIVE_WALL',
+  CAVALRY_CHARGE: 'CAVALRY_CHARGE',
+  BALANCED: 'BALANCED',
+} as const;
+
+export type FormationType = typeof FormationType[keyof typeof FormationType];
+
+// Terrain effect definition
+export interface TerrainEffect {
+  type: TerrainType;
+  name: string;
   description: string;
-}
-
-export interface DefenseSettings {
-  stance: 'aggressive' | 'balanced' | 'defensive';
-  unitDistribution: {
-    frontline: number; // percentage
-    reserves: number; // percentage
-    fortifications: number; // percentage
-  };
-  autoRetaliate: boolean;
-  alertAlliance: boolean;
-}
-
-export interface CombatCalculationParams {
-  attackerArmy: Army;
-  defenderArmy: Army;
-  attackerRace: RaceType;
-  defenderRace: RaceType;
-  attackerStats: Kingdom['stats'];
-  defenderStats: Kingdom['stats'];
-  fortificationLevel: number;
-  attackType: AttackType;
-  terrain?: 'plains' | 'forest' | 'mountains' | 'swamp' | 'desert';
-  weather?: 'clear' | 'rain' | 'snow' | 'fog';
-}
-
-export interface UnitEffectiveness {
-  [unitType: string]: {
-    vs: {
-      [targetUnit: string]: number; // multiplier
-    };
-    terrain: {
-      [terrainType: string]: number; // multiplier
-    };
-    cost: {
-      gold: number;
-      population: number;
-      turns: number;
-    };
-    stats: {
-      offense: number;
-      defense: number;
-      speed: number;
-      range?: number;
-    };
+  icon: string;
+  modifiers: {
+    defense?: number;
+    offense?: number;
+    cavalry?: number;
+    infantry?: number;
+    siege?: number;
   };
 }
 
-export interface BattleHistory {
+// Formation template definition
+export interface FormationTemplate {
+  type: FormationType;
+  name: string;
+  description: string;
+  icon: string;
+  modifiers: {
+    defense: number;
+    offense: number;
+  };
+}
+
+// Combat replay data
+export interface CombatReplay {
   id: string;
-  result: CombatResult;
-  isAttacker: boolean;
-  outcome: 'victory' | 'defeat' | 'pyrrhic';
-  netGain: {
-    gold: number;
-    land: number;
-    population: number;
-  };
-  timestamp: Date;
+  battleId: string;
+  attackerId: string;
+  attackerName: string;
+  defenderId: string;
+  defenderName: string;
+  terrain: TerrainType;
+  attackerFormation: FormationType;
+  defenderFormation: FormationType;
+  rounds: CombatRound[];
+  result: 'victory' | 'defeat';
+  landGained: number;
+  timestamp: string;
 }
 
-export interface CombatNotification {
-  id: string;
-  type: 'incoming_attack' | 'attack_result' | 'defense_result';
-  message: string;
-  kingdomName: string;
-  attackType?: AttackType;
-  estimatedArrival?: Date;
-  result?: CombatResult;
-  isRead: boolean;
-  timestamp: Date;
-}
-
-// Combat calculation functions interface
-export interface CombatEngine {
-  calculateCombatPower: (army: Army, stats: Kingdom['stats'], isDefending?: boolean) => CombatStats;
-  estimateBattleOutcome: (params: CombatCalculationParams) => {
-    winProbability: number;
-    estimatedCasualties: {
-      attacker: Army;
-      defender: Army;
-    };
-    estimatedSpoils: {
-      gold: number;
-      population: number;
-      land: number;
-    };
-  };
-  executeBattle: (params: CombatCalculationParams) => CombatResult;
-  calculateFortificationBonus: (level: number) => number;
-  calculateTerrainModifier: (terrain: string, unitType: string) => number;
-}
-
-// Error types for combat operations
-export class CombatError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-    public details?: any
-  ) {
-    super(message);
-    this.name = 'CombatError';
-  }
-}
-
-export class InsufficientArmyError extends CombatError {
-  constructor(required: Army, available: Army) {
-    super(
-      'Insufficient army size for attack',
-      'INSUFFICIENT_ARMY',
-      { required, available }
-    );
-  }
-}
-
-export class InvalidTargetError extends CombatError {
-  constructor(reason: string) {
-    super(
-      `Invalid attack target: ${reason}`,
-      'INVALID_TARGET',
-      { reason }
-    );
-  }
-}
-
-export class CooldownError extends CombatError {
-  constructor(remainingTime: number) {
-    super(
-      `Attack is on cooldown for ${remainingTime} more minutes`,
-      'ATTACK_COOLDOWN',
-      { remainingTime }
-    );
-  }
+export interface CombatRound {
+  roundNumber: number;
+  attackerCasualties: number;
+  defenderCasualties: number;
+  attackerUnitsRemaining: number;
+  defenderUnitsRemaining: number;
 }

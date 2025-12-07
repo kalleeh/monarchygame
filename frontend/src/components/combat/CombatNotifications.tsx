@@ -196,8 +196,8 @@ export const CombatNotifications: React.FC<CombatNotificationsProps> = ({
                   <div className="result-item">
                     <span className="result-label">Spoils:</span>
                     <span className="result-value">
-                      {selectedNotification.result.spoils.gold.toLocaleString()} gold, {' '}
-                      {selectedNotification.result.spoils.land} land
+                      {selectedNotification.result.spoils?.gold?.toLocaleString() ?? 0} gold, {' '}
+                      {selectedNotification.result.spoils?.land ?? 0} land
                     </span>
                   </div>
                 </div>
@@ -275,7 +275,7 @@ export const CombatNotifications: React.FC<CombatNotificationsProps> = ({
         ) : (
           filteredNotifications.map((notification) => {
             const priority = getPriorityLevel(notification);
-            const color = getNotificationColor(notification.type, notification.isRead);
+            const color = getNotificationColor(notification.type, notification.isRead ?? false);
             
             return (
               <div
@@ -335,7 +335,7 @@ export const CombatNotifications: React.FC<CombatNotificationsProps> = ({
                         </span>
                         {notification.result.success && (
                           <span className="result-spoils">
-                            +{notification.result.spoils.gold.toLocaleString()} gold
+                            +{notification.result.spoils?.gold?.toLocaleString() ?? 0} gold
                           </span>
                         )}
                       </div>

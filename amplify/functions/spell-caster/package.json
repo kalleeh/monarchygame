@@ -1,9 +1,0 @@
-{
-  "name": "spell-caster",
-  "version": "1.0.0",
-  "type": "module",
-  "dependencies": {
-    "@aws-amplify/backend-function": "^1.8.0",
-    "aws-amplify": "^6.15.5"
-  }
-}

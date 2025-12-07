@@ -7,18 +7,28 @@ import { KingdomCreation } from '../KingdomCreation'
 vi.mock('../../../../game-data/races', () => ({
   RACES: {
     Human: {
+      id: 'human',
       name: 'Human',
       description: 'Balanced race with economic advantages',
       stats: { warOffense: 3, warDefense: 3, sorcery: 3, economy: 5 },
-      specialAbility: 'Can send caravans twice as often',
+      specialAbility: {
+        description: 'Can send caravans twice as often',
+        strategicValue: 'Economic advantage',
+        limitations: 'None'
+      },
       unitTypes: ['Peasants', 'Militia'],
       startingResources: { gold: 1000, population: 500, land: 100, turns: 50 }
     },
     Elven: {
+      id: 'elven',
       name: 'Elven',
       description: 'Masters of magic and archery',
       stats: { warOffense: 4, warDefense: 2, sorcery: 5, economy: 3 },
-      specialAbility: 'Enhanced spell effectiveness',
+      specialAbility: {
+        description: 'Enhanced spell effectiveness',
+        strategicValue: 'Magic advantage',
+        limitations: 'Lower defense'
+      },
       unitTypes: ['Elven Archers', 'Mages'],
       startingResources: { gold: 800, population: 400, land: 120, turns: 50 }
     }
@@ -36,7 +46,7 @@ describe('KingdomCreation', () => {
     render(<KingdomCreation onKingdomCreated={mockOnKingdomCreated} />)
     
     expect(screen.getByText('Create Your Kingdom')).toBeInTheDocument()
-    expect(screen.getByLabelText(/kingdom name/i)).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: /kingdom name/i })).toBeInTheDocument()
     expect(screen.getByText('Choose Your Race:')).toBeInTheDocument()
   })
 
@@ -81,7 +91,7 @@ describe('KingdomCreation', () => {
     expect(createButton).toBeDisabled()
     
     // Enter kingdom name
-    const nameInput = screen.getByLabelText(/kingdom name/i)
+    const nameInput = screen.getByRole('textbox', { name: /kingdom name/i })
     await user.type(nameInput, 'Test Kingdom')
     
     expect(createButton).toBeEnabled()
@@ -92,7 +102,7 @@ describe('KingdomCreation', () => {
     render(<KingdomCreation onKingdomCreated={mockOnKingdomCreated} />)
     
     // Enter kingdom name
-    await user.type(screen.getByLabelText(/kingdom name/i), 'Test Kingdom')
+    await user.type(screen.getByRole('textbox', { name: /kingdom name/i }), 'Test Kingdom')
     
     // Select Elven race
     await user.click(screen.getByText('Elven'))

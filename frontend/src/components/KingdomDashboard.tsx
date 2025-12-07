@@ -1,26 +1,25 @@
-import { useState, useEffect } from 'react';
-import { generateClient } from 'aws-amplify/data';
+import { useState, useEffect, useMemo } from 'react';
 import type { Schema } from '../../../amplify/data/resource';
 import type { KingdomResources } from '../types/amplify';
+import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { ToastService } from '../services/toastService';
 import { TopNavigation } from './TopNavigation';
-
-// Minimal RACES data - TODO: Fix import from game-data  
-const RACES = {
-  human: {
-    id: 'human',
-    name: 'Human',
-    description: 'Balanced race with strong economic focus',
-    stats: { warOffense: 3, warDefense: 3, sorcery: 3, economy: 5 }
-  },
-  elven: {
-    id: 'elven',
-    name: 'Elven',
-    description: 'Skilled warriors and mages', 
-    stats: { warOffense: 4, warDefense: 3, sorcery: 4, economy: 3 }
-  }
-};
-
-const client = generateClient<Schema>();
+import { LoadingButton } from './ui/loading';
+import { useTerritoryStore } from '../stores/territoryStore';
+import { useKingdomStore } from '../stores/kingdomStore';
+import { useAIKingdomStore } from '../stores/aiKingdomStore';
+import { useSummonStore } from '../stores/useSummonStore';
+import { AIActionService } from '../services/aiActionService';
+import { achievementTriggers } from '../utils/achievementTriggers';
+import { RACES } from '@game-data/races';
+import { Tutorial, useTutorial } from './ui/Tutorial';
+import { useTutorialStore } from '../stores/tutorialStore';
+import { KINGDOM_DASHBOARD_TUTORIAL } from '../data/tutorialSteps';
+import { TurnTimer } from './ui/TurnTimer';
+import { DemoTimeControl } from './ui/DemoTimeControl';
+import { calculateTimeTravel, type BuildingCounts } from '../utils/resourceCalculations';
+import { calculateBRT, getBuildingName } from '../../../game-data/mechanics/building-mechanics';
+import { useNavigate } from 'react-router-dom';
 
 interface KingdomDashboardProps {
   kingdom: Schema['Kingdom']['type'];
@@ -31,34 +30,341 @@ interface KingdomDashboardProps {
   onViewWorldMap?: () => void;
   onCastSpells?: () => void;
   onManageTrade?: () => void;
+  onSummonUnits?: () => void;
+  onDiplomacy?: () => void;
+  onBattleReports?: () => void;
+  onViewLeaderboard?: () => void;
 }
 
-export function KingdomDashboard({ kingdom, onBack, onManageTerritories, onManageCombat, onManageAlliance, onViewWorldMap, onCastSpells, onManageTrade }: KingdomDashboardProps) {
-  const [territories, setTerritories] = useState<Schema['Territory']['type'][]>([]);
+export function KingdomDashboard({ kingdom, onBack, onManageTerritories, onManageCombat, onManageAlliance, onViewWorldMap, onCastSpells, onManageTrade, onSummonUnits, onDiplomacy, onBattleReports, onViewLeaderboard }: KingdomDashboardProps) {
+  // Use centralized kingdom store for resources
+  const resources = useKingdomStore((state) => state.resources);
+  const setKingdomId = useKingdomStore((state) => state.setKingdomId);
+  const setResources = useKingdomStore((state) => state.setResources);
+  const addGold = useKingdomStore((state) => state.addGold);
+  const addTurns = useKingdomStore((state) => state.addTurns);
+  
+  // Territory store
+  const ownedTerritories = useTerritoryStore((state) => state.ownedTerritories);
+  const initializeTerritories = useTerritoryStore((state) => state.initializeTerritories);
+  
+  // AI kingdoms
+  const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
+  const generateAIKingdoms = useAIKingdomStore((state) => state.generateAIKingdoms);
+  
   const [loading, setLoading] = useState(true);
+  const [resourceLoading, setResourceLoading] = useState(false);
+  
+  // Tutorial state
+  const { hasCompleted: tutorialCompleted, markComplete: completeTutorial } = useTutorial('kingdom-dashboard');
+  
+  // Navigation
+  const navigate = useNavigate();
 
+  // Calculate BRT and upkeep
+  const { getTotalUpkeep, accumulatedGoldSpent, calculateRemainingCapacity } = useSummonStore();
+  
+  const buildingStats = useMemo(() => {
+    const totalLand = resources.land || 0;
+    // Mock building counts - in real implementation, get from kingdom data
+    const quarries = Math.floor(totalLand * 0.30); // 30% quarries
+    const barracks = Math.floor(totalLand * 0.30); // 30% barracks
+    const guildhalls = Math.floor(totalLand * 0.10); // 10% guildhalls
+    const hovels = Math.floor(totalLand * 0.10); // 10% hovels
+    const temples = Math.floor(totalLand * 0.12); // 12% temples
+    const forts = Math.floor(totalLand * 0.05); // 5% forts
+    
+    const quarryPercentage = totalLand > 0 ? (quarries / totalLand) * 100 : 0;
+    const brt = calculateBRT(quarryPercentage);
+    
+    return {
+      quarries,
+      barracks,
+      guildhalls,
+      hovels,
+      temples,
+      forts,
+      totalBuildings: quarries + barracks + guildhalls + hovels + temples + forts,
+      quarryPercentage,
+      brt
+    };
+  }, [resources.land]);
+
+  const upkeepInfo = useMemo(() => {
+    const totalUpkeep = getTotalUpkeep();
+    const currentGold = resources.gold || 0;
+    const upkeepPercentage = currentGold > 0 ? (totalUpkeep / currentGold) * 100 : 0;
+    const isHigh = upkeepPercentage > 10;
+    const isCritical = upkeepPercentage > 25;
+    
+    return {
+      totalUpkeep,
+      upkeepPercentage,
+      isHigh,
+      isCritical,
+      troopCapUsed: accumulatedGoldSpent,
+      troopCapRemaining: calculateRemainingCapacity()
+    };
+  }, [getTotalUpkeep, resources.gold, accumulatedGoldSpent, calculateRemainingCapacity]);
+
+  // Initialize kingdom store ONCE on first mount only
   useEffect(() => {
-    fetchTerritories();
-  }, [kingdom.id]);
+    const currentKingdomId = useKingdomStore.getState().kingdomId;
+    
+    // Only initialize if this is a new kingdom or first load
+    if (currentKingdomId !== kingdom.id) {
+      setKingdomId(kingdom.id);
+      setResources(kingdom.resources as KingdomResources);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kingdom.id]); // Only run when kingdom ID changes
+  
+  // Generate AI kingdoms on mount (demo mode only)
+  useEffect(() => {
+    const isDemoMode = localStorage.getItem('demo-mode') === 'true';
+    if (isDemoMode && aiKingdoms.length === 0) {
+      const playerNetworth = (resources.land || 0) * 1000 + (resources.gold || 0);
+      generateAIKingdoms(5, playerNetworth);
+    }
+  }, [aiKingdoms.length, resources.land, resources.gold, generateAIKingdoms]);
 
-  const fetchTerritories = async () => {
+  // Initialize territory store on mount
+  useEffect(() => {
+    const initializeData = async () => {
+      try {
+        await initializeTerritories();
+      } catch (error) {
+        console.error('Failed to initialize territories:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    initializeData();
+  }, [kingdom.id, initializeTerritories]);
+
+  const handleGenerateResources = async (action: 'generate_turns' | 'generate_income' | 'encamp', encampDuration?: 16 | 24) => {
+    setResourceLoading(true);
+    
+    const actionMessages = {
+      generate_turns: { loading: 'Generating turns...', success: 'Turns generated successfully!' },
+      generate_income: { loading: 'Generating income...', success: 'Income generated successfully!' },
+      encamp: { loading: `Setting up ${encampDuration}h encamp...`, success: `Encamp bonus activated for ${encampDuration} hours!` }
+    };
+
     try {
-      const { data } = await client.models.Territory.list({
-        filter: { kingdomId: { eq: kingdom.id } }
-      });
-      setTerritories(data);
+      await ToastService.promise(
+        AmplifyFunctionService.updateResources({
+          kingdomId: kingdom.id,
+          resourceType: action,
+          operation: 'generate',
+          amount: encampDuration
+        }),
+        {
+          loading: actionMessages[action].loading,
+          success: actionMessages[action].success,
+          error: (error) => `Resource generation failed: ${error.message}`
+        }
+      );
+
+      // Update centralized store
+      if (action === 'generate_turns') {
+        addTurns(3);
+      } else if (action === 'generate_income') {
+        addGold(1000);
+      }
     } catch (error) {
-      console.error('Failed to fetch territories:', error);
+      console.error('Resource generation error:', error);
+      // Still update locally for demo mode
+      if (action === 'generate_turns') {
+        addTurns(3);
+      } else if (action === 'generate_income') {
+        addGold(1000);
+      }
     } finally {
-      setLoading(false);
+      setResourceLoading(false);
     }
   };
 
-  const resources = kingdom.resources as KingdomResources;
-  const raceData = RACES[kingdom.race as keyof typeof RACES];
+  const handleTimeTravel = async (hours: number) => {
+    // Mock building counts (TODO: Get from actual building store)
+    const buildings: BuildingCounts = {
+      quarries: Math.floor((resources.land || 0) * 0.30),  // 30% of land
+      hovels: Math.floor((resources.land || 0) * 0.10),    // 10% of land
+      guildhalls: Math.floor((resources.land || 0) * 0.10) // 10% of land
+    };
+    
+    // Calculate resources from buildings (aligned with reference)
+    const generated = calculateTimeTravel(hours, buildings);
+    
+    // Calculate resource generation for AI kingdoms (moved outside try for catch block access)
+    const incomeToGenerate = 1000; // Base income per tick
+    const populationGrowth = 10; // Base population growth
+    const landGrowth = 0; // Land doesn't auto-grow
+    const turnsToGenerate = 3; // Turns per hour
+    
+    try {
+      await ToastService.promise(
+        AmplifyFunctionService.updateResources({
+          kingdomId: kingdom.id,
+          resourceType: 'time_travel',
+          operation: 'generate',
+          amount: generated.turns
+        }),
+        {
+          loading: `Fast-forwarding ${hours} hours...`,
+          success: `Time traveled ${hours} hours! Generated ${generated.turns} turns, ${generated.gold} gold, ${generated.population} population.`,
+          error: (error) => `Time travel failed: ${error.message}`
+        }
+      );
+
+      // Update centralized store with calculated resources
+      addTurns(generated.turns);
+      addGold(generated.gold);
+      useKingdomStore.getState().updateResources({
+        population: (resources.population || 0) + generated.population
+      });
+
+      // Trigger achievement checks
+      achievementTriggers.onGoldChanged();
+      achievementTriggers.onPopulationChanged();
+      achievementTriggers.onLandChanged();
+
+      // Update AI kingdoms with time progression AND actions
+      const updateAIKingdom = useAIKingdomStore.getState().updateAIKingdom;
+      const aiActionLog: string[] = [];
+      
+      aiKingdoms.forEach(ai => {
+        // First, update resources from time progression
+        const updatedAI = {
+          ...ai,
+          resources: {
+            ...ai.resources,
+            gold: ai.resources.gold + incomeToGenerate,
+            population: ai.resources.population + populationGrowth,
+            land: ai.resources.land + landGrowth,
+            turns: Math.min(ai.resources.turns + turnsToGenerate, 100)
+          }
+        };
+        
+        // Then, AI takes actions based on state
+        const actions = AIActionService.decideActions(updatedAI, aiKingdoms);
+        
+        actions.forEach(action => {
+          if (action.type === 'build') {
+            const result = AIActionService.executeBuild(updatedAI);
+            if (result.resources) {
+              updatedAI.resources = result.resources;
+              aiActionLog.push(`${ai.name} built structures`);
+            }
+          } else if (action.type === 'train') {
+            const result = AIActionService.executeTrain(updatedAI);
+            if (result.resources) {
+              updatedAI.resources = result.resources;
+              if (result.units) updatedAI.units = result.units;
+              aiActionLog.push(`${ai.name} trained units`);
+            }
+          } else if (action.type === 'attack') {
+            const target = aiKingdoms.find(t => t.id !== ai.id && t.networth < ai.networth * 1.5);
+            if (target) {
+              const result = AIActionService.executeAttack(updatedAI, target);
+              if (result.attacker.resources) {
+                updatedAI.resources = result.attacker.resources;
+                aiActionLog.push(`${ai.name} attacked ${target.name}`);
+                
+                // Update defender too
+                if (result.defender.resources) {
+                  updateAIKingdom(target.id, result.defender);
+                }
+              }
+            }
+          }
+        });
+        
+        // Apply all updates to AI kingdom
+        const newNetworth = 
+          updatedAI.resources.land * 1000 + 
+          updatedAI.resources.gold + 
+          Object.values(updatedAI.units).reduce((sum, count) => sum + count * 100, 0);
+        
+        updateAIKingdom(ai.id, {
+          resources: updatedAI.resources,
+          units: updatedAI.units,
+          networth: newNetworth
+        });
+      });
+      
+      // Show AI action summary if any actions taken
+      if (aiActionLog.length > 0) {
+        ToastService.info(`AI Activity: ${aiActionLog.slice(0, 3).join(', ')}${aiActionLog.length > 3 ? '...' : ''}`);
+      }
+    } catch (error) {
+      console.error('Time travel error:', error);
+      // Still update locally for demo mode
+      addTurns(turnsToGenerate);
+      addGold(incomeToGenerate);
+      useKingdomStore.getState().updateResources({
+        population: (resources.population || 0) + populationGrowth,
+        land: (resources.land || 0) + landGrowth
+      });
+
+      // Update AI kingdoms even on error (demo mode)
+      const updateAIKingdom = useAIKingdomStore.getState().updateAIKingdom;
+      
+      aiKingdoms.forEach(ai => {
+        const updatedAI = {
+          ...ai,
+          resources: {
+            ...ai.resources,
+            gold: ai.resources.gold + incomeToGenerate,
+            population: ai.resources.population + populationGrowth,
+            land: ai.resources.land + landGrowth,
+            turns: Math.min(ai.resources.turns + turnsToGenerate, 100)
+          }
+        };
+        
+        // AI takes actions even on error
+        const actions = AIActionService.decideActions(updatedAI, aiKingdoms);
+        actions.forEach(action => {
+          if (action.type === 'build') {
+            const result = AIActionService.executeBuild(updatedAI);
+            if (result.resources) updatedAI.resources = result.resources;
+          } else if (action.type === 'train') {
+            const result = AIActionService.executeTrain(updatedAI);
+            if (result.resources) updatedAI.resources = result.resources;
+            if (result.units) updatedAI.units = result.units;
+          }
+        });
+        
+        const newNetworth = 
+          updatedAI.resources.land * 1000 + 
+          updatedAI.resources.gold + 
+          Object.values(updatedAI.units).reduce((sum, count) => sum + count * 100, 0);
+        
+        updateAIKingdom(ai.id, {
+          resources: updatedAI.resources,
+          units: updatedAI.units,
+          networth: newNetworth
+        });
+      });
+    }
+  };
+
+  const raceKey = kingdom.race ? kingdom.race.charAt(0).toUpperCase() + kingdom.race.slice(1).toLowerCase() : 'Human';
+  const raceData = RACES[raceKey as keyof typeof RACES];
 
   return (
     <div className="kingdom-dashboard">
+      {/* Tutorial overlay */}
+      {!tutorialCompleted && (
+        <Tutorial
+          steps={KINGDOM_DASHBOARD_TUTORIAL}
+          onComplete={completeTutorial}
+          onSkip={completeTutorial}
+          autoStart={true}
+        />
+      )}
+      
       <TopNavigation
         title={kingdom.name}
         subtitle={`${kingdom.race} Kingdom`}
@@ -74,6 +380,27 @@ export function KingdomDashboard({ kingdom, onBack, onManageTerritories, onManag
       <div className="dashboard-grid">
         <div className="resources-panel">
           <h2>Resources</h2>
+          
+          {/* Networth Display */}
+          <div className="networth-display" style={{
+            padding: '1rem',
+            marginBottom: '1rem',
+            background: 'linear-gradient(135deg, rgba(78, 205, 196, 0.1) 0%, rgba(79, 172, 254, 0.1) 100%)',
+            border: '2px solid var(--primary)',
+            borderRadius: '0.5rem',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+              KINGDOM NETWORTH (SCORE)
+            </div>
+            <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)' }}>
+              {((resources?.land || 0) * 1000 + (resources?.gold || 0) + (kingdom.totalUnits ? Object.values(kingdom.totalUnits).reduce((sum, count) => sum + count * 100, 0) : 0)).toLocaleString()}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+              Land × 1,000 + Gold + Units × 100
+            </div>
+          </div>
+          
           <div className="resources-grid">
             <div className="resource-item">
               <img src="/gold-resource-icon.png" alt="Gold" className="resource-icon-img" />
@@ -104,13 +431,37 @@ export function KingdomDashboard({ kingdom, onBack, onManageTerritories, onManag
               </div>
             </div>
           </div>
+          
+          <div className="resource-actions">
+            <LoadingButton
+              onClick={() => handleGenerateResources('generate_turns')}
+              loading={resourceLoading}
+              className="resource-btn"
+            >
+              Generate Turns
+            </LoadingButton>
+            <LoadingButton
+              onClick={() => handleGenerateResources('generate_income')}
+              loading={resourceLoading}
+              className="resource-btn"
+            >
+              Generate Income
+            </LoadingButton>
+            <LoadingButton
+              onClick={() => handleGenerateResources('encamp', 24)}
+              loading={resourceLoading}
+              className="resource-btn"
+            >
+              Encamp (24h)
+            </LoadingButton>
+          </div>
         </div>
 
         <div className="race-stats-panel">
           <h2>Race Abilities</h2>
           <div className="race-info">
             <p className="special-ability">
-              <strong>Special:</strong> {raceData?.specialAbility}
+              <strong>Special:</strong> {raceData?.specialAbility?.description}
             </p>
             <div className="stats-mini">
               {raceData && Object.entries(raceData.stats).slice(0, 4).map(([stat, value]) => (
@@ -128,22 +479,127 @@ export function KingdomDashboard({ kingdom, onBack, onManageTerritories, onManag
           </div>
         </div>
 
+        <div className="race-stats-panel">
+          <h2>🏗️ Buildings & Economy</h2>
+          
+          {/* BRT Display */}
+          <div className="brt-display" style={{
+            padding: '0.75rem',
+            background: 'rgba(78, 205, 196, 0.1)',
+            borderRadius: '8px',
+            marginBottom: '1rem',
+            border: '1px solid rgba(78, 205, 196, 0.3)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 600 }}>Build Rate (BRT)</span>
+              <span style={{ fontSize: '1.5rem', color: '#4ecdc4' }}>{buildingStats.brt}</span>
+            </div>
+            <small style={{ color: '#a0a0a0', display: 'block', marginTop: '0.25rem' }}>
+              {buildingStats.quarryPercentage.toFixed(1)}% {getBuildingName(kingdom.race || 'Human', 'buildrate')} • {buildingStats.brt} structures/turn
+            </small>
+            {buildingStats.quarryPercentage < 25 && (
+              <small style={{ color: '#f59e0b', display: 'block', marginTop: '0.25rem' }}>
+                ⚠️ Low BRT - Consider building more {getBuildingName(kingdom.race || 'Human', 'buildrate')}
+              </small>
+            )}
+          </div>
+
+          {/* Building Breakdown */}
+          <div className="building-breakdown" style={{ marginBottom: '1rem' }}>
+            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem', color: '#a0a0a0' }}>Building Distribution</h4>
+            <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.85rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>{getBuildingName(kingdom.race || 'Human', 'buildrate')}</span>
+                <span style={{ color: '#4ecdc4' }}>{buildingStats.quarries} ({buildingStats.quarryPercentage.toFixed(1)}%)</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>{getBuildingName(kingdom.race || 'Human', 'troop')}</span>
+                <span style={{ color: '#4ecdc4' }}>{buildingStats.barracks}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>{getBuildingName(kingdom.race || 'Human', 'income')}</span>
+                <span style={{ color: '#4ecdc4' }}>{buildingStats.guildhalls}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>{getBuildingName(kingdom.race || 'Human', 'magic')}</span>
+                <span style={{ color: '#4ecdc4' }}>{buildingStats.temples}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>{getBuildingName(kingdom.race || 'Human', 'fortress')}</span>
+                <span style={{ color: '#4ecdc4' }}>{buildingStats.forts}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Upkeep Warning */}
+          <div className={`upkeep-display ${upkeepInfo.isCritical ? 'critical' : upkeepInfo.isHigh ? 'warning' : ''}`} style={{
+            padding: '0.75rem',
+            background: upkeepInfo.isCritical ? 'rgba(239, 68, 68, 0.1)' : upkeepInfo.isHigh ? 'rgba(245, 158, 11, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '8px',
+            border: `1px solid ${upkeepInfo.isCritical ? 'rgba(239, 68, 68, 0.3)' : upkeepInfo.isHigh ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255, 255, 255, 0.1)'}`
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 600 }}>Army Upkeep</span>
+              <span style={{ fontSize: '1.25rem', color: upkeepInfo.isCritical ? '#ef4444' : upkeepInfo.isHigh ? '#f59e0b' : '#4ecdc4' }}>
+                {upkeepInfo.totalUpkeep}g/turn
+              </span>
+            </div>
+            <small style={{ color: '#a0a0a0', display: 'block', marginTop: '0.25rem' }}>
+              {upkeepInfo.upkeepPercentage.toFixed(1)}% of treasury
+            </small>
+            {upkeepInfo.isCritical && (
+              <small style={{ color: '#ef4444', display: 'block', marginTop: '0.25rem', fontWeight: 600 }}>
+                🚨 CRITICAL: Upkeep exceeds 25% of gold! Risk of bankruptcy!
+              </small>
+            )}
+            {upkeepInfo.isHigh && !upkeepInfo.isCritical && (
+              <small style={{ color: '#f59e0b', display: 'block', marginTop: '0.25rem' }}>
+                ⚠️ High upkeep - Consider downsizing or increasing income
+              </small>
+            )}
+            <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                <span>Troop Cap Used</span>
+                <span>{upkeepInfo.troopCapUsed.toLocaleString()}g / 10,000,000g</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="turn-generation-panel">
+          <TurnTimer
+            kingdomId={kingdom.id}
+            onTurnGenerated={(newTurns) => {
+              console.log(`Generated ${newTurns} turns`);
+            }}
+          />
+        </div>
+
         <div className="territories-panel">
-          <h2>Territories ({territories.length})</h2>
+          <h2>Territories ({ownedTerritories.length})</h2>
           {loading ? (
             <p>Loading territories...</p>
-          ) : territories.length === 0 ? (
+          ) : ownedTerritories.length === 0 ? (
             <div className="no-territories">
               <p>No territories claimed yet.</p>
-              <button className="claim-territory-btn">Claim First Territory</button>
+              <button 
+                className="claim-territory-btn"
+                onClick={onManageTerritories}
+              >
+                Claim First Territory
+              </button>
             </div>
           ) : (
             <div className="territories-list">
-              {territories.map((territory) => (
+              {ownedTerritories.map((territory) => (
                 <div key={territory.id} className="territory-item">
                   <h4>{territory.name}</h4>
-                  <p>Type: {territory.terrainType}</p>
-                  <p>Fortifications: {territory.fortifications}</p>
+                  <p>Type: {territory.type}</p>
+                  <div className="territory-resources">
+                    <span>💰 {territory.resources?.gold || 0}</span>
+                    <span>👥 {territory.resources?.population || 0}</span>
+                    <span>🏞️ {territory.resources?.land || 0}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -188,9 +644,12 @@ export function KingdomDashboard({ kingdom, onBack, onManageTerritories, onManag
               <img src="/magic-spells-icon.png" alt="Magic" className="action-icon" />
               Cast Spells
             </button>
-            <button className="action-btn">
-              <img src="/train-units-icon.png" alt="Train Units" className="action-icon" />
-              Train Units
+            <button 
+              className="action-btn"
+              onClick={onSummonUnits}
+            >
+              <img src="/train-units-icon.png" alt="Summon Units" className="action-icon" />
+              ⚔️ Summon Units
             </button>
             <button 
               className="action-btn trade-btn"
@@ -199,17 +658,48 @@ export function KingdomDashboard({ kingdom, onBack, onManageTerritories, onManag
               <img src="/trade-economy-icon.png" alt="Trade" className="action-icon" />
               Trade
             </button>
-            <button className="action-btn">
+            <button 
+              className="action-btn"
+              onClick={onDiplomacy}
+            >
               <img src="/diplomacy-icon.png" alt="Diplomacy" className="action-icon" />
               Diplomacy
             </button>
-            <button className="action-btn danger">
+            <button 
+              className="action-btn danger"
+              onClick={onBattleReports}
+            >
               <img src="/battle-reports-icon.png" alt="Battle Reports" className="action-icon" />
               Battle Reports
+            </button>
+            <button 
+              className="action-btn primary"
+              onClick={onViewLeaderboard}
+            >
+              🏆 Kingdom Scrolls
+            </button>
+            <button 
+              className="action-btn"
+              onClick={() => useTutorialStore.getState().restartTutorial()}
+              title="Restart tutorial"
+            >
+              📚 Tutorial
+            </button>
+            <button 
+              className="action-btn"
+              onClick={() => navigate(`/kingdom/${kingdom.id}/achievements`)}
+              title="View achievements"
+            >
+              🏆 Achievements
             </button>
           </div>
         </div>
       </div>
+
+      {/* Demo Time Control - Only visible in demo mode */}
+      <DemoTimeControl 
+        onTimeTravel={handleTimeTravel}
+      />
     </div>
   );
 }

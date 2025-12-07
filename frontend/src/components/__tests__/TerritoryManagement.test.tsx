@@ -2,12 +2,13 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { TerritoryManagement } from '../TerritoryManagement'
+import type { Schema } from '../../../../amplify/data/resource'
 
 const mockKingdom = {
   id: '1',
   name: 'Test Kingdom',
   race: 'Human'
-}
+} as Schema['Kingdom']['type']
 
 const mockOnBack = vi.fn()
 

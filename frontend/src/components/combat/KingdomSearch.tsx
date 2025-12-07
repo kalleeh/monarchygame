@@ -9,7 +9,7 @@ import type { RaceType } from '../../types/amplify';
 
 interface KingdomSearchProps {
   currentKingdomId: string;
-  onKingdomSelect: (kingdom: Kingdom) => void;
+  onKingdomSelect: (kingdom: Kingdom | null) => void;
   selectedKingdom: Kingdom | null;
   className?: string;
 }
@@ -118,7 +118,7 @@ export const KingdomSearch: React.FC<KingdomSearchProps> = ({
         (searchTerm === '' || 
          kingdom.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
          kingdom.race.toLowerCase().includes(searchTerm.toLowerCase()) ||
-         kingdom.owner.toLowerCase().includes(searchTerm.toLowerCase()))
+         (kingdom.owner ?? '').toLowerCase().includes(searchTerm.toLowerCase()))
       )
       .sort((a, b) => {
         // Sort by online status first, then by name
@@ -187,7 +187,7 @@ export const KingdomSearch: React.FC<KingdomSearchProps> = ({
 
   const clearSelection = useCallback(() => {
     setSearchTerm('');
-    onKingdomSelect(null as any);
+    onKingdomSelect(null);
     setIsOpen(false);
     searchInputRef.current?.focus();
   }, [onKingdomSelect]);
@@ -289,7 +289,7 @@ export const KingdomSearch: React.FC<KingdomSearchProps> = ({
               >
                 <div className="kingdom-header">
                   <div className="kingdom-name-race">
-                    <span className="race-icon">{getRaceIcon(kingdom.race)}</span>
+                    <span className="race-icon">{getRaceIcon(kingdom.race as RaceType)}</span>
                     <span className="kingdom-name">{kingdom.name}</span>
                     <span className="kingdom-race">({kingdom.race})</span>
                   </div>
@@ -297,7 +297,7 @@ export const KingdomSearch: React.FC<KingdomSearchProps> = ({
                     <span className={`status-indicator ${kingdom.isOnline ? 'online' : 'offline'}`}>
                       {kingdom.isOnline ? '🟢' : '🔴'}
                     </span>
-                    <span className="last-active">{formatLastActive(kingdom.lastActive)}</span>
+                    <span className="last-active">{formatLastActive(kingdom.lastActive ?? new Date())}</span>
                   </div>
                 </div>
                 
@@ -311,7 +311,7 @@ export const KingdomSearch: React.FC<KingdomSearchProps> = ({
                   <div className="stat-group">
                     <span className="stat-label">Forces:</span>
                     <span className="stat-value">
-                      {Object.values(kingdom.totalUnits).reduce((sum, count) => sum + count, 0)} units
+                      {Object.values(kingdom.totalUnits || {}).reduce((sum, count) => (sum || 0) + (count || 0), 0)} units
                     </span>
                   </div>
                   <div className="stat-group">

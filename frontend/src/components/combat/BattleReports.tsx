@@ -4,12 +4,13 @@
  */
 
 import React, { useState, useCallback, useMemo } from 'react';
-import type { BattleHistory, CombatResult, Army } from '../../types/combat';
+import type { BattleHistory, Army } from '../../types/combat';
+import '../TerritoryExpansion.css';
 
 interface BattleReportsProps {
   battleHistory: BattleHistory[];
-  currentKingdomId: string;
   className?: string;
+  currentKingdomId?: string;
 }
 
 type SortField = 'timestamp' | 'outcome' | 'netGain' | 'opponent';
@@ -18,7 +19,6 @@ type FilterType = 'all' | 'victories' | 'defeats' | 'attacks' | 'defenses';
 
 export const BattleReports: React.FC<BattleReportsProps> = ({
   battleHistory,
-  currentKingdomId,
   className = ''
 }) => {
   const [selectedReport, setSelectedReport] = useState<BattleHistory | null>(null);
@@ -62,7 +62,7 @@ export const BattleReports: React.FC<BattleReportsProps> = ({
 
     // Apply sorting
     return filtered.sort((a, b) => {
-      let aValue: any, bValue: any;
+      let aValue: string | number, bValue: string | number;
 
       switch (sortField) {
         case 'timestamp':
@@ -74,8 +74,8 @@ export const BattleReports: React.FC<BattleReportsProps> = ({
           bValue = b.outcome;
           break;
         case 'netGain':
-          aValue = a.netGain.gold + a.netGain.land * 100 + a.netGain.population * 10;
-          bValue = b.netGain.gold + b.netGain.land * 100 + b.netGain.population * 10;
+          aValue = (a.netGain?.gold ?? 0) + (a.netGain?.land ?? 0) * 100 + (a.netGain?.population ?? 0) * 10;
+          bValue = (b.netGain?.gold ?? 0) + (b.netGain?.land ?? 0) * 100 + (b.netGain?.population ?? 0) * 10;
           break;
         case 'opponent':
           aValue = a.isAttacker ? a.result.defender.kingdomName : a.result.attacker.kingdomName;
@@ -100,10 +100,11 @@ export const BattleReports: React.FC<BattleReportsProps> = ({
     }
   }, [sortField]);
 
-  const formatArmy = useCallback((army: Army): string => {
+  const formatArmy = useCallback((army: Army | undefined): string => {
+    if (!army) return 'No units';
     return Object.entries(army)
-      .filter(([, count]) => count > 0)
-      .map(([unitType, count]) => `${count} ${unitType}`)
+      .filter(([, count]) => (count || 0) > 0)
+      .map(([unitType, count]) => `${count || 0} ${unitType}`)
       .join(', ');
   }, []);
 
@@ -147,7 +148,7 @@ export const BattleReports: React.FC<BattleReportsProps> = ({
     const defeats = battleHistory.filter(b => b.outcome === 'defeat').length;
     const attacks = battleHistory.filter(b => b.isAttacker).length;
     const defenses = total - attacks;
-    const totalGoldGained = battleHistory.reduce((sum, b) => sum + b.netGain.gold, 0);
+    const totalGoldGained = battleHistory.reduce((sum, b) => sum + (b.netGain?.gold ?? 0), 0);
 
     return {
       total,
@@ -198,7 +199,7 @@ export const BattleReports: React.FC<BattleReportsProps> = ({
               </div>
               <div className="info-item">
                 <span className="label">Duration:</span>
-                <span className="value">{selectedReport.result.battleReport.duration}s</span>
+                <span className="value">{selectedReport.result.battleReport?.duration ?? 0}s</span>
               </div>
             </div>
           </div>
@@ -257,9 +258,9 @@ export const BattleReports: React.FC<BattleReportsProps> = ({
                 </div>
               </div>
               
-              {selectedReport.result.defender.fortificationLevel > 0 && (
+              {(selectedReport.result.defender.fortificationLevel ?? 0) > 0 && (
                 <div className="fortification-info">
-                  <span>Fortification Level: {selectedReport.result.defender.fortificationLevel}</span>
+                  <span>Fortification Level: {selectedReport.result.defender.fortificationLevel ?? 0}</span>
                 </div>
               )}
             </div>
@@ -272,17 +273,17 @@ export const BattleReports: React.FC<BattleReportsProps> = ({
                 <div className="spoil-item">
                   <span className="spoil-icon">💰</span>
                   <span className="spoil-label">Gold:</span>
-                  <span className="spoil-value">{selectedReport.result.spoils.gold.toLocaleString()}</span>
+                  <span className="spoil-value">{(selectedReport.result.spoils?.gold ?? 0).toLocaleString()}</span>
                 </div>
                 <div className="spoil-item">
                   <span className="spoil-icon">👥</span>
                   <span className="spoil-label">Population:</span>
-                  <span className="spoil-value">{selectedReport.result.spoils.population.toLocaleString()}</span>
+                  <span className="spoil-value">{(selectedReport.result.spoils?.population ?? 0).toLocaleString()}</span>
                 </div>
                 <div className="spoil-item">
                   <span className="spoil-icon">🏞️</span>
                   <span className="spoil-label">Land:</span>
-                  <span className="spoil-value">{selectedReport.result.spoils.land.toLocaleString()}</span>
+                  <span className="spoil-value">{(selectedReport.result.spoils?.land ?? 0).toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -432,15 +433,15 @@ export const BattleReports: React.FC<BattleReportsProps> = ({
                   <div className="cell gain-cell">
                     <div className="gain-item">
                       <span className="gain-icon">💰</span>
-                      <span className={`gain-value ${battle.netGain.gold >= 0 ? 'positive' : 'negative'}`}>
-                        {battle.netGain.gold >= 0 ? '+' : ''}{battle.netGain.gold.toLocaleString()}
+                      <span className={`gain-value ${(battle.netGain?.gold ?? 0) >= 0 ? 'positive' : 'negative'}`}>
+                        {(battle.netGain?.gold ?? 0) >= 0 ? '+' : ''}{(battle.netGain?.gold ?? 0).toLocaleString()}
                       </span>
                     </div>
-                    {battle.netGain.land !== 0 && (
+                    {(battle.netGain?.land ?? 0) !== 0 && (
                       <div className="gain-item">
                         <span className="gain-icon">🏞️</span>
-                        <span className={`gain-value ${battle.netGain.land >= 0 ? 'positive' : 'negative'}`}>
-                          {battle.netGain.land >= 0 ? '+' : ''}{battle.netGain.land}
+                        <span className={`gain-value ${(battle.netGain?.land ?? 0) >= 0 ? 'positive' : 'negative'}`}>
+                          {(battle.netGain?.land ?? 0) >= 0 ? '+' : ''}{battle.netGain?.land ?? 0}
                         </span>
                       </div>
                     )}

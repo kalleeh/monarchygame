@@ -65,12 +65,36 @@
   background: var(--bg-tertiary);
   color: var(--text-primary);
   font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.form-group input.error {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .form-group input:focus {
   outline: none;
   border-color: var(--text-accent);
   box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+}
+
+.form-group input.error:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+.error-message {
+  color: #fca5a5;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.error-message::before {
+  content: "⚠️";
 }
 
 /* Race grid layout */
@@ -83,67 +107,88 @@
 
 /* Race card styling */
 .race-card {
-  background: var(--bg-secondary);
-  border: 2px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  padding: var(--space-lg);
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 1.5rem;
   cursor: pointer;
-  transition: var(--transition);
-  backdrop-filter: var(--blur-light);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
 }
 
 .race-card:hover {
-  border-color: var(--border-accent);
+  border-color: rgba(78, 205, 196, 0.5);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .race-card.selected {
-  border-color: var(--primary);
-  background: var(--hover);
-  box-shadow: var(--shadow-glow);
+  border-color: #4ecdc4;
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.15) 0%, rgba(68, 160, 141, 0.15) 100%);
+  box-shadow: 0 0 20px rgba(78, 205, 196, 0.4);
 }
 
 .race-card img {
   width: 100%;
   height: 120px;
   object-fit: cover;
-  border-radius: var(--radius-sm);
-  margin-bottom: var(--space-sm);
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .race-card h4 {
-  color: var(--text-accent);
-  margin: 0 0 var(--space-sm) 0;
+  color: #4ecdc4;
+  margin: 0 0 0.5rem 0;
   font-size: 1.2rem;
+  font-weight: 700;
 }
 
 .race-card p {
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-md) 0;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  color: #e0e0e0;
+  margin: 0 0 1rem 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  font-weight: 400;
 }
 
-/* Race stats with proper bars */
+/* Race stats with proper bars - Compact 2-column layout */
 .stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-xs);
+  gap: 0.4rem;
   font-size: 0.85rem;
   margin-top: var(--space-sm);
 }
 
-.stats > div {
+.stat-bar-container {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.3rem 0;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.2rem 0;
 }
 
-.stats span {
-  color: var(--text-secondary);
-  min-width: 80px;
+.stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.stat-name {
+  color: #e0e0e0;
+  font-weight: 600;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.stat-value {
+  color: #4ecdc4;
+  font-weight: 400;
+  font-size: 0.5rem !important;
+  font-family: monospace;
+  line-height: 1;
+  opacity: 0.6 !important;
 }
 
 .stat-bar {
@@ -155,14 +200,22 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-primary);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.2s ease;
 }
 
-.stat-dot.filled {
-  background: var(--text-accent);
-  border-color: var(--text-accent);
-  box-shadow: 0 0 4px rgba(78, 205, 196, 0.5);
+.stat-fill {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ecdc4;
+  border: 1px solid #4ecdc4;
+  box-shadow: 0 0 6px rgba(78, 205, 196, 0.6);
+}
+
+.stat-fill:hover {
+  box-shadow: 0 0 10px rgba(78, 205, 196, 0.9);
 }
 
 .race-option {

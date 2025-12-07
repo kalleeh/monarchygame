@@ -26,8 +26,38 @@ export interface DefenseForce {
   ambushActive: boolean
 }
 
+// War declaration tracking
+export interface WarDeclaration {
+  attackerId: string
+  defenderId: string
+  attackCount: number
+  declaredAt?: number
+  isActive: boolean
+}
+
 // Core combat mechanics that create natural strategic balance
 export const COMBAT_MECHANICS = {
+  // Turn costs (from war-sorcery-screens.md)
+  TURN_COSTS: {
+    BASE_COST: 4,                    // Base 4 turns per attack
+    NETWORTH_THRESHOLD: 0.5,         // 50% difference triggers scaling
+    EASY_TARGET_MULTIPLIER: 1.5,     // 6 turns (target much smaller)
+    HARD_TARGET_MULTIPLIER: 2.0,     // 8 turns (target much larger)
+  },
+
+  // War declaration (from documentation)
+  WAR_DECLARATION: {
+    ATTACKS_BEFORE_DECLARATION: 3,   // Must declare war after 3 attacks
+    DECLARATION_REQUIRED: true,
+  },
+
+  // Attack type restrictions
+  ATTACK_RESTRICTIONS: {
+    GUERILLA_RAID_NO_LAND: true,     // Guerilla Raid never takes land
+    MOB_ASSAULT_PEASANT_RISK: true,  // Mob Assault risks peasant casualties
+    MOB_ASSAULT_LESS_LAND: 0.8,      // Takes 80% of normal land gain
+  },
+
   // Land acquisition ranges - creates natural progression strategy
   LAND_ACQUISITION: {
     FULL_STRIKE_MIN: 0.0679,    // 6.79% minimum
@@ -66,6 +96,69 @@ export const COMBAT_MECHANICS = {
     DWARVEN: 0.0275,           // 2.75% of networth
     HUMAN: 0.025,              // 2.5% of networth (estimated)
   }
+}
+
+/**
+ * Calculate turn cost based on networth difference
+ * From documentation: Cost increases if target's networth is markedly larger or smaller
+ */
+export function calculateTurnCost(
+  attackerNetworth: number,
+  defenderNetworth: number
+): number {
+  const ratio = defenderNetworth / attackerNetworth;
+  const { BASE_COST, NETWORTH_THRESHOLD, EASY_TARGET_MULTIPLIER, HARD_TARGET_MULTIPLIER } = COMBAT_MECHANICS.TURN_COSTS;
+
+  // Target much smaller (easy)
+  if (ratio < NETWORTH_THRESHOLD) {
+    return Math.floor(BASE_COST * EASY_TARGET_MULTIPLIER); // 6 turns
+  }
+  
+  // Target much larger (hard)
+  if (ratio > (1 / NETWORTH_THRESHOLD)) {
+    return Math.floor(BASE_COST * HARD_TARGET_MULTIPLIER); // 8 turns
+  }
+  
+  // Fair fight
+  return BASE_COST; // 4 turns
+}
+
+/**
+ * Check if war declaration is required
+ * From documentation: After 3 offensive actions, must declare war
+ */
+export function requiresWarDeclaration(attackCount: number): boolean {
+  return attackCount >= COMBAT_MECHANICS.WAR_DECLARATION.ATTACKS_BEFORE_DECLARATION;
+}
+
+/**
+ * Validate attack type restrictions
+ */
+export function validateAttackType(
+  attackType: 'controlled_strike' | 'ambush' | 'guerilla_raid' | 'mob_assault' | 'full_attack',
+  hasPeasants: boolean
+): { valid: boolean; warning?: string } {
+  if (attackType === 'guerilla_raid') {
+    return {
+      valid: true,
+      warning: '⚠️ Guerilla Raid: No land will be taken. Only kills troops and peasants.'
+    };
+  }
+
+  if (attackType === 'mob_assault') {
+    if (!hasPeasants) {
+      return {
+        valid: false,
+        warning: '❌ Mob Assault requires peasants. You have none to send.'
+      };
+    }
+    return {
+      valid: true,
+      warning: '⚠️ Mob Assault: Your peasants will be at risk! Takes less land than Full Attack.'
+    };
+  }
+
+  return { valid: true };
 }
 
 // Unit combat values that create natural tier preferences

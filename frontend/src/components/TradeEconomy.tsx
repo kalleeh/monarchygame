@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ErrorBoundary } from './ErrorBoundary';
+import { useKingdomStore } from '../stores/kingdomStore';
 import type { Schema } from '../../../amplify/data/resource';
 
 interface TradeEconomyProps {
@@ -54,7 +55,8 @@ const RESOURCE_DISTRIBUTION = [
   { name: 'Gems', value: 5, color: '#9370DB' }
 ];
 
-const TradeEconomyContent: React.FC<TradeEconomyProps> = ({ kingdom, onBack }) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const TradeEconomyContent: React.FC<TradeEconomyProps> = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'trade' | 'market'>('overview');
   const [tradeRoutes, setTradeRoutes] = useState<TradeRoute[]>([
     {
@@ -130,7 +132,7 @@ const TradeEconomyContent: React.FC<TradeEconomyProps> = ({ kingdom, onBack }) =
           <h1>Trade & Economy</h1>
         </div>
         <div className="kingdom-wealth">
-          <span>Kingdom Wealth: {((kingdom.resources as any)?.gold || 1000).toLocaleString()} Gold</span>
+          <span>Kingdom Wealth: {useKingdomStore.getState().resources.gold?.toLocaleString() || 0} Gold</span>
         </div>
       </div>
 
@@ -187,7 +189,7 @@ const TradeEconomyContent: React.FC<TradeEconomyProps> = ({ kingdom, onBack }) =
                       cy="50%"
                       outerRadius={80}
                       dataKey="value"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      label={({ name, percent }: { name: string; percent?: number }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                     >
                       {RESOURCE_DISTRIBUTION.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
@@ -306,7 +308,7 @@ const TradeEconomyContent: React.FC<TradeEconomyProps> = ({ kingdom, onBack }) =
         )}
       </div>
 
-      <style jsx>{`
+      <style>{`
         .trade-economy {
           min-height: 100vh;
           background: linear-gradient(135deg, #1f2937 0%, #374151 50%, #1f2937 100%);

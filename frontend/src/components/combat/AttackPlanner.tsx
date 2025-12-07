@@ -11,6 +11,7 @@ import type {
   Army,
   Territory 
 } from '../../types/combat';
+import { hasTerritories } from '../../types/guards';
 import { KingdomSearch } from './KingdomSearch';
 import { ArmySelector } from './ArmySelector';
 import { AttackPreview } from './AttackPreview';
@@ -19,18 +20,17 @@ interface AttackPlannerProps {
   currentKingdom: Kingdom;
   onAttack: (request: AttackRequest) => Promise<void>;
   isLoading: boolean;
-  error: string | null;
+  error?: string | null;
 }
 
 export const AttackPlanner: React.FC<AttackPlannerProps> = ({
   currentKingdom,
   onAttack,
-  isLoading,
-  error
+  isLoading
 }) => {
   const [selectedTarget, setSelectedTarget] = useState<Kingdom | null>(null);
   const [selectedTerritory, setSelectedTerritory] = useState<Territory | null>(null);
-  const [attackType, setAttackType] = useState<AttackType>('raid');
+  const [attackType, setAttackType] = useState<AttackType>('guerilla_raid');
   const [selectedArmy, setSelectedArmy] = useState<Army>({
     peasants: 0,
     militia: 0,
@@ -50,17 +50,17 @@ export const AttackPlanner: React.FC<AttackPlannerProps> = ({
   const availableArmy = useMemo(() => currentKingdom.totalUnits, [currentKingdom.totalUnits]);
 
   const totalSelectedUnits = useMemo(() => 
-    Object.values(selectedArmy).reduce((sum, count) => sum + count, 0)
+    Object.values(selectedArmy).reduce((sum, count) => (sum ?? 0) + (count ?? 0), 0)
   , [selectedArmy]);
 
   const canAttack = useMemo(() => 
     selectedTarget && 
-    totalSelectedUnits > 0 && 
+    (totalSelectedUnits ?? 0) > 0 && 
     !isLoading &&
     selectedTarget.id !== currentKingdom.id
   , [selectedTarget, totalSelectedUnits, isLoading, currentKingdom.id]);
 
-  const handleTargetSelect = useCallback((target: Kingdom) => {
+  const handleTargetSelect = useCallback((target: Kingdom | null) => {
     setSelectedTarget(target);
   }, []);
 
@@ -88,10 +88,12 @@ export const AttackPlanner: React.FC<AttackPlannerProps> = ({
     if (!canAttack || !selectedTarget) return;
 
     const attackRequest: AttackRequest = {
+      attackerId: currentKingdom.id,
+      defenderId: selectedTarget.id,
       targetKingdomId: selectedTarget.id,
       targetTerritoryId: selectedTerritory?.id,
       attackType,
-      army: selectedArmy
+      units: selectedArmy
     };
 
     try {
@@ -152,13 +154,14 @@ export const AttackPlanner: React.FC<AttackPlannerProps> = ({
             selectedKingdom={selectedTarget}
           />
           
-          {selectedTarget && selectedTarget.territories.length > 1 && (
+          {selectedTarget && hasTerritories(selectedTarget) && selectedTarget.territories.length > 1 && (
             <div className="territory-selection">
               <label htmlFor="territory-select">Target Territory (Optional)</label>
               <select
                 id="territory-select"
                 value={selectedTerritory?.id || ''}
                 onChange={(e) => {
+                  if (!hasTerritories(selectedTarget)) return;
                   const territory = selectedTarget.territories.find(t => t.id === e.target.value);
                   handleTerritorySelect(territory || selectedTarget.territories[0]);
                 }}
@@ -207,11 +210,11 @@ export const AttackPlanner: React.FC<AttackPlannerProps> = ({
             availableArmy={availableArmy}
             selectedArmy={selectedArmy}
             onArmyChange={handleArmyChange}
-            maxUnits={Math.floor(Object.values(availableArmy).reduce((sum, count) => sum + count, 0) * 0.8)}
+            maxUnits={Math.floor(Object.values(availableArmy).reduce((sum, count) => (sum ?? 0) + (count ?? 0), 0) * 0.8)}
           />
           <div className="army-summary">
-            <span>Selected: {totalSelectedUnits} units</span>
-            <span>Remaining: {Object.values(availableArmy).reduce((sum, count) => sum + count, 0) - totalSelectedUnits} units</span>
+            <span>Selected: {totalSelectedUnits ?? 0} units</span>
+            <span>Remaining: {Object.values(availableArmy).reduce((sum, count) => (sum ?? 0) + (count ?? 0), 0) - (totalSelectedUnits ?? 0)} units</span>
           </div>
         </section>
 

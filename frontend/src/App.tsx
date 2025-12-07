@@ -1,96 +1,128 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { BrowserRouter, useNavigate } from 'react-router-dom';
 import { Amplify } from 'aws-amplify';
 import { Authenticator } from '@aws-amplify/ui-react';
 import { generateClient } from 'aws-amplify/data';
+import { Toaster } from 'react-hot-toast';
+import type { AuthUser } from 'aws-amplify/auth';
 import '@aws-amplify/ui-react/styles.css';
 import outputs from '../amplify_outputs.json';
-import { WelcomePage } from './components/WelcomePage';
-import { KingdomCreation } from './components/KingdomCreation';
-import { KingdomDashboard } from './components/KingdomDashboard';
-import { TerritoryManagement } from './components/TerritoryManagement';
-import { CombatPage } from './components/CombatPage';
-import { AllianceManagement } from './components/AllianceManagement';
-import { WorldMap } from './components/WorldMap';
-import { MagicSystem } from './components/MagicSystem';
-import { TradeEconomy } from './components/TradeEconomy';
+import { AppRouter } from './AppRouter';
+import { RACES } from '@game-data/races';
 import './App.css';
 import './components/KingdomCreation.css';
 import './components/KingdomDashboard.css';
 import './components/TerritoryManagement.css';
 import './components/WelcomePage.css';
 import './components/TopNavigation.css';
+import './components/TerritoryExpansion.css';
+import './components/BattleFormations.css';
+import './components/SpellCastingInterface.css';
+import './components/TradeSystem.css';
+import './components/UnitSummonInterface.css';
+import './components/DiplomacyInterface.css';
+import './styles/game-pages.css';
 import type { Schema } from '../../amplify/data/resource';
-import type { AuthenticatorProps, KingdomResources } from './types/amplify';
+import { TutorialOverlay } from './components/tutorial/TutorialOverlay';
+import { useInitializeAchievements } from './hooks/useInitializeAchievements';
 
 Amplify.configure(outputs);
 const client = generateClient<Schema>();
 
-type AppView = 'welcome' | 'kingdoms' | 'creation' | 'dashboard' | 'territories' | 'combat' | 'alliance' | 'worldmap' | 'magic' | 'trade';
-
-function App() {
+function AppContent() {
+  const navigate = useNavigate();
+  useInitializeAchievements();
   const [kingdoms, setKingdoms] = useState<Schema['Kingdom']['type'][]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentView, setCurrentView] = useState<AppView>('welcome');
-  const [selectedKingdom, setSelectedKingdom] = useState<Schema['Kingdom']['type'] | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
 
-  useEffect(() => {
-    // Check for demo mode
-    const isDemoMode = localStorage.getItem('demo-mode') === 'true';
-    setDemoMode(isDemoMode);
-    
-    // If in demo mode, fetch kingdoms immediately
-    if (isDemoMode) {
-      fetchKingdoms();
-    }
-  }, []);
-
-  // Handle authenticated user changes
-  useEffect(() => {
-    if (currentUser && !demoMode) {
-      setLoading(true);
-      // Add a small delay to ensure authentication tokens are properly set
-      setTimeout(() => {
-        fetchKingdoms();
-      }, 1000);
-    }
-  }, [currentUser, demoMode]);
-
-  const fetchKingdoms = async () => {
+  const fetchKingdoms = useCallback(async () => {
     try {
-      // Skip backend calls in demo mode
       if (demoMode) {
-        setKingdoms([]);
-        setCurrentView('creation');
+        // Demo mode - check if kingdoms exist in localStorage
+        const savedKingdoms = localStorage.getItem('demo-kingdoms');
+        if (savedKingdoms) {
+          const kingdoms = JSON.parse(savedKingdoms);
+          setKingdoms(kingdoms);
+          
+          // Navigate to kingdoms list if on root
+          if (window.location.pathname === '/') {
+            navigate('/kingdoms');
+          }
+        } else {
+          // No saved kingdoms - go to creation
+          if (window.location.pathname === '/') {
+            navigate('/creation');
+          }
+        }
+        
         setLoading(false);
         return;
       }
       
       const { data } = await client.models.Kingdom.list();
       setKingdoms(data);
-      if (data.length === 0) {
-        setCurrentView('creation');
-      } else {
-        setCurrentView('kingdoms');
+      
+      // Only navigate if we're on the root path
+      if (window.location.pathname === '/') {
+        if (data.length === 0) {
+          navigate('/creation');
+        } else {
+          navigate('/kingdoms');
+        }
       }
     } catch (error) {
-      console.error('Failed to fetch kingdoms:', error);
-      // In case of error (including auth issues), go to creation
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (!errorMessage.includes('NoValidAuthTokens') && !errorMessage.includes('No federated jwt')) {
+        console.error('Failed to fetch kingdoms:', error);
+      }
       setKingdoms([]);
-      setCurrentView('creation');
+      
+      // Only navigate if we're on the root path
+      if (window.location.pathname === '/') {
+        navigate('/creation');
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [demoMode, navigate]);
+
+  useEffect(() => {
+    const isDemoMode = localStorage.getItem('demo-mode') === 'true';
+    setDemoMode(isDemoMode);
+    
+    if (isDemoMode) {
+      // Always fetch kingdoms in demo mode, even on refresh
+      fetchKingdoms();
+    } else {
+      // Not in demo mode - stop loading and show welcome page
+      setLoading(false);
+    }
+  }, []); // Empty deps - only run once on mount
+  
+  // Fetch kingdoms again if demoMode changes
+  useEffect(() => {
+    if (demoMode && kingdoms.length === 0) {
+      fetchKingdoms();
+    }
+  }, [demoMode, kingdoms.length, fetchKingdoms]);
+
+  useEffect(() => {
+    if (currentUser && !demoMode) {
+      setLoading(true);
+      setTimeout(() => {
+        fetchKingdoms();
+      }, 1000);
+    }
+  }, [currentUser, demoMode, fetchKingdoms]);
 
   const handleGetStarted = () => {
     const isDemoMode = localStorage.getItem('demo-mode') === 'true';
     if (isDemoMode) {
       setDemoMode(true);
       setLoading(true);
-      // Immediately fetch kingdoms for demo mode
       setTimeout(() => {
         fetchKingdoms();
       }, 100);
@@ -99,212 +131,91 @@ function App() {
     }
   };
 
-  const handleKingdomCreated = () => {
+  const handleKingdomCreated = (kingdomName: string, race: string) => {
     const isDemoMode = localStorage.getItem('demo-mode') === 'true';
     
     if (isDemoMode) {
-      // In demo mode, create a mock kingdom and go to dashboard
-      const mockKingdom = {
-        id: 'demo-kingdom-1',
-        name: 'Demo Kingdom',
-        race: 'Human',
-        resources: {
-          gold: 1000,
-          population: 500,
-          land: 100,
-          turns: 50
-        }
+      const raceName = race.charAt(0).toUpperCase() + race.slice(1).toLowerCase();
+      const raceData = RACES[raceName];
+      const startingResources = raceData?.startingResources || {
+        gold: 2000,
+        population: 1000,
+        land: 500,
+        turns: 50
       };
-      setSelectedKingdom(mockKingdom as any);
-      setCurrentView('dashboard');
+      
+      const newKingdom = {
+        id: `demo-kingdom-${Date.now()}`,
+        name: kingdomName || 'Demo Kingdom',
+        race: raceName,
+        resources: startingResources,
+        stats: {},
+        totalUnits: {},
+        owner: 'demo-player',
+        isOnline: true,
+        lastActive: new Date().toISOString(),
+        guildId: null
+      } as Schema['Kingdom']['type'];
+      
+      // Get existing kingdoms or create new array
+      const savedKingdoms = localStorage.getItem('demo-kingdoms');
+      const existingKingdoms = savedKingdoms ? JSON.parse(savedKingdoms) : [];
+      const updatedKingdoms = [...existingKingdoms, newKingdom];
+      
+      // Save updated kingdoms array
+      localStorage.setItem('demo-kingdoms', JSON.stringify(updatedKingdoms));
+      
+      // Save kingdom-specific data
+      localStorage.setItem(`kingdom-${newKingdom.id}`, JSON.stringify({
+        resources: startingResources,
+        units: []
+      }));
+      
+      setKingdoms(updatedKingdoms);
+      
+      setTimeout(() => {
+        navigate('/kingdoms');
+      }, 100);
     } else {
-      setCurrentView('kingdoms');
+      navigate('/kingdoms');
       fetchKingdoms();
     }
   };
 
-  const handleEnterKingdom = (kingdom: Schema['Kingdom']['type']) => {
-    setSelectedKingdom(kingdom);
-    setCurrentView('dashboard');
-  };
-
-  const handleManageTerritories = () => {
-    setCurrentView('territories');
-  };
-
-  const handleManageCombat = () => {
-    setCurrentView('combat');
-  };
-
-  const handleManageAlliance = () => {
-    setCurrentView('alliance');
-  };
-
-  const handleBackToKingdoms = () => {
-    setCurrentView('kingdoms');
-    setSelectedKingdom(null);
-  };
-
-  const handleBackToDashboard = () => {
-    setCurrentView('dashboard');
-  };
-
-  const renderGameContent = () => {
-    if (loading) {
-      return (
-        <div className="loading">
-          <p>Loading your kingdoms...</p>
-        </div>
-      );
-    }
-
-    switch (currentView) {
-      case 'creation':
-        return <KingdomCreation onKingdomCreated={handleKingdomCreated} />;
-      
-      case 'dashboard':
-        return selectedKingdom ? (
-          <KingdomDashboard 
-            kingdom={selectedKingdom} 
-            onBack={handleBackToKingdoms}
-            onManageTerritories={handleManageTerritories}
-            onManageCombat={handleManageCombat}
-            onManageAlliance={handleManageAlliance}
-            onViewWorldMap={() => setCurrentView('worldmap')}
-            onCastSpells={() => setCurrentView('magic')}
-            onManageTrade={() => setCurrentView('trade')}
-          />
-        ) : null;
-      
-      case 'territories':
-        return selectedKingdom ? (
-          <TerritoryManagement 
-            kingdom={selectedKingdom} 
-            onBack={handleBackToDashboard}
-          />
-        ) : null;
-
-      case 'combat':
-        return selectedKingdom ? (
-          <CombatPage 
-            kingdom={selectedKingdom} 
-            onBack={handleBackToDashboard}
-          />
-        ) : null;
-
-      case 'alliance':
-        return selectedKingdom ? (
-          <AllianceManagement 
-            kingdom={selectedKingdom} 
-            onBack={handleBackToDashboard}
-          />
-        ) : null;
-
-      case 'worldmap':
-        return selectedKingdom ? (
-          <WorldMap 
-            kingdom={selectedKingdom} 
-            onBack={handleBackToDashboard}
-          />
-        ) : null;
-
-      case 'magic':
-        return selectedKingdom ? (
-          <MagicSystem 
-            kingdom={selectedKingdom} 
-            onBack={handleBackToDashboard}
-          />
-        ) : null;
-
-      case 'trade':
-        return selectedKingdom ? (
-          <TradeEconomy 
-            kingdom={selectedKingdom} 
-            onBack={handleBackToDashboard}
-          />
-        ) : null;
-      
-      default: // kingdoms
-        return (
-          <div className="kingdom-management">
-            <div className="kingdoms-header">
-              <h2>Your Kingdoms</h2>
-              <button 
-                className="create-new-btn"
-                onClick={() => setCurrentView('creation')}
-              >
-                Create New Kingdom
-              </button>
-            </div>
-
-            {kingdoms.length === 0 ? (
-              <div className="no-kingdoms">
-                <p>You haven't created any kingdoms yet.</p>
-                <button 
-                  className="create-first-btn"
-                  onClick={() => setCurrentView('creation')}
-                >
-                  Create Your First Kingdom
-                </button>
-              </div>
-            ) : (
-              <div className="kingdoms-grid">
-                {kingdoms.map((kingdom) => (
-                  <div key={kingdom.id} className="kingdom-card">
-                    <h3>{kingdom.name}</h3>
-                    <div className="kingdom-info">
-                      <p><strong>Race:</strong> {kingdom.race}</p>
-                      <p><strong>Gold:</strong> {(kingdom.resources as KingdomResources)?.gold || 0}</p>
-                      <p><strong>Population:</strong> {(kingdom.resources as KingdomResources)?.population || 0}</p>
-                      <p><strong>Land:</strong> {(kingdom.resources as KingdomResources)?.land || 0}</p>
-                      <p><strong>Turns:</strong> {(kingdom.resources as KingdomResources)?.turns || 0}</p>
-                    </div>
-                    <div className="kingdom-actions">
-                      <button 
-                        className="enter-kingdom-btn"
-                        onClick={() => handleEnterKingdom(kingdom)}
-                      >
-                        Enter Kingdom
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="next-steps">
-              <h3>🚧 Epic 4: Combat System - COMPLETE ✅</h3>
-              <ul>
-                <li>✅ Combat interface with attack planning</li>
-                <li>✅ Defense management system</li>
-                <li>✅ Battle reports and history</li>
-                <li>✅ Real-time combat notifications</li>
-                <li>✅ Backend integration with Lambda functions</li>
-                <li>✅ Comprehensive testing suite</li>
-              </ul>
-            </div>
-          </div>
-        );
-    }
-  };
-
-  // Show welcome page if not authenticated and not in demo mode
-  if (!showAuth && !demoMode) {
-    return <WelcomePage onGetStarted={handleGetStarted} />;
+  if (loading) {
+    return (
+      <div className="loading">
+        <p>Loading your kingdoms...</p>
+      </div>
+    );
   }
 
-  // Demo mode - skip authentication
+  // Demo mode
   if (demoMode) {
     return (
       <main className="app">
+        <TutorialOverlay />
         <header className="app-header">
-          <h1>🏰 Monarchy Game - Demo Mode</h1>
+          <h1>
+            <img src="/logo.png" alt="Monarchy" style={{ width: '64px', height: '64px', verticalAlign: 'middle', marginRight: '12px' }} />
+            Monarchy Game - Demo Mode
+          </h1>
           <div className="user-info">
             <span>Demo Player</span>
             <button 
               onClick={() => {
+                // Clear all demo data
+                const savedKingdoms = localStorage.getItem('demo-kingdoms');
+                if (savedKingdoms) {
+                  const kingdoms = JSON.parse(savedKingdoms);
+                  kingdoms.forEach((k: Schema['Kingdom']['type']) => {
+                    localStorage.removeItem(`kingdom-${k.id}`);
+                  });
+                }
                 localStorage.removeItem('demo-mode');
-                window.location.reload();
+                localStorage.removeItem('demo-kingdoms');
+                localStorage.removeItem('tutorial-progress');
+                window.location.href = '/';
               }} 
               className="sign-out-btn"
             >
@@ -314,26 +225,42 @@ function App() {
         </header>
         
         <div className="game-content">
-          {renderGameContent()}
+          <AppRouter 
+            kingdoms={kingdoms}
+            onGetStarted={handleGetStarted}
+            onKingdomCreated={handleKingdomCreated}
+          />
         </div>
       </main>
     );
   }
 
-  // Authenticated app component
-  const AuthenticatedApp = ({ user, signOut }: { user: any, signOut: () => void }) => {
+  // Show welcome or auth
+  if (!showAuth && !demoMode) {
+    return (
+      <AppRouter 
+        kingdoms={kingdoms}
+        onGetStarted={handleGetStarted}
+        onKingdomCreated={handleKingdomCreated}
+      />
+    );
+  }
+
+  // Authenticated app
+  const AuthenticatedApp = ({ user, signOut }: { user: AuthUser | undefined, signOut?: () => void }) => {
     useEffect(() => {
       if (user && user !== currentUser) {
-        setCurrentUser(user);
+        setCurrentUser(user as AuthUser);
       }
     }, [user]);
 
     return (
       <main className="app">
+        <Toaster />
         <header className="app-header">
           <h1>🏰 Monarchy Game</h1>
           <div className="user-info">
-            <span>Welcome, {user?.attributes?.preferred_username || user?.attributes?.email}</span>
+            <span>Welcome, {(user as any)?.attributes?.preferred_username || (user as any)?.attributes?.email || 'User'}</span>
             <button onClick={signOut} className="sign-out-btn">
               Sign Out
             </button>
@@ -341,22 +268,33 @@ function App() {
         </header>
         
         <div className="game-content">
-          {renderGameContent()}
+          <AppRouter 
+            kingdoms={kingdoms}
+            onGetStarted={handleGetStarted}
+            onKingdomCreated={handleKingdomCreated}
+          />
         </div>
       </main>
     );
   };
 
-  // Show authenticated game
   return (
     <Authenticator
       signUpAttributes={['email', 'preferred_username', 'given_name', 'family_name']}
       loginMechanisms={['email']}
     >
-      {({ signOut, user }: AuthenticatorProps) => (
+      {({ signOut, user }) => (
         <AuthenticatedApp user={user} signOut={signOut} />
       )}
     </Authenticator>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }
 

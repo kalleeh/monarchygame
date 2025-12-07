@@ -58,9 +58,11 @@
   align-items: center;
 }
 
-.crown {
-  font-size: 3rem;
+.hero-logo {
+  width: 64px;
+  height: 64px;
   margin-bottom: 0.5rem;
+  filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.8));
   animation: float 3s ease-in-out infinite;
 }
 
@@ -176,8 +178,10 @@
 }
 
 .castle-main {
-  font-size: 8rem;
-  filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.5));
+  width: 128px;
+  height: 128px;
+  filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.8));
+  animation: float 4s ease-in-out infinite;
 }
 
 .floating-elements {
@@ -611,7 +615,8 @@
   }
   
   .castle-main {
-    font-size: 4rem;
+    width: 80px;
+    height: 80px;
   }
   
   .floating-elements span {

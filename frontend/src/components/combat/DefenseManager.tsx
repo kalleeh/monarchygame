@@ -5,22 +5,24 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import type { Kingdom, DefenseSettings } from '../../types/combat';
+import { hasTerritories } from '../../types/guards';
 
 interface DefenseManagerProps {
   currentKingdom: Kingdom;
   onUpdateDefense: (settings: DefenseSettings) => Promise<void>;
   isLoading: boolean;
-  error: string | null;
+  error?: string | null;
 }
 
 export const DefenseManager: React.FC<DefenseManagerProps> = ({
   currentKingdom,
   onUpdateDefense,
-  isLoading,
-  error
+  isLoading
 }) => {
   const [defenseSettings, setDefenseSettings] = useState<DefenseSettings>({
     stance: 'balanced',
+    autoRecruit: false,
+    alertThreshold: 50,
     unitDistribution: {
       frontline: 60,
       reserves: 30,
@@ -37,7 +39,9 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
   , [currentKingdom.totalUnits]);
 
   const distributedUnits = useMemo(() => {
-    const { frontline, reserves, fortifications } = defenseSettings.unitDistribution;
+    const frontline = defenseSettings.unitDistribution?.frontline ?? 60;
+    const reserves = defenseSettings.unitDistribution?.reserves ?? 30;
+    const fortifications = defenseSettings.unitDistribution?.fortifications ?? 10;
     return {
       frontline: Math.floor(totalUnits * (frontline / 100)),
       reserves: Math.floor(totalUnits * (reserves / 100)),
@@ -58,9 +62,11 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
     }[defenseSettings.stance];
 
     const racialBonus = currentKingdom.stats.warDefense / 10;
-    const fortificationBonus = currentKingdom.territories.reduce((bonus, territory) => 
-      bonus + (territory.fortificationLevel * 0.1), 0
-    );
+    const fortificationBonus = hasTerritories(currentKingdom) 
+      ? currentKingdom.territories.reduce((bonus, territory) => 
+          bonus + (territory.fortificationLevel * 0.1), 0
+        )
+      : 0;
 
     return Math.floor(baseDefense * stanceMultiplier * (1 + racialBonus + fortificationBonus));
   }, [currentKingdom, defenseSettings.stance]);
@@ -70,12 +76,12 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
     setHasUnsavedChanges(true);
   }, []);
 
-  const handleDistributionChange = useCallback((type: keyof DefenseSettings['unitDistribution'], value: number) => {
+  const handleDistributionChange = useCallback((type: 'frontline' | 'reserves' | 'fortifications' | 'tier1' | 'tier2' | 'tier3' | 'tier4', value: number) => {
     setDefenseSettings(prev => {
       const newDistribution = { ...prev.unitDistribution, [type]: value };
       
       // Ensure total doesn't exceed 100%
-      const total = Object.values(newDistribution).reduce((sum, val) => sum + val, 0);
+      const total = Object.values(newDistribution).reduce((sum, val) => (sum ?? 0) + (val ?? 0), 0);
       if (total > 100) {
         return prev; // Don't update if it would exceed 100%
       }
@@ -108,6 +114,8 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
   const handleReset = useCallback(() => {
     setDefenseSettings({
       stance: 'balanced',
+      autoRecruit: false,
+      alertThreshold: 50,
       unitDistribution: {
         frontline: 60,
         reserves: 30,
@@ -143,7 +151,7 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
     }
   ];
 
-  const distributionTotal = Object.values(defenseSettings.unitDistribution).reduce((sum, val) => sum + val, 0);
+  const distributionTotal = Object.values(defenseSettings.unitDistribution ?? {}).reduce((sum, val) => sum + (val ?? 0), 0);
 
   return (
     <div className="defense-manager">
@@ -161,7 +169,9 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
           <div className="summary-stat">
             <span className="stat-label">Fortifications:</span>
             <span className="stat-value">
-              {currentKingdom.territories.reduce((sum, t) => sum + t.fortificationLevel, 0)} levels
+              {hasTerritories(currentKingdom) 
+                ? currentKingdom.territories.reduce((sum, t) => sum + t.fortificationLevel, 0) 
+                : 0} levels
             </span>
           </div>
         </div>
@@ -203,7 +213,7 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
               <div className="distribution-header">
                 <span className="distribution-label">
                   <span className="distribution-icon">⚔️</span>
-                  Frontline ({defenseSettings.unitDistribution.frontline}%)
+                  Frontline ({defenseSettings.unitDistribution?.frontline ?? 60}%)
                 </span>
                 <span className="unit-count">{distributedUnits.frontline.toLocaleString()} units</span>
               </div>
@@ -212,7 +222,7 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
                 className="distribution-slider"
                 min="0"
                 max="100"
-                value={defenseSettings.unitDistribution.frontline}
+                value={defenseSettings.unitDistribution?.frontline ?? 60}
                 onChange={(e) => handleDistributionChange('frontline', parseInt(e.target.value))}
               />
               <p className="distribution-description">
@@ -224,7 +234,7 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
               <div className="distribution-header">
                 <span className="distribution-label">
                   <span className="distribution-icon">🏃</span>
-                  Reserves ({defenseSettings.unitDistribution.reserves}%)
+                  Reserves ({defenseSettings.unitDistribution?.reserves ?? 30}%)
                 </span>
                 <span className="unit-count">{distributedUnits.reserves.toLocaleString()} units</span>
               </div>
@@ -233,7 +243,7 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
                 className="distribution-slider"
                 min="0"
                 max="100"
-                value={defenseSettings.unitDistribution.reserves}
+                value={defenseSettings.unitDistribution?.reserves ?? 30}
                 onChange={(e) => handleDistributionChange('reserves', parseInt(e.target.value))}
               />
               <p className="distribution-description">
@@ -245,7 +255,7 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
               <div className="distribution-header">
                 <span className="distribution-label">
                   <span className="distribution-icon">🏰</span>
-                  Fortifications ({defenseSettings.unitDistribution.fortifications}%)
+                  Fortifications ({defenseSettings.unitDistribution?.fortifications ?? 10}%)
                 </span>
                 <span className="unit-count">{distributedUnits.fortifications.toLocaleString()} units</span>
               </div>
@@ -254,7 +264,7 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
                 className="distribution-slider"
                 min="0"
                 max="100"
-                value={defenseSettings.unitDistribution.fortifications}
+                value={defenseSettings.unitDistribution?.fortifications ?? 10}
                 onChange={(e) => handleDistributionChange('fortifications', parseInt(e.target.value))}
               />
               <p className="distribution-description">
@@ -320,7 +330,7 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
         <section className="defense-section">
           <h4>Territory Fortifications</h4>
           <div className="fortifications-list">
-            {currentKingdom.territories.map(territory => (
+            {(currentKingdom.territories ?? []).map(territory => (
               <div key={territory.id} className="fortification-item">
                 <div className="territory-info">
                   <span className="territory-name">{territory.name}</span>

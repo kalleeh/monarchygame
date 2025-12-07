@@ -1,0 +1,191 @@
+/* Consistent Styling - Match Manage Territories Exactly */
+
+/* Base page container - same as territory-expansion */
+.leaderboard-container,
+.diplomacy-interface,
+.trade-economy,
+.unit-training-interface,
+.guild-management,
+.world-map-container {
+  padding: 1.5rem;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* Headers - same style as territory-expansion */
+.leaderboard-container h2,
+.diplomacy-interface h1,
+.diplomacy-interface h2,
+.trade-economy h2,
+.unit-training-interface h2,
+.guild-management h2,
+.world-map-container h2 {
+  color: var(--text-accent);
+  margin-bottom: 1rem;
+}
+
+/* Cards - same as territory-card */
+.leaderboard-container .kingdom-card,
+.diplomacy-interface .stat-card,
+.diplomacy-interface .action-card,
+.trade-economy .trade-card,
+.unit-training-interface .unit-card,
+.guild-management .member-card,
+.world-map-container .territory-card {
+  padding: 1rem;
+  background-color: var(--bg-card);
+  border: 2px solid var(--border-primary);
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.leaderboard-container .kingdom-card:hover,
+.diplomacy-interface .stat-card:hover,
+.diplomacy-interface .action-card:hover,
+.trade-economy .trade-card:hover,
+.unit-training-interface .unit-card:hover,
+.guild-management .member-card:hover,
+.world-map-container .territory-card:hover {
+  background-color: var(--hover);
+  transform: translateY(-2px);
+}
+
+/* Buttons - same as claim-btn/upgrade-btn */
+.leaderboard-container button:not(.back-button),
+.diplomacy-interface button:not(.back-btn):not(.nav-btn),
+.trade-economy button:not(.back-button),
+.unit-training-interface button:not(.back-button),
+.guild-management button:not(.back-button),
+.world-map-container button:not(.back-button) {
+  padding: 0.5rem 1rem;
+  background-color: var(--primary);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.leaderboard-container button:not(.back-button):hover:not(:disabled),
+.diplomacy-interface button:not(.back-btn):not(.nav-btn):hover:not(:disabled),
+.trade-economy button:not(.back-button):hover:not(:disabled),
+.unit-training-interface button:not(.back-button):hover:not(:disabled),
+.guild-management button:not(.back-button):hover:not(:disabled),
+.world-map-container button:not(.back-button):hover:not(:disabled) {
+  background-color: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.leaderboard-container button:disabled,
+.diplomacy-interface button:disabled,
+.trade-economy button:disabled,
+.unit-training-interface button:disabled,
+.guild-management button:disabled,
+.world-map-container button:disabled {
+  background-color: #374151;
+  color: #6b7280;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Back buttons - same as back-btn */
+.leaderboard-container .back-button,
+.diplomacy-interface .back-btn,
+.trade-economy .back-button,
+.unit-training-interface .back-button,
+.guild-management .back-button,
+.world-map-container .back-button {
+  padding: 0.5rem 1rem;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.leaderboard-container .back-button:hover,
+.diplomacy-interface .back-btn:hover,
+.trade-economy .back-button:hover,
+.unit-training-interface .back-button:hover,
+.guild-management .back-button:hover,
+.world-map-container .back-button:hover {
+  background-color: var(--hover);
+  transform: translateX(-2px);
+}
+
+/* Info panels - same as info-panel */
+.leaderboard-container .info-panel,
+.diplomacy-interface .info-panel,
+.trade-economy .info-panel,
+.unit-training-interface .info-panel,
+.guild-management .info-panel,
+.world-map-container .info-panel {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.05) 0%, rgba(79, 172, 254, 0.05) 100%);
+  border: 1px solid var(--primary);
+  border-radius: 0.5rem;
+}
+
+/* Resource displays - same as kingdom-resources */
+.leaderboard-container .resource-display,
+.diplomacy-interface .resource-display,
+.trade-economy .resource-display,
+.unit-training-interface .resource-display,
+.guild-management .resource-display,
+.world-map-container .resource-display {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .leaderboard-container,
+  .diplomacy-interface,
+  .trade-economy,
+  .unit-training-interface,
+  .guild-management,
+  .world-map-container {
+    padding: 1rem;
+  }
+}
+
+/* Battle Reports specific styling */
+.battle-reports {
+  padding: 1.5rem;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+.battle-reports .reports-header h3,
+.battle-reports .report-header h3 {
+  color: var(--text-accent);
+  margin-bottom: 1rem;
+}
+
+.battle-reports .stat-item {
+  padding: 1rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.5rem;
+}
+
+.battle-reports .report-card {
+  padding: 1rem;
+  background-color: var(--bg-card);
+  border: 2px solid var(--border-primary);
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.battle-reports .report-card:hover {
+  background-color: var(--hover);
+  transform: translateY(-2px);
+}

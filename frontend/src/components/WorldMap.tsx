@@ -1,5 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
-import { TopNavigation } from './TopNavigation';
+import React, { useCallback, useState } from 'react';
 import {
   ReactFlow,
   useNodesState,
@@ -9,6 +8,7 @@ import {
   Controls,
   MiniMap,
   Panel,
+  type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -18,8 +18,8 @@ interface Node {
   id: string;
   type?: string;
   position: { x: number; y: number };
-  data: any;
-  style?: any;
+  data: unknown;
+  style?: Record<string, unknown>;
 }
 
 interface Edge {
@@ -53,7 +53,6 @@ interface TerritoryNode extends Node {
 const generateDemoTerritories = (playerKingdom: Schema['Kingdom']['type']): TerritoryNode[] => [
   {
     id: 'territory-1',
-    type: 'default',
     position: { x: 250, y: 100 },
     data: {
       label: 'Capital City',
@@ -72,7 +71,6 @@ const generateDemoTerritories = (playerKingdom: Schema['Kingdom']['type']): Terr
   },
   {
     id: 'territory-2',
-    type: 'default',
     position: { x: 100, y: 200 },
     data: {
       label: 'Iron Mines',
@@ -91,7 +89,6 @@ const generateDemoTerritories = (playerKingdom: Schema['Kingdom']['type']): Terr
   },
   {
     id: 'territory-3',
-    type: 'default',
     position: { x: 400, y: 150 },
     data: {
       label: 'Forest Outpost',
@@ -110,7 +107,6 @@ const generateDemoTerritories = (playerKingdom: Schema['Kingdom']['type']): Terr
   },
   {
     id: 'territory-4',
-    type: 'default',
     position: { x: 200, y: 300 },
     data: {
       label: 'Trading Post',
@@ -129,7 +125,6 @@ const generateDemoTerritories = (playerKingdom: Schema['Kingdom']['type']): Terr
   },
   {
     id: 'territory-5',
-    type: 'default',
     position: { x: 350, y: 280 },
     data: {
       label: 'Ancient Ruins',
@@ -153,33 +148,25 @@ const generateDemoConnections = (): Edge[] => [
     id: 'e1-2',
     source: 'territory-1',
     target: 'territory-2',
-    type: 'default',
     animated: false,
-    style: { stroke: '#64748b' }
   },
   {
     id: 'e1-4',
     source: 'territory-1',
     target: 'territory-4',
-    type: 'default',
     animated: true,
-    style: { stroke: '#16a34a' }
   },
   {
     id: 'e2-4',
     source: 'territory-2',
     target: 'territory-4',
-    type: 'default',
     animated: false,
-    style: { stroke: '#64748b' }
   },
   {
     id: 'e3-5',
     source: 'territory-3',
     target: 'territory-5',
-    type: 'default',
     animated: false,
-    style: { stroke: '#dc2626' }
   }
 ];
 
@@ -189,11 +176,11 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
   const [selectedTerritory, setSelectedTerritory] = useState<TerritoryNode | null>(null);
 
   const onConnect = useCallback(
-    (params: any) => setEdges((eds) => addEdge(params, eds)),
+    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
 
-  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+  const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     setSelectedTerritory(node as TerritoryNode);
   }, []);
 
@@ -224,12 +211,27 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
   }, [selectedTerritory, kingdom, setNodes]);
 
   return (
-    <div className="world-map">
-      <div className="world-map-header">
-        <button onClick={onBack} className="back-button">
+    <div className="world-map" style={{ 
+      backgroundColor: 'var(--bg-primary)', 
+      color: 'var(--text-primary)', 
+      minHeight: '100vh' 
+    }}>
+      <div className="world-map-header" style={{ 
+        backgroundColor: 'var(--bg-secondary)', 
+        padding: '1rem',
+        borderBottom: '1px solid var(--border-primary)'
+      }}>
+        <button onClick={onBack} className="back-button" style={{
+          backgroundColor: 'var(--bg-card)',
+          color: 'var(--text-primary)',
+          border: '1px solid var(--border-primary)',
+          padding: '0.5rem 1rem',
+          borderRadius: '0.375rem',
+          cursor: 'pointer'
+        }}>
           ← Back to Kingdom
         </button>
-        <h1>🗺️ World Map</h1>
+        <h1 style={{ color: 'var(--text-primary)' }}>🗺️ World Map</h1>
         <div className="map-legend">
           <div className="legend-item">
             <div className="legend-color" style={{ background: '#4ade80' }}></div>
@@ -246,7 +248,12 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         </div>
       </div>
 
-      <div className="map-container">
+      <div className="map-container" style={{ 
+        height: '80vh', 
+        backgroundColor: 'var(--bg-primary)',
+        border: '1px solid var(--border-primary)',
+        borderRadius: '0.5rem'
+      }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -256,17 +263,19 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           onNodeClick={onNodeClick}
           fitView
           attributionPosition="bottom-left"
+          style={{ backgroundColor: 'var(--bg-primary)' }}
         >
-          <Background />
-          <Controls />
+          <Background color="var(--border-primary)" />
+          <Controls style={{ backgroundColor: 'var(--bg-card)' }} />
           <MiniMap 
             nodeColor={(node) => {
               const territoryNode = node as TerritoryNode;
               return territoryNode.data.isOwned ? '#4ade80' : '#94a3b8';
             }}
             position="top-right"
+            style={{ backgroundColor: 'var(--bg-card)' }}
           />
-          <Panel position="top-left">
+          <Panel position="top-left" style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}>
             <div className="map-stats">
               <h3>Kingdom Stats</h3>
               <p>Territories: {nodes.filter(n => n.data.isOwned).length}</p>
@@ -302,7 +311,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .world-map {
           height: 100vh;
           display: flex;

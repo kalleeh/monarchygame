@@ -14,7 +14,6 @@ interface WelcomePageProps {
 export const WelcomePage: React.FC<WelcomePageProps> = ({ onGetStarted }) => {
   const [selectedRace, setSelectedRace] = useState<string>('Human');
   const [currentFeature, setCurrentFeature] = useState<number>(0);
-  const [scrollY, setScrollY] = useState(0);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -80,7 +79,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onGetStarted }) => {
       <section className="hero">
         <div className="hero-content">
           <h1 className="hero-title">
-            <span className="crown">👑</span>
+            <img src="/logo.png" alt="Monarchy Crown" className="hero-logo" />
             Monarchy
             <span className="subtitle">The Ultimate Strategy Game</span>
           </h1>
@@ -113,7 +112,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onGetStarted }) => {
 
         <div className="hero-visual">
           <div className="floating-castle">
-            <div className="castle-main">🏰</div>
+            <img src="/logo.png" alt="Monarchy Crown" className="castle-main" />
             <div className="floating-elements">
               <span className="float-1">⚔️</span>
               <span className="float-2">🛡️</span>

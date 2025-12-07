@@ -12,7 +12,7 @@ NC='\033[0m' # No Color
 # Configuration
 DOMAIN="monarchy.gurum.se"
 HOSTED_ZONE_ID="Z04995533PL60A6CSTZ2O"
-REGION="us-east-1"
+REGION="eu-west-1"
 REPO_URL="https://github.com/kalleeh/monarchygame"
 
 echo -e "${BLUE}Step 1: Creating Amplify App${NC}"

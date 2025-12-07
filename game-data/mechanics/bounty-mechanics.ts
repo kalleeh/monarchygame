@@ -20,7 +20,10 @@ export interface BountyTarget {
 }
 
 export interface SharedKillOperation {
-  sorcererReduction: number  // Percentage reduced by sorcerer
+  
+    
+    
+    sorcererReduction: number  // Percentage reduced by sorcerer
   warriorFinish: boolean     // Whether warrior delivers final blow
   bountyClaimant: 'sorcerer' | 'warrior'
   landRecipient: 'sorcerer' | 'warrior'
@@ -73,7 +76,8 @@ export const BOUNTY_MECHANICS = {
 // Bounty value calculation functions
 export const calculateBountyValue = (
   targetLand: number,
-  targetStructures: number,
+  
+  _targetStructures: number,
   targetBuildRatio: number,
   hunterBuildRate: number = 18
 ): BountyReward => {
@@ -104,15 +108,17 @@ export const calculateBountyValue = (
 
 export const calculateSharedKillBenefit = (
   targetLand: number,
-  targetStructures: number,
+  
+  _targetStructures: number,
   sorcererTurns: number,
   warriorTurns: number
 ): { sorcererBenefit: BountyReward, warriorBenefit: BountyReward, totalEfficiency: number } => {
   // Sorcerer reduces target to 95%
-  const sorcererReduction = BOUNTY_MECHANICS.SHARED_KILL.SORCERER_REDUCTION_TARGET
+  const sorcererReduction = BOUNTY_MECHANICS.SHARED_KILL.SORCERER_REDUCTION_TARGET;
   
-  // Sorcerer gets bounty reward
-  const sorcererBenefit = calculateBountyValue(targetLand, targetStructures, 20) // Assume good build ratio
+  // Sorcerer gets bounty reward (using reduction factor)
+  const sorcererBenefit = calculateBountyValue(targetLand * sorcererReduction, 
+  _targetStructures, 20) // Assume good build ratio
   
   // Warrior gets land from finishing blow
   const warriorLandGain = Math.floor(targetLand * 0.15) // 15% for finishing blow
@@ -132,7 +138,8 @@ export const calculateSharedKillBenefit = (
 }
 
 export const calculateTithingExhaustionThreshold = (
-  raceId: string,
+  
+  _raceId: string,
   currentLand: number,
   tithingBonus: number
 ): { isExhausted: boolean, optimalBountyTiming: boolean } => {
@@ -147,7 +154,8 @@ export const calculateTithingExhaustionThreshold = (
     vampire: 0.8,  // 20% worse tithing (higher costs)
   }
   
-  const efficiency = racialTithingEfficiency[raceId.toLowerCase() as keyof typeof racialTithingEfficiency] || 1.0
+  const efficiency = racialTithingEfficiency[
+  _raceId.toLowerCase() as keyof typeof racialTithingEfficiency] || 1.0
   const adjustedThreshold = maxThreshold * efficiency
   
   const isExhausted = currentLand >= adjustedThreshold || tithingBonus < 0.1
@@ -158,7 +166,8 @@ export const calculateTithingExhaustionThreshold = (
 
 export const assessBountyEnvironment = (
   majorGuildsAtWar: number,
-  minorGuildsAtWar: number,
+  
+  _minorGuildsAtWar: number,
   playerGuildStatus: 'major' | 'minor' | 'independent'
 ): { safetyLevel: 'safe' | 'moderate' | 'dangerous', recommendBountyHunting: boolean } => {
   const totalMajorGuilds = BOUNTY_MECHANICS.ENVIRONMENT.MAJOR_GUILD_COUNT
@@ -207,7 +216,8 @@ export const calculateBountyEfficiency = (
 
 export const identifyOptimalBountyTargets = (
   availableTargets: BountyTarget[],
-  hunterCapabilities: { maxTurns: number, buildRate: number, raceId: string }
+  hunterCapabilities: { maxTurns: number, buildRate: number, 
+  _raceId: string }
 ): BountyTarget[] => {
   return availableTargets
     .filter(target => target.estimatedTurns <= hunterCapabilities.maxTurns)

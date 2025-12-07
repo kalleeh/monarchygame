@@ -27,6 +27,7 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
       </div>
       
       <div className="nav-center">
+        <img src="/logo.png" alt="Monarchy" className="nav-logo" />
         <h1 className="nav-title">{title}</h1>
         {subtitle && <span className="nav-subtitle">{subtitle}</span>}
       </div>

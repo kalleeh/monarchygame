@@ -129,34 +129,40 @@ export const getFaithBonuses = (
 }
 
 export const canUseFaithAlignment = (
-  raceId: string,
+  
+  _raceId: string,
   faithAlignment: string
 ): boolean => {
   const alignment = FAITH_ALIGNMENTS[faithAlignment]
   if (!alignment) return false
 
   return !alignment.compatibleRaces || 
-         alignment.compatibleRaces.includes(raceId.toLowerCase())
+         alignment.compatibleRaces.includes(
+  _raceId.toLowerCase())
 }
 
 // Focus Points system functions
 export const calculateFocusGeneration = (
-  raceId: string,
+  
+  _raceId: string,
   baseGeneration: number = FOCUS_MECHANICS.BASE_GENERATION.POINTS_PER_HOUR
 ): number => {
   const racialModifier = FOCUS_MECHANICS.BASE_GENERATION.RACIAL_MODIFIERS[
-    raceId.toLowerCase() as keyof typeof FOCUS_MECHANICS.BASE_GENERATION.RACIAL_MODIFIERS
+    
+  _raceId.toLowerCase() as keyof typeof FOCUS_MECHANICS.BASE_GENERATION.RACIAL_MODIFIERS
   ] || 1.0
 
   return Math.floor(baseGeneration * racialModifier)
 }
 
 export const calculateMaxFocusPoints = (
-  raceId: string,
+  
+  _raceId: string,
   baseMax: number = FOCUS_MECHANICS.BASE_GENERATION.MAX_STORAGE_BASE
 ): number => {
   const racialModifier = FOCUS_MECHANICS.BASE_GENERATION.RACIAL_MODIFIERS[
-    raceId.toLowerCase() as keyof typeof FOCUS_MECHANICS.BASE_GENERATION.RACIAL_MODIFIERS
+    
+  _raceId.toLowerCase() as keyof typeof FOCUS_MECHANICS.BASE_GENERATION.RACIAL_MODIFIERS
   ] || 1.0
 
   return Math.floor(baseMax * racialModifier)
@@ -223,7 +229,8 @@ export const applyFocusEffect = (
 
 // Integration with existing racial abilities
 export const enhanceRacialAbilityWithFaith = (
-  raceId: string,
+  
+  _raceId: string,
   abilityEffectiveness: number,
   faithAlignment: string,
   faithLevel: number

@@ -5,6 +5,7 @@
 
 import React, { useMemo, useCallback } from 'react';
 import type { Kingdom, AttackType, Army, Territory } from '../../types/combat';
+import { hasStats } from '../../types/guards';
 
 interface AttackPreviewProps {
   attacker: Kingdom;
@@ -44,28 +45,33 @@ export const AttackPreview: React.FC<AttackPreviewProps> = ({
 }) => {
   // Calculate battle estimates (simplified version)
   const battleEstimate: BattleEstimate = useMemo(() => {
+    const attackerWarOffense = hasStats(attacker) ? attacker.stats.warOffense : 10;
+    const targetWarDefense = hasStats(target) ? target.stats.warDefense : 10;
+    
     const attackerPower = Object.entries(army).reduce((power, [unitType, count]) => {
       const unitPower = unitType === 'knights' ? 4 : unitType === 'cavalry' ? 3 : unitType === 'militia' ? 2 : 1;
-      return power + (count * unitPower * (attacker.stats.warOffense / 10));
+      return power + ((count ?? 0) * unitPower * (attackerWarOffense / 10));
     }, 0);
 
     const defenderPower = Object.values(target.totalUnits).reduce((power, count, index) => {
       const unitPower = index === 2 ? 4 : index === 3 ? 3 : index === 1 ? 2 : 1; // knights, cavalry, militia, peasants
-      return power + (count * unitPower * (target.stats.warDefense / 10));
+      return power + ((count ?? 0) * unitPower * (targetWarDefense / 10));
     }, 0);
 
     // Add fortification bonus
-    const fortBonus = targetTerritory ? targetTerritory.fortificationLevel * 0.1 : 0;
+    const fortBonus = targetTerritory?.fortificationLevel ? targetTerritory.fortificationLevel * 0.1 : 0;
     const adjustedDefenderPower = defenderPower * (1 + fortBonus);
 
     const powerRatio = attackerPower / Math.max(adjustedDefenderPower, 1);
     let winProbability = Math.min(0.95, Math.max(0.05, powerRatio * 0.6));
 
     // Attack type modifiers
-    const typeModifiers = {
-      raid: { winBonus: 0.1, casualtyReduction: 0.3, spoilsReduction: 0.5 },
-      siege: { winBonus: -0.1, casualtyReduction: -0.2, spoilsReduction: -0.1 },
-      controlled_strike: { winBonus: 0.05, casualtyReduction: 0.1, spoilsReduction: 0.2 }
+    const typeModifiers: Record<AttackType, { winBonus: number; casualtyReduction: number; spoilsReduction: number }> = {
+      guerilla_raid: { winBonus: 0.1, casualtyReduction: 0.3, spoilsReduction: 0.5 },
+      full_attack: { winBonus: -0.1, casualtyReduction: -0.2, spoilsReduction: -0.1 },
+      controlled_strike: { winBonus: 0.05, casualtyReduction: 0.1, spoilsReduction: 0.2 },
+      ambush: { winBonus: 0.15, casualtyReduction: 0.2, spoilsReduction: 0.3 },
+      mob_assault: { winBonus: 0, casualtyReduction: 0, spoilsReduction: 0 }
     };
 
     const modifier = typeModifiers[attackType];
@@ -80,13 +86,13 @@ export const AttackPreview: React.FC<AttackPreviewProps> = ({
       attacker: Object.fromEntries(
         Object.entries(army).map(([unitType, count]) => [
           unitType,
-          Math.floor(count * attackerCasualtyRate)
+          Math.floor((count ?? 0) * attackerCasualtyRate)
         ])
       ) as Army,
       defender: Object.fromEntries(
         Object.entries(target.totalUnits).map(([unitType, count]) => [
           unitType,
-          Math.floor(count * defenderCasualtyRate)
+          Math.floor((count ?? 0) * defenderCasualtyRate)
         ])
       ) as Army
     };
@@ -127,8 +133,8 @@ export const AttackPreview: React.FC<AttackPreviewProps> = ({
 
   const formatArmy = useCallback((armyData: Army): string => {
     return Object.entries(armyData)
-      .filter(([, count]) => count > 0)
-      .map(([unitType, count]) => `${count} ${unitType}`)
+      .filter(([, count]) => (count ?? 0) > 0)
+      .map(([unitType, count]) => `${count ?? 0} ${unitType}`)
       .join(', ');
   }, []);
 
@@ -142,12 +148,16 @@ export const AttackPreview: React.FC<AttackPreviewProps> = ({
 
   const getAttackTypeDescription = useCallback((type: AttackType): string => {
     switch (type) {
-      case 'raid':
+      case 'guerilla_raid':
         return 'Quick strike for resources with reduced casualties';
-      case 'siege':
+      case 'full_attack':
         return 'Full assault to capture territory with maximum gains';
       case 'controlled_strike':
         return 'Balanced attack with moderate risk and reward';
+      case 'ambush':
+        return 'Surprise attack with tactical advantage';
+      case 'mob_assault':
+        return 'Mass assault with overwhelming numbers';
     }
   }, []);
 
@@ -227,11 +237,11 @@ export const AttackPreview: React.FC<AttackPreviewProps> = ({
                 <h6>Your Losses</h6>
                 <div className="casualty-list">
                   {Object.entries(battleEstimate.estimatedCasualties.attacker)
-                    .filter(([, count]) => count > 0)
+                    .filter(([, count]) => (count ?? 0) > 0)
                     .map(([unitType, count]) => (
                       <div key={unitType} className="casualty-item">
                         <span className="unit-type">{unitType}:</span>
-                        <span className="casualty-count">{count}</span>
+                        <span className="casualty-count">{count ?? 0}</span>
                       </div>
                     ))}
                 </div>
@@ -241,11 +251,11 @@ export const AttackPreview: React.FC<AttackPreviewProps> = ({
                 <h6>Enemy Losses</h6>
                 <div className="casualty-list">
                   {Object.entries(battleEstimate.estimatedCasualties.defender)
-                    .filter(([, count]) => count > 0)
+                    .filter(([, count]) => (count ?? 0) > 0)
                     .map(([unitType, count]) => (
                       <div key={unitType} className="casualty-item">
                         <span className="unit-type">{unitType}:</span>
-                        <span className="casualty-count">{count}</span>
+                        <span className="casualty-count">{count ?? 0}</span>
                       </div>
                     ))}
                 </div>

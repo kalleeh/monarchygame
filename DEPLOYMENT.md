@@ -9,7 +9,7 @@
 
 ### 1. Create Amplify App (AWS Console)
 
-1. Go to [AWS Amplify Console](https://console.aws.amazon.com/amplify/home?region=us-east-1)
+1. Go to [AWS Amplify Console](https://console.aws.amazon.com/amplify/home?region=eu-west-1)
 2. Click **"New app"** → **"Host web app"**
 3. Select **GitHub** as the repository service
 4. Authorize AWS Amplify to access your GitHub account
@@ -82,7 +82,7 @@ If you need to add environment variables:
 
 1. Go to **App settings** → **Environment variables**
 2. Add variables:
-   - `VITE_AWS_REGION`: us-east-1
+   - `VITE_AWS_REGION`: eu-west-1
    - Any other environment-specific configs
 
 ## Automatic Deployments
@@ -114,7 +114,7 @@ Check domain status:
 aws amplify get-domain-association \
   --app-id [YOUR_APP_ID] \
   --domain-name gurum.se \
-  --region us-east-1
+  --region eu-west-1
 ```
 
 ## Troubleshooting
