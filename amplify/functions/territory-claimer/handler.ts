@@ -1,4 +1,6 @@
 import type { Schema } from '../../data/resource';
+import { getAmplifyDataClientConfig } from '@aws-amplify/backend-function/runtime';
+import { generateClient } from 'aws-amplify/data';
 
 export const handler: Schema["claimTerritory"]["functionHandler"] = async (event) => {
   const { kingdomId, territoryName, coordinates } = event.arguments;
@@ -8,9 +10,27 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
       return { success: false, error: 'Missing required parameters' };
     }
 
-    // TODO: Validate kingdom ownership and resources
-    // TODO: Check territory availability
-    // TODO: Create territory in database
+    const config = await getAmplifyDataClientConfig(process.env);
+    const client = generateClient<Schema>({ config });
+
+    const kingdomResult = await client.models.Kingdom.get({ id: kingdomId });
+    if (!kingdomResult.data) {
+      return { success: false, error: 'Kingdom not found' };
+    }
+
+    // Create new territory
+    await client.models.Territory.create({
+      name: territoryName,
+      type: 'settlement',
+      coordinates: coordinates,
+      terrainType: 'plains',
+      resources: JSON.stringify({}),
+      buildings: JSON.stringify({}),
+      defenseLevel: 0,
+      kingdomId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
 
     return { success: true, result: JSON.stringify({ claimed: true }) };
   } catch (error) {
