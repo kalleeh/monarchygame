@@ -104,68 +104,7 @@ const schema = a.schema({
       type: a.enum(['general', 'announcement', 'war', 'diplomacy']),
       createdAt: a.datetime().required()
     })
-    .authorization((allow) => [allow.authenticated().to(['read'])]),
-
-  // Add missing GraphQL operations that services expect
-  processCombat: a
-    .mutation()
-    .arguments({
-      attackerId: a.string().required(),
-      defenderId: a.string().required(),
-      attackType: a.string().required(),
-      units: a.json().required()
-    })
-    .returns(a.json())
-    .authorization((allow) => [allow.authenticated()]),
-
-  updateResources: a
-    .mutation()
-    .arguments({
-      kingdomId: a.string().required(),
-      resources: a.json().required()
-    })
-    .returns(a.json())
-    .authorization((allow) => [allow.authenticated()]),
-
-  constructBuildings: a
-    .mutation()
-    .arguments({
-      kingdomId: a.string().required(),
-      buildingType: a.string().required(),
-      quantity: a.integer().required()
-    })
-    .returns(a.json())
-    .authorization((allow) => [allow.authenticated()]),
-
-  trainUnits: a
-    .mutation()
-    .arguments({
-      kingdomId: a.string().required(),
-      unitType: a.string().required(),
-      quantity: a.integer().required()
-    })
-    .returns(a.json())
-    .authorization((allow) => [allow.authenticated()]),
-
-  castSpell: a
-    .mutation()
-    .arguments({
-      casterId: a.string().required(),
-      spellId: a.string().required(),
-      targetId: a.string().required()
-    })
-    .returns(a.json())
-    .authorization((allow) => [allow.authenticated()]),
-
-  claimTerritory: a
-    .mutation()
-    .arguments({
-      kingdomId: a.string().required(),
-      territoryName: a.string().required(),
-      coordinates: a.json().required()
-    })
-    .returns(a.json())
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) => [allow.authenticated().to(['read'])])
 });
 
 export type Schema = ClientSchema<typeof schema>;
