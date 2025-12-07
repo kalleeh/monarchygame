@@ -6,7 +6,7 @@ import { describe, test } from 'vitest'
 import { 
   calculateLandGainRange, 
   calculateSummonTroops 
-} from '../../../../game-data/balance'
+} from '../../../../shared/balance'
 
 describe('Combat Balance - Land Acquisition', () => {
   test.concurrent('with ease threshold (2:1 ratio)', ({ expect }) => {

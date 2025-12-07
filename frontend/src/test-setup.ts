@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 
-// Mock @game-data/races globally for all tests
-vi.mock('@game-data/races', () => ({
+// Mock @shared/races globally for all tests
+vi.mock('@shared/races', () => ({
   RACES: {
     Human: {
       name: 'Human',

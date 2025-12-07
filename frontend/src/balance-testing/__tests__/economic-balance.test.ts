@@ -8,7 +8,7 @@ import {
   calculateOptimalBuildRate,
   isOptimalBR,
   ECONOMIC_BALANCE
-} from '../../../../game-data/balance'
+} from '../../../../shared/balance'
 
 describe('Economic Balance - Build Rates', () => {
   test.concurrent('optimal build rate calculations', ({ expect }) => {

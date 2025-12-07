@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { RACES } from '@game-data/races';
+import { RACES } from '@shared/races';
 import './WelcomePage.css';
 
 interface WelcomePageProps {

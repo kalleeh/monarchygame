@@ -38,7 +38,7 @@ const mockKingdom = {
 
 const mockOnBack = vi.fn()
 
-// SKIP: Vitest cannot resolve @game-data/races alias during test execution
+// SKIP: Vitest cannot resolve @shared/races alias during test execution
 // This is a known Vite/Vitest limitation with path aliases outside the project root
 // The component works correctly in the actual application
 // TODO: Refactor component to inject RACES data via props/context for testability

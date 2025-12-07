@@ -7,7 +7,7 @@
 import React, { useEffect, useCallback, useMemo } from 'react';
 import { useSpring, useTransition, animated, config } from '@react-spring/web';
 import { useSpellStore } from '../stores/spellStore';
-import { SPELLS, type Spell } from '../../../game-data/spells';
+import { SPELLS, type Spell } from "../../../shared/spells';
 
 interface SpellCastingInterfaceProps {
   kingdomId: string;

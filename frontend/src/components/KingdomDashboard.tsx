@@ -11,14 +11,14 @@ import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { useSummonStore } from '../stores/useSummonStore';
 import { AIActionService } from '../services/aiActionService';
 import { achievementTriggers } from '../utils/achievementTriggers';
-import { RACES } from '@game-data/races';
+import { RACES } from '@shared/races';
 import { Tutorial, useTutorial } from './ui/Tutorial';
 import { useTutorialStore } from '../stores/tutorialStore';
 import { KINGDOM_DASHBOARD_TUTORIAL } from '../data/tutorialSteps';
 import { TurnTimer } from './ui/TurnTimer';
 import { DemoTimeControl } from './ui/DemoTimeControl';
 import { calculateTimeTravel, type BuildingCounts } from '../utils/resourceCalculations';
-import { calculateBRT, getBuildingName } from '../../../game-data/mechanics/building-mechanics';
+import { calculateBRT, getBuildingName } from "../../../shared/mechanics/building-mechanics';
 import { useNavigate } from 'react-router-dom';
 
 interface KingdomDashboardProps {

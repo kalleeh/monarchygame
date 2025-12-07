@@ -6,7 +6,7 @@
  */
 
 import { create } from 'zustand';
-import { RACES } from '@game-data/races';
+import { RACES } from '@shared/races';
 
 export interface AIKingdom {
   id: string;

@@ -6,7 +6,7 @@ import { describe, test } from 'vitest'
 import { 
   SORCERY_BALANCE,
   calculateTempleRequirement
-} from '../../../../game-data/balance'
+} from '../../../../shared/balance'
 
 describe('Sorcery Balance - Temple Thresholds', () => {
   test.concurrent('temple threshold calculations', ({ expect }) => {

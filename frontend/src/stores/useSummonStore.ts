@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { type TrainableUnit } from '../services/TrainingService';
 import { useKingdomStore } from './kingdomStore';
-import { getUnitsForRace, type UnitType } from '@game-data/units';
+import { getUnitsForRace, type UnitType } from '@shared/units';
 
 // Troop cap based on accumulated gold cost (from hire-screen.md)
 const TROOP_CAP_GOLD = 10_000_000; // 10 million gold cap

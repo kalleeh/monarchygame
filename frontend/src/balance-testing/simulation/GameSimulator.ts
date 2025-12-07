@@ -3,7 +3,7 @@
  * IQC: Run complete games between AI players using balance formulas
  */
 import { AIPlayer, type GameState, type PlayerState, type Action, type RaceType } from './AIPlayer'
-import { calculateLandGainRange } from '../../../../game-data/balance'
+import { calculateLandGainRange } from '../../../../shared/balance'
 
 export interface GameResult {
   winner: 'player1' | 'player2' | 'draw'

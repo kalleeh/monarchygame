@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { KingdomCreation } from '../KingdomCreation'
 
 // Mock the game data
-vi.mock('../../../../game-data/races', () => ({
+vi.mock('../../../../shared/races', () => ({
   RACES: {
     Human: {
       id: 'human',

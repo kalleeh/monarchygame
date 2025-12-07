@@ -2,7 +2,7 @@
  * Phase 2: AI Player Implementation
  * IQC: AI players that use balance formulas to make optimal decisions
  */
-import { calculateSummonTroops, calculateLandGainRange } from '../../../../game-data/balance'
+import { calculateSummonTroops, calculateLandGainRange } from '../../../../shared/balance'
 
 export type RaceType = 'HUMAN' | 'ELVEN' | 'GOBLIN' | 'DROBEN' | 'VAMPIRE' | 
                        'ELEMENTAL' | 'CENTAUR' | 'SIDHE' | 'DWARVEN' | 'FAE'

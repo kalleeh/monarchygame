@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { RACES } from '../../../game-data/races';
+import { RACES } from "../../../shared/races';
 import { StatBar } from './StatBar';
 import './KingdomCreation.css';
 
