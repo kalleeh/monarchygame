@@ -1,73 +1,80 @@
-# 🚀 Deploy to monarchy.gurum.se - Quick Start
+# 🚀 Deploy Monarchy Game NOW
 
-## ✅ Pre-Deployment Checklist
-- [x] Code is production-ready (0 errors, 73/73 tests passing)
-- [x] Build successful (1.44MB, 3.54s)
-- [x] Git repository connected (kalleeh/monarchygame)
-- [x] Route53 domain ready (gurum.se)
-- [x] Deployment files committed
+## Quick Start (5 minutes)
 
-## 🎯 Deploy Now (5 Steps)
-
-### Step 1: Open AWS Amplify Console
-```
-https://console.aws.amazon.com/amplify/home?region=eu-west-1
+### Step 1: Prepare Repository
+```bash
+./deploy-simple.sh
 ```
 
-### Step 2: Create New App
-1. Click **"New app"** → **"Host web app"**
-2. Select **GitHub**
-3. Authorize AWS Amplify (one-time)
+### Step 2: Create Amplify App
 
-### Step 3: Connect Repository
-- **Repository**: kalleeh/monarchygame
-- **Branch**: main
-- Click **Next**
+**Go to:** https://eu-west-1.console.aws.amazon.com/amplify/home?region=eu-west-1
 
-### Step 4: Confirm Build Settings
-- Build settings auto-detected from `amplify.yml` ✅
-- Click **Next** → **Save and deploy**
-- Wait ~5-10 minutes for first deployment
+1. Click **"Create new app"**
+2. Select **"GitHub"** → Authorize if needed
+3. Repository: **kalleeh/monarchygame**
+4. Branch: **main**
+5. App name: **monarchygame**
+6. Build settings: **Detected automatically** (uses amplify.yml)
+7. Click **"Save and deploy"**
 
-### Step 5: Add Custom Domain
-1. Go to **App settings** → **Domain management**
-2. Click **Add domain**
-3. Select **gurum.se** (auto-detected from Route53)
+⏱️ Wait 5-10 minutes for first deployment
+
+### Step 3: Add Custom Domain
+
+In Amplify Console:
+
+1. Go to **"Domain management"** (left sidebar)
+2. Click **"Add domain"**
+3. Select **"gurum.se"** from dropdown
 4. Add subdomain: **monarchy**
-5. Click **Configure domain**
-6. Wait ~15 minutes for SSL certificate
+5. Click **"Configure domain"**
 
-## 🎉 Done!
+Amplify automatically:
+- ✅ Creates SSL certificate
+- ✅ Adds DNS records to Route53
+- ✅ Configures CloudFront CDN
 
-Your app will be live at:
-**https://monarchy.gurum.se**
+⏱️ Wait 15-30 minutes for SSL certificate validation
 
-## 📊 What Happens Automatically
+### Step 4: Verify
 
-✅ SSL certificate via AWS Certificate Manager (ACM)  
-✅ CNAME records added to Route53  
-✅ HTTPS redirect configured  
-✅ Auto-deploy on every push to main  
-✅ CloudWatch logging enabled  
+Visit: **https://monarchy.gurum.se**
 
-## 🔄 Future Deployments
+## Environment Variables (Optional)
 
-Just push to main:
+If needed, add in Amplify Console → App settings → Environment variables:
+
+```
+VITE_AWS_REGION=eu-west-1
+```
+
+## That's It! 🎉
+
+Your game is now live at: **https://monarchy.gurum.se**
+
+## Troubleshooting
+
+**Build fails?**
+- Check build logs in Amplify Console
+- Verify amplify.yml is correct
+
+**Domain not working?**
+- Wait for DNS propagation (up to 48 hours)
+- Check SSL certificate status in ACM
+
+**Backend not deployed?**
+- Check CloudFormation stacks in AWS Console
+- Verify Amplify service role has permissions
+
+## Next Deployments
+
+Just push to main branch:
 ```bash
 git add .
 git commit -m "Update feature"
 git push origin main
 ```
 
-Amplify will automatically build and deploy!
-
-## 💰 Cost Estimate
-
-- **Amplify Hosting**: ~$0.01/GB + $0.01/build minute
-- **Route53**: $0.50/month
-- **ACM Certificate**: Free
-- **Total**: ~$5-20/month
-
-## 🆘 Need Help?
-
-See detailed guide: `DEPLOYMENT.md`
+Amplify automatically rebuilds and deploys! 🚀

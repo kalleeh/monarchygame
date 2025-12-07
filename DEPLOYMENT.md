@@ -1,151 +1,127 @@
-# Production Deployment Guide
+# Monarchy Game - Production Deployment Guide
 
 ## Prerequisites
-- AWS Account with admin access
+- AWS Account with Amplify access
 - GitHub repository: https://github.com/kalleeh/monarchygame
-- Route53 hosted zone: gurum.se (ID: Z04995533PL60A6CSTZ2O)
+- Domain: gurum.se (Route53 hosted zone)
+- Target subdomain: monarchy.gurum.se
 
-## Deployment Steps
+## Step 1: Create Amplify App via Console
 
-### 1. Create Amplify App (AWS Console)
+Since Amplify Gen 2 requires GitHub OAuth, use the AWS Console:
 
-1. Go to [AWS Amplify Console](https://console.aws.amazon.com/amplify/home?region=eu-west-1)
-2. Click **"New app"** → **"Host web app"**
-3. Select **GitHub** as the repository service
+1. Go to AWS Amplify Console: https://eu-west-1.console.aws.amazon.com/amplify/home?region=eu-west-1
+2. Click "Create new app"
+3. Select "GitHub" as source
 4. Authorize AWS Amplify to access your GitHub account
-5. Select repository: **kalleeh/monarchygame**
-6. Select branch: **main**
-7. Click **Next**
+5. Select repository: `kalleeh/monarchygame`
+6. Select branch: `main`
+7. App name: `monarchygame`
+8. Build settings: Use the `amplify.yml` file in the repository
+9. Click "Save and deploy"
 
-### 2. Configure Build Settings
+## Step 2: Configure Custom Domain
 
-The `amplify.yml` file is already in the repository. Verify it shows:
+After the app is created:
 
-```yaml
-version: 1
-backend:
-  phases:
-    build:
-      commands:
-        - npm ci --cache .npm --prefer-offline
-        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - cd frontend
-        - npm ci --cache .npm --prefer-offline
-    build:
-      commands:
-        - npm run build
-  artifacts:
-    baseDirectory: frontend/dist
-    files:
-      - '**/*'
-```
-
-Click **Next**
-
-### 3. Review and Deploy
-
-1. Review settings
-2. Click **Save and deploy**
-3. Wait for deployment to complete (~5-10 minutes)
-
-### 4. Add Custom Domain
-
-1. In Amplify Console, go to **App settings** → **Domain management**
-2. Click **Add domain**
-3. Select **gurum.se** from the dropdown (it should auto-detect your Route53 zone)
-4. Add subdomain: **monarchy**
-5. Click **Configure domain**
-6. Amplify will automatically:
-   - Create SSL certificate via AWS Certificate Manager (ACM)
+1. In Amplify Console, go to "Domain management"
+2. Click "Add domain"
+3. Select "gurum.se" from your Route53 hosted zones
+4. Add subdomain: `monarchy`
+5. Amplify will automatically:
+   - Create SSL certificate via ACM
    - Add CNAME records to Route53
-   - Configure HTTPS redirect
+   - Configure CDN distribution
 
-### 5. Wait for SSL Certificate
+## Step 3: Environment Variables
 
-- Certificate validation: ~5 minutes
-- DNS propagation: ~5-10 minutes
-- Total time: ~15 minutes
+In Amplify Console > App settings > Environment variables, add:
 
-### 6. Verify Deployment
-
-Once complete, your app will be available at:
-- **Production URL**: https://monarchy.gurum.se
-- **Amplify URL**: https://main.[app-id].amplifyapp.com
-
-## Environment Variables (Optional)
-
-If you need to add environment variables:
-
-1. Go to **App settings** → **Environment variables**
-2. Add variables:
-   - `VITE_AWS_REGION`: eu-west-1
-   - Any other environment-specific configs
-
-## Automatic Deployments
-
-Every push to `main` branch will trigger automatic deployment:
-1. Push code to GitHub
-2. Amplify detects changes
-3. Runs build automatically
-4. Deploys to production
-
-## Monitoring
-
-- **Build logs**: Amplify Console → App → Branch → Build history
-- **CloudWatch**: Automatic logging enabled
-- **Metrics**: Available in Amplify Console
-
-## Rollback
-
-To rollback to a previous version:
-1. Go to Amplify Console
-2. Select the app
-3. Click on a previous successful build
-4. Click **Redeploy this version**
-
-## Custom Domain Status
-
-Check domain status:
-```bash
-aws amplify get-domain-association \
-  --app-id [YOUR_APP_ID] \
-  --domain-name gurum.se \
-  --region eu-west-1
 ```
+VITE_AWS_REGION=eu-west-1
+```
+
+## Step 4: Build Settings
+
+Verify `amplify.yml` is configured correctly:
+- Backend: Amplify Gen 2 pipeline deployment
+- Frontend: Vite build from `frontend/` directory
+- Artifacts: `frontend/dist`
+
+## Step 5: Deploy
+
+### Automatic Deployment
+Push to main branch triggers automatic deployment:
+```bash
+git add .
+git commit -m "Production deployment"
+git push origin main
+```
+
+### Manual Deployment
+In Amplify Console, click "Redeploy this version"
+
+## Step 6: Verify Deployment
+
+1. Check build logs in Amplify Console
+2. Verify backend resources deployed
+3. Test application at: https://monarchy.gurum.se
+4. Verify SSL certificate is active
+5. Test all game features
+
+## Step 7: Monitoring
+
+- CloudWatch Logs: Monitor Lambda functions
+- Amplify Console: Build and deployment logs
+- Route53: DNS query metrics
+- CloudFront: CDN performance metrics
+
+## Rollback Procedure
+
+If deployment fails:
+1. In Amplify Console, go to "Deployments"
+2. Find last successful deployment
+3. Click "Redeploy this version"
+
+## Custom Domain DNS Records
+
+Amplify automatically creates:
+```
+monarchy.gurum.se CNAME -> [amplify-domain].cloudfront.net
+```
+
+## SSL Certificate
+
+- Automatically provisioned via AWS Certificate Manager
+- Validates via DNS (automatic with Route53)
+- Renewal: Automatic
+
+## Cost Estimate
+
+- Amplify Hosting: ~$0.01/GB served + $0.01/build minute
+- CloudFront: ~$0.085/GB (first 10TB)
+- Route53: $0.50/hosted zone/month
+- Lambda: Free tier covers development usage
+- Aurora Serverless v2: ~$0.12/ACU-hour (scales to zero)
 
 ## Troubleshooting
 
 ### Build Fails
-- Check build logs in Amplify Console
-- Verify `amplify.yml` is correct
-- Ensure all dependencies are in `package.json`
+- Check `amplify.yml` syntax
+- Verify Node.js version compatibility
+- Check environment variables
 
 ### Domain Not Working
-- Wait 15 minutes for DNS propagation
-- Check Route53 records were created
+- Verify Route53 hosted zone exists
+- Check DNS propagation (can take up to 48 hours)
 - Verify SSL certificate status in ACM
 
-### SSL Certificate Issues
-- Amplify handles this automatically
-- If stuck, delete domain and re-add it
-- Certificate validation requires DNS records
+### Backend Not Deployed
+- Check Amplify service role permissions
+- Verify `amplify/backend.ts` configuration
+- Check CloudFormation stack status
 
-## Cost Estimate
+## Support
 
-- **Amplify Hosting**: ~$0.01/GB served + $0.01/build minute
-- **Route53**: $0.50/month for hosted zone
-- **ACM Certificate**: Free
-- **Estimated monthly**: $5-20 depending on traffic
-
-## Next Steps
-
-After deployment:
-1. Test all features on production
-2. Set up monitoring alerts
-3. Configure backup strategy
-4. Document API endpoints
-5. Create user documentation
+- AWS Amplify Documentation: https://docs.amplify.aws/
+- GitHub Issues: https://github.com/kalleeh/monarchygame/issues
