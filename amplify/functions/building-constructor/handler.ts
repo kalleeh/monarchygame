@@ -1,6 +1,7 @@
 import type { Schema } from '../../data/resource';
 import { getAmplifyDataClientConfig } from '@aws-amplify/backend-function/runtime';
 import { generateClient } from 'aws-amplify/data';
+import { calculateBRT } from '@shared/mechanics/building-mechanics';
 
 export const handler: Schema["constructBuildings"]["functionHandler"] = async (event) => {
   const { kingdomId, buildingType, quantity } = event.arguments;
@@ -20,6 +21,16 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
 
     const kingdom = kingdomResult.data;
     const buildings = (kingdom.buildings as Record<string, number>) || {};
+    
+    // Calculate BRT for validation
+    const quarryPercentage = ((buildings.quarry || 0) / ((kingdom.stats as any)?.land || 1000)) * 100;
+    const brt = calculateBRT(quarryPercentage);
+
+    // Validate can build this many per turn
+    if (quantity > brt) {
+      return { success: false, error: `Can only build ${brt} structures per turn (BRT limit)` };
+    }
+
     buildings[buildingType] = (buildings[buildingType] || 0) + quantity;
 
     await client.models.Kingdom.update({
@@ -27,7 +38,7 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
       buildings: buildings
     });
 
-    return { success: true, result: JSON.stringify({ built: quantity }) };
+    return { success: true, result: JSON.stringify({ built: quantity, brt }) };
   } catch (error) {
     console.error('Building construction error:', error);
     return { success: false, error: 'Building construction failed' };

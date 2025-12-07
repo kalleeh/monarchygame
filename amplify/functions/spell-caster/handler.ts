@@ -1,6 +1,7 @@
 import type { Schema } from '../../data/resource';
 import { getAmplifyDataClientConfig } from '@aws-amplify/backend-function/runtime';
 import { generateClient } from 'aws-amplify/data';
+import { getSpell } from '@shared/spells';
 
 export const handler: Schema["castSpell"]["functionHandler"] = async (event) => {
   const { casterId, spellId, targetId } = event.arguments;
@@ -18,9 +19,28 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       return { success: false, error: 'Caster kingdom not found' };
     }
 
-    // TODO: Validate mana cost and apply spell effects from shared/spells
-    // For now, just return success
-    return { success: true, result: JSON.stringify({ cast: true, spellId }) };
+    const spell = getSpell(spellId);
+    if (!spell) {
+      return { success: false, error: 'Invalid spell' };
+    }
+
+    const caster = casterResult.data;
+    const currentMana = (caster.resources as any)?.mana || 0;
+
+    if (currentMana < spell.cost.mana) {
+      return { success: false, error: 'Insufficient mana' };
+    }
+
+    // Deduct mana cost
+    const resources = caster.resources as any;
+    resources.mana = currentMana - spell.cost.mana;
+
+    await client.models.Kingdom.update({
+      id: casterId,
+      resources: resources
+    });
+
+    return { success: true, result: JSON.stringify({ cast: true, spellId, manaCost: spell.cost.mana }) };
   } catch (error) {
     console.error('Spell casting error:', error);
     return { success: false, error: 'Spell casting failed' };
