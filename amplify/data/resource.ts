@@ -1,4 +1,5 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
+import { combatProcessor } from '../functions/combat-processor/resource';
 
 /**
  * Monarchy Game Data Schema - Simple Working Version
@@ -104,7 +105,19 @@ const schema = a.schema({
       type: a.enum(['general', 'announcement', 'war', 'diplomacy']),
       createdAt: a.datetime().required()
     })
-    .authorization((allow) => [allow.authenticated().to(['read'])])
+    .authorization((allow) => [allow.authenticated().to(['read'])]),
+
+  processCombat: a
+    .mutation()
+    .arguments({
+      attackerId: a.string().required(),
+      defenderId: a.string().required(),
+      attackType: a.string().required(),
+      units: a.json().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(combatProcessor))
 });
 
 export type Schema = ClientSchema<typeof schema>;
