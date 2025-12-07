@@ -1,5 +1,10 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 import { combatProcessor } from '../functions/combat-processor/resource';
+import { resourceManager } from '../functions/resource-manager/resource';
+import { buildingConstructor } from '../functions/building-constructor/resource';
+import { unitTrainer } from '../functions/unit-trainer/resource';
+import { spellCaster } from '../functions/spell-caster/resource';
+import { territoryClaimer } from '../functions/territory-claimer/resource';
 
 /**
  * Monarchy Game Data Schema - Simple Working Version
@@ -117,7 +122,61 @@ const schema = a.schema({
     })
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])
-    .handler(a.handler.function(combatProcessor))
+    .handler(a.handler.function(combatProcessor)),
+
+  updateResources: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
+      resources: a.json().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(resourceManager)),
+
+  constructBuildings: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
+      buildingType: a.string().required(),
+      quantity: a.integer().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(buildingConstructor)),
+
+  trainUnits: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
+      unitType: a.string().required(),
+      quantity: a.integer().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(unitTrainer)),
+
+  castSpell: a
+    .mutation()
+    .arguments({
+      casterId: a.string().required(),
+      spellId: a.string().required(),
+      targetId: a.string().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(spellCaster)),
+
+  claimTerritory: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
+      territoryName: a.string().required(),
+      coordinates: a.json().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(territoryClaimer))
 });
 
 export type Schema = ClientSchema<typeof schema>;
