@@ -4,6 +4,7 @@ backend:
     build:
       commands:
         - npm install --cache .npm --prefer-offline
+        - cd amplify/functions && for dir in */; do cd "$dir" && npm install && cd ..; done && cd ../..
         - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
 frontend:
   phases:
