@@ -1,8 +1,8 @@
 import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
 
-export const handler: Schema["constructBuilding"]["functionHandler"] = async (event) => {
-  const { kingdomId, buildingType } = event.arguments;
+export const handler: Schema["constructBuildings"]["functionHandler"] = async (event) => {
+  const { kingdomId, buildingType, quantity } = event.arguments;
 
   try {
     if (!kingdomId || !buildingType) {

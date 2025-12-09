@@ -2,15 +2,15 @@ import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
 
 export const handler: Schema["castSpell"]["functionHandler"] = async (event) => {
-  const { kingdomId, spellName, targetId } = event.arguments;
+  const { casterId, spellId, targetId } = event.arguments;
 
   try {
-    if (!kingdomId || !spellName) {
+    if (!casterId || !spellId) {
       return { success: false, error: 'Missing parameters' };
     }
 
     const client = generateClient<Schema>();
-    const result = await client.models.Kingdom.get({ id: kingdomId });
+    const result = await client.models.Kingdom.get({ id: casterId });
 
     if (!result.data) {
       return { success: false, error: 'Kingdom not found' };
@@ -26,11 +26,11 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     resources.mana -= 50;
 
     await client.models.Kingdom.update({
-      id: kingdomId,
+      id: casterId,
       resources
     });
 
-    return { success: true, result: JSON.stringify({ spellName, manaUsed: 50 }) };
+    return { success: true, result: JSON.stringify({ spellId, manaUsed: 50 }) };
   } catch (error) {
     console.error('Spell error:', error);
     return { success: false, error: 'Spell failed' };
