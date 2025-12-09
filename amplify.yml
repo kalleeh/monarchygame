@@ -10,6 +10,7 @@ frontend:
   phases:
     preBuild:
       commands:
+        - cp amplify_outputs.json frontend/
         - cd frontend
         - npm install --cache .npm --prefer-offline
     build:
