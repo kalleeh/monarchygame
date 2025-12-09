@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@game-data': path.resolve(__dirname, '../game-data'),
+      '@shared': path.resolve(__dirname, '../shared'),
       '@': path.resolve(__dirname, './src'),
     },
   },
@@ -16,9 +16,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
     globals: true,
-    // Add alias configuration for test environment
     alias: {
-      '@game-data': path.resolve(__dirname, '../game-data'),
+      '@shared': path.resolve(__dirname, '../shared'),
       '@': path.resolve(__dirname, './src'),
     },
     // Clean output for local development
