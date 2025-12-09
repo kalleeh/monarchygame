@@ -1,53 +1,40 @@
 import type { Schema } from '../../data/resource';
-import { getAmplifyDataClientConfig } from '@aws-amplify/backend-function/runtime';
 import { generateClient } from 'aws-amplify/data';
-import { calculateTurnResources } from '@shared/mechanics/turn-mechanics';
 
 export const handler: Schema["updateResources"]["functionHandler"] = async (event) => {
-  const { kingdomId, resources } = event.arguments;
+  const { kingdomId } = event.arguments;
 
   try {
-    if (!kingdomId || !resources) {
-      return { success: false, error: 'Missing required parameters' };
+    if (!kingdomId) {
+      return { success: false, error: 'Missing kingdomId' };
     }
 
-    const config = await getAmplifyDataClientConfig(process.env);
-    const client = generateClient<Schema>({ config });
+    const client = generateClient<Schema>();
+    const result = await client.models.Kingdom.get({ id: kingdomId });
 
-    const kingdomResult = await client.models.Kingdom.get({ id: kingdomId });
-    if (!kingdomResult.data) {
+    if (!result.data) {
       return { success: false, error: 'Kingdom not found' };
     }
 
-    const kingdom = kingdomResult.data;
-    
-    // Apply turn-based resource generation
-    const currentResources = kingdom.resources as any;
-    const buildings = kingdom.buildings as any;
-    const stats = kingdom.stats as any;
-    
-    const generatedResources = calculateTurnResources({
-      buildings: buildings || {},
-      land: stats?.land || 1000,
-      race: kingdom.race || 'Human'
-    });
+    const kingdom = result.data;
+    const resources = kingdom.resources as any || {};
 
-    // Merge generated resources with updates
-    const updatedResources = {
-      ...currentResources,
-      ...resources,
-      gold: (currentResources.gold || 0) + (generatedResources.gold || 0),
-      population: (currentResources.population || 0) + (generatedResources.population || 0)
+    // Simple resource generation
+    const updated = {
+      gold: (resources.gold || 0) + 100,
+      land: resources.land || 0,
+      population: (resources.population || 0) + 10,
+      mana: (resources.mana || 0) + 50
     };
 
     await client.models.Kingdom.update({
       id: kingdomId,
-      resources: updatedResources
+      resources: updated
     });
 
-    return { success: true, result: JSON.stringify({ updated: true, generated: generatedResources }) };
+    return { success: true, resources: JSON.stringify(updated) };
   } catch (error) {
     console.error('Resource update error:', error);
-    return { success: false, error: 'Resource update failed' };
+    return { success: false, error: 'Update failed' };
   }
 };

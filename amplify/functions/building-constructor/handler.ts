@@ -1,46 +1,33 @@
 import type { Schema } from '../../data/resource';
-import { getAmplifyDataClientConfig } from '@aws-amplify/backend-function/runtime';
 import { generateClient } from 'aws-amplify/data';
-import { calculateBRT } from '@shared/mechanics/building-mechanics';
 
-export const handler: Schema["constructBuildings"]["functionHandler"] = async (event) => {
-  const { kingdomId, buildingType, quantity } = event.arguments;
+export const handler: Schema["constructBuilding"]["functionHandler"] = async (event) => {
+  const { kingdomId, buildingType } = event.arguments;
 
   try {
-    if (!kingdomId || !buildingType || !quantity) {
-      return { success: false, error: 'Missing required parameters' };
+    if (!kingdomId || !buildingType) {
+      return { success: false, error: 'Missing parameters' };
     }
 
-    const config = await getAmplifyDataClientConfig(process.env);
-    const client = generateClient<Schema>({ config });
+    const client = generateClient<Schema>();
+    const result = await client.models.Kingdom.get({ id: kingdomId });
 
-    const kingdomResult = await client.models.Kingdom.get({ id: kingdomId });
-    if (!kingdomResult.data) {
+    if (!result.data) {
       return { success: false, error: 'Kingdom not found' };
     }
 
-    const kingdom = kingdomResult.data;
-    const buildings = (kingdom.buildings as Record<string, number>) || {};
-    
-    // Calculate BRT for validation
-    const quarryPercentage = ((buildings.quarry || 0) / ((kingdom.stats as any)?.land || 1000)) * 100;
-    const brt = calculateBRT(quarryPercentage);
-
-    // Validate can build this many per turn
-    if (quantity > brt) {
-      return { success: false, error: `Can only build ${brt} structures per turn (BRT limit)` };
-    }
-
-    buildings[buildingType] = (buildings[buildingType] || 0) + quantity;
+    const kingdom = result.data;
+    const buildings = kingdom.buildings as any || {};
+    buildings[buildingType] = (buildings[buildingType] || 0) + 1;
 
     await client.models.Kingdom.update({
       id: kingdomId,
-      buildings: buildings
+      buildings
     });
 
-    return { success: true, result: JSON.stringify({ built: quantity, brt }) };
+    return { success: true, buildings: JSON.stringify(buildings) };
   } catch (error) {
-    console.error('Building construction error:', error);
-    return { success: false, error: 'Building construction failed' };
+    console.error('Building error:', error);
+    return { success: false, error: 'Construction failed' };
   }
 };
