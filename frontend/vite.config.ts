@@ -5,7 +5,18 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'resolve-shared-index',
+      resolveId(id) {
+        if (id.startsWith('@shared/')) {
+          const modulePath = id.replace('@shared/', '');
+          return path.resolve(__dirname, '../shared', modulePath, 'index.ts');
+        }
+      }
+    }
+  ],
   resolve: {
     alias: {
       '@shared': path.resolve(__dirname, '../shared'),
