@@ -6,8 +6,8 @@
 
 import { create } from 'zustand';
 import { combine } from 'zustand/middleware';
-import { SPELLS } from "../../../shared/spells';
-import { calculateMaxElan } from "../../../shared/mechanics/elan-mechanics';
+import { SPELLS } from "../../../shared/spells";
+import { calculateMaxElan } from "../../../shared/mechanics/elan-mechanics";
 import { SpellService } from '../services/SpellService';
 
 interface SpellEffect {

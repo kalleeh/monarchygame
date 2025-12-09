@@ -18,7 +18,7 @@ import { KINGDOM_DASHBOARD_TUTORIAL } from '../data/tutorialSteps';
 import { TurnTimer } from './ui/TurnTimer';
 import { DemoTimeControl } from './ui/DemoTimeControl';
 import { calculateTimeTravel, type BuildingCounts } from '../utils/resourceCalculations';
-import { calculateBRT, getBuildingName } from "../../../shared/mechanics/building-mechanics';
+import { calculateBRT, getBuildingName } from "../../../shared/mechanics/building-mechanics";
 import { useNavigate } from 'react-router-dom';
 
 interface KingdomDashboardProps {

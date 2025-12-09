@@ -8,7 +8,7 @@ import { create } from 'zustand';
 import { combine } from 'zustand/middleware';
 import { useKingdomStore } from './kingdomStore';
 import { useAIKingdomStore, type AIKingdom } from './aiKingdomStore';
-import { calculateTurnCost, requiresWarDeclaration, validateAttackType, type WarDeclaration } from "../../../shared/mechanics/combat-mechanics';
+import { calculateTurnCost, requiresWarDeclaration, validateAttackType, type WarDeclaration } from "../../../shared/mechanics/combat-mechanics";
 
 interface Unit {
   id: string;
