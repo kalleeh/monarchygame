@@ -11,6 +11,7 @@ export default defineConfig({
       '@shared': path.resolve(__dirname, '../shared'),
       '@': path.resolve(__dirname, './src'),
     },
+    extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
   },
   test: {
     environment: 'jsdom',
