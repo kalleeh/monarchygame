@@ -10,6 +10,8 @@ frontend:
   phases:
     preBuild:
       commands:
+        - ls -la
+        - ls -la shared/ || echo "shared directory not found"
         - cp amplify_outputs.json frontend/
         - cd frontend
         - npm install --cache .npm --prefer-offline
