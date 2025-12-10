@@ -14,7 +14,10 @@ frontend:
         - ls -la shared/ || echo "shared directory not found"
         - cp amplify_outputs.json frontend/
         - cp -r shared/ frontend/
+        - ls -la frontend/shared/ || echo "frontend/shared not found after copy"
         - cd frontend
+        - pwd
+        - ls -la shared/ || echo "shared not found in frontend directory"
         - npm install --cache .npm --prefer-offline
     build:
       commands:

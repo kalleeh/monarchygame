@@ -8,7 +8,7 @@ import type { AuthUser } from 'aws-amplify/auth';
 import '@aws-amplify/ui-react/styles.css';
 import outputs from '../amplify_outputs.json';
 import { AppRouter } from './AppRouter';
-import { RACES } from '@shared/races';
+import { RACES } from '@shared/races/index';
 import './App.css';
 import './components/KingdomCreation.css';
 import './components/KingdomDashboard.css';
