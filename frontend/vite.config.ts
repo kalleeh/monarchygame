@@ -11,7 +11,7 @@ export default defineConfig({
   resolve: {
     alias: {
       './runtimeConfig': './runtimeConfig.browser',
-      '@shared': path.resolve(__dirname, './shared'),
+      '@shared': path.resolve(__dirname, 'shared'),
       '@': path.resolve(__dirname, './src'),
     },
     extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
@@ -21,7 +21,7 @@ export default defineConfig({
     setupFiles: ['./src/test-setup.ts'],
     globals: true,
     alias: {
-      '@shared': path.resolve(__dirname, './shared'),
+      '@shared': path.resolve(__dirname, 'shared'),
       '@': path.resolve(__dirname, './src'),
     },
     // Clean output for local development
