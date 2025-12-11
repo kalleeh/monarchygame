@@ -12,9 +12,12 @@ frontend:
       commands:
         - ls -la
         - ls -la shared/ || echo "shared directory not found"
+        - ls -la shared/races/ || echo "races directory not found"
         - cp amplify_outputs.json frontend/
-        - cp -r shared/ frontend/
+        - mkdir -p frontend/shared
+        - cp -r shared/* frontend/shared/
         - ls -la frontend/shared/ || echo "frontend/shared not found after copy"
+        - ls -la frontend/shared/races/ || echo "frontend/shared/races not found after copy"
         - cd frontend
         - pwd
         - ls -la shared/ || echo "shared not found in frontend directory"
