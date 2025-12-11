@@ -10,8 +10,9 @@ frontend:
   phases:
     preBuild:
       commands:
-        - ls -la
-        - ls -la shared/ || echo "shared directory not found"
+        - git status
+        - git ls-files shared/ | head -20
+        - ls -la shared/
         - ls -la shared/races/ || echo "races directory not found"
         - cp amplify_outputs.json frontend/
         - mkdir -p frontend/shared
