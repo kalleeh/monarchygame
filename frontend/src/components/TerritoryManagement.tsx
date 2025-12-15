@@ -5,7 +5,8 @@ import type { Territory } from '../types/territory';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 import { ToastService } from '../services/toastService';
 import { TopNavigation } from './TopNavigation';
-import { LoadingButton, SkeletonCard } from './ui/loading';
+import { LoadingButton } from './ui/loading/LoadingButton';
+import { SkeletonCard } from './ui/loading/Skeleton';
 
 const client = generateClient<Schema>();
 

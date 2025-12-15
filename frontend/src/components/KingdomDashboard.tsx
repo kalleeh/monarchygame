@@ -4,7 +4,7 @@ import type { KingdomResources } from '../types/amplify';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 import { ToastService } from '../services/toastService';
 import { TopNavigation } from './TopNavigation';
-import { LoadingButton } from './ui/loading';
+import { LoadingButton } from './ui/loading/LoadingButton';
 import { useTerritoryStore } from '../stores/territoryStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
