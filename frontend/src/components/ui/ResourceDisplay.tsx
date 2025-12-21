@@ -1,63 +1,38 @@
-import { useKingdomStore } from '../../stores/kingdomStore';
-import './ResourceDisplay.css';
+import React, { memo } from 'react';
 
 interface ResourceDisplayProps {
-  compact?: boolean;
-  showLabels?: boolean;
+  gold: number;
+  land: number;
+  population: number;
+  mana: number;
+  className?: string;
 }
 
-export function ResourceDisplay({ compact = false, showLabels = true }: ResourceDisplayProps) {
-  const resources = useKingdomStore((state) => state.resources);
-
-  if (compact) {
-    return (
-      <div className="resource-display-compact">
-        <span className="resource-compact" title="Gold">
-          💰 {resources?.gold?.toLocaleString() || 0}
-        </span>
-        <span className="resource-compact" title="Population">
-          👥 {resources?.population?.toLocaleString() || 0}
-        </span>
-        <span className="resource-compact" title="Land">
-          🏞️ {resources?.land?.toLocaleString() || 0}
-        </span>
-        <span className="resource-compact" title="Turns">
-          ⏱️ {resources?.turns || 0}
-        </span>
-      </div>
-    );
-  }
-
+export const ResourceDisplay = memo(function ResourceDisplay({
+  gold,
+  land,
+  population,
+  mana,
+  className = ""
+}: ResourceDisplayProps) {
   return (
-    <div className="resource-display">
-      <div className="resource-item">
-        <span className="resource-icon">💰</span>
-        <div className="resource-info">
-          <div className="resource-value">{resources?.gold?.toLocaleString() || 0}</div>
-          {showLabels && <div className="resource-label">Gold</div>}
-        </div>
+    <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${className}`}>
+      <div className="text-center">
+        <div className="text-2xl font-bold text-yellow-600">{gold.toLocaleString()}</div>
+        <div className="text-sm text-gray-600">Gold</div>
       </div>
-      <div className="resource-item">
-        <span className="resource-icon">👥</span>
-        <div className="resource-info">
-          <div className="resource-value">{resources?.population?.toLocaleString() || 0}</div>
-          {showLabels && <div className="resource-label">Population</div>}
-        </div>
+      <div className="text-center">
+        <div className="text-2xl font-bold text-green-600">{land.toLocaleString()}</div>
+        <div className="text-sm text-gray-600">Land</div>
       </div>
-      <div className="resource-item">
-        <span className="resource-icon">🏞️</span>
-        <div className="resource-info">
-          <div className="resource-value">{resources?.land?.toLocaleString() || 0}</div>
-          {showLabels && <div className="resource-label">Land</div>}
-        </div>
+      <div className="text-center">
+        <div className="text-2xl font-bold text-blue-600">{population.toLocaleString()}</div>
+        <div className="text-sm text-gray-600">Population</div>
       </div>
-      <div className="resource-item">
-        <span className="resource-icon">⏱️</span>
-        <div className="resource-info">
-          <div className="resource-value">{resources?.turns || 0}</div>
-          {showLabels && <div className="resource-label">Turns</div>}
-        </div>
+      <div className="text-center">
+        <div className="text-2xl font-bold text-purple-600">{mana.toLocaleString()}</div>
+        <div className="text-sm text-gray-600">Mana</div>
       </div>
     </div>
   );
-}
+});

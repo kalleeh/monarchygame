@@ -7,34 +7,61 @@ import { spellCaster } from '../functions/spell-caster/resource';
 import { territoryClaimer } from '../functions/territory-claimer/resource';
 
 /**
- * Monarchy Game Data Schema - Simple Working Version
+ * Monarchy Game Data Schema - Enhanced with Field-Level Authorization & Input Validation
  * IQC Compliant: Integrity (proper types), Quality (clean structure), Consistency (naming)
  */
+
+// Shared Enums for Input Validation
+const RaceType = a.enum(['Human', 'Elven', 'Goblin', 'Droben', 'Vampire', 'Elemental', 'Centaur', 'Sidhe', 'Dwarven', 'Fae']);
+const GameAge = a.enum(['early', 'middle', 'late']);
+const AttackType = a.enum(['standard', 'raid', 'siege', 'pillage']);
+const TerritoryType = a.enum(['capital', 'settlement', 'outpost', 'fortress']);
+const TerrainType = a.enum(['plains', 'forest', 'mountains', 'desert', 'swamp', 'coastal']);
+const NotificationType = a.enum(['attack', 'defense', 'victory', 'defeat', 'alliance', 'trade']);
+const InvitationStatus = a.enum(['pending', 'accepted', 'declined']);
+const MessageType = a.enum(['general', 'announcement', 'war', 'diplomacy']);
+
 const schema = a.schema({
+  // Shared enum definitions
+  RaceType,
+  GameAge,
+  AttackType,
+  TerritoryType,
+  TerrainType,
+  NotificationType,
+  InvitationStatus,
+  MessageType,
+
   Kingdom: a
     .model({
       name: a.string().required(),
-      race: a.enum(['Human', 'Elven', 'Goblin', 'Droben', 'Vampire', 'Elemental', 'Centaur', 'Sidhe', 'Dwarven', 'Fae']),
+      race: a.ref('RaceType').required(),
+      // Public fields - readable by authenticated users
       resources: a.json().required(),
       stats: a.json().required(),
       buildings: a.json().required(),
-      guildId: a.id(),
-      isActive: a.boolean(),
+      totalUnits: a.json().required(),
+      currentAge: a.ref('GameAge').default('early'),
+      isActive: a.boolean().default(true),
+      isOnline: a.boolean().default(false),
       createdAt: a.datetime(),
       lastActive: a.datetime(),
-      totalUnits: a.json().required(),
-      isOnline: a.boolean(),
-      currentAge: a.enum(['early', 'middle', 'late']),
-      ageStartTime: a.datetime()
+      ageStartTime: a.datetime(),
+      // Private fields - owner only
+      guildId: a.id()
+        .authorization((allow) => [allow.owner().to(['read', 'update'])])
     })
-    .authorization((allow) => [allow.owner()]),
+    .authorization((allow) => [
+      allow.owner(),
+      allow.authenticated().to(['read'])
+    ]),
 
   Territory: a
     .model({
       name: a.string().required(),
-      type: a.enum(['capital', 'settlement', 'outpost', 'fortress']),
+      type: a.ref('TerritoryType').required(),
       coordinates: a.json().required(),
-      terrainType: a.enum(['plains', 'forest', 'mountains', 'desert', 'swamp', 'coastal']),
+      terrainType: a.ref('TerrainType').required(),
       resources: a.json().required(),
       buildings: a.json().required(),
       defenseLevel: a.integer().required(),
@@ -42,7 +69,10 @@ const schema = a.schema({
       createdAt: a.datetime(),
       updatedAt: a.datetime()
     })
-    .authorization((allow) => [allow.owner()]),
+    .authorization((allow) => [
+      allow.owner(),
+      allow.authenticated().to(['read'])
+    ]),
 
   Alliance: a
     .model({
@@ -53,21 +83,33 @@ const schema = a.schema({
       maxMembers: a.integer().required(),
       isPublic: a.boolean().required(),
       createdAt: a.datetime(),
-      updatedAt: a.datetime()
+      updatedAt: a.datetime(),
+      // Private alliance data - members only
+      treasury: a.json()
+        .authorization((allow) => [allow.authenticated().to(['read'])])
     })
-    .authorization((allow) => [allow.authenticated().to(['read']), allow.owner()]),
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+      allow.owner()
+    ]),
 
   BattleReport: a
     .model({
       attackerId: a.id().required(),
       defenderId: a.id().required(),
-      attackType: a.string().required(),
+      attackType: a.ref('AttackType').required(),
       result: a.json().required(),
       casualties: a.json().required(),
       landGained: a.integer(),
-      timestamp: a.datetime().required()
+      timestamp: a.datetime().required(),
+      // Sensitive battle data - participants only
+      detailedReport: a.json()
+        .authorization((allow) => [allow.owner().to(['read'])])
     })
-    .authorization((allow) => [allow.owner()]),
+    .authorization((allow) => [
+      allow.owner(),
+      allow.authenticated().to(['read'])
+    ]),
 
   DefenseSettings: a
     .model({
@@ -82,10 +124,10 @@ const schema = a.schema({
   CombatNotification: a
     .model({
       recipientId: a.id().required(),
-      type: a.enum(['attack', 'defense', 'victory', 'defeat']),
+      type: a.ref('NotificationType').required(),
       message: a.string().required(),
       data: a.json(),
-      isRead: a.boolean().required(),
+      isRead: a.boolean().default(false),
       createdAt: a.datetime().required()
     })
     .authorization((allow) => [allow.owner()]),
@@ -95,7 +137,7 @@ const schema = a.schema({
       guildId: a.id().required(),
       inviterId: a.id().required(),
       inviteeId: a.id().required(),
-      status: a.enum(['pending', 'accepted', 'declined']),
+      status: a.ref('InvitationStatus').default('pending'),
       message: a.string(),
       createdAt: a.datetime().required(),
       respondedAt: a.datetime()
@@ -107,7 +149,7 @@ const schema = a.schema({
       guildId: a.id().required(),
       senderId: a.id().required(),
       content: a.string().required(),
-      type: a.enum(['general', 'announcement', 'war', 'diplomacy']),
+      type: a.ref('MessageType').default('general'),
       createdAt: a.datetime().required()
     })
     .authorization((allow) => [allow.authenticated().to(['read'])]),
@@ -117,7 +159,7 @@ const schema = a.schema({
     .arguments({
       attackerId: a.string().required(),
       defenderId: a.string().required(),
-      attackType: a.string().required(),
+      attackType: a.ref('AttackType').required(),
       units: a.json().required()
     })
     .returns(a.json())
@@ -172,6 +214,8 @@ const schema = a.schema({
     .arguments({
       kingdomId: a.string().required(),
       territoryName: a.string().required(),
+      territoryType: a.ref('TerritoryType').required(),
+      terrainType: a.ref('TerrainType').required(),
       coordinates: a.json().required()
     })
     .returns(a.json())

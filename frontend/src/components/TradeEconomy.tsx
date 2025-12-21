@@ -55,7 +55,6 @@ const RESOURCE_DISTRIBUTION = [
   { name: 'Gems', value: 5, color: '#9370DB' }
 ];
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TradeEconomyContent: React.FC<TradeEconomyProps> = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'trade' | 'market'>('overview');
   const [tradeRoutes, setTradeRoutes] = useState<TradeRoute[]>([

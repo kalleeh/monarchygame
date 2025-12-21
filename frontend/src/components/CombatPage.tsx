@@ -114,7 +114,7 @@ export const CombatPage: React.FC<CombatPageProps> = ({ kingdom, onBack }) => {
       setTimeout(() => setLastAttackResult(null), 3000);
       throw error;
     }
-  }, []);
+  }, [combatKingdom.id]);
 
   return (
     <div className="combat-page">

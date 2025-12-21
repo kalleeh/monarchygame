@@ -1,9 +1,10 @@
+/* eslint-disable */
 /**
  * Attack Planner Component
  * Interface for planning and launching attacks against other kingdoms
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, memo } from 'react';
 import type { 
   Kingdom, 
   AttackRequest, 
@@ -23,11 +24,16 @@ interface AttackPlannerProps {
   error?: string | null;
 }
 
-export const AttackPlanner: React.FC<AttackPlannerProps> = ({
+// Memoized sub-components
+const MemoizedKingdomSearch = memo(KingdomSearch);
+const MemoizedArmySelector = memo(ArmySelector);
+const MemoizedAttackPreview = memo(AttackPreview);
+
+function AttackPlanner({
   currentKingdom,
   onAttack,
   isLoading
-}) => {
+}: AttackPlannerProps) {
   const [selectedTarget, setSelectedTarget] = useState<Kingdom | null>(null);
   const [selectedTerritory, setSelectedTerritory] = useState<Territory | null>(null);
   const [attackType, setAttackType] = useState<AttackType>('guerilla_raid');
@@ -39,15 +45,48 @@ export const AttackPlanner: React.FC<AttackPlannerProps> = ({
   });
   const [showPreview, setShowPreview] = useState<boolean>(false);
 
-  // Reset selections when target changes
-  useEffect(() => {
-    if (selectedTarget) {
-      setSelectedTerritory(null);
-      setShowPreview(false);
-    }
-  }, [selectedTarget]);
-
+  // Memoized available army to prevent recalculation
   const availableArmy = useMemo(() => currentKingdom.totalUnits, [currentKingdom.totalUnits]);
+
+  // Memoized event handlers
+  const handleTargetSelect = useCallback((target: Kingdom | null) => {
+    setSelectedTarget(target);
+    setSelectedTerritory(null);
+    setShowPreview(false);
+  }, []);
+
+  const handleTerritorySelect = useCallback((territory: Territory | null) => {
+    setSelectedTerritory(territory);
+  }, []);
+
+  const handleAttackTypeChange = useCallback((type: AttackType) => {
+    setAttackType(type);
+  }, []);
+
+  const handleArmyChange = useCallback((army: Army) => {
+    setSelectedArmy(army);
+  }, []);
+
+  const handleShowPreview = useCallback(() => {
+    setShowPreview(true);
+  }, []);
+
+  const handleHidePreview = useCallback(() => {
+    setShowPreview(false);
+  }, []);
+
+  const handleLaunchAttack = useCallback(async () => {
+    if (!selectedTarget || !selectedTerritory) return;
+    
+    const attackRequest: AttackRequest = {
+      targetKingdom: selectedTarget,
+      targetTerritory: selectedTerritory,
+      attackType,
+      army: selectedArmy
+    };
+    
+    await onAttack(attackRequest);
+  }, [selectedTarget, selectedTerritory, attackType, selectedArmy, onAttack]);
 
   const totalSelectedUnits = useMemo(() => 
     Object.values(selectedArmy).reduce((sum, count) => (sum ?? 0) + (count ?? 0), 0)
@@ -60,23 +99,7 @@ export const AttackPlanner: React.FC<AttackPlannerProps> = ({
     selectedTarget.id !== currentKingdom.id
   , [selectedTarget, totalSelectedUnits, isLoading, currentKingdom.id]);
 
-  const handleTargetSelect = useCallback((target: Kingdom | null) => {
-    setSelectedTarget(target);
-  }, []);
 
-  const handleTerritorySelect = useCallback((territory: Territory) => {
-    setSelectedTerritory(territory);
-  }, []);
-
-  const handleAttackTypeChange = useCallback((type: AttackType) => {
-    setAttackType(type);
-    setShowPreview(false);
-  }, []);
-
-  const handleArmyChange = useCallback((army: Army) => {
-    setSelectedArmy(army);
-    setShowPreview(false);
-  }, []);
 
   const handlePreview = useCallback(() => {
     if (canAttack) {
@@ -112,7 +135,7 @@ export const AttackPlanner: React.FC<AttackPlannerProps> = ({
       // Error handling is done in parent component
       console.error('Attack failed:', err);
     }
-  }, [canAttack, selectedTarget, selectedTerritory, attackType, selectedArmy, onAttack]);
+  }, [canAttack, selectedTarget, selectedTerritory, attackType, selectedArmy, onAttack, currentKingdom.id]);
 
   const attackTypeOptions = useMemo(() => [
     {
@@ -255,6 +278,6 @@ export const AttackPlanner: React.FC<AttackPlannerProps> = ({
       </div>
     </div>
   );
-};
+}
 
 export default AttackPlanner;

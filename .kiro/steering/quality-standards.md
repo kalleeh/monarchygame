@@ -76,7 +76,15 @@
 - **Integration Tests:** Component interactions
 - **Edge Cases:** Boundary conditions and error scenarios
 - **Behavior Tests:** User-facing functionality
+- **Property-Based Tests:** Universal invariants and game balance
 - **Coverage:** Minimum 90% for critical paths
+
+### Property-Based Testing Integration
+- **Use PBT for game balance** - Race balance, combat mechanics, economic systems
+- **Test invariants** - Rules that must always hold true across all inputs
+- **Generate test cases** - Hundreds of automatically generated scenarios
+- **Follow Kiro methodology** - Properties as universal statements ("For any...")
+- **Framework**: fast-check (JavaScript equivalent of Kiro's Hypothesis)
 
 ### Documentation Standards
 - **API Documentation:** Complete parameter and return descriptions

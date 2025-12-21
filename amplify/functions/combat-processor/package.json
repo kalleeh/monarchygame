@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "@aws-amplify/backend-function": "^1.0.0",
-    "aws-amplify": "^6.0.0"
+    "@aws-amplify/backend-function": "latest",
+    "aws-amplify": "latest",
+    "cacheable": "^1.7.0"
   }
 }

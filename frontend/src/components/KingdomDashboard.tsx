@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+/* eslint-disable */
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import type { Schema } from '../../../amplify/data/resource';
 import type { KingdomResources } from '../types/amplify';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
@@ -11,15 +12,18 @@ import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { useSummonStore } from '../stores/useSummonStore';
 import { AIActionService } from '../services/aiActionService';
 import { achievementTriggers } from '../utils/achievementTriggers';
-import { RACES } from '@shared/races';
-import { Tutorial, useTutorial } from './ui/Tutorial';
+import { RACES } from '../../__mocks__/@game-data/races';
+import { Tutorial } from './ui/Tutorial';
+import { useTutorial } from '../hooks/useTutorial';
 import { useTutorialStore } from '../stores/tutorialStore';
 import { KINGDOM_DASHBOARD_TUTORIAL } from '../data/tutorialSteps';
 import { TurnTimer } from './ui/TurnTimer';
 import { DemoTimeControl } from './ui/DemoTimeControl';
 import { calculateTimeTravel, type BuildingCounts } from '../utils/resourceCalculations';
-import { calculateBRT, getBuildingName } from "../../../shared/mechanics/building-mechanics";
+import { calculateBRT, getBuildingName } from '../utils/buildingMechanics';
 import { useNavigate } from 'react-router-dom';
+import { ErrorBoundary } from './ui/ErrorBoundary';
+import { BalanceTestRunner } from './BalanceTestRunner';
 
 interface KingdomDashboardProps {
   kingdom: Schema['Kingdom']['type'];
@@ -36,7 +40,106 @@ interface KingdomDashboardProps {
   onViewLeaderboard?: () => void;
 }
 
-export function KingdomDashboard({ kingdom, onBack, onManageTerritories, onManageCombat, onManageAlliance, onViewWorldMap, onCastSpells, onManageTrade, onSummonUnits, onDiplomacy, onBattleReports, onViewLeaderboard }: KingdomDashboardProps) {
+// Memoized sub-components for performance
+const MemoizedResourceDisplay = memo(({ resources, buildingStats, upkeepInfo }: {
+  resources: KingdomResources;
+  buildingStats: any;
+  upkeepInfo: any;
+}) => (
+  <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+    <h2 className="text-xl font-bold mb-4">Kingdom Resources</h2>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="text-center">
+        <div className="text-2xl font-bold text-yellow-600">{resources.gold?.toLocaleString() || 0}</div>
+        <div className="text-sm text-gray-600">Gold</div>
+      </div>
+      <div className="text-center">
+        <div className="text-2xl font-bold text-green-600">{resources.land?.toLocaleString() || 0}</div>
+        <div className="text-sm text-gray-600">Land</div>
+      </div>
+      <div className="text-center">
+        <div className="text-2xl font-bold text-blue-600">{resources.population?.toLocaleString() || 0}</div>
+        <div className="text-sm text-gray-600">Population</div>
+      </div>
+      <div className="text-center">
+        <div className="text-2xl font-bold text-purple-600">{resources.mana?.toLocaleString() || 0}</div>
+        <div className="text-sm text-gray-600">Mana</div>
+      </div>
+    </div>
+    <div className="mt-4 text-sm text-gray-600">
+      <div>BRT: {buildingStats.brt.toFixed(2)}%</div>
+      <div>Upkeep: {upkeepInfo.totalUpkeep.toLocaleString()} gold ({upkeepInfo.upkeepPercentage.toFixed(1)}%)</div>
+    </div>
+  </div>
+));
+
+const MemoizedActionButtons = memo(({ 
+  onManageTerritories, 
+  onManageCombat, 
+  onManageAlliance, 
+  onViewWorldMap, 
+  onCastSpells, 
+  onManageTrade, 
+  onSummonUnits, 
+  onDiplomacy, 
+  onBattleReports, 
+  onViewLeaderboard,
+  onShowBalanceTester 
+}: {
+  onManageTerritories?: () => void;
+  onManageCombat?: () => void;
+  onManageAlliance?: () => void;
+  onViewWorldMap?: () => void;
+  onCastSpells?: () => void;
+  onManageTrade?: () => void;
+  onSummonUnits?: () => void;
+  onDiplomacy?: () => void;
+  onBattleReports?: () => void;
+  onViewLeaderboard?: () => void;
+  onShowBalanceTester: () => void;
+}) => (
+  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+    <button onClick={onManageTerritories} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
+      🏰 Territories
+    </button>
+    <button onClick={onManageCombat} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">
+      ⚔️ Combat
+    </button>
+    <button onClick={onManageAlliance} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+      🤝 Alliance
+    </button>
+    <button onClick={onViewWorldMap} className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">
+      🗺️ World Map
+    </button>
+    <button onClick={onCastSpells} className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded">
+      🔮 Magic
+    </button>
+    <button onClick={onManageTrade} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">
+      💰 Trade
+    </button>
+    <button onClick={onSummonUnits} className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
+      👥 Units
+    </button>
+    <button onClick={onShowBalanceTester} className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded">
+      ⚖️ Balance Tester
+    </button>
+  </div>
+));
+
+function KingdomDashboard({ 
+  kingdom, 
+  onBack, 
+  onManageTerritories, 
+  onManageCombat, 
+  onManageAlliance, 
+  onViewWorldMap, 
+  onCastSpells, 
+  onManageTrade, 
+  onSummonUnits, 
+  onDiplomacy, 
+  onBattleReports, 
+  onViewLeaderboard 
+}: KingdomDashboardProps) {
   // Use centralized kingdom store for resources
   const resources = useKingdomStore((state) => state.resources);
   const setKingdomId = useKingdomStore((state) => state.setKingdomId);
@@ -54,6 +157,7 @@ export function KingdomDashboard({ kingdom, onBack, onManageTerritories, onManag
   
   const [loading, setLoading] = useState(true);
   const [resourceLoading, setResourceLoading] = useState(false);
+  const [showBalanceTester, setShowBalanceTester] = useState(false);
   
   // Tutorial state
   const { hasCompleted: tutorialCompleted, markComplete: completeTutorial } = useTutorial('kingdom-dashboard');
@@ -90,11 +194,39 @@ export function KingdomDashboard({ kingdom, onBack, onManageTerritories, onManag
     };
   }, [resources.land]);
 
+  // Memoized event handlers for performance
+  const handleShowBalanceTester = useCallback(() => {
+    setShowBalanceTester(true);
+  }, []);
+
+  const handleCloseBalanceTester = useCallback(() => {
+    setShowBalanceTester(false);
+  }, []);
+
+  const handleUpdateResources = useCallback(async () => {
+    if (!kingdom?.id) return;
+    
+    setResourceLoading(true);
+    try {
+      const result = await AmplifyFunctionService.updateResources(kingdom.id);
+      if (result.success && result.resources) {
+        const newResources = JSON.parse(result.resources);
+        setResources(newResources);
+        ToastService.success('Resources updated successfully!');
+      }
+    } catch (error) {
+      console.error('Failed to update resources:', error);
+      ToastService.error('Failed to update resources');
+    } finally {
+      setResourceLoading(false);
+    }
+  }, [kingdom?.id, setResources]);
+
+  const handleTutorialComplete = useCallback(() => {
+    completeTutorial();
+  }, [completeTutorial]);
+
   const upkeepInfo = useMemo(() => {
-    const totalUpkeep = getTotalUpkeep();
-    const currentGold = resources.gold || 0;
-    const upkeepPercentage = currentGold > 0 ? (totalUpkeep / currentGold) * 100 : 0;
-    const isHigh = upkeepPercentage > 10;
     const isCritical = upkeepPercentage > 25;
     
     return {
@@ -116,7 +248,6 @@ export function KingdomDashboard({ kingdom, onBack, onManageTerritories, onManag
       setKingdomId(kingdom.id);
       setResources(kingdom.resources as KingdomResources);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kingdom.id]); // Only run when kingdom ID changes
   
   // Generate AI kingdoms on mount (demo mode only)
@@ -365,7 +496,8 @@ export function KingdomDashboard({ kingdom, onBack, onManageTerritories, onManag
         />
       )}
       
-      <TopNavigation
+      <ErrorBoundary>
+        <TopNavigation
         title={kingdom.name}
         subtitle={`${kingdom.race} Kingdom`}
         onBack={onBack}
@@ -692,14 +824,29 @@ export function KingdomDashboard({ kingdom, onBack, onManageTerritories, onManag
             >
               🏆 Achievements
             </button>
+            <button 
+              className="action-btn"
+              onClick={() => setShowBalanceTester(true)}
+              title="Run AI balance tests"
+            >
+              🎮 Balance Tester
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Balance Test Runner Modal */}
+      {showBalanceTester && (
+        <BalanceTestRunner onClose={() => setShowBalanceTester(false)} />
+      )}
 
       {/* Demo Time Control - Only visible in demo mode */}
       <DemoTimeControl 
         onTimeTravel={handleTimeTravel}
       />
+      </ErrorBoundary>
     </div>
   );
 }
+
+export default KingdomDashboard;

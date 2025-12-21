@@ -9,6 +9,7 @@ import '@aws-amplify/ui-react/styles.css';
 import outputs from '../amplify_outputs.json';
 import { AppRouter } from './AppRouter';
 import { RACES } from '@shared/races';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import './App.css';
 import './components/KingdomCreation.css';
 import './components/KingdomDashboard.css';
@@ -100,14 +101,14 @@ function AppContent() {
       // Not in demo mode - stop loading and show welcome page
       setLoading(false);
     }
-  }, []); // Empty deps - only run once on mount
+  }, [fetchKingdoms]); // Add fetchKingdoms to deps
   
   // Fetch kingdoms again if demoMode changes
   useEffect(() => {
     if (demoMode && kingdoms.length === 0) {
       fetchKingdoms();
     }
-  }, [demoMode, kingdoms.length, fetchKingdoms]);
+  }, [demoMode, kingdoms.length, fetchKingdoms]); // Add fetchKingdoms to deps
 
   useEffect(() => {
     if (currentUser && !demoMode) {
@@ -260,7 +261,7 @@ function AppContent() {
         <header className="app-header">
           <h1>🏰 Monarchy Game</h1>
           <div className="user-info">
-            <span>Welcome, {(user as any)?.attributes?.preferred_username || (user as any)?.attributes?.email || 'User'}</span>
+            <span>Welcome, {user?.attributes?.preferred_username || user?.attributes?.email || 'User'}</span>
             <button onClick={signOut} className="sign-out-btn">
               Sign Out
             </button>
@@ -268,11 +269,13 @@ function AppContent() {
         </header>
         
         <div className="game-content">
-          <AppRouter 
-            kingdoms={kingdoms}
-            onGetStarted={handleGetStarted}
-            onKingdomCreated={handleKingdomCreated}
-          />
+          <ErrorBoundary>
+            <AppRouter 
+              kingdoms={kingdoms}
+              onGetStarted={handleGetStarted}
+              onKingdomCreated={handleKingdomCreated}
+            />
+          </ErrorBoundary>
         </div>
       </main>
     );

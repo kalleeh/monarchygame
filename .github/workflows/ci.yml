@@ -1,0 +1,54 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd frontend && npm ci
+      
+      - name: Lint
+        run: cd frontend && npm run lint
+      
+      - name: Unit Tests
+        run: |
+          npm run test:coverage
+          cd frontend && npm run test:coverage
+      
+      - name: E2E Tests
+        run: |
+          npm run dev &
+          npx wait-on http://localhost:5173
+          npx playwright test
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Security audit
+        run: |
+          npm audit --audit-level=high
+          cd frontend && npm audit --audit-level=high
+      
+      - name: Dependency check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'monarchy-game'
+          path: '.'

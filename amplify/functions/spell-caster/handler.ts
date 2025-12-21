@@ -1,6 +1,9 @@
 import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
 
+// Initialize client outside handler for connection reuse
+const client = generateClient<Schema>();
+
 export const handler: Schema["castSpell"]["functionHandler"] = async (event) => {
   const { casterId, spellId, targetId } = event.arguments;
 
@@ -9,7 +12,6 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       return { success: false, error: 'Missing parameters' };
     }
 
-    const client = generateClient<Schema>();
     const result = await client.models.Kingdom.get({ id: casterId });
 
     if (!result.data) {

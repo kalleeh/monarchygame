@@ -1,8 +1,23 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { TerritoryManagement } from '../TerritoryManagement'
 import type { Schema } from '../../../../amplify/data/resource'
+
+// Mock the generateClient function before importing the component
+vi.mock('aws-amplify/data', () => ({
+  generateClient: vi.fn(() => ({
+    models: {
+      Territory: {
+        list: vi.fn(() => Promise.resolve({ data: [] })),
+        create: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn()
+      }
+    }
+  }))
+}));
+
+import { TerritoryManagement } from '../TerritoryManagement'
 
 const mockKingdom = {
   id: '1',
@@ -17,8 +32,10 @@ describe('TerritoryManagement', () => {
     vi.clearAllMocks()
   })
 
-  it('renders territory management interface', () => {
-    render(<TerritoryManagement kingdom={mockKingdom} onBack={mockOnBack} />)
+  it('renders territory management interface', async () => {
+    await act(async () => {
+      render(<TerritoryManagement kingdom={mockKingdom} onBack={mockOnBack} />)
+    })
     
     expect(screen.getByText('Territory Management')).toBeInTheDocument()
     expect(screen.getByText('+ Claim Territory')).toBeInTheDocument()
@@ -34,10 +51,16 @@ describe('TerritoryManagement', () => {
 
   it('opens create territory form', async () => {
     const user = userEvent.setup()
-    render(<TerritoryManagement kingdom={mockKingdom} onBack={mockOnBack} />)
+    
+    await act(async () => {
+      render(<TerritoryManagement kingdom={mockKingdom} onBack={mockOnBack} />)
+    })
     
     const claimButton = screen.getByText('+ Claim Territory')
-    await user.click(claimButton)
+    
+    await act(async () => {
+      await user.click(claimButton)
+    })
     
     expect(screen.getByText('Claim New Territory')).toBeInTheDocument()
     expect(screen.getByLabelText(/territory name/i)).toBeInTheDocument()
@@ -45,34 +68,57 @@ describe('TerritoryManagement', () => {
 
   it('handles form input correctly', async () => {
     const user = userEvent.setup()
-    render(<TerritoryManagement kingdom={mockKingdom} onBack={mockOnBack} />)
     
-    await user.click(screen.getByText('+ Claim Territory'))
+    await act(async () => {
+      render(<TerritoryManagement kingdom={mockKingdom} onBack={mockOnBack} />)
+    })
+
+    await act(async () => {
+      await user.click(screen.getByText('+ Claim Territory'))
+    })
     
     const nameInput = screen.getByLabelText(/territory name/i)
-    await user.type(nameInput, 'New Territory')
+    
+    await act(async () => {
+      await user.type(nameInput, 'New Territory')
+    })
     
     expect(nameInput).toHaveValue('New Territory')
   })
 
   it('handles back navigation', async () => {
     const user = userEvent.setup()
-    render(<TerritoryManagement kingdom={mockKingdom} onBack={mockOnBack} />)
+    
+    await act(async () => {
+      render(<TerritoryManagement kingdom={mockKingdom} onBack={mockOnBack} />)
+    })
     
     const backButton = screen.getByText('← Back to Dashboard')
-    await user.click(backButton)
+    
+    await act(async () => {
+      await user.click(backButton)
+    })
     
     expect(mockOnBack).toHaveBeenCalledTimes(1)
   })
 
   it('closes form on cancel', async () => {
     const user = userEvent.setup()
-    render(<TerritoryManagement kingdom={mockKingdom} onBack={mockOnBack} />)
     
-    await user.click(screen.getByText('+ Claim Territory'))
+    await act(async () => {
+      render(<TerritoryManagement kingdom={mockKingdom} onBack={mockOnBack} />)
+    })
+
+    await act(async () => {
+      await user.click(screen.getByText('+ Claim Territory'))
+    })
+    
     expect(screen.getByText('Claim New Territory')).toBeInTheDocument()
     
-    await user.click(screen.getByText('Cancel'))
+    await act(async () => {
+      await user.click(screen.getByText('Cancel'))
+    })
+    
     expect(screen.queryByText('Claim New Territory')).not.toBeInTheDocument()
   })
 })
