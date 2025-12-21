@@ -3,10 +3,29 @@
  * Memoizes expensive combat formulas and pre-computes lookup tables
  */
 
-import { CacheableMemory } from 'cacheable';
+// Simple Map-based cache with TTL
+class SimpleCache {
+  private cache = new Map<string, { value: any; expires: number }>();
+  
+  set(key: string, value: any, ttlMs = 3600000) { // 1 hour default
+    this.cache.set(key, { value, expires: Date.now() + ttlMs });
+  }
+  
+  get(key: string) {
+    const item = this.cache.get(key);
+    if (!item || Date.now() > item.expires) {
+      this.cache.delete(key);
+      return undefined;
+    }
+    return item.value;
+  }
+  
+  has(key: string) {
+    return this.get(key) !== undefined;
+  }
+}
 
-// Combat calculation cache with 1 hour TTL
-const combatCache = new CacheableMemory();
+const combatCache = new SimpleCache();
 
 // Pre-computed lookup tables for performance
 const POWER_RATIO_CACHE = new Map<string, number>();
