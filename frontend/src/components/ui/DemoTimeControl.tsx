@@ -1,6 +1,24 @@
 import { useState } from 'react';
-import { LoadingButton } from './loading';
 import './DemoTimeControl.css';
+
+interface LoadingButtonProps {
+  onClick: () => void;
+  loading: boolean;
+  className?: string;
+  title?: string;
+  children: React.ReactNode;
+}
+
+const LoadingButton = ({ onClick, loading, className, title, children }: LoadingButtonProps) => (
+  <button
+    onClick={onClick}
+    disabled={loading}
+    className={className}
+    title={title}
+  >
+    {loading ? '⏳' : children}
+  </button>
+);
 
 interface DemoTimeControlProps {
   onTimeTravel: (hours: number) => Promise<void>;
