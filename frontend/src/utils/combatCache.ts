@@ -23,6 +23,26 @@ class SimpleCache {
   has(key: string) {
     return this.get(key) !== undefined;
   }
+
+  clear() {
+    this.cache.clear();
+  }
+
+  get size() {
+    return this.cache.size;
+  }
+
+  wrap<T extends (...args: any[]) => any>(fn: T): T {
+    return ((...args: any[]) => {
+      const key = JSON.stringify(args);
+      if (this.has(key)) {
+        return this.get(key);
+      }
+      const result = fn(...args);
+      this.set(key, result);
+      return result;
+    }) as T;
+  }
 }
 
 const combatCache = new SimpleCache();

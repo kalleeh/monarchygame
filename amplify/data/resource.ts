@@ -41,7 +41,7 @@ const schema = a.schema({
       stats: a.json().required(),
       buildings: a.json().required(),
       totalUnits: a.json().required(),
-      currentAge: a.ref('GameAge').default('early'),
+      currentAge: a.ref('GameAge').required(),
       isActive: a.boolean().default(true),
       isOnline: a.boolean().default(false),
       createdAt: a.datetime(),
@@ -137,7 +137,7 @@ const schema = a.schema({
       guildId: a.id().required(),
       inviterId: a.id().required(),
       inviteeId: a.id().required(),
-      status: a.ref('InvitationStatus').default('pending'),
+      status: a.ref('InvitationStatus').required(),
       message: a.string(),
       createdAt: a.datetime().required(),
       respondedAt: a.datetime()
@@ -149,7 +149,7 @@ const schema = a.schema({
       guildId: a.id().required(),
       senderId: a.id().required(),
       content: a.string().required(),
-      type: a.ref('MessageType').default('general'),
+      type: a.ref('MessageType').required(),
       createdAt: a.datetime().required()
     })
     .authorization((allow) => [allow.authenticated().to(['read'])]),
