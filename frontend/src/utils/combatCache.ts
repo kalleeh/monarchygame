@@ -32,16 +32,32 @@ class SimpleCache {
     return this.cache.size;
   }
 
-  wrap<T extends (...args: any[]) => any>(fn: T): T {
+  wrap<T extends (...args: any[]) => any>(fn: T, options?: { ttl?: string; keyPrefix?: string }): T {
+    const ttlMs = options?.ttl ? this.parseTTL(options.ttl) : 3600000; // 1 hour default
+    const keyPrefix = options?.keyPrefix || '';
+    
     return ((...args: any[]) => {
-      const key = JSON.stringify(args);
+      const key = keyPrefix + JSON.stringify(args);
       if (this.has(key)) {
         return this.get(key);
       }
       const result = fn(...args);
-      this.set(key, result);
+      this.set(key, result, ttlMs);
       return result;
     }) as T;
+  }
+
+  private parseTTL(ttl: string): number {
+    if (ttl.endsWith('h')) {
+      return parseInt(ttl) * 60 * 60 * 1000;
+    }
+    if (ttl.endsWith('m')) {
+      return parseInt(ttl) * 60 * 1000;
+    }
+    if (ttl.endsWith('s')) {
+      return parseInt(ttl) * 1000;
+    }
+    return parseInt(ttl);
   }
 }
 
