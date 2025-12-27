@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 
-const KingdomCreation = lazy(() => import('./KingdomCreation').then(module => ({ default: module.KingdomCreation })));
+const KingdomCreation = lazy(() => import('./KingdomCreation'));
 
 interface LazyKingdomCreationProps {
   onKingdomCreated: () => void;
