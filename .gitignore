@@ -31,6 +31,8 @@ test-results/
 coverage/
 .nyc_output/
 temp_tests/
+test-screenshots/
+visual-test-results/
 
 # Build artifacts
 dist/

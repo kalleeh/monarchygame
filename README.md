@@ -27,6 +27,15 @@ A modern recreation of the classic Monarchy/Canon browser-based strategy game, b
 - **Animations:** React Spring for magical effects
 - **Charts:** Recharts for economic data visualization
 
+## 📚 **Documentation**
+
+- **[Deployment Guide](DEPLOYMENT.md)** - Production deployment process
+- **[Architecture Decisions](docs/architecture-decisions.md)** - Technical design decisions
+- **[Game Mechanics Reference](docs/mechanics-reference.md)** - Game balance and formulas
+- **[Feature Enhancement Plan](docs/feature-enhancement-plan.md)** - Development roadmap
+- **[AWS Deployment Validation](docs/aws-deployment-validation.md)** - AWS setup guide
+- **[Amplify Deployment Guide](docs/amplify-deployment-guide.md)** - Amplify configuration
+
 ## 🚀 **Quick Start**
 
 ### **Prerequisites**
