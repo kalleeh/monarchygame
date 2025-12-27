@@ -23,7 +23,7 @@ import { calculateTimeTravel, type BuildingCounts } from '../utils/resourceCalcu
 import { calculateBRT, getBuildingName } from '../utils/buildingMechanics';
 import { useNavigate } from 'react-router-dom';
 import { ErrorBoundary } from './ui/ErrorBoundary';
-import { BalanceTestRunner } from './BalanceTestRunner';
+// import { BalanceTestRunner } from './BalanceTestRunner';
 
 interface KingdomDashboardProps {
   kingdom: Schema['Kingdom']['type'];
@@ -227,6 +227,10 @@ function KingdomDashboard({
   }, [completeTutorial]);
 
   const upkeepInfo = useMemo(() => {
+    const totalUpkeep = getTotalUpkeep();
+    const currentGold = resources.gold || 0;
+    const upkeepPercentage = currentGold > 0 ? (totalUpkeep / currentGold) * 100 : 0;
+    const isHigh = upkeepPercentage > 10;
     const isCritical = upkeepPercentage > 25;
     
     return {
@@ -837,7 +841,7 @@ function KingdomDashboard({
 
       {/* Balance Test Runner Modal */}
       {showBalanceTester && (
-        <BalanceTestRunner onClose={() => setShowBalanceTester(false)} />
+        {/* <BalanceTestRunner onClose={() => setShowBalanceTester(false)} /> */}
       )}
 
       {/* Demo Time Control - Only visible in demo mode */}

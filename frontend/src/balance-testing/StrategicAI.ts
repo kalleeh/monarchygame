@@ -1,4 +1,4 @@
-import { Kingdom } from '../types/kingdom';
+import type { Kingdom } from '../types/kingdom';
 
 export interface StrategicDecision {
   action: 'build' | 'attack' | 'defend' | 'magic' | 'wait';
