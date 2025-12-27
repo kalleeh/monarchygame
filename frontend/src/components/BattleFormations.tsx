@@ -67,7 +67,7 @@ const SortableUnit: React.FC<SortableUnitProps> = ({ id, unit, isSelected, onTog
   );
 };
 
-export const BattleFormations: React.FC<BattleFormationsProps> = ({ onBack }) => {
+const BattleFormations: React.FC<BattleFormationsProps> = ({ onBack }) => {
   const {
     selectedUnits,
     formations,
@@ -550,3 +550,5 @@ function getUnitIcon(type: string) {
   };
   return icons[type as keyof typeof icons] || '⚔️';
 }
+
+export default BattleFormations;

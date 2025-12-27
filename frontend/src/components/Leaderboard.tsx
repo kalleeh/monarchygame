@@ -37,7 +37,7 @@ interface LeaderboardProps {
   currentKingdom: Kingdom;
 }
 
-export const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) => {
+const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) => {
   const [filters, setFilters] = useState<LeaderboardFilters>(() => {
     const saved = localStorage.getItem('leaderboard-filters');
     return saved ? JSON.parse(saved) : {
@@ -189,3 +189,5 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingd
     </div>
   );
 };
+
+export default Leaderboard;

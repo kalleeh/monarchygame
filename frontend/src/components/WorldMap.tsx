@@ -459,7 +459,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
   );
 };
 
-export const WorldMap: React.FC<WorldMapProps> = (props) => {
+const WorldMap: React.FC<WorldMapProps> = (props) => {
   return (
     <ErrorBoundary fallback={
       <div className="world-map-error">
@@ -472,3 +472,5 @@ export const WorldMap: React.FC<WorldMapProps> = (props) => {
     </ErrorBoundary>
   );
 };
+
+export default WorldMap;

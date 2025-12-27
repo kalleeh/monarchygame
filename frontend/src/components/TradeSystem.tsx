@@ -55,7 +55,7 @@ interface TradeSystemProps {
   onBack?: () => void;
 }
 
-export const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
+const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
   const {
     resources,
     activeOffers,
@@ -451,3 +451,5 @@ function getResourceColor(type: string): string {
   };
   return colors[type as keyof typeof colors] || '#8884d8';
 }
+
+export default TradeSystem;

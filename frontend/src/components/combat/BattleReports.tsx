@@ -17,7 +17,7 @@ type SortField = 'timestamp' | 'outcome' | 'netGain' | 'opponent';
 type SortOrder = 'asc' | 'desc';
 type FilterType = 'all' | 'victories' | 'defeats' | 'attacks' | 'defenses';
 
-export const BattleReports: React.FC<BattleReportsProps> = ({
+const BattleReports: React.FC<BattleReportsProps> = ({
   battleHistory,
   className = ''
 }) => {

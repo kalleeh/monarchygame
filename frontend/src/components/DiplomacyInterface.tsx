@@ -369,8 +369,10 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
   );
 };
 
-export const DiplomacyInterface: React.FC<DiplomacyInterfaceProps> = (props) => (
+const DiplomacyInterface: React.FC<DiplomacyInterfaceProps> = (props) => (
   <ErrorBoundary>
     <DiplomacyContent {...props} />
   </ErrorBoundary>
 );
+
+export default DiplomacyInterface;

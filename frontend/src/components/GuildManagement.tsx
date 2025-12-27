@@ -542,7 +542,7 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
   );
 };
 
-export const GuildManagement: React.FC<GuildManagementProps> = (props) => {
+const GuildManagement: React.FC<GuildManagementProps> = (props) => {
   return (
     <ErrorBoundary fallback={
       <div className="guild-error">
@@ -555,3 +555,5 @@ export const GuildManagement: React.FC<GuildManagementProps> = (props) => {
     </ErrorBoundary>
   );
 };
+
+export default GuildManagement;

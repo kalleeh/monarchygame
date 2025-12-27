@@ -298,8 +298,10 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
   );
 };
 
-export const UnitSummonInterface: React.FC<UnitSummonInterfaceProps> = (props) => (
+const UnitSummonInterface: React.FC<UnitSummonInterfaceProps> = (props) => (
   <ErrorBoundary>
     <UnitSummonContent {...props} />
   </ErrorBoundary>
 );
+
+export default UnitSummonInterface;

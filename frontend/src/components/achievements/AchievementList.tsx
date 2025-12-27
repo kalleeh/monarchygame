@@ -58,3 +58,5 @@ export const AchievementList = () => {
     </div>
   );
 };
+
+export default AchievementList;

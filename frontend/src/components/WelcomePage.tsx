@@ -11,7 +11,7 @@ interface WelcomePageProps {
   onGetStarted: () => void;
 }
 
-export const WelcomePage: React.FC<WelcomePageProps> = ({ onGetStarted }) => {
+const WelcomePage: React.FC<WelcomePageProps> = ({ onGetStarted }) => {
   const [selectedRace, setSelectedRace] = useState<string>('Human');
   const [currentFeature, setCurrentFeature] = useState<number>(0);
 
@@ -313,3 +313,5 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onGetStarted }) => {
     </div>
   );
 };
+
+export default WelcomePage;

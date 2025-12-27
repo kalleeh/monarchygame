@@ -13,7 +13,7 @@ interface TerritoryExpansionProps {
   onBack?: () => void;
 }
 
-export const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
+const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
   const [showInfo, setShowInfo] = React.useState(false);
   
   // Get resources from centralized kingdom store
@@ -422,3 +422,5 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
     </animated.div>
   );
 };
+
+export default TerritoryExpansion;

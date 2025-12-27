@@ -63,7 +63,7 @@ interface KingdomCreationProps {
   onKingdomCreated: (kingdomName: string, race: string) => void;
 }
 
-export const KingdomCreation: React.FC<KingdomCreationProps> = ({ onKingdomCreated }) => {
+const KingdomCreation: React.FC<KingdomCreationProps> = ({ onKingdomCreated }) => {
   const [kingdomName, setKingdomName] = useState('');
   const [selectedRace, setSelectedRace] = useState<Race | null>(races[0]);
   const [errors, setErrors] = useState<{ name?: string; race?: string }>({});
@@ -234,3 +234,5 @@ export const KingdomCreation: React.FC<KingdomCreationProps> = ({ onKingdomCreat
     </div>
   );
 };
+
+export default KingdomCreation;

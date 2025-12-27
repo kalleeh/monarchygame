@@ -14,7 +14,7 @@ interface SpellCastingInterfaceProps {
   onBack?: () => void;
 }
 
-export const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId, onBack }) => {
+const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId, onBack }) => {
   const {
     currentElan,
     maxElan,
@@ -278,3 +278,5 @@ const SpellCard: React.FC<SpellCardProps> = ({
     </animated.div>
   );
 };
+
+export default SpellCastingInterface;

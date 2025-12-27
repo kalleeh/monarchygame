@@ -12,20 +12,20 @@ import { LoadingSkeleton } from './components/ui/loading/LoadingSkeleton';
 import './components/KingdomList.css';
 
 // Lazy-loaded components for code splitting
-const WelcomePage = lazy(() => import('./components/WelcomePage').then(m => ({ default: m.WelcomePage })));
-const KingdomCreation = lazy(() => import('./components/KingdomCreation').then(m => ({ default: m.KingdomCreation })));
-const KingdomDashboard = lazy(() => import('./components/KingdomDashboard').then(m => ({ default: m.KingdomDashboard })));
-const TerritoryExpansion = lazy(() => import('./components/TerritoryExpansion').then(m => ({ default: m.TerritoryExpansion })));
-const BattleFormations = lazy(() => import('./components/BattleFormations').then(m => ({ default: m.BattleFormations })));
-const SpellCastingInterface = lazy(() => import('./components/SpellCastingInterface').then(m => ({ default: m.SpellCastingInterface })));
-const TradeSystem = lazy(() => import('./components/TradeSystem').then(m => ({ default: m.TradeSystem })));
-const UnitSummonInterface = lazy(() => import('./components/UnitSummonInterface').then(m => ({ default: m.UnitSummonInterface })));
-const DiplomacyInterface = lazy(() => import('./components/DiplomacyInterface').then(m => ({ default: m.DiplomacyInterface })));
-const Leaderboard = lazy(() => import('./components/Leaderboard').then(m => ({ default: m.Leaderboard })));
-const AchievementList = lazy(() => import('./components/achievements/AchievementList').then(m => ({ default: m.AchievementList })));
-const GuildManagement = lazy(() => import('./components/GuildManagement').then(m => ({ default: m.GuildManagement })));
-const WorldMap = lazy(() => import('./components/WorldMap').then(m => ({ default: m.WorldMap })));
-const BattleReports = lazy(() => import('./components/combat/BattleReports').then(m => ({ default: m.BattleReports })));
+const WelcomePage = lazy(() => import('./components/WelcomePage'));
+const KingdomCreation = lazy(() => import('./components/KingdomCreation'));
+const KingdomDashboard = lazy(() => import('./components/KingdomDashboard'));
+const TerritoryExpansion = lazy(() => import('./components/TerritoryExpansion'));
+const BattleFormations = lazy(() => import('./components/BattleFormations'));
+const SpellCastingInterface = lazy(() => import('./components/SpellCastingInterface'));
+const TradeSystem = lazy(() => import('./components/TradeSystem'));
+const UnitSummonInterface = lazy(() => import('./components/UnitSummonInterface'));
+const DiplomacyInterface = lazy(() => import('./components/DiplomacyInterface'));
+const Leaderboard = lazy(() => import('./components/Leaderboard'));
+const AchievementList = lazy(() => import('./components/achievements/AchievementList'));
+const GuildManagement = lazy(() => import('./components/GuildManagement'));
+const WorldMap = lazy(() => import('./components/WorldMap'));
+const BattleReports = lazy(() => import('./components/combat/BattleReports'));
 
 interface AppRouterProps {
   kingdoms: Schema['Kingdom']['type'][];
