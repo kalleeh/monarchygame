@@ -197,20 +197,20 @@ export const calculateCombatResult = combatCache.wrap(
     seed?: number
   ) => {
     // Calculate power ratio
-    const powerRatio = calculatePowerRatio(attackerUnits, defenderUnits);
+    const powerRatio = calculatePowerRatio(attackerUnits, defenderUnits) as number;
     
     // Determine battle result
-    const battleResult = getBattleResult(powerRatio);
+    const battleResult = getBattleResult(powerRatio) as string;
     
     // Get casualty rates
-    const casualtyRates = getCasualtyRates(battleResult);
+    const casualtyRates = getCasualtyRates(battleResult) as { attacker: number; defender: number };
     
     // Calculate casualties
     const attackerCasualties = calculateCasualties(attackerUnits, casualtyRates.attacker);
     const defenderCasualties = calculateCasualties(defenderUnits, casualtyRates.defender);
     
     // Calculate land gained
-    const landGained = calculateLandGained(battleResult, defenderLand, seed);
+    const landGained = calculateLandGained(battleResult, defenderLand, seed) as number;
     
     // Calculate gold looted (1000 per land gained)
     const goldLooted = landGained * 1000;

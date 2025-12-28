@@ -22,7 +22,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@react-spring/web": "^10.0.1",
     "@xyflow/react": "^12.8.4",
-    "aws-amplify": "^6.15.5",
+    "aws-amplify": "^6.15.9",
     "cacheable": "^1.7.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
