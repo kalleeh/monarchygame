@@ -1,0 +1,406 @@
+/* Kingdom Dashboard - Mobile-First Responsive Design */
+.kingdom-dashboard {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 0;
+  width: 100%;
+}
+
+/* Mobile-first dashboard grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  padding: 0.5rem;
+  width: 100%;
+}
+
+/* Tablet and up */
+@media (min-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr 1fr;
+    padding: 1rem;
+  }
+}
+
+/* Desktop and up */
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+    padding: 1rem;
+  }
+}
+
+/* Panel styles - mobile-first with dark theme */
+.resources-panel,
+.race-stats-panel,
+.turn-generation-panel,
+.territories-panel,
+.actions-panel {
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(78, 205, 196, 0.3);
+}
+
+@media (min-width: 768px) {
+  .resources-panel,
+  .race-stats-panel,
+  .kingdom-stats-panel,
+  .quick-actions-panel {
+    padding: 2rem;
+  }
+}
+
+.resources-panel h2,
+.race-stats-panel h2,
+.turn-generation-panel h2,
+.territories-panel h2,
+.actions-panel h2 {
+  margin: 0 0 1.5rem 0;
+  color: #4ecdc4;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* Mobile-first resources grid */
+.resources-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .resources-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.resource-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+}
+
+.resource-item:hover {
+  transform: translateY(-1px);
+}
+
+.resource-icon-img {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.resource-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.resource-label {
+  font-size: 0.75rem;
+  color: #a0a0a0;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Mobile-first resource actions */
+.resource-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .resource-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+.resource-btn {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px; /* Touch-friendly */
+  font-size: 0.875rem;
+}
+
+@media (min-width: 640px) {
+  .resource-btn {
+    flex: 0 1 calc(50% - 0.375rem);
+  }
+}
+
+@media (min-width: 768px) {
+  .resource-btn {
+    flex: 1;
+  }
+}
+
+/* Race stats - mobile-first */
+.race-info {
+  margin-bottom: 1.5rem;
+}
+
+.special-ability {
+  color: #e0e0e0;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+.special-ability strong {
+  color: #4ecdc4;
+  font-weight: 700;
+}
+
+.stats-mini {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .stats-mini {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.stat-mini {
+  text-align: center;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+}
+
+.stat-name {
+  display: block;
+  font-size: 0.75rem;
+  color: #a0a0a0;
+  text-transform: capitalize;
+  margin-bottom: 0.25rem;
+}
+
+.stat-bar-mini {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.stat-bar-mini::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #4ecdc4 0%, #44a08d 100%);
+  border-radius: 2px;
+  width: var(--stat-value, 50%);
+}
+
+/* Kingdom stats - mobile-first */
+.kingdom-overview {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .kingdom-overview {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.overview-item {
+  text-align: center;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.overview-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 0.25rem 0;
+}
+
+.overview-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Quick actions - mobile-first */
+.action-buttons {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .action-buttons {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px; /* Touch-friendly */
+  text-decoration: none;
+}
+
+.action-btn:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+}
+
+/* Loading states */
+.loading {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: white;
+  font-size: 1.125rem;
+}
+
+/* Responsive text sizing */
+@media (min-width: 768px) {
+  .kingdom-dashboard h1 {
+    font-size: 2rem;
+  }
+  
+  .resources-panel h2,
+  .race-stats-panel h2,
+  .kingdom-stats-panel h2,
+  .quick-actions-panel h2 {
+    font-size: 1.5rem;
+  }
+}
+
+/* Territories panel */
+.territories-panel {
+  grid-column: 1 / -1;
+}
+
+.territories-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .territories-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .territories-list {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.territory-item {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: all 0.2s ease;
+}
+
+.territory-item:hover {
+  border-color: #4ecdc4;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+}
+
+.territory-item h4 {
+  color: #4ecdc4;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+}
+
+.territory-item p {
+  color: #a0a0a0;
+  font-size: 0.875rem;
+  margin: 0 0 0.75rem 0;
+}
+
+.territory-resources {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.territory-resources span {
+  color: #e0e0e0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Actions panel */
+.actions-panel {
+  grid-column: 1 / -1;
+}
+
+.action-icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* Turn generation panel - keep consistent with other panels */
+.turn-generation-panel {
+  /* Uses same styling as other panels */
+}
+
+/* Touch improvements */
+@media (hover: none) and (pointer: coarse) {
+  .resource-item:hover {
+    transform: none;
+  }
+  
+  .action-btn:hover {
+    transform: none;
+  }
+  
+  .action-btn:active {
+    transform: scale(0.98);
+  }
+  
+  .territory-item:hover {
+    transform: none;
+  }
+}

@@ -1,0 +1,32 @@
+version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - npm install --cache .npm --prefer-offline
+        - cd amplify/functions && for dir in */; do cd "$dir" && npm install && cd ..; done && cd ../..
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - ls -la
+        - ls -la shared/ || echo "shared directory not found"
+        - cp amplify_outputs.json frontend/
+        - cd frontend
+        - npm install --cache .npm --prefer-offline
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: frontend/dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - frontend/node_modules/**/*
+      - .npm/**/*
+  redirects:
+    - source: '/<*>'
+      target: '/index.html'
+      status: '200'

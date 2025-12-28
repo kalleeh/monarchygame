@@ -1,0 +1,192 @@
+.combat-interface {
+  width: calc(100vw - 4rem);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-xl);
+  background: var(--bg-primary) !important;
+  backdrop-filter: var(--blur);
+  min-height: 100vh;
+  color: var(--text-primary) !important;
+}
+
+/* Fix oversized images */
+.combat-interface img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Combat action button icons should be small */
+.combat-interface .tab-icon {
+  font-size: 1.2rem;
+  margin-right: 0.5rem;
+}
+
+.combat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-md);
+  border-bottom: 2px solid var(--border-accent);
+}
+
+.combat-title {
+  color: var(--text-accent);
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.kingdom-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.kingdom-name {
+  color: var(--text-primary);
+  font-weight: bold;
+}
+
+.kingdom-race {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.combat-tabs {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.tab-button {
+  display: flex;
+  align-items: center;
+  padding: var(--space-md) var(--space-lg);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+  border-bottom: 2px solid transparent;
+  position: relative;
+}
+
+.tab-button:hover {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.tab-button.active {
+  color: var(--text-accent);
+  border-bottom-color: var(--text-accent);
+}
+
+.tab-button.has-notifications {
+  color: var(--error);
+}
+
+.notification-badge {
+  background: var(--error);
+  color: var(--text-primary);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: bold;
+  margin-left: var(--space-xs);
+}
+
+.combat-content {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  border: 1px solid var(--border-primary);
+}
+
+.tab-panel {
+  min-height: 400px;
+}
+
+.combat-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--error);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.error-icon {
+  font-size: 1.2rem;
+}
+
+.error-message {
+  flex: 1;
+  color: var(--error);
+}
+
+.error-dismiss {
+  background: transparent;
+  border: 1px solid var(--error);
+  color: var(--error);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.error-dismiss:hover {
+  background: var(--error);
+  color: var(--text-primary);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .combat-interface {
+    width: calc(100vw - 2rem);
+    margin: 1rem auto;
+    padding: var(--space-lg);
+  }
+  
+  .combat-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-md);
+  }
+  
+  .combat-tabs {
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+  
+  .tab-button {
+    flex: 1;
+    min-width: 120px;
+    justify-content: center;
+    padding: var(--space-sm) var(--space-md);
+  }
+  
+  .combat-title {
+    font-size: 1.5rem;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .tab-button {
+    font-size: 0.9rem;
+    padding: var(--space-sm);
+  }
+  
+  .tab-icon {
+    font-size: 1rem;
+    margin-right: 0.25rem;
+  }
+}
