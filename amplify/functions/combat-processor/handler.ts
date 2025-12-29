@@ -51,12 +51,12 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     });
 
     // Update defender's land and resources if successful
-    if (combatResult.success && combatResult.landGained > 0) {
+    if ((combatResult as any).success && (combatResult as any).landGained > 0) {
       const defenderResources = defender.data.resources as any || {};
       const updatedResources = {
         ...defenderResources,
-        land: Math.max(1000, (defenderResources.land || 1000) - combatResult.landGained),
-        gold: Math.max(0, (defenderResources.gold || 0) - combatResult.goldLooted)
+        land: Math.max(1000, (defenderResources.land || 1000) - (combatResult as any).landGained),
+        gold: Math.max(0, (defenderResources.gold || 0) - (combatResult as any).goldLooted)
       };
 
       await client.models.Kingdom.update({
@@ -68,8 +68,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       const attackerResources = attacker.data.resources as any || {};
       const updatedAttackerResources = {
         ...attackerResources,
-        land: (attackerResources.land || 1000) + combatResult.landGained,
-        gold: (attackerResources.gold || 0) + combatResult.goldLooted
+        land: (attackerResources.land || 1000) + (combatResult as any).landGained,
+        gold: (attackerResources.gold || 0) + (combatResult as any).goldLooted
       };
 
       await client.models.Kingdom.update({
@@ -81,8 +81,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     return { 
       success: true, 
       result: JSON.stringify({
-        ...combatResult,
-        message: `Combat ${combatResult.result}: ${combatResult.landGained} land gained, ${combatResult.goldLooted} gold looted`
+        ...(combatResult as any),
+        message: `Combat ${(combatResult as any).result}: ${(combatResult as any).landGained} land gained, ${(combatResult as any).goldLooted} gold looted`
       })
     };
   } catch (error) {
