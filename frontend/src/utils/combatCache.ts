@@ -10,8 +10,21 @@ const combatCache = {
   size: 0
 };
 
-// Import game data
-import { UNIT_STATS } from '../../../shared/units/unit-visual-assets';
+// Basic unit stats for combat calculations
+const UNIT_STATS = {
+  peasant: { attack: 1, defense: 1 },
+  infantry: { attack: 3, defense: 2 },
+  cavalry: { attack: 5, defense: 3 },
+  archer: { attack: 4, defense: 2 },
+  knight: { attack: 6, defense: 4 },
+  mage: { attack: 3, defense: 1 },
+  scout: { attack: 2, defense: 1 },
+  // Tier-based units
+  tier1: { attack: 1, defense: 1 },
+  tier2: { attack: 3, defense: 2 },
+  tier3: { attack: 5, defense: 3 },
+  tier4: { attack: 7, defense: 4 }
+} as const;
 
 /**
  * Calculate unit power with caching
