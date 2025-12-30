@@ -9,7 +9,7 @@ import '@aws-amplify/ui-react/styles.css';
 import outputs from '../amplify_outputs.json';
 import { monarchyAuthTheme, monarchyFormFields, monarchyAuthComponents } from './themes/authenticatorTheme';
 import { AppRouter } from './AppRouter';
-import { RACES } from '../../shared/races';
+import { RACES } from './shared-races';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import './App.css';
 import './components/KingdomCreation.css';
