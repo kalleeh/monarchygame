@@ -2,10 +2,6 @@
   "name": "monarchygame",
   "version": "2.0.0",
   "type": "module",
-  "workspaces": [
-    "frontend",
-    "amplify/functions/*"
-  ],
   "devDependencies": {
     "@aws-amplify/backend-cli": "^1.8.0",
     "@playwright/test": "^1.56.1",
