@@ -17,9 +17,6 @@
 
     /* Path mapping */
     "baseUrl": ".",
-    "paths": {
-      "@shared/*": ["../shared/*"]
-    },
 
     /* Testing */
     "types": ["vitest/globals"],
@@ -31,5 +28,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "../shared"]
+  "include": ["src"]
 }
