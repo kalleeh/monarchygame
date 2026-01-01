@@ -21,7 +21,6 @@ const SPELLS: Record<string, any> = {
 const calculateMaxElan = (templeCount: number, landCount: number, raceId: string): number => {
   return Math.floor(templeCount * 10 + landCount * 0.1);
 };
-import { SpellService } from '../services/SpellService';
 
 interface SpellEffect {
   id: string;
