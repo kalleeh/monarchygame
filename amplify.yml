@@ -5,13 +5,9 @@ applications:
       phases:
         preBuild:
           commands:
-            - ls -la
-            - pwd
-            - cd frontend && npm ci
+            - npm ci --prefix frontend
         build:
           commands:
-            - pwd
-            - ls -la frontend
             - npm run build --prefix frontend
       artifacts:
         baseDirectory: frontend/dist
