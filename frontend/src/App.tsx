@@ -6,7 +6,7 @@ import { generateClient } from 'aws-amplify/data';
 import { Toaster } from 'react-hot-toast';
 import type { AuthUser } from 'aws-amplify/auth';
 import '@aws-amplify/ui-react/styles.css';
-import outputs from '../amplify_outputs.json';
+import outputs from './amplify_outputs.json';
 import { monarchyAuthTheme, monarchyFormFields, monarchyAuthComponents } from './themes/authenticatorTheme';
 import { AppRouter } from './AppRouter';
 import { RACES } from './shared-races';
