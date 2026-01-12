@@ -184,17 +184,23 @@ export const monarchyFormFields = {
       isRequired: true,
       order: 1,
     },
+    preferred_username: {
+      placeholder: 'Choose your kingdom name',
+      label: 'Kingdom Name',
+      isRequired: true,
+      order: 2,
+    },
     password: {
       placeholder: 'Create a strong password',
       label: 'Password',
       isRequired: true,
-      order: 2,
+      order: 3,
     },
     confirm_password: {
       placeholder: 'Confirm your password',
       label: 'Confirm Password',
       isRequired: true,
-      order: 3,
+      order: 4,
     },
   },
   forgotPassword: {
