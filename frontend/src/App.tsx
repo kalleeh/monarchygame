@@ -224,9 +224,11 @@ function AppContent() {
           }, 500);
         } else {
           console.error('Kingdom creation failed: No data returned');
+          alert('Failed to create kingdom. Please check the console for details and try again.');
         }
       } catch (error) {
         console.error('Failed to create kingdom:', error);
+        alert(`Failed to create kingdom: ${error instanceof Error ? error.message : 'Unknown error'}. Please check the console for details.`);
         // Stay on creation page if failed
       } finally {
         setLoading(false);
