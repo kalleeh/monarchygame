@@ -4,6 +4,7 @@ import { Amplify } from 'aws-amplify';
 import { Authenticator, ThemeProvider } from '@aws-amplify/ui-react';
 import { generateClient } from 'aws-amplify/data';
 import { Toaster } from 'react-hot-toast';
+import { fetchUserAttributes } from 'aws-amplify/auth';
 import type { AuthUser } from 'aws-amplify/auth';
 import '@aws-amplify/ui-react/styles.css';
 import outputs from './amplify-config';
@@ -39,6 +40,7 @@ function AppContent() {
   const [showAuth, setShowAuth] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [username, setUsername] = useState<string>('User');
   const [hasInitialFetch, setHasInitialFetch] = useState(false);
 
   const fetchKingdoms = useCallback(async () => {
@@ -96,6 +98,17 @@ function AppContent() {
     const isDemoMode = localStorage.getItem('demo-mode') === 'true';
     setDemoMode(isDemoMode);
     
+    // Fetch user attributes when user is available
+    if (currentUser && !demoMode) {
+      fetchUserAttributes()
+        .then(attributes => {
+          setUsername(attributes.preferred_username || attributes.email || 'User');
+        })
+        .catch(err => {
+          console.error('Failed to fetch user attributes:', err);
+        });
+    }
+    
     if (isDemoMode) {
       // Always fetch kingdoms in demo mode, even on refresh
       fetchKingdoms();
@@ -103,7 +116,7 @@ function AppContent() {
       // Not in demo mode - stop loading and show welcome page
       setLoading(false);
     }
-  }, [fetchKingdoms]); // Add fetchKingdoms dependency
+  }, [fetchKingdoms, currentUser]); // Add currentUser dependency
   
   // Fetch kingdoms again if demoMode changes
   useEffect(() => {
@@ -185,18 +198,6 @@ function AppContent() {
       try {
         setLoading(true);
         console.log('Creating kingdom:', kingdomName, race);
-        
-        // Verify user is authenticated
-        const { getCurrentUser } = await import('aws-amplify/auth');
-        try {
-          const user = await getCurrentUser();
-          console.log('Current user:', user);
-        } catch (authError) {
-          console.error('Authentication check failed:', authError);
-          alert('You must be logged in to create a kingdom. Please refresh the page and try again.');
-          setLoading(false);
-          return;
-        }
         
         const raceName = race.charAt(0).toUpperCase() + race.slice(1).toLowerCase();
         const raceData = RACES[raceName];
@@ -344,7 +345,7 @@ function AppContent() {
         <header className="app-header">
           <h1>🏰 Monarchy Game</h1>
           <div className="user-info">
-            <span>Welcome, {user?.attributes?.preferred_username || user?.attributes?.email || 'User'}</span>
+            <span>Welcome, {username}</span>
             <button onClick={signOut} className="sign-out-btn">
               Sign Out
             </button>
