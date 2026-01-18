@@ -186,6 +186,18 @@ function AppContent() {
         setLoading(true);
         console.log('Creating kingdom:', kingdomName, race);
         
+        // Verify user is authenticated
+        const { getCurrentUser } = await import('aws-amplify/auth');
+        try {
+          const user = await getCurrentUser();
+          console.log('Current user:', user);
+        } catch (authError) {
+          console.error('Authentication check failed:', authError);
+          alert('You must be logged in to create a kingdom. Please refresh the page and try again.');
+          setLoading(false);
+          return;
+        }
+        
         const raceName = race.charAt(0).toUpperCase() + race.slice(1).toLowerCase();
         const raceData = RACES[raceName];
         const startingResources = raceData?.startingResources || {
