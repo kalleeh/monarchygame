@@ -198,16 +198,29 @@ function AppContent() {
       try {
         setLoading(true);
         
-        // Verify auth session exists
-        try {
-          const session = await fetchAuthSession();
-          if (!session.tokens) {
-            throw new Error('No valid authentication session');
+        // Wait for auth session to be ready (retry up to 3 times with 1s delay)
+        let session = null;
+        let retries = 3;
+        
+        while (retries > 0 && !session?.tokens) {
+          try {
+            session = await fetchAuthSession({ forceRefresh: true });
+            if (session.tokens) {
+              console.log('Auth session ready');
+              break;
+            }
+          } catch (authError) {
+            console.log(`Auth session not ready, retrying... (${retries} attempts left)`);
           }
-          console.log('Auth session verified');
-        } catch (authError) {
-          console.error('Auth session error:', authError);
-          throw new Error('Authentication session not ready. Please wait a moment and try again.');
+          
+          if (!session?.tokens && retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            retries--;
+          }
+        }
+        
+        if (!session?.tokens) {
+          throw new Error('Authentication session not ready. Please try again in a moment.');
         }
         
         console.log('Creating kingdom:', kingdomName, race);
