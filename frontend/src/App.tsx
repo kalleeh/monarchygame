@@ -198,11 +198,6 @@ function AppContent() {
       try {
         setLoading(true);
         
-        // Verify user is authenticated
-        if (!currentUser) {
-          throw new Error('No current user. Please sign in again.');
-        }
-        
         console.log('Creating kingdom:', kingdomName, race);
         
         const raceName = race.charAt(0).toUpperCase() + race.slice(1).toLowerCase();
@@ -345,6 +340,24 @@ function AppContent() {
       }
     }, [user]);
 
+    // Create a wrapper for handleKingdomCreated that uses the user prop directly
+    const handleKingdomCreatedWithAuth = async (kingdomName: string, race: string) => {
+      const isDemoMode = localStorage.getItem('demo-mode') === 'true';
+      
+      if (isDemoMode) {
+        return handleKingdomCreated(kingdomName, race);
+      }
+      
+      // For authenticated users, verify user exists before proceeding
+      if (!user) {
+        alert('Authentication required. Please sign in again.');
+        return;
+      }
+      
+      // Call original handler
+      return handleKingdomCreated(kingdomName, race);
+    };
+
     return (
       <main className="app">
         <Toaster />
@@ -363,7 +376,7 @@ function AppContent() {
             <AppRouter 
               kingdoms={kingdoms}
               onGetStarted={handleGetStarted}
-              onKingdomCreated={handleKingdomCreated}
+              onKingdomCreated={handleKingdomCreatedWithAuth}
             />
           </ErrorBoundary>
         </div>
