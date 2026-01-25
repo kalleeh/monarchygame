@@ -198,29 +198,39 @@ function AppContent() {
       try {
         setLoading(true);
         
-        // Wait for auth session to be ready (retry up to 3 times with 1s delay)
+        // Wait for auth session to be ready (retry up to 5 times with 2s delay)
         let session = null;
-        let retries = 3;
+        let retries = 5;
         
-        while (retries > 0 && !session?.tokens) {
+        console.log('Waiting for auth session to be ready...');
+        
+        while (retries > 0) {
           try {
             session = await fetchAuthSession({ forceRefresh: true });
+            console.log('Auth session check:', { 
+              hasTokens: !!session.tokens,
+              hasIdentityId: !!session.identityId,
+              retries 
+            });
+            
             if (session.tokens) {
-              console.log('Auth session ready');
+              console.log('Auth session ready!');
               break;
             }
           } catch (authError) {
-            console.log(`Auth session not ready, retrying... (${retries} attempts left)`);
+            console.error('Auth session error:', authError);
           }
           
-          if (!session?.tokens && retries > 0) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+          if (retries > 0) {
+            console.log(`Waiting 2 seconds before retry... (${retries} attempts left)`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
             retries--;
           }
         }
         
         if (!session?.tokens) {
-          throw new Error('Authentication session not ready. Please try again in a moment.');
+          console.error('Auth session failed after all retries');
+          throw new Error('Please sign out and sign in again, then try creating your kingdom.');
         }
         
         console.log('Creating kingdom:', kingdomName, race);
