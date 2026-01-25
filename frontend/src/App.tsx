@@ -197,6 +197,12 @@ function AppContent() {
       // For authenticated users, create kingdom in database
       try {
         setLoading(true);
+        
+        // Verify user is authenticated
+        if (!currentUser) {
+          throw new Error('No current user. Please sign in again.');
+        }
+        
         console.log('Creating kingdom:', kingdomName, race);
         
         const raceName = race.charAt(0).toUpperCase() + race.slice(1).toLowerCase();
