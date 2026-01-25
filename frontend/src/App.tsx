@@ -4,7 +4,7 @@ import { Amplify } from 'aws-amplify';
 import { Authenticator, ThemeProvider } from '@aws-amplify/ui-react';
 import { generateClient } from 'aws-amplify/data';
 import { Toaster } from 'react-hot-toast';
-import { fetchUserAttributes } from 'aws-amplify/auth';
+import { fetchUserAttributes, fetchAuthSession } from 'aws-amplify/auth';
 import type { AuthUser } from 'aws-amplify/auth';
 import '@aws-amplify/ui-react/styles.css';
 import outputs from './amplify-config';
@@ -197,6 +197,18 @@ function AppContent() {
       // For authenticated users, create kingdom in database
       try {
         setLoading(true);
+        
+        // Verify auth session exists
+        try {
+          const session = await fetchAuthSession();
+          if (!session.tokens) {
+            throw new Error('No valid authentication session');
+          }
+          console.log('Auth session verified');
+        } catch (authError) {
+          console.error('Auth session error:', authError);
+          throw new Error('Authentication session not ready. Please wait a moment and try again.');
+        }
         
         console.log('Creating kingdom:', kingdomName, race);
         
