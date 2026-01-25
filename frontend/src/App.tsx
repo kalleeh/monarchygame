@@ -116,7 +116,7 @@ function AppContent() {
       // Not in demo mode - stop loading and show welcome page
       setLoading(false);
     }
-  }, [fetchKingdoms, currentUser]); // Add currentUser dependency
+  }, [fetchKingdoms, currentUser, demoMode]);
   
   // Fetch kingdoms again if demoMode changes
   useEffect(() => {
@@ -370,7 +370,7 @@ function AppContent() {
       <Authenticator
         formFields={monarchyFormFields}
         components={monarchyAuthComponents}
-        signUpAttributes={['email']}
+        signUpAttributes={['email', 'preferred_username']}
         loginMechanisms={['email']}
       >
         {({ signOut, user }) => (

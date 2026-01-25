@@ -11,7 +11,7 @@ export const auth = defineAuth({
   },
   userAttributes: {
     preferredUsername: {
-      required: true,
+      required: false, // Changed to false to allow sign-up without it
       mutable: true,
     },
     email: {
