@@ -105,6 +105,7 @@ export const calculateCombatResult = combatCache.wrap(
     const attackerCasualties = calculateCasualties(attackerUnits, casualtyRates.attacker);
     const defenderCasualties = calculateCasualties(defenderUnits, casualtyRates.defender);
     const landGained = calculateLandGained(battleResult, defenderLand, seed) as number;
+    // Gold looted per acre: 1000 (must match frontend gameConfig.ts COMBAT.GOLD_LOOTED_PER_ACRE)
     const goldLooted = landGained * 1000;
 
     return {

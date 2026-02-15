@@ -92,11 +92,11 @@ export const getCasualtyRates = combatCache.wrap(
 export const calculateLandGained = combatCache.wrap(
   (battleResult: string, defenderLand: number, seed?: number) => {
     if (battleResult === 'failed') return 0;
-    
-    const baseGain = battleResult === 'with_ease' ? 0.15 : 0.08;
+
+    const baseGain = battleResult === 'with_ease' ? 0.0735 : 0.068;
     const randomFactor = seed ? Math.sin(seed) * 0.5 + 0.5 : Math.random();
-    const variance = 0.3; // ±30% variance
-    
+    const variance = (0.0735 - 0.0679) / ((0.0735 + 0.0679) / 2);
+
     return Math.floor(defenderLand * baseGain * (1 + (randomFactor - 0.5) * variance));
   },
   { ttl: '1h', keyPrefix: 'landGained' }
@@ -144,7 +144,7 @@ export const calculateCombatResult = combatCache.wrap(
     // Calculate land gained
     const landGained = calculateLandGained(battleResult, defenderLand, seed) as number;
     
-    // Calculate gold looted (1000 per land gained)
+    // Gold looted per acre: 1000 (must match gameConfig.ts COMBAT.GOLD_LOOTED_PER_ACRE)
     const goldLooted = landGained * 1000;
     
     return {

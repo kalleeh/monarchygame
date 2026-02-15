@@ -12,7 +12,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       return { success: false, error: 'Missing parameters' };
     }
 
-    const validSpells = ['fireball', 'heal', 'shield', 'lightning', 'earthquake', 'restoration'];
+    const validSpells = ['calming_chant', 'rousing_wind', 'shattering_calm', 'hurricane', 'lightning_lance', 'banshee_deluge', 'foul_light'];
     if (!validSpells.includes(spellId)) {
       return { success: false, error: `Invalid spell. Must be one of: ${validSpells.join(', ')}` };
     }
@@ -33,6 +33,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     const kingdom = result.data;
     const resources = kingdom.resources as any || {};
     
+    // Mana cost per spell: 50 (keep in sync with frontend gameConfig.ts if added there)
     if ((resources.mana || 0) < 50) {
       return { success: false, error: 'Insufficient mana' };
     }

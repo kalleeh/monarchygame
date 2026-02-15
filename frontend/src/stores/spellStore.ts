@@ -7,20 +7,8 @@
 import { create } from 'zustand';
 import { combine } from 'zustand/middleware';
 import { SpellService } from '../services/SpellService';
-
-// Local spell definitions (minimal for build compatibility)
-const SPELLS: Record<string, any> = {
-  calming_chant: {
-    tier: 0,
-    cost: { elan: 1, turns: 1, templeThreshold: 0 },
-    targetType: ['self']
-  }
-};
-
-// Local elan calculation (minimal for build compatibility)
-const calculateMaxElan = (templeCount: number, landCount: number, raceId: string): number => {
-  return Math.floor(templeCount * 10 + landCount * 0.1);
-};
+import { SPELLS } from '../shared-spells';
+import { calculateMaxElan } from '../../../shared/mechanics/elan-mechanics';
 
 interface SpellEffect {
   id: string;

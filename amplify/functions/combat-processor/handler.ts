@@ -1,6 +1,6 @@
 import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
-import { calculateCombatResult } from '../../../frontend/src/utils/combatCache';
+import { calculateCombatResult } from '../../../shared/combat/combatCache';
 import type { KingdomResources, CombatResultData } from '../../../shared/types/kingdom';
 
 /** Safely parse an Amplify JSON field into the expected type, or return a fallback. */

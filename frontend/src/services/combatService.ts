@@ -109,7 +109,7 @@ export class CombatService {
         terrainType: request.terrainType,
         coordinates: request.coordinates,
         territoryAmount: 1,
-        goldCost: 1000
+        goldCost: 500 // Must match territory-claimer Lambda handler cost of 500g
       }) as LambdaResponse;
     } catch (error) {
       console.error('Territory claim error:', error);
@@ -172,7 +172,7 @@ export class CombatService {
     try {
       return await AmplifyFunctionService.castSpell({
         kingdomId: request.kingdomId,
-        action: 'cast_spell',
+        action: 'cast',
         spellId: request.spellId,
         targetId: request.targetKingdomId,
       }) as LambdaResponse;

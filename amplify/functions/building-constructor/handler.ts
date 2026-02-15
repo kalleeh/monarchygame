@@ -41,6 +41,7 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
 
     const kingdom = result.data;
     const resources = (kingdom.resources as any) || {};
+    // Building cost: 250g per building (keep in sync with frontend combatService.ts)
     const goldCost = quantity * 250;
 
     if ((resources.gold || 0) < goldCost) {

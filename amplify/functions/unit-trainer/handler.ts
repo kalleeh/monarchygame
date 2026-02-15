@@ -40,6 +40,7 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
 
     const kingdom = result.data;
     const resources = (kingdom.resources as any) || {};
+    // Unit cost: 100g per unit (keep in sync with frontend combatService.ts)
     const goldCost = quantity * 100;
 
     if ((resources.gold || 0) < goldCost) {

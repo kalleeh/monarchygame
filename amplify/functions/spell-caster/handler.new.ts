@@ -19,7 +19,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       return { success: false, error: 'Invalid spellId format', errorCode: ErrorCode.INVALID_PARAM };
     }
 
-    const validSpells = ['fireball', 'heal', 'shield', 'lightning', 'earthquake', 'restoration'];
+    const validSpells = ['calming_chant', 'rousing_wind', 'shattering_calm', 'hurricane', 'lightning_lance', 'banshee_deluge', 'foul_light'];
     if (!validSpells.includes(spellId)) {
       return { success: false, error: `Invalid spell. Must be one of: ${validSpells.join(', ')}`, errorCode: ErrorCode.INVALID_PARAM };
     }

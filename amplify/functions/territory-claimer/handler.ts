@@ -19,6 +19,7 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
     }
 
     const resources = (kingdomResult.data.resources as any) || {};
+    // Territory cost: 500g (keep in sync with frontend combatService.ts)
     if ((resources.gold || 0) < 500) {
       return { success: false, error: `Insufficient gold: need 500, have ${resources.gold || 0}` };
     }
