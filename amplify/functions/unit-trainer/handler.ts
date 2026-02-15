@@ -1,69 +1,67 @@
 import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
+import type { KingdomUnits, KingdomResources } from '../../../shared/types/kingdom';
+import { ErrorCode } from '../../../shared/types/kingdom';
 
-// Input validation constants
-const VALIDATION_RULES = {
-  UNIT_QUANTITY: { min: 1, max: 1000 },
-  UNIT_TYPES: ['infantry', 'archers', 'cavalry', 'siege', 'mages', 'scouts']
-} as const;
+const VALID_UNIT_TYPES = ['infantry', 'archers', 'cavalry', 'siege', 'mages', 'scouts'] as const;
+type UnitType = typeof VALID_UNIT_TYPES[number];
 
-// Initialize client outside handler for connection reuse
+const UNIT_QUANTITY = { min: 1, max: 1000 } as const;
+
 const client = generateClient<Schema>();
 
 export const handler: Schema["trainUnits"]["functionHandler"] = async (event) => {
   const { kingdomId, unitType, quantity } = event.arguments;
 
   try {
-    // Input validation
-    if (!kingdomId || !unitType || !quantity) {
-      return { success: false, error: 'Missing required parameters' };
+    if (!kingdomId || !unitType || quantity === undefined || quantity === null) {
+      return { success: false, error: 'Missing required parameters: kingdomId, unitType, quantity', errorCode: ErrorCode.MISSING_PARAMS };
     }
 
-    // Validate unit type
-    if (!(VALIDATION_RULES.UNIT_TYPES as ReadonlyArray<string>).includes(unitType)) {
-      return { success: false, error: `Invalid unit type. Must be one of: ${VALIDATION_RULES.UNIT_TYPES.join(', ')}` };
+    if (!VALID_UNIT_TYPES.includes(unitType as UnitType)) {
+      return { success: false, error: `Invalid unit type. Must be one of: ${VALID_UNIT_TYPES.join(', ')}`, errorCode: ErrorCode.INVALID_PARAM };
     }
 
-    // Validate quantity range
-    if (quantity < VALIDATION_RULES.UNIT_QUANTITY.min || quantity > VALIDATION_RULES.UNIT_QUANTITY.max) {
-      return { 
-        success: false, 
-        error: `Quantity must be between ${VALIDATION_RULES.UNIT_QUANTITY.min} and ${VALIDATION_RULES.UNIT_QUANTITY.max}` 
-      };
+    if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < UNIT_QUANTITY.min || quantity > UNIT_QUANTITY.max) {
+      return { success: false, error: `Quantity must be an integer between ${UNIT_QUANTITY.min} and ${UNIT_QUANTITY.max}`, errorCode: ErrorCode.INVALID_PARAM };
     }
 
     const result = await client.models.Kingdom.get({ id: kingdomId });
 
     if (!result.data) {
-      return { success: false, error: 'Kingdom not found' };
+      return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
-    const kingdom = result.data;
-    const resources = (kingdom.resources as any) || {};
-    // Unit cost: 100g per unit (keep in sync with frontend combatService.ts)
+    const resources = (result.data.resources ?? {}) as KingdomResources;
     const goldCost = quantity * 100;
+    const currentGold = resources.gold ?? 0;
 
-    if ((resources.gold || 0) < goldCost) {
-      return { success: false, error: `Insufficient gold: need ${goldCost}, have ${resources.gold || 0}` };
+    if (currentGold < goldCost) {
+      return { success: false, error: `Insufficient gold: need ${goldCost}, have ${currentGold}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
-    const units: Record<string, number> = (kingdom.totalUnits as Record<string, number>) || {};
-    units[unitType] = (units[unitType] || 0) + quantity;
+    const units = (result.data.totalUnits ?? {}) as KingdomUnits;
+    const currentCount = units[unitType as keyof KingdomUnits] ?? 0;
+    const updatedUnits: KingdomUnits = {
+      ...units,
+      [unitType]: currentCount + quantity
+    };
 
-    const updatedResources = {
+    const updatedResources: KingdomResources = {
       ...resources,
-      gold: (resources.gold || 0) - goldCost
+      gold: currentGold - goldCost
     };
 
     await client.models.Kingdom.update({
       id: kingdomId,
-      totalUnits: units,
+      totalUnits: updatedUnits,
       resources: updatedResources
     });
 
-    return { success: true, units: JSON.stringify(units) };
+    return { success: true, units: JSON.stringify(updatedUnits) };
   } catch (error) {
-    console.error('Unit training error:', error);
-    return { success: false, error: 'Training failed' };
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Unit training error:', { kingdomId, unitType, quantity, error: message });
+    return { success: false, error: 'Training failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };

@@ -603,6 +603,11 @@ async function simulateBattle(
     }
   }
 
+  // Sidhe circle summoning: emergency temple creation on successful attacks
+  if (attackerRace.toLowerCase() === 'sidhe' && result !== 'defeat') {
+    notes.push('Sidhe circle summoning: emergency temple created in conquered territory');
+  }
+
   return {
     result,
     casualties: { attacker: attackerCasualties, defender: defenderCasualties },

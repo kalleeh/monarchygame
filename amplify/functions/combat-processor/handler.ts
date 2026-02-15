@@ -2,17 +2,8 @@ import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { calculateCombatResult } from '../../../shared/combat/combatCache';
 import type { KingdomResources, CombatResultData } from '../../../shared/types/kingdom';
+import { ErrorCode } from '../../../shared/types/kingdom';
 
-/** Safely parse an Amplify JSON field into the expected type, or return a fallback. */
-function parseJsonField<T>(value: unknown, fallback: T): T {
-  if (value === null || value === undefined) return fallback;
-  if (typeof value === 'string') {
-    try { return JSON.parse(value) as T; } catch { return fallback; }
-  }
-  return value as T;
-}
-
-// Initialize client outside handler for connection reuse
 const client = generateClient<Schema>();
 
 export const handler: Schema["processCombat"]["functionHandler"] = async (event) => {
@@ -20,11 +11,15 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
   try {
     if (!attackerId || !defenderId) {
-      return { success: false, error: 'Missing parameters' };
+      return { success: false, error: 'Missing attacker or defender ID', errorCode: ErrorCode.MISSING_PARAMS };
     }
 
     if (attackerId === defenderId) {
-      return { success: false, error: 'Cannot attack your own kingdom' };
+      return { success: false, error: 'Cannot attack your own kingdom', errorCode: ErrorCode.INVALID_PARAM };
+    }
+
+    if (!units) {
+      return { success: false, error: 'No units specified for attack', errorCode: ErrorCode.MISSING_PARAMS };
     }
 
     const [attacker, defender] = await Promise.all([
@@ -32,33 +27,44 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       client.models.Kingdom.get({ id: defenderId })
     ]);
 
-    if (!attacker.data || !defender.data) {
-      return { success: false, error: 'Kingdom not found' };
+    if (!attacker.data) {
+      return { success: false, error: 'Attacker kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+    }
+    if (!defender.data) {
+      return { success: false, error: 'Defender kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
-    // Parse units from input
-    const attackerUnits = typeof units === 'string' ? JSON.parse(units) : units;
-    const ownedUnits = parseJsonField<Record<string, number>>(attacker.data.totalUnits, {});
+    const attackerUnits: Record<string, number> = typeof units === 'string' ? JSON.parse(units) : units;
+    const ownedUnits = (attacker.data.totalUnits ?? {}) as Record<string, number>;
 
     // Validate that attacker has enough units
-    for (const [unitType, count] of Object.entries(attackerUnits as Record<string, number>)) {
-      if (count > (ownedUnits[unitType] || 0)) {
-        return { success: false, error: `Insufficient ${unitType}: sending ${count}, but only have ${ownedUnits[unitType] || 0}` };
+    for (const [unitType, count] of Object.entries(attackerUnits)) {
+      if (count > (ownedUnits[unitType] ?? 0)) {
+        return { success: false, error: `Insufficient ${unitType}: sending ${count}, but only have ${ownedUnits[unitType] ?? 0}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
       }
     }
 
-    const defenderUnits = parseJsonField<Record<string, number>>(defender.data.totalUnits, {});
-    const defenderResources = parseJsonField<KingdomResources>(defender.data.resources, { gold: 0, population: 0, mana: 0, land: 1000 });
-    const defenderLand = defenderResources.land || 1000;
+    // TODO: Enforce war declaration requirement for repeated attacks.
+    // Per game rules, the 4th+ attack against the same defender within a season
+    // requires a formal WarDeclaration. This needs a WarDeclaration table to track
+    // attack counts per attacker-defender pair per season. For now, all attacks
+    // are allowed without war declaration checks.
+    // Future implementation:
+    //   1. Query WarDeclaration table for recent attacks: attackerId -> defenderId
+    //   2. If attackCount >= 3 && no active WarDeclaration, reject with:
+    //      { success: false, error: 'War declaration required after 3 attacks', errorCode: ErrorCode.WAR_REQUIRED }
+    //   3. Create WarDeclaration record when player formally declares war
 
-    // Use cached combat calculation
+    const defenderResources = (defender.data.resources ?? {}) as KingdomResources;
+    const defenderUnits = (defender.data.totalUnits ?? {}) as Record<string, number>;
+    const defenderLand = defenderResources.land ?? 1000;
+
     const combatResult = calculateCombatResult(
       attackerUnits,
       defenderUnits,
       defenderLand
     ) as CombatResultData;
 
-    // Create battle report with detailed results
     await client.models.BattleReport.create({
       attackerId,
       defenderId,
@@ -81,41 +87,37 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
     const updatedAttackerUnits: Record<string, number> = { ...ownedUnits };
     for (const [unitType, lost] of Object.entries(attackerCasualties as Record<string, number>)) {
-      updatedAttackerUnits[unitType] = Math.max(0, (updatedAttackerUnits[unitType] || 0) - lost);
+      updatedAttackerUnits[unitType] = Math.max(0, (updatedAttackerUnits[unitType] ?? 0) - lost);
     }
 
     const updatedDefenderUnits: Record<string, number> = { ...defenderUnits };
     for (const [unitType, lost] of Object.entries(defenderCasualties as Record<string, number>)) {
-      updatedDefenderUnits[unitType] = Math.max(0, (updatedDefenderUnits[unitType] || 0) - lost);
+      updatedDefenderUnits[unitType] = Math.max(0, (updatedDefenderUnits[unitType] ?? 0) - lost);
     }
 
-    // Update defender's land, resources, and units
     if (combatResult.success && combatResult.landGained > 0) {
-      const updatedDefenderResources: KingdomResources = {
-        ...defenderResources,
-        land: Math.max(1000, (defenderResources.land || 1000) - combatResult.landGained),
-        gold: Math.max(0, (defenderResources.gold || 0) - combatResult.goldLooted)
-      };
+      const attackerResources = (attacker.data.resources ?? {}) as KingdomResources;
 
-      await client.models.Kingdom.update({
-        id: defenderId,
-        resources: updatedDefenderResources,
-        totalUnits: updatedDefenderUnits
-      });
-
-      // Update attacker's resources with gains
-      const attackerResources = parseJsonField<KingdomResources>(attacker.data.resources, { gold: 0, population: 0, mana: 0, land: 1000 });
-      const updatedAttackerResources: KingdomResources = {
-        ...attackerResources,
-        land: (attackerResources.land || 1000) + combatResult.landGained,
-        gold: (attackerResources.gold || 0) + combatResult.goldLooted
-      };
-
-      await client.models.Kingdom.update({
-        id: attackerId,
-        resources: updatedAttackerResources,
-        totalUnits: updatedAttackerUnits
-      });
+      await Promise.all([
+        client.models.Kingdom.update({
+          id: defenderId,
+          resources: {
+            ...defenderResources,
+            land: Math.max(1000, (defenderResources.land ?? 1000) - combatResult.landGained),
+            gold: Math.max(0, (defenderResources.gold ?? 0) - combatResult.goldLooted)
+          },
+          totalUnits: updatedDefenderUnits
+        }),
+        client.models.Kingdom.update({
+          id: attackerId,
+          resources: {
+            ...attackerResources,
+            land: (attackerResources.land ?? 1000) + combatResult.landGained,
+            gold: (attackerResources.gold ?? 0) + combatResult.goldLooted
+          },
+          totalUnits: updatedAttackerUnits
+        })
+      ]);
     } else {
       // Even if combat was not successful, still deduct casualties
       await Promise.all([
@@ -138,7 +140,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       })
     };
   } catch (error) {
-    console.error('Combat error:', error);
-    return { success: false, error: 'Combat failed' };
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Combat processing error:', { attackerId, defenderId, error: message });
+    return { success: false, error: 'Combat processing failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };

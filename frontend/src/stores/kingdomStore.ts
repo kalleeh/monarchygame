@@ -157,7 +157,24 @@ export const useKingdomStore = create<KingdomState>((set, get) => ({
     if (kingdomId) saveKingdomData(kingdomId, { resources, units });
   },
 
-  reset: () => set({ kingdomId: null, resources: initialResources, units: [] })
+  reset: () => set({ kingdomId: null, resources: initialResources, units: [] }),
+
+  /**
+   * Sync kingdom state to the database when running in authenticated mode.
+   * Currently a stub — when multiplayer is implemented, this will call
+   * Amplify's GraphQL API to persist kingdom resources and units server-side.
+   */
+  syncToDatabase: () => {
+    if (localStorage.getItem('demo-mode') === 'true') {
+      return; // Demo mode: all data stays in localStorage only
+    }
+
+    // Authenticated mode: database sync will be wired here when multiplayer is implemented
+    const { kingdomId, resources, units } = get();
+    if (kingdomId) {
+      console.log(`[kingdomStore] syncToDatabase: would persist kingdom ${kingdomId} to Amplify`, { resources, units });
+    }
+  },
 }));
 
 /**

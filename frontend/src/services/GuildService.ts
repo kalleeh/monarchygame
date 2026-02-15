@@ -339,9 +339,16 @@ export class GuildService {
    * Respond to alliance invitation
    */
   static async respondToInvitation(
-    invitationId: string, 
+    invitationId: string,
     response: 'accepted' | 'declined'
   ): Promise<void> {
+    if (this.isDemoMode()) {
+      // Demo mode: simulate responding to invitation
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log(`Demo mode: Invitation ${invitationId} ${response}`);
+      return;
+    }
+
     try {
       const updateResponse = await (client.models as unknown as Record<string, { update: (data: unknown) => Promise<{ errors?: { message: string }[] }> }>).GuildInvitation.update({
         id: invitationId,
