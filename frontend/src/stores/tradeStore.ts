@@ -121,6 +121,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
   marketTrends: {},
   priceHistory: {},
   economicIndicators: { marketVolatility: 0, tradeVolume: 0, averagePrice: 0, totalValue: 0 },
+  lastOfferTime: null as number | null,
   loading: false,
   error: null,
 
@@ -187,7 +188,18 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
   // createOffer — create a trade offer and deduct the offered resource
   // -----------------------------------------------------------------------
   createOffer: async (offer: Partial<TradeOffer>) => {
-    const { resources } = get();
+    const { resources, lastOfferTime } = get();
+
+    // Cooldown check: 12h for Human, 24h for others
+    if (lastOfferTime) {
+      const playerRace = (useKingdomStore.getState() as Record<string, unknown>).race as string | undefined;
+      const cooldownMs = playerRace?.toLowerCase() === 'human' ? 12 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+      if (Date.now() - lastOfferTime < cooldownMs) {
+        const hoursLeft = Math.ceil((cooldownMs - (Date.now() - lastOfferTime)) / (60 * 60 * 1000));
+        set({ error: `Trade cooldown active. ${hoursLeft}h remaining before next offer.` });
+        return;
+      }
+    }
 
     if (!offer.resourceId || !offer.quantity || offer.quantity <= 0 || !offer.pricePerUnit || offer.pricePerUnit <= 0) {
       set({ error: 'Invalid offer: resourceId, quantity, and pricePerUnit are required' });
@@ -229,6 +241,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
     set({
       activeOffers: allOffers,
       myOffers: allOffers.filter(o => o.sellerId === PLAYER_ID && o.status === 'open'),
+      lastOfferTime: Date.now(),
       error: null,
     });
   },

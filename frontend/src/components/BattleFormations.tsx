@@ -92,6 +92,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ onBack }) => {
   const [unitOrder, setUnitOrder] = useState<string[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<string>('');
   const [showBattleResult, setShowBattleResult] = useState(false);
+  const [ambushActive, setAmbushActive] = useState(false);
 
   // Battle preview calculation (useMemo for performance)
   const battlePreview = useMemo(() => {
@@ -456,6 +457,27 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ onBack }) => {
       <div className="battle-controls">
         <h3>Battle Execution</h3>
         <div className="battle-form">
+          <label className="ambush-toggle" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.75rem 1rem',
+            background: ambushActive ? 'rgba(139, 92, 246, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+            border: `1px solid ${ambushActive ? 'rgba(139, 92, 246, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
+            borderRadius: '8px',
+            marginBottom: '1rem',
+            cursor: 'pointer',
+            color: '#fff',
+            fontSize: '0.9rem',
+            transition: 'all 0.2s ease'
+          }}>
+            <input
+              type="checkbox"
+              checked={ambushActive}
+              onChange={(e) => setAmbushActive(e.target.checked)}
+            />
+            Set Ambush (95% defense bonus if attacked)
+          </label>
           <button
             onClick={handleExecuteBattle}
             disabled={selectedUnits.length === 0 || loading}

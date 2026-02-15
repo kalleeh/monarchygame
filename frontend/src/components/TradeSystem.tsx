@@ -5,8 +5,8 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { useSpring, useTransition, animated, config } from '@react-spring/web';
-import type { Resource, TradeOffer, MarketData, TrendData, PriceHistoryEntry, EconomicIndicators } from '../types';
-import type { TradeStore } from '../types/stores';
+import type { Resource, TradeOffer, TrendData, PriceHistoryEntry } from '../types';
+import { useTradeStore } from '../stores/tradeStore';
 import {
   LineChart,
   Line,
@@ -19,35 +19,6 @@ import {
   Pie,
   Cell
 } from 'recharts';
-// Mock types and store for TradeSystem
-// Mock store with proper typing - Context7 pattern
-const useTradeStore = (): TradeStore => ({
-  resources: [] as Resource[],
-  marketData: [] as MarketData[],
-  activeOffers: [] as TradeOffer[],
-  myOffers: [] as TradeOffer[],
-  selectedResource: null as Resource | null,
-  marketTrends: {} as Record<string, TrendData[]>,
-  priceHistory: {} as Record<string, PriceHistoryEntry[]>,
-  economicIndicators: { marketVolatility: 0, tradeVolume: 0, averagePrice: 0, totalValue: 0 } as EconomicIndicators,
-  loading: false,
-  error: null as string | null,
-  loadMarketData: () => Promise.resolve(),
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  createOffer: (_offer: Partial<TradeOffer>) => Promise.resolve(),
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  cancelOffer: (_offerId: string) => Promise.resolve(),
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  acceptOffer: (_offerId: string) => Promise.resolve(),
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  selectResource: (_resource: Resource | string) => {},
-  simulateMarket: () => {},
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  getResourceById: (_id: string) => undefined as Resource | undefined,
-  initializeTradeData: () => Promise.resolve(),
-  clearError: () => {}
-});
-
 interface TradeSystemProps {
   kingdomId: string;
   onBack?: () => void;

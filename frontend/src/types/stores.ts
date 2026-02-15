@@ -10,6 +10,7 @@ export interface TradeStore {
   marketTrends: Record<string, TrendData[]>;
   priceHistory: Record<string, PriceHistoryEntry[]>;
   economicIndicators: EconomicIndicators;
+  lastOfferTime: number | null;
   loading: boolean;
   error: string | null;
   loadMarketData: () => Promise<void>;

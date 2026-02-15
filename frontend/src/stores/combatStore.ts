@@ -501,6 +501,9 @@ async function simulateBattle(
     });
   }
 
+  // Elemental fort destruction: 25% bonus to structures destroyed on successful attacks
+  const isElementalAttacker = attackerRace.toLowerCase() === 'elemental';
+
   // Calculate total power
   const attackerPower = scaledAttackerUnits.reduce((sum, u) => sum + (u.attack * u.count), 0);
   const defenderPower = defenderUnits.reduce((sum, u) => sum + (u.defense * u.count), 0);
@@ -586,6 +589,12 @@ async function simulateBattle(
 
   // Droben boosted summons: bonus troops after a successful attack
   const notes: string[] = [];
+
+  // Elemental fort destruction bonus: +25% structures destroyed on non-defeat
+  if (isElementalAttacker && result !== 'defeat') {
+    notes.push('Elemental fort destruction: +25% bonus to structures destroyed');
+  }
+
   if (result !== 'defeat' && attackerRace.toLowerCase() === 'droben') {
     const totalNetworth = defenderKingdom.networth || 0;
     const bonusTroops = calculateCombatSummonTroops('Droben', totalNetworth);
