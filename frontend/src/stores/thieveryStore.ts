@@ -187,6 +187,11 @@ export const useThieveryStore = create(
           };
         }
 
+        // Centaur scum killing bonus: 50% more casualties on sabotage/burn
+        if ((type === 'sabotage' || type === 'burn') && state.race === 'Centaur') {
+          result.casualtiesInflicted = Math.floor(result.casualtiesInflicted * 1.5);
+        }
+
         const operation: ThieveryOperation = {
           id: `op-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           type,

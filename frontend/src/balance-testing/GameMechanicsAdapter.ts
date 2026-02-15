@@ -100,7 +100,11 @@ export function initializeGameMechanics(): GameMechanics {
       const defenderStr = (defender.units?.defense || defender.defense || 1000) * defenderBonus;
       
       const success = attackerStr > defenderStr;
-      const landGained = success ? Math.floor(defender.land * 0.1) : Math.floor(defender.land * 0.02);
+      const ratio = attackerStr / Math.max(defenderStr, 1);
+      // Land gain range: 6.79%-7.35% matching combat-mechanics.ts
+      const landGained = !success ? 0
+        : ratio >= 2.0 ? Math.floor(defender.land * (0.070 + Math.random() * 0.0035))
+        : Math.floor(defender.land * (0.0679 + Math.random() * 0.0021));
       
       return {
         success,
@@ -111,9 +115,10 @@ export function initializeGameMechanics(): GameMechanics {
     
     calculateLandGained: (attackerOffense: number, defenderDefense: number, targetLand: number) => {
       const ratio = attackerOffense / Math.max(defenderDefense, 1);
-      if (ratio >= 2.0) return Math.floor(targetLand * 0.15); // With ease
-      if (ratio >= 1.2) return Math.floor(targetLand * 0.08); // Good fight
-      return Math.floor(targetLand * 0.02); // Failed attack
+      // Land gain range: 6.79%-7.35% matching combat-mechanics.ts LAND_ACQUISITION
+      if (ratio >= 2.0) return Math.floor(targetLand * (0.070 + Math.random() * 0.0035)); // With ease: 7.0%-7.35%
+      if (ratio >= 1.2) return Math.floor(targetLand * (0.0679 + Math.random() * 0.0021)); // Good fight: 6.79%-7.0%
+      return 0; // Failed attack - no land gained
     },
     
     calculateBuildRate: (quarryPercentage: number) => {

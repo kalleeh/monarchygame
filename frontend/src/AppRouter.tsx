@@ -27,6 +27,8 @@ const GuildManagement = lazy(() => import('./components/GuildManagement'));
 const WorldMap = lazy(() => import('./components/WorldMap'));
 const BattleReports = lazy(() => import('./components/combat/BattleReports'));
 const ThieveryInterface = lazy(() => import('./components/ThieveryInterface'));
+const BountyBoard = lazy(() => import('./components/BountyBoard'));
+const FaithInterface = lazy(() => import('./components/FaithInterface'));
 
 interface AppRouterProps {
   kingdoms: Schema['Kingdom']['type'][];
@@ -247,6 +249,26 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
         <Route path="espionage" element={
           <Suspense fallback={<LoadingSkeleton type="card" className="m-8" />}>
             <ThieveryInterface
+              kingdomId={kingdom.id}
+              onBack={handleBackToDashboard}
+            />
+          </Suspense>
+        } />
+
+        {/* Bounty Board */}
+        <Route path="bounties" element={
+          <Suspense fallback={<LoadingSkeleton type="card" className="m-8" />}>
+            <BountyBoard
+              kingdomId={kingdom.id}
+              onBack={handleBackToDashboard}
+            />
+          </Suspense>
+        } />
+
+        {/* Faith & Focus */}
+        <Route path="faith" element={
+          <Suspense fallback={<LoadingSkeleton type="card" className="m-8" />}>
+            <FaithInterface
               kingdomId={kingdom.id}
               onBack={handleBackToDashboard}
             />

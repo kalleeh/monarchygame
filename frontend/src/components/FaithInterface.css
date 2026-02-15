@@ -1,0 +1,258 @@
+/* Faith & Focus Interface Styles */
+.faith-interface {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: white;
+  padding: 2rem;
+}
+
+/* Error Banner */
+.faith-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  color: #ef4444;
+}
+
+.faith-error-banner button {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0 0.5rem;
+}
+
+/* Content Layout */
+.faith-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Stats Section */
+.faith-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.faith-stats .stat-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(147, 112, 219, 0.2);
+  border-radius: 8px;
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.faith-stats .stat-card h4 {
+  margin: 0 0 0.5rem 0;
+  color: #ccc;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.faith-stats .stat-value {
+  font-size: 1.75rem;
+  font-weight: bold;
+  color: #b48eff;
+  display: block;
+}
+
+.faith-stats .stat-card small {
+  color: #888;
+  font-size: 0.8rem;
+}
+
+/* Alignment Section */
+.faith-alignment h3,
+.faith-abilities h3,
+.faith-effects h3 {
+  color: #b48eff;
+  margin-bottom: 1rem;
+}
+
+.alignment-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.alignment-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(147, 112, 219, 0.15);
+  border-radius: 8px;
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.alignment-card:hover {
+  border-color: rgba(147, 112, 219, 0.4);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.alignment-card.selected {
+  border-color: #b48eff;
+  background: rgba(180, 142, 255, 0.1);
+  box-shadow: 0 0 12px rgba(180, 142, 255, 0.2);
+}
+
+.alignment-card.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.alignment-card h4 {
+  margin: 0;
+  color: #b48eff;
+  font-size: 1rem;
+}
+
+.alignment-card .alignment-desc {
+  margin: 0;
+  color: #aaa;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.alignment-card .alignment-bonuses {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #4ecdc4;
+}
+
+/* Abilities Section */
+.abilities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.ability-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(147, 112, 219, 0.15);
+  border-radius: 8px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ability-card h4 {
+  margin: 0;
+  color: #b48eff;
+  font-size: 1rem;
+}
+
+.ability-card .ability-cost {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  color: #ccc;
+  align-self: flex-start;
+}
+
+.ability-card .use-ability-btn {
+  background: rgba(180, 142, 255, 0.2);
+  border: 1px solid rgba(180, 142, 255, 0.4);
+  color: #b48eff;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  margin-top: auto;
+}
+
+.ability-card .use-ability-btn:hover:not(:disabled) {
+  background: rgba(180, 142, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.ability-card .use-ability-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Active Effects */
+.effects-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.effect-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(78, 205, 196, 0.3);
+  border-left: 3px solid #4ecdc4;
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.effect-item .effect-name {
+  font-weight: 600;
+  color: #4ecdc4;
+}
+
+.effect-item .effect-detail {
+  font-size: 0.85rem;
+  color: #aaa;
+}
+
+.effect-item .effect-duration {
+  font-size: 0.8rem;
+  color: #888;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.2rem 0.6rem;
+  border-radius: 10px;
+}
+
+/* Empty State */
+.faith-content .empty-state {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .faith-interface {
+    padding: 1rem;
+  }
+
+  .faith-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .alignment-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .abilities-grid {
+    grid-template-columns: 1fr;
+  }
+}

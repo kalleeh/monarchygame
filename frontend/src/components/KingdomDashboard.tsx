@@ -25,6 +25,7 @@ import { RESOURCE_GENERATION } from '../constants/gameConfig';
 import { useNavigate } from 'react-router-dom';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { BalanceTestRunner } from './BalanceTestRunner';
+import { useRestorationStore } from '../stores/restorationStore';
 
 interface KingdomDashboardProps {
   kingdom: Schema['Kingdom']['type'];
@@ -156,10 +157,17 @@ function KingdomDashboard({
   const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
   const generateAIKingdoms = useAIKingdomStore((state) => state.generateAIKingdoms);
   
+  // Restoration store
+  const isInRestoration = useRestorationStore((state) => state.isInRestoration);
+  const restorationType = useRestorationStore((state) => state.restorationType);
+  const prohibitedActions = useRestorationStore((state) => state.prohibitedActions);
+  const getRemainingHours = useRestorationStore((state) => state.getRemainingHours);
+  const updateRestoration = useRestorationStore((state) => state.updateRestoration);
+
   const [loading, setLoading] = useState(true);
   const [resourceLoading, setResourceLoading] = useState(false);
   const [showBalanceTester, setShowBalanceTester] = useState(false);
-  
+
   // Tutorial state
   const { hasCompleted: tutorialCompleted, markComplete: completeTutorial } = useTutorial('kingdom-dashboard');
   
@@ -291,6 +299,11 @@ function KingdomDashboard({
     
     initializeData();
   }, [kingdom.id, initializeTerritories]);
+
+  // Check if restoration has ended on mount
+  useEffect(() => {
+    updateRestoration();
+  }, [updateRestoration]);
 
   const handleGenerateResources = async (action: 'generate_turns' | 'generate_income' | 'encamp', encampDuration?: 16 | 24) => {
     setResourceLoading(true);
@@ -527,6 +540,42 @@ function KingdomDashboard({
           </div>
         }
       />
+
+      {/* Restoration Status Banner */}
+      {isInRestoration && (
+        <div style={{
+          padding: '1rem 1.5rem',
+          marginBottom: '1rem',
+          background: restorationType === 'death_based'
+            ? 'rgba(239, 68, 68, 0.15)'
+            : 'rgba(245, 158, 11, 0.15)',
+          border: `2px solid ${restorationType === 'death_based'
+            ? 'rgba(239, 68, 68, 0.5)'
+            : 'rgba(245, 158, 11, 0.5)'}`,
+          borderRadius: '8px',
+          color: restorationType === 'death_based' ? '#ef4444' : '#f59e0b',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <strong style={{ fontSize: '1.1rem' }}>
+              Kingdom in Restoration
+            </strong>
+            <span style={{
+              background: 'rgba(255, 255, 255, 0.1)',
+              padding: '0.25rem 0.75rem',
+              borderRadius: '12px',
+              fontSize: '0.85rem',
+            }}>
+              {restorationType === 'death_based' ? 'Death-Based' : 'Damage-Based'} &mdash; {getRemainingHours().toFixed(1)} hours remaining
+            </span>
+          </div>
+          {prohibitedActions.length > 0 && (
+            <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>
+              <span style={{ fontWeight: 600 }}>Prohibited actions: </span>
+              {prohibitedActions.join(', ')}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="dashboard-grid">
         <div className="resources-panel">
@@ -859,12 +908,33 @@ function KingdomDashboard({
             >
               🏆 Achievements
             </button>
-            <button 
+            <button
               className="action-btn"
               onClick={() => setShowBalanceTester(true)}
               title="Run AI balance tests"
             >
               🎮 Balance Tester
+            </button>
+            <button
+              className="action-btn"
+              onClick={() => navigate(`/kingdom/${kingdom.id}/espionage`)}
+              title="Espionage operations"
+            >
+              🕵️ Espionage
+            </button>
+            <button
+              className="action-btn"
+              onClick={() => navigate(`/kingdom/${kingdom.id}/bounties`)}
+              title="Hunt bounties for rewards"
+            >
+              🎯 Bounty Board
+            </button>
+            <button
+              className="action-btn"
+              onClick={() => navigate(`/kingdom/${kingdom.id}/faith`)}
+              title="Manage faith and focus"
+            >
+              🙏 Faith & Focus
             </button>
           </div>
         </div>
