@@ -13,6 +13,8 @@ import { calculateTurnCost, requiresWarDeclaration, validateAttackType, calculat
 import { isRacialAbilityActive } from "../../../shared/mechanics/age-mechanics";
 import { RACES } from '../../__mocks__/@game-data/races';
 import { useSummonStore } from './useSummonStore';
+import { isDemoMode } from '../utils/authMode';
+import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 
 interface Unit {
   id: string;
@@ -156,6 +158,63 @@ export const useCombatStore = create(
         set({ loading: true, error: null });
 
         try {
+          // Auth mode: call Lambda for server-authoritative combat
+          if (!isDemoMode()) {
+            const kingdomId = useKingdomStore.getState().kingdomId;
+            if (!kingdomId) {
+              set({ error: 'No kingdom selected', loading: false });
+              return null;
+            }
+
+            // Convert selected units to record format for Lambda
+            const unitPayload: Record<string, number> = {};
+            state.selectedUnits.forEach(unit => {
+              unitPayload[unit.type] = (unitPayload[unit.type] || 0) + unit.count;
+            });
+
+            const result = await AmplifyFunctionService.callFunction('combat-processor', {
+              kingdomId,
+              attackerKingdomId: kingdomId,
+              defenderKingdomId: targetId,
+              attackType: 'standard',
+              units: unitPayload
+            }) as any;
+
+            const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+
+            if (!parsed.success) {
+              set({ error: parsed.error || 'Combat failed', loading: false });
+              return null;
+            }
+
+            const combatData = typeof parsed.result === 'string' ? JSON.parse(parsed.result) : parsed.result;
+
+            const battleReport: BattleReport = {
+              id: `battle-${Date.now()}`,
+              timestamp: Date.now(),
+              attacker: kingdomId,
+              defender: targetId,
+              attackerUnits: state.selectedUnits,
+              defenderUnits: [],
+              result: combatData.result === 'with_ease' || combatData.result === 'good_fight' ? 'victory' : 'defeat',
+              casualties: combatData.casualties || { attacker: {}, defender: {} },
+              landGained: combatData.landGained,
+              resourcesGained: combatData.goldLooted ? { gold: combatData.goldLooted } : {}
+            };
+
+            // Server already updated kingdom state, refresh from server
+            // For now, clear selected units and update battle history
+            set((state) => ({
+              currentBattle: battleReport,
+              battleHistory: [battleReport, ...state.battleHistory.slice(0, 49)],
+              selectedUnits: [],
+              loading: false
+            }));
+
+            return battleReport;
+          }
+
+          // Demo mode: existing client-side battle logic below
           // Get defender kingdom data from AI store
           const aiKingdoms = useAIKingdomStore.getState().aiKingdoms;
           const defenderKingdom = aiKingdoms.find(k => k.id === targetId);

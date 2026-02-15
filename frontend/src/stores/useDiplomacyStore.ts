@@ -6,11 +6,13 @@
 import { create } from 'zustand';
 import { DIPLOMACY } from '../constants/gameConfig';
 import { DiplomacyService } from '../services/DiplomacyService';
-import type { 
-  DiplomaticRelationship, 
-  TreatyProposal, 
+import { isDemoMode } from '../utils/authMode';
+import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import type {
+  DiplomaticRelationship,
+  TreatyProposal,
   Kingdom,
-  DiplomaticAction 
+  DiplomaticAction
 } from '../types/diplomacy';
 
 interface DiplomacyStore {
@@ -86,12 +88,28 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
     set({ loading: true, error: null });
 
     try {
-      await DiplomacyService.sendTreatyProposal({
-        fromKingdomId: ('fromKingdomId' in proposal ? (proposal as TreatyProposal & { fromKingdomId?: string }).fromKingdomId : proposal.fromKingdom?.id) || '',
-        toKingdomId: ('toKingdomId' in proposal ? (proposal as TreatyProposal & { toKingdomId?: string }).toKingdomId : proposal.toKingdom?.id) || '',
-        treatyType: proposal.treatyType || '',
-        terms: JSON.stringify(proposal.terms || {})
-      });
+      // Auth mode: call Lambda
+      if (!isDemoMode()) {
+        const result = await AmplifyFunctionService.callFunction('diplomacy-processor', {
+          kingdomId: ('fromKingdomId' in proposal ? (proposal as TreatyProposal & { fromKingdomId?: string }).fromKingdomId : proposal.fromKingdom?.id) || '',
+          defenderKingdomId: ('toKingdomId' in proposal ? (proposal as TreatyProposal & { toKingdomId?: string }).toKingdomId : proposal.toKingdom?.id) || '',
+          seasonId: 'current',
+          treatyType: proposal.treatyType || ''
+        }) as any;
+
+        const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+        if (!parsed.success) {
+          set({ error: parsed.error || 'Failed to send treaty proposal', loading: false });
+          throw new Error(parsed.error);
+        }
+      } else {
+        await DiplomacyService.sendTreatyProposal({
+          fromKingdomId: ('fromKingdomId' in proposal ? (proposal as TreatyProposal & { fromKingdomId?: string }).fromKingdomId : proposal.fromKingdom?.id) || '',
+          toKingdomId: ('toKingdomId' in proposal ? (proposal as TreatyProposal & { toKingdomId?: string }).toKingdomId : proposal.toKingdom?.id) || '',
+          treatyType: proposal.treatyType || '',
+          terms: JSON.stringify(proposal.terms || {})
+        });
+      }
 
       // Add to active proposals
       
@@ -210,8 +228,21 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
     set({ loading: true, error: null });
 
     try {
-      await DiplomacyService.declareWar(
-      "default-kingdom", targetKingdomId);
+      if (!isDemoMode()) {
+        const result = await AmplifyFunctionService.callFunction('diplomacy-processor', {
+          kingdomId: 'default-kingdom',
+          action: 'declare-war',
+          defenderKingdomId: targetKingdomId,
+          seasonId: 'current'
+        }) as any;
+        const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+        if (!parsed.success) {
+          set({ error: parsed.error || 'Failed to declare war', loading: false });
+          throw new Error(parsed.error);
+        }
+      } else {
+        await DiplomacyService.declareWar("default-kingdom", targetKingdomId);
+      }
 
       // Update relationship status
       
@@ -242,8 +273,20 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
     set({ loading: true, error: null });
 
     try {
-      await DiplomacyService.makePeace(
-      "default-kingdom", targetKingdomId);
+      if (!isDemoMode()) {
+        const result = await AmplifyFunctionService.callFunction('diplomacy-processor', {
+          kingdomId: 'default-kingdom',
+          action: 'peace',
+          defenderKingdomId: targetKingdomId
+        }) as any;
+        const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+        if (!parsed.success) {
+          set({ error: parsed.error || 'Failed to make peace', loading: false });
+          throw new Error(parsed.error);
+        }
+      } else {
+        await DiplomacyService.makePeace("default-kingdom", targetKingdomId);
+      }
 
       // Update relationship status
       

@@ -44,16 +44,43 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       }
     }
 
-    // TODO: Enforce war declaration requirement for repeated attacks.
-    // Per game rules, the 4th+ attack against the same defender within a season
-    // requires a formal WarDeclaration. This needs a WarDeclaration table to track
-    // attack counts per attacker-defender pair per season. For now, all attacks
-    // are allowed without war declaration checks.
-    // Future implementation:
-    //   1. Query WarDeclaration table for recent attacks: attackerId -> defenderId
-    //   2. If attackCount >= 3 && no active WarDeclaration, reject with:
-    //      { success: false, error: 'War declaration required after 3 attacks', errorCode: ErrorCode.WAR_REQUIRED }
-    //   3. Create WarDeclaration record when player formally declares war
+    // Enforce war declaration requirement for repeated attacks
+    // After 3 attacks against the same defender in a season, a formal WarDeclaration is required
+    const seasonId = (attacker.data as any)?.seasonId;
+
+    if (seasonId) {
+      // Count recent battle reports between attacker and defender this season
+      const { data: recentBattles } = await client.models.BattleReport.list({
+        filter: {
+          attackerId: { eq: attackerId },
+          defenderId: { eq: defenderId }
+        }
+      });
+
+      const attackCount = recentBattles?.length ?? 0;
+
+      if (attackCount >= 3) {
+        // Check for active war declaration
+        const { data: warDeclarations } = await client.models.WarDeclaration.list({
+          filter: {
+            attackerId: { eq: attackerId },
+            defenderId: { eq: defenderId },
+            status: { eq: 'active' }
+          }
+        });
+
+        if (!warDeclarations || warDeclarations.length === 0) {
+          return { success: false, error: 'War declaration required after 3 attacks', errorCode: ErrorCode.WAR_REQUIRED };
+        }
+
+        // Increment attack count on the war declaration
+        const warDecl = warDeclarations[0];
+        await client.models.WarDeclaration.update({
+          id: warDecl.id,
+          attackCount: (warDecl.attackCount ?? 0) + 1
+        });
+      }
+    }
 
     const defenderResources = (defender.data.resources ?? {}) as KingdomResources;
     const defenderUnits = (defender.data.totalUnits ?? {}) as Record<string, number>;
@@ -79,6 +106,26 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       landGained: combatResult.landGained,
       timestamp: new Date().toISOString()
     });
+
+    // Check if defender should enter restoration after severe damage
+    const defenderPostLand = Math.max(1000, (defenderResources.land ?? 1000) - combatResult.landGained);
+    const landLossPercent = combatResult.landGained / (defenderResources.land ?? 1000);
+
+    if (landLossPercent >= 0.5 || defenderPostLand <= 1000) {
+      // Trigger restoration for severely damaged defender
+      const restorationType = defenderPostLand <= 1000 ? 'death_based' : 'damage_based';
+      const durationHours = restorationType === 'death_based' ? 72 : 48;
+      const endTime = new Date(Date.now() + durationHours * 60 * 60 * 1000).toISOString();
+
+      await client.models.RestorationStatus.create({
+        kingdomId: defenderId,
+        type: restorationType,
+        startTime: new Date().toISOString(),
+        endTime,
+        allowedActions: JSON.stringify(['view', 'message', 'diplomacy']),
+        prohibitedActions: JSON.stringify(['attack', 'trade', 'build', 'train'])
+      });
+    }
 
     // Deduct casualties from both sides' units
     const casualties = combatResult.casualties || {} as any;

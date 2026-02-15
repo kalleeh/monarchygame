@@ -1,0 +1,9 @@
+{
+  "name": "war-manager",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@aws-amplify/backend-function": "latest",
+    "aws-amplify": "latest"
+  }
+}

@@ -29,6 +29,8 @@ const BattleReports = lazy(() => import('./components/combat/BattleReports'));
 const ThieveryInterface = lazy(() => import('./components/ThieveryInterface'));
 const BountyBoard = lazy(() => import('./components/BountyBoard'));
 const FaithInterface = lazy(() => import('./components/FaithInterface'));
+const MultiplayerLobby = lazy(() => import('./components/MultiplayerLobby'));
+const KingdomBrowser = lazy(() => import('./components/KingdomBrowser'));
 
 interface AppRouterProps {
   kingdoms: Schema['Kingdom']['type'][];
@@ -351,6 +353,32 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
               </div>
               <AchievementList />
             </div>
+          </Suspense>
+        } />
+
+        {/* Multiplayer Lobby */}
+        <Route path="multiplayer" element={
+          <Suspense fallback={<LoadingSkeleton type="card" className="m-8" />}>
+            <MultiplayerLobby
+              kingdomId={kingdom.id}
+              onBack={handleBackToDashboard}
+              onBrowseKingdoms={() => navigate(`/kingdom/${kingdomId}/browse`)}
+              onTrade={() => navigate(`/kingdom/${kingdomId}/trade`)}
+              onDiplomacy={() => navigate(`/kingdom/${kingdomId}/diplomacy`)}
+            />
+          </Suspense>
+        } />
+
+        {/* Kingdom Browser */}
+        <Route path="browse" element={
+          <Suspense fallback={<LoadingSkeleton type="list" className="m-8" />}>
+            <KingdomBrowser
+              kingdomId={kingdom.id}
+              onBack={handleBackToDashboard}
+              onAttack={(targetId) => navigate(`/kingdom/${kingdomId}/combat`)}
+              onTrade={(targetId) => navigate(`/kingdom/${kingdomId}/trade`)}
+              onDiplomacy={(targetId) => navigate(`/kingdom/${kingdomId}/diplomacy`)}
+            />
           </Suspense>
         } />
       </Routes>

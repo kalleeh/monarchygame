@@ -14,6 +14,7 @@ import { ToastService } from '../services/toastService';
 import type { Kingdom, AttackRequest, Army, DefenseSettings } from '../types/combat';
 import type { RaceType } from '../types/amplify';
 import type { Schema } from '../../../amplify/data/resource';
+import { isDemoMode } from '../utils/authMode';
 
 interface CombatPageProps {
   kingdom: Schema['Kingdom']['type'];
@@ -33,8 +34,7 @@ export const CombatPage: React.FC<CombatPageProps> = ({ kingdom, onBack }) => {
   
   // Generate AI kingdoms on mount (demo mode only)
   useEffect(() => {
-    const isDemoMode = localStorage.getItem('demo-mode') === 'true';
-    if (isDemoMode && aiKingdoms.length === 0) {
+    if (isDemoMode() && aiKingdoms.length === 0) {
       const playerNetworth = (resources.land || 0) * 1000 + (resources.gold || 0);
       generateAIKingdoms(5, playerNetworth);
     }

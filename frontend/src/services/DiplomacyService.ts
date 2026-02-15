@@ -1,7 +1,9 @@
 import { generateClient } from 'aws-amplify/data';
 import type { DiplomaticRelationship, TreatyProposal, DiplomaticAction } from '../types/diplomacy';
+import { isDemoMode } from '../utils/authMode';
+import type { Schema } from '../../../amplify/data/resource';
 
-const client = generateClient() as Record<string, unknown>;
+const client = generateClient<Schema>();
 
 export class DiplomacyService {
   /**
@@ -145,9 +147,17 @@ export class DiplomacyService {
     terms: string;
   }): Promise<boolean> {
     try {
-      const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
-      const response = await queries.sendTreatyProposal(data);
-      void response;
+      if (!isDemoMode()) {
+        await client.mutations.sendTreatyProposal({
+          proposerId: data.fromKingdomId,
+          recipientId: data.toKingdomId,
+          seasonId: 'current',
+          treatyType: data.treatyType,
+          terms: JSON.parse(data.terms || '{}')
+        });
+        return true;
+      }
+      // Demo mode fallback
       return true;
     } catch (error) {
       console.error('Failed to send treaty proposal:', error);
@@ -160,9 +170,14 @@ export class DiplomacyService {
    */
   static async acceptTreatyProposal(proposalId: string): Promise<boolean> {
     try {
-      const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
-      const response = await queries.acceptTreatyProposal({ proposalId });
-      void response;
+      if (!isDemoMode()) {
+        await client.mutations.respondToTreaty({
+          treatyId: proposalId,
+          accepted: true
+        });
+        return true;
+      }
+      // Demo mode fallback
       return true;
     } catch (error) {
       console.error('Failed to accept treaty proposal:', error);
@@ -175,9 +190,14 @@ export class DiplomacyService {
    */
   static async rejectTreatyProposal(proposalId: string): Promise<boolean> {
     try {
-      const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
-      const response = await queries.rejectTreatyProposal({ proposalId });
-      void response;
+      if (!isDemoMode()) {
+        await client.mutations.respondToTreaty({
+          treatyId: proposalId,
+          accepted: false
+        });
+        return true;
+      }
+      // Demo mode fallback
       return true;
     } catch (error) {
       console.error('Failed to reject treaty proposal:', error);
@@ -190,9 +210,15 @@ export class DiplomacyService {
    */
   static async declareWar(fromKingdomId: string, toKingdomId: string): Promise<boolean> {
     try {
-      const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
-      const response = await queries.declareWar({ fromKingdomId, toKingdomId });
-      void response;
+      if (!isDemoMode()) {
+        await client.mutations.declareDiplomaticWar({
+          kingdomId: fromKingdomId,
+          targetKingdomId: toKingdomId,
+          seasonId: 'current'
+        });
+        return true;
+      }
+      // Demo mode fallback
       return true;
     } catch (error) {
       console.error('Failed to declare war:', error);
@@ -205,9 +231,14 @@ export class DiplomacyService {
    */
   static async makePeace(fromKingdomId: string, toKingdomId: string): Promise<boolean> {
     try {
-      const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
-      const response = await queries.makePeace({ fromKingdomId, toKingdomId });
-      void response;
+      if (!isDemoMode()) {
+        await client.mutations.makeDiplomaticPeace({
+          kingdomId: fromKingdomId,
+          targetKingdomId: toKingdomId
+        });
+        return true;
+      }
+      // Demo mode fallback
       return true;
     } catch (error) {
       console.error('Failed to make peace:', error);

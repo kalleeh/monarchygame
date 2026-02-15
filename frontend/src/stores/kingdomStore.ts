@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { KingdomResources } from '../types/amplify';
 import { calculateCurrentAge } from '../../../shared/mechanics/age-mechanics';
 import type { AgeStatus } from '../../../shared/mechanics/age-mechanics';
+import { isDemoMode } from '../utils/authMode';
 
 export interface KingdomUnit {
   id: string;
@@ -35,6 +36,7 @@ interface KingdomState {
   addUnits: (unitType: string, count: number, stats: { attack: number; defense: number; health: number }) => void;
   removeUnits: (unitId: string, count: number) => void;
   updateUnitCount: (unitId: string, newCount: number) => void;
+  syncFromServer: (serverState: { resources: KingdomResources; units: KingdomUnit[]; kingdomId?: string }) => void;
   reset: () => void;
 }
 
@@ -160,12 +162,29 @@ export const useKingdomStore = create<KingdomState>((set, get) => ({
   reset: () => set({ kingdomId: null, resources: initialResources, units: [] }),
 
   /**
+   * Apply authoritative server state to the store.
+   * Called after every Lambda response in auth mode.
+   */
+  syncFromServer: (serverState: { resources: KingdomResources; units: KingdomUnit[]; kingdomId?: string }) => {
+    const kingdomId = serverState.kingdomId || get().kingdomId;
+    const resources = serverState.resources;
+    const units = serverState.units || get().units;
+
+    set({ resources, units, kingdomId: kingdomId || get().kingdomId });
+
+    // In demo mode, also persist to localStorage for consistency
+    if (isDemoMode() && kingdomId) {
+      saveKingdomData(kingdomId, { resources, units });
+    }
+  },
+
+  /**
    * Sync kingdom state to the database when running in authenticated mode.
    * Currently a stub — when multiplayer is implemented, this will call
    * Amplify's GraphQL API to persist kingdom resources and units server-side.
    */
   syncToDatabase: () => {
-    if (localStorage.getItem('demo-mode') === 'true') {
+    if (isDemoMode()) {
       return; // Demo mode: all data stays in localStorage only
     }
 

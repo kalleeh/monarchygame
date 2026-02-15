@@ -26,6 +26,7 @@ import { useNavigate } from 'react-router-dom';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { BalanceTestRunner } from './BalanceTestRunner';
 import { useRestorationStore } from '../stores/restorationStore';
+import { isDemoMode } from '../utils/authMode';
 
 interface KingdomDashboardProps {
   kingdom: Schema['Kingdom']['type'];
@@ -278,8 +279,7 @@ function KingdomDashboard({
   
   // Generate AI kingdoms on mount (demo mode only)
   useEffect(() => {
-    const isDemoMode = localStorage.getItem('demo-mode') === 'true';
-    if (isDemoMode && aiKingdoms.length === 0) {
+    if (isDemoMode() && aiKingdoms.length === 0) {
       const playerNetworth = (resources.land || 0) * 1000 + (resources.gold || 0);
       generateAIKingdoms(5, playerNetworth);
     }
@@ -888,7 +888,13 @@ function KingdomDashboard({
               <img src="/battle-reports-icon.png" alt="Battle Reports" className="action-icon" />
               Battle Reports
             </button>
-            <button 
+            <button
+              className="action-btn primary"
+              onClick={() => navigate(`/kingdom/${kingdom.id}/multiplayer`)}
+            >
+              🌐 Multiplayer
+            </button>
+            <button
               className="action-btn primary"
               onClick={onViewLeaderboard}
             >

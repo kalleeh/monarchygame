@@ -7,6 +7,8 @@ import { create } from 'zustand';
 import type { TradeStore } from '../types/stores';
 import type { Resource, TradeOffer, MarketData, TrendData, PriceHistoryEntry } from '../types';
 import { useKingdomStore } from './kingdomStore';
+import { isDemoMode } from '../utils/authMode';
+import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -212,6 +214,53 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
       return;
     }
 
+    // Auth mode: call Lambda for server-authoritative trade
+    if (!isDemoMode()) {
+      set({ loading: true, error: null });
+      try {
+        const result = await AmplifyFunctionService.callFunction('trade-processor', {
+          kingdomId: offer.sellerId || PLAYER_ID,
+          seasonId: (offer as any).seasonId || 'current',
+          resourceType: offer.resourceId!,
+          quantity: offer.quantity!,
+          pricePerUnit: offer.pricePerUnit!
+        }) as any;
+
+        const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+        if (!parsed.success) {
+          set({ error: parsed.error || 'Trade offer creation failed', loading: false });
+          return;
+        }
+
+        // Server handled escrow; add to local offer list
+        const serverOffer = parsed.offer;
+        const newOffer: TradeOffer = {
+          id: serverOffer.id || `offer-${Date.now()}`,
+          sellerId: offer.sellerId || PLAYER_ID,
+          sellerName: 'Your Kingdom',
+          resourceId: offer.resourceId!,
+          quantity: offer.quantity!,
+          pricePerUnit: offer.pricePerUnit!,
+          totalPrice: serverOffer.totalPrice || offer.quantity! * offer.pricePerUnit!,
+          status: 'open',
+          createdAt: Date.now()
+        };
+
+        set((state) => ({
+          activeOffers: [...state.activeOffers, newOffer],
+          myOffers: [...state.myOffers, newOffer],
+          lastOfferTime: Date.now(),
+          loading: false,
+          error: null
+        }));
+        return;
+      } catch (err) {
+        set({ error: err instanceof Error ? err.message : 'Failed to create offer', loading: false });
+        return;
+      }
+    }
+
+    // Demo mode: existing logic below
     // Deduct the offered resource from the player's kingdom
     const kingdom = useKingdomStore.getState();
     const currentAmount = (kingdom.resources as Record<string, number>)[offer.resourceId] ?? 0;
@@ -266,6 +315,37 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
       return;
     }
 
+    // Auth mode: call Lambda
+    if (!isDemoMode()) {
+      set({ loading: true, error: null });
+      try {
+        const result = await AmplifyFunctionService.callFunction('trade-processor', {
+          kingdomId: PLAYER_ID,
+          action: 'accept',
+          offerId
+        }) as any;
+
+        const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+        if (!parsed.success) {
+          set({ error: parsed.error || 'Failed to accept offer', loading: false });
+          return;
+        }
+
+        // Remove accepted offer from active list
+        set((state) => ({
+          activeOffers: state.activeOffers.filter(o => o.id !== offerId),
+          myOffers: state.myOffers.filter(o => o.id !== offerId),
+          loading: false,
+          error: null
+        }));
+        return;
+      } catch (err) {
+        set({ error: err instanceof Error ? err.message : 'Failed to accept offer', loading: false });
+        return;
+      }
+    }
+
+    // Demo mode: existing logic below
     // Buyer (current player) pays gold for the resource
     const kingdom = useKingdomStore.getState();
     const currentGold = kingdom.resources.gold || 0;
@@ -314,6 +394,37 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
       return;
     }
 
+    // Auth mode: call Lambda
+    if (!isDemoMode()) {
+      set({ loading: true, error: null });
+      try {
+        const result = await AmplifyFunctionService.callFunction('trade-processor', {
+          kingdomId: PLAYER_ID,
+          action: 'cancel',
+          offerId
+        }) as any;
+
+        const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+        if (!parsed.success) {
+          set({ error: parsed.error || 'Failed to cancel offer', loading: false });
+          return;
+        }
+
+        // Remove cancelled offer from lists
+        set((state) => ({
+          activeOffers: state.activeOffers.filter(o => o.id !== offerId),
+          myOffers: state.myOffers.filter(o => o.id !== offerId),
+          loading: false,
+          error: null
+        }));
+        return;
+      } catch (err) {
+        set({ error: err instanceof Error ? err.message : 'Failed to cancel offer', loading: false });
+        return;
+      }
+    }
+
+    // Demo mode: existing logic below
     // Refund the resource back to the player
     const kingdom = useKingdomStore.getState();
     const currentAmount = (kingdom.resources as Record<string, number>)[offer.resourceId] ?? 0;

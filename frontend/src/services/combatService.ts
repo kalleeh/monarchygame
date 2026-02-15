@@ -183,6 +183,49 @@ export class CombatService {
   }
 
   /**
+   * Declare war against a target kingdom
+   */
+  static async declareWar(request: {
+    attackerId: string;
+    defenderId: string;
+    seasonId: string;
+    reason?: string;
+  }): Promise<LambdaResponse> {
+    try {
+      return await AmplifyFunctionService.callFunction('war-manager', {
+        kingdomId: request.attackerId,
+        attackerId: request.attackerId,
+        defenderKingdomId: request.defenderId,
+        seasonId: request.seasonId,
+        reason: request.reason
+      }) as LambdaResponse;
+    } catch (error) {
+      console.error('War declaration error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Resolve an active war
+   */
+  static async resolveWar(request: {
+    warId: string;
+    resolution: string;
+  }): Promise<LambdaResponse> {
+    try {
+      return await AmplifyFunctionService.callFunction('war-manager', {
+        kingdomId: '',
+        action: 'resolve',
+        offerId: request.warId,
+        resourceType: request.resolution
+      }) as LambdaResponse;
+    } catch (error) {
+      console.error('War resolution error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Generate resources - calls Lambda for authoritative processing
    */
   static async generateResources(request: {

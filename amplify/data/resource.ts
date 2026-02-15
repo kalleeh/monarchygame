@@ -5,6 +5,11 @@ import { buildingConstructor } from '../functions/building-constructor/resource'
 import { unitTrainer } from '../functions/unit-trainer/resource';
 import { spellCaster } from '../functions/spell-caster/resource';
 import { territoryClaimer } from '../functions/territory-claimer/resource';
+import { seasonManager } from '../functions/season-manager/resource';
+import { warManager } from '../functions/war-manager/resource';
+import { tradeProcessor } from '../functions/trade-processor/resource';
+import { diplomacyProcessor } from '../functions/diplomacy-processor/resource';
+import { seasonLifecycle } from '../functions/season-lifecycle/resource';
 
 /**
  * Monarchy Game Data Schema - Enhanced with Field-Level Authorization & Input Validation
@@ -20,6 +25,13 @@ const TerrainType = a.enum(['plains', 'forest', 'mountains', 'desert', 'swamp', 
 const NotificationType = a.enum(['attack', 'defense', 'victory', 'defeat', 'alliance', 'trade']);
 const InvitationStatus = a.enum(['pending', 'accepted', 'declined']);
 const MessageType = a.enum(['general', 'announcement', 'war', 'diplomacy']);
+const SeasonStatus = a.enum(['active', 'transitioning', 'completed']);
+const WarStatus = a.enum(['declared', 'active', 'resolved', 'ceasefire']);
+const TradeOfferStatus = a.enum(['open', 'accepted', 'cancelled', 'expired']);
+const DiplomaticStatus = a.enum(['neutral', 'friendly', 'allied', 'hostile', 'war']);
+const TreatyType = a.enum(['non_aggression', 'trade_agreement', 'military_alliance', 'ceasefire']);
+const TreatyStatus = a.enum(['proposed', 'active', 'expired', 'broken']);
+const RestorationType = a.enum(['none', 'damage_based', 'death_based']);
 
 const schema = a.schema({
   // Shared enum definitions
@@ -31,6 +43,13 @@ const schema = a.schema({
   NotificationType,
   InvitationStatus,
   MessageType,
+  SeasonStatus,
+  WarStatus,
+  TradeOfferStatus,
+  DiplomaticStatus,
+  TreatyType,
+  TreatyStatus,
+  RestorationType,
 
   Kingdom: a
     .model({
@@ -49,7 +68,8 @@ const schema = a.schema({
       ageStartTime: a.datetime(),
       // Private fields - owner only
       guildId: a.id()
-        .authorization((allow) => [allow.owner().to(['read', 'update'])])
+        .authorization((allow) => [allow.owner().to(['read', 'update'])]),
+      seasonId: a.id()
     })
     .authorization((allow) => [
       allow.owner(),
@@ -154,6 +174,112 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.authenticated().to(['read'])]),
 
+  GameSeason: a
+    .model({
+      seasonNumber: a.integer().required(),
+      status: a.ref('SeasonStatus').required(),
+      startDate: a.datetime().required(),
+      endDate: a.datetime(),
+      currentAge: a.ref('GameAge').required(),
+      ageTransitions: a.json(),
+      participantCount: a.integer().default(0),
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+      allow.owner()
+    ]),
+
+  WarDeclaration: a
+    .model({
+      attackerId: a.id().required(),
+      defenderId: a.id().required(),
+      seasonId: a.id().required(),
+      status: a.ref('WarStatus').required(),
+      attackCount: a.integer().default(0),
+      declaredAt: a.datetime().required(),
+      resolvedAt: a.datetime(),
+      reason: a.string(),
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+      allow.owner()
+    ]),
+
+  TradeOffer: a
+    .model({
+      sellerId: a.id().required(),
+      buyerId: a.id(),
+      seasonId: a.id().required(),
+      resourceType: a.string().required(),
+      quantity: a.integer().required(),
+      pricePerUnit: a.float().required(),
+      totalPrice: a.float().required(),
+      status: a.ref('TradeOfferStatus').required(),
+      escrowedResources: a.json(),
+      expiresAt: a.datetime().required(),
+      acceptedAt: a.datetime(),
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+      allow.owner()
+    ]),
+
+  DiplomaticRelation: a
+    .model({
+      kingdomId: a.id().required(),
+      targetKingdomId: a.id().required(),
+      status: a.ref('DiplomaticStatus').required(),
+      reputation: a.integer().default(0),
+      lastActionAt: a.datetime(),
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+      allow.owner()
+    ]),
+
+  Treaty: a
+    .model({
+      proposerId: a.id().required(),
+      recipientId: a.id().required(),
+      seasonId: a.id().required(),
+      type: a.ref('TreatyType').required(),
+      status: a.ref('TreatyStatus').required(),
+      terms: a.json(),
+      proposedAt: a.datetime().required(),
+      respondedAt: a.datetime(),
+      expiresAt: a.datetime().required(),
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+      allow.owner()
+    ]),
+
+  RestorationStatus: a
+    .model({
+      kingdomId: a.id().required(),
+      type: a.ref('RestorationType').required(),
+      startTime: a.datetime().required(),
+      endTime: a.datetime().required(),
+      allowedActions: a.json(),
+      prohibitedActions: a.json(),
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+      allow.owner()
+    ]),
+
+  WorldState: a
+    .model({
+      seasonId: a.id().required(),
+      kingdomId: a.id().required(),
+      visibleKingdoms: a.json(),
+      fogOfWar: a.json(),
+      lastUpdated: a.datetime().required(),
+    })
+    .authorization((allow) => [
+      allow.owner()
+    ]),
+
   processCombat: a
     .mutation()
     .arguments({
@@ -220,7 +346,137 @@ const schema = a.schema({
     })
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])
-    .handler(a.handler.function(territoryClaimer))
+    .handler(a.handler.function(territoryClaimer)),
+
+  // Season Manager
+  getActiveSeason: a
+    .query()
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(seasonManager)),
+
+  getWorldState: a
+    .query()
+    .arguments({
+      kingdomId: a.string().required(),
+      seasonId: a.string().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(seasonManager)),
+
+  // War Manager
+  declareWar: a
+    .mutation()
+    .arguments({
+      attackerId: a.string().required(),
+      defenderId: a.string().required(),
+      seasonId: a.string().required(),
+      reason: a.string()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(warManager)),
+
+  resolveWar: a
+    .mutation()
+    .arguments({
+      warId: a.string().required(),
+      resolution: a.string().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(warManager)),
+
+  // Trade Processor
+  createTradeOffer: a
+    .mutation()
+    .arguments({
+      sellerId: a.string().required(),
+      seasonId: a.string().required(),
+      resourceType: a.string().required(),
+      quantity: a.integer().required(),
+      pricePerUnit: a.float().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(tradeProcessor)),
+
+  acceptTradeOffer: a
+    .mutation()
+    .arguments({
+      offerId: a.string().required(),
+      buyerId: a.string().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(tradeProcessor)),
+
+  cancelTradeOffer: a
+    .mutation()
+    .arguments({
+      offerId: a.string().required(),
+      sellerId: a.string().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(tradeProcessor)),
+
+  // Diplomacy Processor
+  sendTreatyProposal: a
+    .mutation()
+    .arguments({
+      proposerId: a.string().required(),
+      recipientId: a.string().required(),
+      seasonId: a.string().required(),
+      treatyType: a.string().required(),
+      terms: a.json()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(diplomacyProcessor)),
+
+  respondToTreaty: a
+    .mutation()
+    .arguments({
+      treatyId: a.string().required(),
+      accepted: a.boolean().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(diplomacyProcessor)),
+
+  declareDiplomaticWar: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
+      targetKingdomId: a.string().required(),
+      seasonId: a.string().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(diplomacyProcessor)),
+
+  makeDiplomaticPeace: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
+      targetKingdomId: a.string().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(diplomacyProcessor)),
+
+  // Season Lifecycle
+  manageSeason: a
+    .mutation()
+    .arguments({
+      action: a.string().required(),
+      seasonId: a.string()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(seasonLifecycle)),
 });
 
 export type Schema = ClientSchema<typeof schema>;

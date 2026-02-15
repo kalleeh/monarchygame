@@ -7,6 +7,8 @@ import { create } from 'zustand';
 import { combine } from 'zustand/middleware';
 import { useKingdomStore } from './kingdomStore';
 import { calculateActionTurnCost } from '../../../shared/mechanics/turn-mechanics';
+import { isDemoMode } from '../utils/authMode';
+import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 
 interface Territory {
   id: string;
@@ -126,9 +128,39 @@ export const useTerritoryStore = create(
         set({ loading: true, error: null });
 
         try {
-          // Server-side territory claiming would go here
-          const success = true; // Mock success
-          
+          let success = true;
+
+          if (!isDemoMode()) {
+            // Auth mode: call Lambda for server-authoritative territory claiming
+            const kingdomId = useKingdomStore.getState().kingdomId;
+            if (!kingdomId) {
+              set({ error: 'No kingdom selected', loading: false });
+              return false;
+            }
+
+            try {
+              const territory = state.territories.find(t => t.id === territoryId);
+              const result = await AmplifyFunctionService.claimTerritory({
+                kingdomId,
+                name: territory?.name || 'New Territory',
+                terrainType: 'plains',
+                coordinates: territory?.position || { x: 0, y: 0 },
+                territoryAmount: 1,
+                goldCost: expansion.cost.gold
+              }) as any;
+
+              const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+              if (!parsed.success) {
+                set({ error: parsed.error || 'Territory claim failed', loading: false });
+                return false;
+              }
+              success = true;
+            } catch (err) {
+              set({ error: err instanceof Error ? err.message : 'Territory claim failed', loading: false });
+              return false;
+            }
+          }
+
           if (success) {
             // Find the territory object
             const territory = state.territories.find(t => t.id === territoryId);

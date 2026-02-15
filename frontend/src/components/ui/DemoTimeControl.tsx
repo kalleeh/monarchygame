@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { isDemoMode } from '../../utils/authMode';
 import './DemoTimeControl.css';
 
 interface LoadingButtonProps {
@@ -38,8 +39,7 @@ export function DemoTimeControl({ onTimeTravel }: DemoTimeControlProps) {
   };
 
   // Only show in demo mode
-  const isDemoMode = localStorage.getItem('demo-mode') === 'true';
-  if (!isDemoMode) return null;
+  if (!isDemoMode()) return null;
 
   return (
     <div className="demo-time-control">

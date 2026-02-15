@@ -1,0 +1,125 @@
+.multiplayer-lobby {
+  padding: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.lobby-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.lobby-header h1 {
+  font-size: 1.8rem;
+  color: #e2e8f0;
+}
+
+.lobby-demo-notice {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.lobby-demo-notice h2 {
+  color: #e2e8f0;
+  margin-bottom: 1rem;
+}
+
+.lobby-demo-notice p {
+  color: #94a3b8;
+  margin-bottom: 0.5rem;
+}
+
+.lobby-demo-notice ul {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.lobby-demo-notice li {
+  color: #cbd5e1;
+  padding: 0.3rem 0;
+}
+
+.lobby-demo-notice li::before {
+  content: "⚔️ ";
+}
+
+.demo-hint {
+  color: #facc15;
+  font-style: italic;
+  margin-top: 1rem;
+}
+
+.season-banner {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.season-info h2 {
+  color: #e2e8f0;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.season-details {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.season-age {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.season-weeks, .season-status {
+  color: #94a3b8;
+}
+
+.lobby-loading, .lobby-error {
+  text-align: center;
+  padding: 2rem;
+  color: #94a3b8;
+}
+
+.lobby-error {
+  color: #f87171;
+}
+
+.lobby-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.lobby-card {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.lobby-card:hover {
+  border-color: rgba(96, 165, 250, 0.5);
+  transform: translateY(-2px);
+}
+
+.lobby-card h3 {
+  color: #e2e8f0;
+  margin-bottom: 0.5rem;
+}
+
+.lobby-card p {
+  color: #94a3b8;
+  font-size: 0.9rem;
+}

@@ -5,6 +5,7 @@
 
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
+import { isDemoMode } from '../utils/authMode';
 
 const client = generateClient<Schema>();
 
@@ -139,10 +140,6 @@ const DEMO_MESSAGES: GuildMessage[] = [
 ];
 
 export class GuildService {
-  private static isDemoMode(): boolean {
-    return localStorage.getItem('demo-mode') === 'true';
-  }
-
   /**
    * Create a new alliance
    */
@@ -153,7 +150,7 @@ export class GuildService {
     isPublic?: boolean;
     maxMembers?: number;
   }): Promise<GuildData> {
-    if (this.isDemoMode()) {
+    if (isDemoMode()) {
       // Demo mode: simulate alliance creation
       const newAlliance: GuildData = {
         id: `demo-guild-${Date.now()}`,
@@ -200,7 +197,7 @@ export class GuildService {
    * Get all public alliances
    */
   static async getPublicGuilds(): Promise<GuildData[]> {
-    if (this.isDemoMode()) {
+    if (isDemoMode()) {
       // Demo mode: return mock data
       await new Promise(resolve => setTimeout(resolve, 300));
       return DEMO_GUILDS.filter(a => a.isPublic);
@@ -226,7 +223,7 @@ export class GuildService {
    * Join an alliance
    */
   static async joinGuild(guildId: string, kingdomId: string): Promise<void> {
-    if (this.isDemoMode()) {
+    if (isDemoMode()) {
       // Demo mode: simulate joining
       await new Promise(resolve => setTimeout(resolve, 500));
       console.log('Demo mode: Joined alliance', guildId);
@@ -260,7 +257,7 @@ export class GuildService {
    * Leave an alliance
    */
   static async leaveGuild(kingdomId: string): Promise<void> {
-    if (this.isDemoMode()) {
+    if (isDemoMode()) {
       // Demo mode: simulate leaving
       await new Promise(resolve => setTimeout(resolve, 500));
       console.log('Demo mode: Left alliance');
@@ -291,7 +288,7 @@ export class GuildService {
     targetKingdomName: string;
     message?: string;
   }): Promise<GuildInvitation> {
-    if (this.isDemoMode()) {
+    if (isDemoMode()) {
       // Demo mode: simulate invitation
       const invitation: GuildInvitation = {
         id: `demo-invite-${Date.now()}`,
@@ -342,7 +339,7 @@ export class GuildService {
     invitationId: string,
     response: 'accepted' | 'declined'
   ): Promise<void> {
-    if (this.isDemoMode()) {
+    if (isDemoMode()) {
       // Demo mode: simulate responding to invitation
       await new Promise(resolve => setTimeout(resolve, 500));
       console.log(`Demo mode: Invitation ${invitationId} ${response}`);
@@ -377,7 +374,7 @@ export class GuildService {
     content: string;
     messageType?: 'CHAT' | 'ANNOUNCEMENT' | 'SYSTEM';
   }): Promise<GuildMessage> {
-    if (this.isDemoMode()) {
+    if (isDemoMode()) {
       // Demo mode: simulate message sending
       const message: GuildMessage = {
         id: `demo-msg-${Date.now()}`,
@@ -416,7 +413,7 @@ export class GuildService {
    * Get alliance messages
    */
   static async getGuildMessages(guildId: string): Promise<GuildMessage[]> {
-    if (this.isDemoMode()) {
+    if (isDemoMode()) {
       // Demo mode: return mock messages
       await new Promise(resolve => setTimeout(resolve, 300));
       return DEMO_MESSAGES.filter(m => m.guildId === guildId);
@@ -445,7 +442,7 @@ export class GuildService {
     guildId: string,
     onMessage: (message: GuildMessage) => void
   ) {
-    if (this.isDemoMode()) {
+    if (isDemoMode()) {
       // Demo mode: return mock subscription
       return {
         unsubscribe: () => console.log('Demo mode: Unsubscribed from messages')
@@ -473,7 +470,7 @@ export class GuildService {
     kingdomId: string,
     onInvitation: (invitation: GuildInvitation) => void
   ) {
-    if (this.isDemoMode()) {
+    if (isDemoMode()) {
       // Demo mode: return mock subscription
       return {
         unsubscribe: () => console.log('Demo mode: Unsubscribed from invitations')

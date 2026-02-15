@@ -3,6 +3,8 @@ import { type TrainableUnit } from '../services/TrainingService';
 import { useKingdomStore } from './kingdomStore';
 import { getUnitsForRace, type UnitType } from '../utils/units';
 import { calculateActionTurnCost } from '../../../shared/mechanics/turn-mechanics';
+import { isDemoMode } from '../utils/authMode';
+import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 
 // Troop cap based on accumulated gold cost (from hire-screen.md)
 const TROOP_CAP_GOLD = 10_000_000; // 10 million gold cap
@@ -184,6 +186,35 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
         console.warn(`⚠️ High upkeep: ${totalUpkeep}g/turn (${Math.round(totalUpkeep / (resources.gold || 1) * 100)}% of treasury)`);
       }
 
+      // Auth mode: call Lambda for server-authoritative unit training
+      if (!isDemoMode()) {
+        try {
+          const result = await AmplifyFunctionService.callFunction('unit-trainer', {
+            kingdomId: _kingdomId,
+            unitType,
+            quantity
+          }) as any;
+
+          const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+          if (!parsed.success) {
+            set({ error: parsed.error || 'Failed to summon units', loading: false });
+            return;
+          }
+
+          // Server handled resource deduction and unit creation
+          // Update accumulated gold spent locally
+          set({
+            accumulatedGoldSpent: accumulatedGoldSpent + totalGold,
+            loading: false
+          });
+          return;
+        } catch (err) {
+          set({ error: err instanceof Error ? err.message : 'Failed to summon units', loading: false });
+          return;
+        }
+      }
+
+      // Demo mode: existing local logic below
       // Deduct resources (turn cost from shared turn-mechanics)
       kingdomStore.updateResources({
         gold: (resources.gold || 0) - totalGold,

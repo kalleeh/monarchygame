@@ -81,6 +81,11 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   'unit-trainer':         { maxTokens: 5, refillRate: 1, refillInterval: 2000 },
   'spell-caster':         { maxTokens: 3, refillRate: 1, refillInterval: 4000 },
   'territory-claimer':    { maxTokens: 2, refillRate: 1, refillInterval: 5000 },
+  'season-manager':       { maxTokens: 5, refillRate: 1, refillInterval: 3000 },
+  'war-manager':          { maxTokens: 2, refillRate: 1, refillInterval: 5000 },
+  'trade-processor':      { maxTokens: 3, refillRate: 1, refillInterval: 4000 },
+  'diplomacy-processor':  { maxTokens: 3, refillRate: 1, refillInterval: 4000 },
+  'season-lifecycle':     { maxTokens: 1, refillRate: 1, refillInterval: 10000 },
 };
 
 // ---------------------------------------------------------------------------

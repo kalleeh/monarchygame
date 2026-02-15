@@ -6,12 +6,10 @@
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { rateLimiter } from '../utils/rateLimiter';
+import { isDemoMode } from '../utils/authMode';
 
 // Generate the typed client
 const client = generateClient<Schema>();
-
-// Check if running in demo mode (localStorage-based, no Lambda calls)
-const isDemoMode = () => localStorage.getItem('demo-mode') === 'true';
 
 // Type definitions for service payloads
 interface BaseSpellPayload {
@@ -48,6 +46,15 @@ interface FunctionPayload {
   territoryAmount?: number;
   operation?: string;
   amount?: number;
+  // New multiplayer fields
+  seasonId?: string;
+  reason?: string;
+  offerId?: string;
+  pricePerUnit?: number;
+  treatyId?: string;
+  accepted?: boolean;
+  treatyType?: string;
+  terms?: unknown;
 }
 
 type TerritoryPayload = FunctionPayload & BaseTerritoryPayload;
@@ -82,6 +89,16 @@ export class AmplifyFunctionService {
             return { success: true, result: 'victory', casualties: '{}' };
           case 'spell-processor':
             return { success: true, spellResult: 'cast' };
+          case 'season-manager':
+            return { success: true, season: { id: 'demo-season', seasonNumber: 1, status: 'active', currentAge: 'early', weeksRemaining: 6 } };
+          case 'war-manager':
+            return { success: true, warDeclaration: { id: `war-${Date.now()}`, status: 'active', declaredAt: new Date().toISOString() } };
+          case 'trade-processor':
+            return { success: true, offer: { id: `offer-${Date.now()}`, status: 'open' } };
+          case 'diplomacy-processor':
+            return { success: true, treaty: { id: `treaty-${Date.now()}`, status: 'proposed' } };
+          case 'season-lifecycle':
+            return { success: true, season: { id: 'demo-season', seasonNumber: 1, status: 'active', currentAge: 'early' } };
           default:
             return { success: true };
         }
@@ -120,6 +137,67 @@ export class AmplifyFunctionService {
             defenderId: payload.defenderKingdomId || '',
             attackType: payload.attackType || 'raid',
             units: payload.units || {}
+          });
+        case 'season-manager':
+          return await client.queries.getActiveSeason({});
+        case 'war-manager':
+          return await client.mutations.declareWar({
+            attackerId: payload.attackerId || payload.kingdomId,
+            defenderId: payload.defenderKingdomId || '',
+            seasonId: payload.seasonId || '',
+            reason: payload.reason as string | undefined
+          });
+        case 'trade-processor':
+          if (payload.action === 'accept') {
+            return await client.mutations.acceptTradeOffer({
+              offerId: payload.offerId || '',
+              buyerId: payload.kingdomId
+            });
+          }
+          if (payload.action === 'cancel') {
+            return await client.mutations.cancelTradeOffer({
+              offerId: payload.offerId || '',
+              sellerId: payload.kingdomId
+            });
+          }
+          return await client.mutations.createTradeOffer({
+            sellerId: payload.kingdomId,
+            seasonId: payload.seasonId || '',
+            resourceType: payload.resourceType || '',
+            quantity: payload.quantity || 0,
+            pricePerUnit: payload.pricePerUnit || 0
+          });
+        case 'diplomacy-processor':
+          if (payload.action === 'respond') {
+            return await client.mutations.respondToTreaty({
+              treatyId: payload.treatyId || '',
+              accepted: payload.accepted as boolean
+            });
+          }
+          if (payload.action === 'declare-war') {
+            return await client.mutations.declareDiplomaticWar({
+              kingdomId: payload.kingdomId,
+              targetKingdomId: payload.defenderKingdomId || '',
+              seasonId: payload.seasonId || ''
+            });
+          }
+          if (payload.action === 'peace') {
+            return await client.mutations.makeDiplomaticPeace({
+              kingdomId: payload.kingdomId,
+              targetKingdomId: payload.defenderKingdomId || ''
+            });
+          }
+          return await client.mutations.sendTreatyProposal({
+            proposerId: payload.kingdomId,
+            recipientId: payload.defenderKingdomId || '',
+            seasonId: payload.seasonId || '',
+            treatyType: payload.treatyType as string || '',
+            terms: payload.terms || {}
+          });
+        case 'season-lifecycle':
+          return await client.mutations.manageSeason({
+            action: payload.action || 'check',
+            seasonId: payload.seasonId
           });
         default:
           throw new Error(`Unknown function: ${functionName}`);

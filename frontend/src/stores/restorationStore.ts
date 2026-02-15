@@ -11,6 +11,11 @@ import {
   calculateRestorationStatus,
   RESTORATION_MECHANICS,
 } from '../../../shared/mechanics/restoration-mechanics';
+import { isDemoMode } from '../utils/authMode';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../../amplify/data/resource';
+
+const client = generateClient<Schema>();
 
 type RestorationType = 'damage_based' | 'death_based' | 'none';
 
@@ -135,6 +140,74 @@ export const useRestorationStore = create(
           allowedActions: [],
           prohibitedActions: [],
         });
+      },
+
+      /**
+       * Load restoration status from server in auth mode.
+       * Queries the RestorationStatus model for the given kingdom.
+       */
+      loadRestorationFromServer: async (kingdomId: string) => {
+        if (isDemoMode()) return;
+
+        try {
+          const { data } = await client.models.RestorationStatus.list({
+            filter: { kingdomId: { eq: kingdomId } }
+          });
+
+          if (data && data.length > 0) {
+            const status = data[0];
+            const endTime = new Date(status.endTime);
+
+            // Check if restoration has already ended
+            if (new Date() >= endTime) {
+              // Clean up expired restoration
+              await client.models.RestorationStatus.delete({ id: status.id });
+              set({
+                isInRestoration: false,
+                restorationType: 'none',
+                restorationStartTime: null,
+                restorationEndTime: null,
+                allowedActions: [],
+                prohibitedActions: [],
+              });
+              return;
+            }
+
+            set({
+              isInRestoration: true,
+              restorationType: status.type as RestorationType,
+              restorationStartTime: new Date(status.startTime),
+              restorationEndTime: endTime,
+              allowedActions: status.allowedActions ? JSON.parse(status.allowedActions as string) : [],
+              prohibitedActions: status.prohibitedActions ? JSON.parse(status.prohibitedActions as string) : [],
+            });
+          } else {
+            set({
+              isInRestoration: false,
+              restorationType: 'none',
+              restorationStartTime: null,
+              restorationEndTime: null,
+              allowedActions: [],
+              prohibitedActions: [],
+            });
+          }
+        } catch (error) {
+          console.error('Failed to load restoration status:', error);
+        }
+      },
+
+      /**
+       * Check if an action is allowed, with server verification in auth mode.
+       * In auth mode, the server enforces blocking — this is a client-side hint.
+       */
+      isActionAllowedWithServerCheck: async (action: string, kingdomId: string): Promise<boolean> => {
+        if (isDemoMode()) {
+          return get().isActionAllowed(action);
+        }
+
+        // In auth mode, refresh from server first
+        await get().loadRestorationFromServer(kingdomId);
+        return get().isActionAllowed(action);
       },
     })
   )

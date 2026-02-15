@@ -12,6 +12,7 @@ import { monarchyAuthTheme, monarchyFormFields, monarchyAuthComponents } from '.
 import { AppRouter } from './AppRouter';
 import { RACES } from './shared-races';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { isDemoMode, disableDemoMode } from './utils/authMode';
 import './App.css';
 import './components/KingdomCreation.css';
 import './components/KingdomDashboard.css';
@@ -95,9 +96,9 @@ function AppContent() {
   }, [demoMode, navigate]);
 
   useEffect(() => {
-    const isDemoMode = localStorage.getItem('demo-mode') === 'true';
-    setDemoMode(isDemoMode);
-    
+    const isDemo = isDemoMode();
+    setDemoMode(isDemo);
+
     // Fetch user attributes when user is available
     if (currentUser && !demoMode) {
       fetchUserAttributes()
@@ -108,8 +109,8 @@ function AppContent() {
           console.error('Failed to fetch user attributes:', err);
         });
     }
-    
-    if (isDemoMode) {
+
+    if (isDemo) {
       // Always fetch kingdoms in demo mode, even on refresh
       fetchKingdoms();
     } else {
@@ -136,8 +137,8 @@ function AppContent() {
   }, [currentUser, demoMode, hasInitialFetch, fetchKingdoms]); // Add fetchKingdoms dependency
 
   const handleGetStarted = () => {
-    const isDemoMode = localStorage.getItem('demo-mode') === 'true';
-    if (isDemoMode) {
+    const isDemo = isDemoMode();
+    if (isDemo) {
       setDemoMode(true);
       // Navigate directly instead of calling fetchKingdoms through a setTimeout.
       // The stale closure from useCallback would still have demoMode=false,
@@ -156,9 +157,9 @@ function AppContent() {
   };
 
   const handleKingdomCreated = async (kingdomName: string, race: string) => {
-    const isDemoMode = localStorage.getItem('demo-mode') === 'true';
-    
-    if (isDemoMode) {
+    const isDemo = isDemoMode();
+
+    if (isDemo) {
       const raceName = race.charAt(0).toUpperCase() + race.slice(1).toLowerCase();
       const raceData = RACES[raceName];
       const startingResources = raceData?.startingResources || {
@@ -297,7 +298,7 @@ function AppContent() {
                     localStorage.removeItem(`kingdom-${k.id}`);
                   });
                 }
-                localStorage.removeItem('demo-mode');
+                disableDemoMode();
                 localStorage.removeItem('demo-kingdoms');
                 localStorage.removeItem('tutorial-progress');
                 window.location.href = '/';
@@ -359,9 +360,9 @@ function AppContent() {
 
     // Create a wrapper for handleKingdomCreated that uses the user prop directly
     const handleKingdomCreatedWithAuth = async (kingdomName: string, race: string) => {
-      const isDemoMode = localStorage.getItem('demo-mode') === 'true';
-      
-      if (isDemoMode) {
+      const isDemo = isDemoMode();
+
+      if (isDemo) {
         return handleKingdomCreated(kingdomName, race);
       }
       
