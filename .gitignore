@@ -49,7 +49,7 @@ bin/
 
 # Generated files
 schema.ts
-index.ts
+/index.ts
 test-*.js
 
 # IDE
