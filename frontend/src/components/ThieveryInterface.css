@@ -1,0 +1,351 @@
+/* Thievery/Espionage Interface Styles */
+.thievery-interface {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: white;
+  padding: 2rem;
+}
+
+/* Error Banner */
+.thievery-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  color: #ef4444;
+}
+
+.thievery-error-banner button {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0 0.5rem;
+}
+
+/* Result Banner */
+.thievery-result-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(78, 205, 196, 0.15);
+  border: 1px solid rgba(78, 205, 196, 0.4);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  color: #4ecdc4;
+}
+
+.thievery-result-banner button {
+  background: none;
+  border: none;
+  color: #4ecdc4;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0 0.5rem;
+}
+
+/* Content Layout */
+.thievery-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Stats Section */
+.thievery-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.thievery-stats .stat-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 8px;
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.thievery-stats .stat-card h4 {
+  margin: 0 0 0.5rem 0;
+  color: #ccc;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.thievery-stats .stat-value {
+  font-size: 1.75rem;
+  font-weight: bold;
+  color: #ffd700;
+  display: block;
+}
+
+.thievery-stats .stat-card small {
+  color: #888;
+  font-size: 0.8rem;
+}
+
+/* Target Selection */
+.thievery-targets h3 {
+  color: #ffd700;
+  margin-bottom: 1rem;
+}
+
+.target-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.target-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 215, 0, 0.15);
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  color: white;
+}
+
+.target-card:hover {
+  border-color: rgba(255, 215, 0, 0.4);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.target-card.selected {
+  border-color: #ffd700;
+  background: rgba(255, 215, 0, 0.1);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.2);
+}
+
+.target-card h4 {
+  margin: 0 0 0.5rem 0;
+  color: #ffd700;
+  font-size: 1rem;
+}
+
+.target-race {
+  margin: 0.25rem 0;
+  color: #ccc;
+  font-size: 0.9rem;
+}
+
+.target-difficulty {
+  margin: 0.25rem 0;
+  color: #4ecdc4;
+  font-size: 0.85rem;
+  text-transform: capitalize;
+}
+
+.target-land {
+  margin: 0.25rem 0;
+  color: #888;
+  font-size: 0.85rem;
+}
+
+/* Operations Section */
+.thievery-operations h3 {
+  color: #ffd700;
+  margin-bottom: 1rem;
+}
+
+.warning-text {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.operations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.operation-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.operation-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.operation-btn:disabled,
+.operation-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.operation-btn h4 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.operation-description {
+  margin: 0;
+  color: #aaa;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.operation-cost {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  color: #ccc;
+  align-self: flex-start;
+}
+
+/* Operation History */
+.thievery-history h3 {
+  color: #ffd700;
+  margin-bottom: 1rem;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.history-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 1rem;
+  border-left: 3px solid;
+}
+
+.history-item.success {
+  border-left-color: #4ecdc4;
+}
+
+.history-item.failure {
+  border-left-color: #ef4444;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.history-type {
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+.history-target {
+  color: #ccc;
+  font-size: 0.9rem;
+}
+
+.history-result {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  margin-left: auto;
+}
+
+.history-result.success {
+  color: #4ecdc4;
+  background: rgba(78, 205, 196, 0.15);
+}
+
+.history-result.failure {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.history-details {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: #999;
+}
+
+.history-time {
+  margin-left: auto;
+  color: #666;
+}
+
+/* Empty State */
+.thievery-content .empty-state {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .thievery-interface {
+    padding: 1rem;
+  }
+
+  .thievery-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .target-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .operations-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .history-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .history-result {
+    margin-left: 0;
+  }
+
+  .history-details {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .history-time {
+    margin-left: 0;
+  }
+}

@@ -7,10 +7,12 @@
 import { create } from 'zustand';
 import { combine } from 'zustand/middleware';
 import { COMBAT } from '../constants/gameConfig';
-import { useKingdomStore } from './kingdomStore';
+import { useKingdomStore, getKingdomAge } from './kingdomStore';
 import { useAIKingdomStore, type AIKingdom } from './aiKingdomStore';
-import { calculateTurnCost, requiresWarDeclaration, validateAttackType, type WarDeclaration } from "../../../shared/mechanics/combat-mechanics";
+import { calculateTurnCost, requiresWarDeclaration, validateAttackType, calculateCombatSummonTroops, type WarDeclaration } from "../../../shared/mechanics/combat-mechanics";
+import { isRacialAbilityActive } from "../../../shared/mechanics/age-mechanics";
 import { RACES } from '../../__mocks__/@game-data/races';
+import { useSummonStore } from './useSummonStore';
 
 interface Unit {
   id: string;
@@ -440,11 +442,25 @@ async function simulateBattle(
   defenderUnits: Unit[];
   landGained?: number;
   resourcesGained?: Record<string, number>;
+  notes?: string[];
 }> {
+  // Get attacker (player) race from summon store
+  const attackerRace = useSummonStore.getState().currentRace || 'Human';
+  const attackerRaceStats = RACES[attackerRace as keyof typeof RACES]?.stats;
+  const attackerOffenseScale = attackerRaceStats ? attackerRaceStats.warOffense : 3;
+  const attackerDefenseScale = attackerRaceStats ? attackerRaceStats.warDefense : 3;
+
   // Scale defender unit combat values by race stats (warOffense/warDefense are 1-5)
   const raceStats = RACES[defenderKingdom.race as keyof typeof RACES]?.stats;
   const offenseScale = raceStats ? raceStats.warOffense : 3;
   const defenseScale = raceStats ? raceStats.warDefense : 3;
+
+  // Scale attacker units by player race stats
+  const scaledAttackerUnits: Unit[] = attackerUnits.map(u => ({
+    ...u,
+    attack: u.attack * attackerOffenseScale,
+    defense: u.defense * attackerDefenseScale,
+  }));
 
   // Convert defender kingdom units to Unit format with race-scaled values
   const defenderUnits: Unit[] = [
@@ -454,8 +470,39 @@ async function simulateBattle(
     { id: 'def-tier4', type: 'cavalry' as const, count: defenderKingdom.units.tier4, attack: 5 * offenseScale, defense: 2 * defenseScale, health: 30 }
   ].filter(u => u.count > 0);
 
+  // Goblin Kobold Rage: 1.5x bonus to T2 units during middle age
+  // Try to get age from kingdom's ageStartTime stored in localStorage
+  const kingdomId = useKingdomStore.getState().kingdomId;
+  let currentAge: 'early' | 'middle' | 'late' = 'early';
+  if (kingdomId) {
+    const stored = localStorage.getItem(`kingdom-${kingdomId}-ageStartTime`);
+    if (stored) {
+      currentAge = getKingdomAge(stored).currentAge;
+    }
+  }
+
+  // Apply Kobold Rage to attacker T2 units if attacker is Goblin
+  if (attackerRace.toLowerCase() === 'goblin' && isRacialAbilityActive('goblin', 'kobold_rage', currentAge)) {
+    scaledAttackerUnits.forEach(u => {
+      if (u.type === 'militia') {
+        u.attack *= 1.5;
+        u.defense *= 1.5;
+      }
+    });
+  }
+
+  // Apply Kobold Rage to defender T2 units if defender is Goblin
+  if (defenderKingdom.race.toLowerCase() === 'goblin' && isRacialAbilityActive('goblin', 'kobold_rage', currentAge)) {
+    defenderUnits.forEach(u => {
+      if (u.type === 'militia') {
+        u.attack *= 1.5;
+        u.defense *= 1.5;
+      }
+    });
+  }
+
   // Calculate total power
-  const attackerPower = attackerUnits.reduce((sum, u) => sum + (u.attack * u.count), 0);
+  const attackerPower = scaledAttackerUnits.reduce((sum, u) => sum + (u.attack * u.count), 0);
   const defenderPower = defenderUnits.reduce((sum, u) => sum + (u.defense * u.count), 0);
 
   // Apply formation bonuses (percentage-based)
@@ -504,7 +551,7 @@ async function simulateBattle(
   const attackerCasualties: Record<string, number> = {};
   const defenderCasualties: Record<string, number> = {};
 
-  attackerUnits.forEach(unit => {
+  scaledAttackerUnits.forEach(unit => {
     // Weight casualties by unit defense - tougher units take fewer losses
     const defenseModifier = Math.max(0.5, 1 - (unit.defense * 0.05));
     const casualties = Math.floor(unit.count * attackerCasualtyRate * defenseModifier);
@@ -537,11 +584,22 @@ async function simulateBattle(
   // Gold looted per acre gained (from reference)
   const goldGained = landGained * COMBAT.GOLD_LOOTED_PER_ACRE;
 
+  // Droben boosted summons: bonus troops after a successful attack
+  const notes: string[] = [];
+  if (result !== 'defeat' && attackerRace.toLowerCase() === 'droben') {
+    const totalNetworth = defenderKingdom.networth || 0;
+    const bonusTroops = calculateCombatSummonTroops('Droben', totalNetworth);
+    if (bonusTroops > 0) {
+      notes.push(`Droben combat summon: +${bonusTroops} bonus troops (3.04% summon rate)`);
+    }
+  }
+
   return {
     result,
     casualties: { attacker: attackerCasualties, defender: defenderCasualties },
     defenderUnits,
     landGained,
-    resourcesGained: goldGained > 0 ? { gold: goldGained } : {}
+    resourcesGained: goldGained > 0 ? { gold: goldGained } : {},
+    notes: notes.length > 0 ? notes : undefined
   };
 }

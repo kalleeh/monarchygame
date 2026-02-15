@@ -171,17 +171,30 @@ function KingdomDashboard({
   
   const buildingStats = useMemo(() => {
     const totalLand = resources.land || 0;
-    // Mock building counts - in real implementation, get from kingdom data
-    const quarries = Math.floor(totalLand * 0.30); // 30% quarries
-    const barracks = Math.floor(totalLand * 0.30); // 30% barracks
-    const guildhalls = Math.floor(totalLand * 0.10); // 10% guildhalls
-    const hovels = Math.floor(totalLand * 0.10); // 10% hovels
-    const temples = Math.floor(totalLand * 0.12); // 12% temples
-    const forts = Math.floor(totalLand * 0.05); // 5% forts
-    
+    // Use actual constructed buildings from kingdom data, fall back to percentage estimates
+    const kingdomBuildings = (kingdom.buildings || {}) as Record<string, number>;
+
+    const actualQuarries = kingdomBuildings.buildrate || kingdomBuildings.quarries || kingdomBuildings.mine || 0;
+    const quarries = actualQuarries > 0 ? actualQuarries : Math.floor(totalLand * 0.30);
+
+    const actualBarracks = kingdomBuildings.troop || kingdomBuildings.barracks || 0;
+    const barracks = actualBarracks > 0 ? actualBarracks : Math.floor(totalLand * 0.30);
+
+    const actualGuildhalls = kingdomBuildings.income || kingdomBuildings.guildhalls || kingdomBuildings.tower || 0;
+    const guildhalls = actualGuildhalls > 0 ? actualGuildhalls : Math.floor(totalLand * 0.10);
+
+    const actualHovels = kingdomBuildings.population || kingdomBuildings.hovels || kingdomBuildings.farm || 0;
+    const hovels = actualHovels > 0 ? actualHovels : Math.floor(totalLand * 0.10);
+
+    const actualTemples = kingdomBuildings.magic || kingdomBuildings.temples || 0;
+    const temples = actualTemples > 0 ? actualTemples : Math.floor(totalLand * 0.12);
+
+    const actualForts = kingdomBuildings.fortress || kingdomBuildings.forts || 0;
+    const forts = actualForts > 0 ? actualForts : Math.floor(totalLand * 0.05);
+
     const quarryPercentage = totalLand > 0 ? (quarries / totalLand) * 100 : 0;
     const brt = calculateBRT(quarryPercentage);
-    
+
     return {
       quarries,
       barracks,
@@ -193,7 +206,7 @@ function KingdomDashboard({
       quarryPercentage,
       brt
     };
-  }, [resources.land]);
+  }, [resources.land, kingdom.buildings]);
 
   // Memoized event handlers for performance
   const handleShowBalanceTester = useCallback(() => {

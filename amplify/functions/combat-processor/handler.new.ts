@@ -44,6 +44,17 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       }
     }
 
+    // TODO: Enforce war declaration requirement for repeated attacks.
+    // Per game rules, the 4th+ attack against the same defender within a season
+    // requires a formal WarDeclaration. This needs a WarDeclaration table to track
+    // attack counts per attacker-defender pair per season. For now, all attacks
+    // are allowed without war declaration checks.
+    // Future implementation:
+    //   1. Query WarDeclaration table for recent attacks: attackerId -> defenderId
+    //   2. If attackCount >= 3 && no active WarDeclaration, reject with:
+    //      { success: false, error: 'War declaration required after 3 attacks', errorCode: ErrorCode.WAR_REQUIRED }
+    //   3. Create WarDeclaration record when player formally declares war
+
     const defenderResources = (defender.data.resources ?? {}) as KingdomResources;
     const defenderUnits = (defender.data.totalUnits ?? {}) as Record<string, number>;
     const defenderLand = defenderResources.land ?? 1000;

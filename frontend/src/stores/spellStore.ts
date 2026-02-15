@@ -201,11 +201,17 @@ export const useSpellStore = create(
               totalTime: spell.cost.turns * 1000
             };
 
+            // Deduct elan: prefer server's newElan, fall back to elanCost deduction
+            const serverNewElan = (result as unknown as Record<string, unknown>).newElan;
+            const elanCost = Number((result as unknown as Record<string, unknown>).elanCost) || spell.cost.elan;
+
             set((state) => ({
               castingSpell: null,
               selectedTarget: null,
               showTargetSelector: false,
-              currentElan: Number((result as unknown as Record<string, unknown>).newElan) || 0,
+              currentElan: serverNewElan != null
+                ? Number(serverNewElan)
+                : Math.max(0, state.currentElan - elanCost),
               activeEffects: [...state.activeEffects, effect],
               castHistory: [historyEntry, ...state.castHistory.slice(0, 49)],
               cooldowns: [...state.cooldowns.filter(cd => cd.spellId !== spellId), cooldown]

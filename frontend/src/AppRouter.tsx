@@ -26,6 +26,7 @@ const AchievementList = lazy(() => import('./components/achievements/Achievement
 const GuildManagement = lazy(() => import('./components/GuildManagement'));
 const WorldMap = lazy(() => import('./components/WorldMap'));
 const BattleReports = lazy(() => import('./components/combat/BattleReports'));
+const ThieveryInterface = lazy(() => import('./components/ThieveryInterface'));
 
 interface AppRouterProps {
   kingdoms: Schema['Kingdom']['type'][];
@@ -242,6 +243,16 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
           </Suspense>
         } />
         
+        {/* Espionage */}
+        <Route path="espionage" element={
+          <Suspense fallback={<LoadingSkeleton type="card" className="m-8" />}>
+            <ThieveryInterface
+              kingdomId={kingdom.id}
+              onBack={handleBackToDashboard}
+            />
+          </Suspense>
+        } />
+
         {/* Battle reports */}
         <Route path="reports" element={
           <Suspense fallback={<LoadingSkeleton type="list" className="m-8" />}>
