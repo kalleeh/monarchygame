@@ -10,6 +10,9 @@ import { rateLimiter } from '../utils/rateLimiter';
 // Generate the typed client
 const client = generateClient<Schema>();
 
+// Check if running in demo mode (localStorage-based, no Lambda calls)
+const isDemoMode = () => localStorage.getItem('demo-mode') === 'true';
+
 // Type definitions for service payloads
 interface BaseSpellPayload {
   action: string;
@@ -56,6 +59,24 @@ export class AmplifyFunctionService {
    */
   static async callFunction(functionName: string, payload: FunctionPayload): Promise<unknown> {
     try {
+      // In demo mode, return mock success without calling Lambda
+      if (isDemoMode()) {
+        switch (functionName) {
+          case 'building-constructor':
+            return { success: true, buildings: '{}' };
+          case 'unit-trainer':
+            return { success: true, units: '{}' };
+          case 'resource-manager':
+            return { success: true, resources: '{}' };
+          case 'combat-processor':
+            return { success: true, result: 'victory', casualties: '{}' };
+          case 'spell-processor':
+            return { success: true, spellResult: 'cast' };
+          default:
+            return { success: true };
+        }
+      }
+
       // Rate limit check before calling Lambda
       if (!rateLimiter.tryConsume(functionName)) {
         const waitTime = rateLimiter.getTimeUntilAvailable(functionName);
@@ -140,6 +161,16 @@ export class AmplifyFunctionService {
   private static async handleSpellProcessor(payload: SpellPayload): Promise<unknown> {
     const { action, spellId, kingdomId, targetId } = payload;
 
+    // In demo mode, return mock success without calling Lambda
+    if (isDemoMode()) {
+      switch (action) {
+        case 'cast':
+          return { success: true, spellResult: 'cast', spellId, casterId: kingdomId };
+        default:
+          return this.getMockSpellData(action, spellId);
+      }
+    }
+
     switch (action) {
       case 'cast':
         return await client.mutations.castSpell({
@@ -164,6 +195,17 @@ export class AmplifyFunctionService {
    */
   static async claimTerritory(territoryData: TerritoryPayload): Promise<unknown> {
     try {
+      // In demo mode, return mock success without calling Lambda
+      if (isDemoMode()) {
+        return {
+          success: true,
+          territoryId: `territory-${Date.now()}`,
+          kingdomId: territoryData.kingdomId,
+          name: territoryData.name,
+          terrainType: territoryData.terrainType
+        };
+      }
+
       const { data, errors } = await client.mutations.claimTerritory({
         kingdomId: territoryData.kingdomId,
         territoryName: territoryData.name,
@@ -235,6 +277,11 @@ export class AmplifyFunctionService {
    */
   static async executeQuery(query: string, variables?: Record<string, unknown>): Promise<unknown> {
     try {
+      // In demo mode, return empty data without calling GraphQL
+      if (isDemoMode()) {
+        return {};
+      }
+
       const result = await client.graphql({
         query,
         variables
@@ -257,6 +304,11 @@ export class AmplifyFunctionService {
    */
   static async executeMutation(mutation: string, variables?: Record<string, unknown>): Promise<unknown> {
     try {
+      // In demo mode, return mock success without calling GraphQL
+      if (isDemoMode()) {
+        return { success: true };
+      }
+
       const result = await client.graphql({
         query: mutation,
         variables

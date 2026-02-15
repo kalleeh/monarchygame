@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import type { KingdomResources } from '../types/amplify';
+import { calculateCurrentAge } from '../../../shared/mechanics/age-mechanics';
+import type { AgeStatus } from '../../../shared/mechanics/age-mechanics';
 
 export interface KingdomUnit {
   id: string;
@@ -157,3 +159,14 @@ export const useKingdomStore = create<KingdomState>((set, get) => ({
 
   reset: () => set({ kingdomId: null, resources: initialResources, units: [] })
 }));
+
+/**
+ * Calculate the current game age from an ageStartTime.
+ * Components can call this with the kingdom's ageStartTime field.
+ */
+export const getKingdomAge = (ageStartTime: Date | string): AgeStatus => {
+  const startDate = typeof ageStartTime === 'string' ? new Date(ageStartTime) : ageStartTime;
+  return calculateCurrentAge(startDate);
+};
+
+export type { AgeStatus };

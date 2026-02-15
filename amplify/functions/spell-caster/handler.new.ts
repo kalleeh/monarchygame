@@ -5,6 +5,18 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 
 const MANA_COST_PER_SPELL = 50;
 
+// Simplified spell damage definitions (can't import shared-spells from Lambda)
+// Values are approximate averages across races from frontend/src/shared-spells/index.ts
+const SPELL_DAMAGE: Record<string, { type: string; damage: number }> = {
+  calming_chant: { type: 'none', damage: 0 },
+  rousing_wind: { type: 'shield_removal', damage: 0 },
+  shattering_calm: { type: 'shield_removal', damage: 0 },
+  hurricane: { type: 'structure_damage', damage: 0.05 },
+  lightning_lance: { type: 'fort_damage', damage: 0.09 },
+  banshee_deluge: { type: 'structure_damage', damage: 0.05 },
+  foul_light: { type: 'peasant_kill', damage: 0.06 },
+};
+
 const client = generateClient<Schema>();
 
 export const handler: Schema["castSpell"]["functionHandler"] = async (event) => {
@@ -54,7 +66,85 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       resources: updatedResources
     });
 
-    return { success: true, result: JSON.stringify({ spellId, targetId, manaUsed: MANA_COST_PER_SPELL, remainingMana: updatedResources.mana }) };
+    // --- Apply spell effects to target ---
+    const spellEffect = SPELL_DAMAGE[spellId];
+    let damageReport: Record<string, unknown> = {};
+
+    if (targetId && spellEffect && spellEffect.type !== 'none' && spellEffect.type !== 'shield_removal') {
+      const targetResult = await client.models.Kingdom.get({ id: targetId });
+      if (!targetResult.data) {
+        // Mana already spent but target disappeared — still return success with warning
+        return { success: true, result: JSON.stringify({ spellId, targetId, manaUsed: MANA_COST_PER_SPELL, remainingMana: updatedResources.mana, warning: 'Target kingdom not found, mana spent' }) };
+      }
+
+      const targetKingdom = targetResult.data;
+
+      if (spellEffect.type === 'structure_damage') {
+        // Reduce all building counts by damage percentage
+        const targetBuildings = (targetKingdom.buildings ?? {}) as Record<string, number>;
+        const damagedBuildings: Record<string, number> = {};
+        let totalDestroyed = 0;
+
+        for (const [buildingType, count] of Object.entries(targetBuildings)) {
+          if (typeof count === 'number' && count > 0) {
+            const destroyed = Math.floor(count * spellEffect.damage);
+            damagedBuildings[buildingType] = count - destroyed;
+            totalDestroyed += destroyed;
+          } else {
+            damagedBuildings[buildingType] = count;
+          }
+        }
+
+        await client.models.Kingdom.update({
+          id: targetId,
+          buildings: damagedBuildings
+        });
+
+        damageReport = { type: 'structure_damage', totalDestroyed };
+
+      } else if (spellEffect.type === 'fort_damage') {
+        // Reduce forts/walls specifically by damage percentage
+        const targetBuildings = (targetKingdom.buildings ?? {}) as Record<string, number>;
+        const damagedBuildings = { ...targetBuildings };
+        let totalDestroyed = 0;
+
+        // Target fort-type buildings: wall and forts
+        for (const fortKey of ['wall', 'forts']) {
+          const count = damagedBuildings[fortKey];
+          if (typeof count === 'number' && count > 0) {
+            const destroyed = Math.floor(count * spellEffect.damage);
+            damagedBuildings[fortKey] = count - destroyed;
+            totalDestroyed += destroyed;
+          }
+        }
+
+        await client.models.Kingdom.update({
+          id: targetId,
+          buildings: damagedBuildings
+        });
+
+        damageReport = { type: 'fort_damage', totalDestroyed };
+
+      } else if (spellEffect.type === 'peasant_kill') {
+        // Reduce population by damage percentage
+        const targetResources = (targetKingdom.resources ?? {}) as KingdomResources;
+        const currentPop = targetResources.population ?? 0;
+        const killed = Math.floor(currentPop * spellEffect.damage);
+        const updatedTargetResources: KingdomResources = {
+          ...targetResources,
+          population: currentPop - killed
+        };
+
+        await client.models.Kingdom.update({
+          id: targetId,
+          resources: updatedTargetResources
+        });
+
+        damageReport = { type: 'peasant_kill', killed };
+      }
+    }
+
+    return { success: true, result: JSON.stringify({ spellId, targetId, manaUsed: MANA_COST_PER_SPELL, remainingMana: updatedResources.mana, damageReport }) };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Spell casting error:', { casterId, spellId, error: message });

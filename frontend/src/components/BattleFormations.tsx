@@ -101,9 +101,12 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ onBack }) => {
 
     // Calculate attacker power
     const attackerPower = selectedUnits.reduce((sum, u) => sum + (u.attack * u.count), 0);
-    
-    // Mock defender power (in real game, get from selected target)
-    const defenderPower = 200; // Mock value
+
+    // Calculate defender power from selected target's units
+    const targetKingdom = aiKingdoms.find(k => k.id === selectedTarget);
+    const defenderPower = targetKingdom
+      ? Object.entries(targetKingdom.units || {}).reduce((sum, [, count]) => sum + (count as number) * 3, 0)
+      : 200;
     
     // Calculate offense ratio
     const offenseRatio = attackerPower / defenderPower;
@@ -140,7 +143,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ onBack }) => {
       defenderCasualtyRate,
       landGainPercent
     };
-  }, [selectedUnits, selectedTarget]);
+  }, [selectedUnits, selectedTarget, aiKingdoms]);
 
   // Initialize combat data on mount
   useEffect(() => {

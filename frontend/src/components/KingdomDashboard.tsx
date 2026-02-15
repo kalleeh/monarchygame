@@ -19,7 +19,7 @@ import { useTutorialStore } from '../stores/tutorialStore';
 import { KINGDOM_DASHBOARD_TUTORIAL } from '../data/tutorialSteps';
 import { TurnTimer } from './ui/TurnTimer';
 import { DemoTimeControl } from './ui/DemoTimeControl';
-import { calculateTimeTravel, type BuildingCounts } from '../utils/resourceCalculations';
+import { calculateTimeTravel, calculateGoldIncome, type BuildingCounts } from '../utils/resourceCalculations';
 import { calculateBRT, getBuildingName } from '../utils/buildingMechanics';
 import { RESOURCE_GENERATION } from '../constants/gameConfig';
 import { useNavigate } from 'react-router-dom';
@@ -708,7 +708,23 @@ function KingdomDashboard({
           <TurnTimer
             kingdomId={kingdom.id}
             onTurnGenerated={(newTurns) => {
-              console.log(`Generated ${newTurns} turns`);
+              // Add generated turns to the kingdom store
+              addTurns(newTurns);
+
+              // Calculate gold income from buildings per turn
+              // Base income: 100 gold per turn + building-based income
+              const BASE_INCOME_PER_TURN = 100;
+              const buildings: BuildingCounts = {
+                quarries: buildingStats.quarries,
+                hovels: buildingStats.hovels,
+                guildhalls: buildingStats.guildhalls,
+              };
+              const buildingIncome = calculateGoldIncome(buildings);
+              const totalGoldPerTurn = BASE_INCOME_PER_TURN + buildingIncome;
+              const goldEarned = totalGoldPerTurn * newTurns;
+
+              addGold(goldEarned);
+              console.log(`Generated ${newTurns} turns, earned ${goldEarned} gold (${BASE_INCOME_PER_TURN} base + ${buildingIncome} from buildings per turn)`);
             }}
           />
         </div>
