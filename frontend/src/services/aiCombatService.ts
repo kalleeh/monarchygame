@@ -98,26 +98,28 @@ export class AICombatService {
       kingdomStore.updateResources({
         land: (kingdomStore.resources.land || 0) + result.landGained,
         gold: (kingdomStore.resources.gold || 0) + result.goldGained,
-        turns: (kingdomStore.resources.turns || 0) - 4 // 4 turns per attack
+        turns: Math.max(0, (kingdomStore.resources.turns || 0) - 4) // 4 turns per attack
       });
       
-      // Update AI kingdom (reduce resources)
+      // Update AI kingdom (reduce resources) - clamp to prevent negative values
+      const newLand = Math.max(0, aiKingdom.resources.land - result.landGained);
+      const newGold = Math.max(0, Math.floor(aiKingdom.resources.gold * 0.9)); // Lost 10%
       aiStore.updateAIKingdom(aiKingdom.id, {
         resources: {
           ...aiKingdom.resources,
-          land: aiKingdom.resources.land - result.landGained,
-          gold: Math.floor(aiKingdom.resources.gold * 0.9) // Lost 10%
+          land: newLand,
+          gold: newGold
         }
       });
-      
+
       // Remove AI kingdom if land drops too low
-      if (aiKingdom.resources.land - result.landGained < 50) {
+      if (newLand < 50) {
         aiStore.removeAIKingdom(aiKingdom.id);
       }
     } else {
-      // Failed attack - only lose turns
+      // Failed attack - only lose turns (clamp to prevent negative)
       kingdomStore.updateResources({
-        turns: (kingdomStore.resources.turns || 0) - 4
+        turns: Math.max(0, (kingdomStore.resources.turns || 0) - 4)
       });
     }
     

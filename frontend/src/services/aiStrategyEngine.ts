@@ -236,7 +236,7 @@ export class AIStrategyEngine {
    * Combat analysis using actual game mechanics
    */
   private analyzeCombatOutcome(attacker: AIKingdom, defender: AIKingdom): CombatAnalysis {
-    const networthRatio = attacker.networth / defender.networth;
+    const networthRatio = attacker.networth / Math.max(defender.networth, 1);
     
     // Calculate turn cost based on networth difference (from combat-mechanics.ts)
     let turnCost = 4; // Base cost
@@ -255,7 +255,7 @@ export class AIStrategyEngine {
     }
 
     const landGainExpected = Math.floor(defender.resources.land * landGainPercent);
-    const efficiency = landGainExpected / turnCost;
+    const efficiency = landGainExpected / Math.max(turnCost, 1);
 
     // Success probability based on networth ratio
     let successProbability = 0.5;
@@ -371,6 +371,13 @@ export class AIStrategyEngine {
    * Track war declarations for strategic planning
    */
   recordAttack(defenderId: string): void {
+    // Prevent unbounded map growth - evict oldest entries if too large
+    if (this.warDeclarations.size > 1000) {
+      const firstKey = this.warDeclarations.keys().next().value;
+      if (firstKey !== undefined) {
+        this.warDeclarations.delete(firstKey);
+      }
+    }
     const current = this.warDeclarations.get(defenderId) || 0;
     this.warDeclarations.set(defenderId, current + 1);
   }
@@ -428,7 +435,7 @@ export class AIStrategyEngine {
       landGainExpected,
       turnCost,
       successProbability,
-      efficiency: landGainExpected / turnCost,
+      efficiency: landGainExpected / Math.max(turnCost, 1),
       warDeclarationRisk: this.warDeclarations.get(defender.id) ? true : false
     };
   }

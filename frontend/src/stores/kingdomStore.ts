@@ -74,7 +74,12 @@ export const useKingdomStore = create<KingdomState>((set, get) => ({
   },
 
   updateResources: (updates: Partial<KingdomResources>) => {
-    const resources = { ...get().resources, ...updates };
+    const current = get().resources;
+    const merged = { ...current, ...updates };
+    // Clamp all numeric values to >= 0
+    const resources = Object.fromEntries(
+      Object.entries(merged).map(([k, v]) => [k, typeof v === 'number' ? Math.max(0, v) : v])
+    ) as KingdomResources;
     set({ resources });
     const { kingdomId, units } = get();
     if (kingdomId) saveKingdomData(kingdomId, { resources, units });
@@ -95,6 +100,7 @@ export const useKingdomStore = create<KingdomState>((set, get) => ({
   },
 
   spendGold: (amount: number) => {
+    if (typeof amount !== 'number' || amount <= 0 || !isFinite(amount)) return false;
     const currentGold = get().resources.gold || 0;
     if (currentGold >= amount) {
       const resources = { ...get().resources, gold: currentGold - amount };
@@ -107,6 +113,7 @@ export const useKingdomStore = create<KingdomState>((set, get) => ({
   },
 
   spendTurns: (amount: number) => {
+    if (typeof amount !== 'number' || amount <= 0 || !isFinite(amount)) return false;
     const currentTurns = get().resources.turns || 0;
     if (currentTurns >= amount) {
       const resources = { ...get().resources, turns: currentTurns - amount };

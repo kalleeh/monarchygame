@@ -133,7 +133,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
 
   // Redirect to kingdoms list if kingdom not found
   if (!kingdom) {
-    setTimeout(() => navigate('/kingdoms'), 1000);
+    setTimeout(() => navigate('/kingdoms', { replace: true }), 1000);
     return <div className="loading">Kingdom not found. Redirecting...</div>;
   }
 

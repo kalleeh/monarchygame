@@ -158,9 +158,10 @@ export const useSpellStore = create(
 
       // Server-side spell casting
       castSpell: async (kingdomId: string, spellId: string, targetId?: string) => {
+        if (get().loading) return { success: false, error: 'Already casting' };
         const spell = SPELLS[spellId];
         const state = get();
-        
+
         // Client-side validation
         if (!spell || state.currentElan < spell.cost.elan || state.castingSpell) {
           return { success: false, error: 'Invalid spell cast attempt' };

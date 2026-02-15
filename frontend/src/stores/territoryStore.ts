@@ -91,9 +91,10 @@ export const useTerritoryStore = create(
 
       // Expansion management
       claimTerritory: async (territoryId: string) => {
+        if (get().loading) return false;
         const state = get();
         const expansion = state.availableExpansions.find(e => e.territoryId === territoryId);
-        
+
         if (!expansion) {
           set({ error: 'Territory not available for expansion' });
           return false;
@@ -139,10 +140,11 @@ export const useTerritoryStore = create(
               }
             };
             
-            // Deduct costs from centralized kingdom store
+            // Deduct costs from centralized kingdom store (re-read fresh state to avoid race conditions)
+            const freshResources = useKingdomStore.getState().resources;
             useKingdomStore.getState().updateResources({
-              gold: (kingdomResources.gold || 0) - expansion.cost.gold,
-              population: (kingdomResources.population || 0) - expansion.cost.population
+              gold: (freshResources.gold || 0) - expansion.cost.gold,
+              population: (freshResources.population || 0) - expansion.cost.population
             });
             
             set((state) => ({

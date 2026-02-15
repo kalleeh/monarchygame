@@ -456,7 +456,7 @@ async function simulateBattle(
   const totalAttackerPower = attackerPower * (1 + formationAttackBonus);
 
   // Guard against division by zero when defender has no units
-  const offenseRatio = defenderPower === 0 ? Infinity : totalAttackerPower / defenderPower;
+  const offenseRatio = defenderPower === 0 ? 999 : totalAttackerPower / defenderPower;
 
   // Determine result type based on reference mechanics
   let resultType: 'with_ease' | 'good_fight' | 'failed';

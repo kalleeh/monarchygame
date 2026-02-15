@@ -196,10 +196,7 @@ function AppContent() {
       }));
       
       setKingdoms(updatedKingdoms);
-      
-      setTimeout(() => {
-        navigate('/kingdoms');
-      }, 100);
+      navigate('/kingdoms');
     } else {
       // For authenticated users, create kingdom in database
       try {
@@ -209,38 +206,26 @@ function AppContent() {
         let session = null;
         let retries = 5;
         
-        console.log('Waiting for auth session to be ready...');
-        
         while (retries > 0) {
           try {
             session = await fetchAuthSession({ forceRefresh: true });
-            console.log('Auth session check:', { 
-              hasTokens: !!session.tokens,
-              hasIdentityId: !!session.identityId,
-              retries 
-            });
-            
+
             if (session.tokens) {
-              console.log('Auth session ready!');
               break;
             }
           } catch (authError) {
             console.error('Auth session error:', authError);
           }
-          
+
           if (retries > 0) {
-            console.log(`Waiting 2 seconds before retry... (${retries} attempts left)`);
             await new Promise(resolve => setTimeout(resolve, 2000));
             retries--;
           }
         }
         
         if (!session?.tokens) {
-          console.error('Auth session failed after all retries');
           throw new Error('Please sign out and sign in again, then try creating your kingdom.');
         }
-        
-        console.log('Creating kingdom:', kingdomName, race);
         
         const raceName = race.charAt(0).toUpperCase() + race.slice(1).toLowerCase();
         const raceData = RACES[raceName];
@@ -250,8 +235,6 @@ function AppContent() {
           land: 500,
           turns: 50
         };
-
-        console.log('Kingdom data:', { name: kingdomName, race: raceName, resources: startingResources });
 
         const newKingdom = await client.models.Kingdom.create({
           name: kingdomName || 'New Kingdom',
@@ -265,26 +248,18 @@ function AppContent() {
           isOnline: true
         });
 
-        console.log('Kingdom creation result:', JSON.stringify(newKingdom, null, 2));
-
         if (newKingdom.data) {
           // Add to local state
           setKingdoms(prev => [...prev, newKingdom.data]);
-          console.log('Navigating to kingdoms...');
-          // Force navigation after successful creation
-          setTimeout(() => {
-            navigate('/kingdoms');
-          }, 500);
+          navigate('/kingdoms');
         } else if (newKingdom.errors) {
-          console.error('Kingdom creation errors:', newKingdom.errors);
           throw new Error(`Failed to create kingdom: ${newKingdom.errors.map((e: { message: string }) => e.message).join(', ')}`);
         } else {
-          console.error('Kingdom creation failed: No data returned', newKingdom);
           throw new Error('Kingdom creation failed. Please try again.');
         }
       } catch (error) {
         console.error('Failed to create kingdom:', error);
-        alert(`Failed to create kingdom: ${error instanceof Error ? error.message : 'Unknown error'}. Please check the console for details.`);
+        alert(`Failed to create kingdom: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
         // Stay on creation page if failed
       } finally {
         setLoading(false);

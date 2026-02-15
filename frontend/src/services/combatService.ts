@@ -105,9 +105,9 @@ export class CombatService {
     try {
       return await AmplifyFunctionService.claimTerritory({
         kingdomId: request.kingdomId,
-        name: 'New Territory',
-        terrainType: 'plains',
-        coordinates: { x: 0, y: 0 },
+        name: request.territoryName,
+        terrainType: request.terrainType,
+        coordinates: request.coordinates,
         territoryAmount: 1,
         goldCost: 1000
       }) as LambdaResponse;
@@ -131,7 +131,7 @@ export class CombatService {
         kingdomId: request.kingdomId,
         buildingType: request.buildingType,
         quantity: request.quantity,
-        goldCost: request.quantity * 100 // Default cost, should be calculated by Lambda
+        goldCost: request.quantity * 250 // Match Lambda expected cost
       }) as LambdaResponse;
     } catch (error) {
       console.error('Building construction error:', error);
@@ -152,7 +152,7 @@ export class CombatService {
         kingdomId: request.kingdomId,
         unitType: request.unitType,
         quantity: request.quantity,
-        goldCost: request.quantity * 50 // Default cost, should be calculated by Lambda
+        goldCost: request.quantity * 100 // Match Lambda expected cost
       }) as LambdaResponse;
     } catch (error) {
       console.error('Unit training error:', error);

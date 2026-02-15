@@ -319,6 +319,9 @@ export class TargetSelector {
     const sequence: AttackStep[] = [];
     const networthRatio = attacker.networth / target.networth;
 
+    // Clone target to avoid mutating the original object
+    const simulatedTarget = { ...target, resources: { ...target.resources } };
+
     // Start with controlled strike to test defenses
     if (availableTurns >= 4 && networthRatio >= 1.2) {
       sequence.push({
@@ -331,17 +334,19 @@ export class TargetSelector {
     }
 
     // Follow with full strikes if "with ease" confirmed
-    while (availableTurns >= 4 && networthRatio >= 1.3) {
+    let loopCount = 0;
+    while (availableTurns >= 4 && networthRatio >= 1.3 && loopCount < 100) {
+      loopCount++;
       sequence.push({
         target,
         attackType: 'full_strike',
         turnCost: 4,
-        expectedOutcome: `${Math.floor(target.resources.land * 0.07)} land gain expected`
+        expectedOutcome: `${Math.floor(simulatedTarget.resources.land * 0.07)} land gain expected`
       });
       availableTurns -= 4;
-      
-      // Simulate land gain for next iteration
-      target.resources.land = Math.floor(target.resources.land * 0.93);
+
+      // Simulate land gain for next iteration (on cloned object)
+      simulatedTarget.resources.land = Math.floor(simulatedTarget.resources.land * 0.93);
     }
 
     return sequence;

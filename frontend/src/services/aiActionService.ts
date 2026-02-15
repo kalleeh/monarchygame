@@ -90,7 +90,7 @@ export class AIActionService {
     return {
       resources: {
         ...ai.resources,
-        gold: ai.resources.gold - buildCost,
+        gold: Math.max(0, ai.resources.gold - buildCost),
         land: ai.resources.land + landGain
       }
     };
@@ -118,7 +118,7 @@ export class AIActionService {
     return {
       resources: {
         ...ai.resources,
-        gold: ai.resources.gold - trainCost
+        gold: Math.max(0, ai.resources.gold - trainCost)
       },
       units: newUnits
     };
@@ -138,7 +138,7 @@ export class AIActionService {
     // Simple combat: compare networth
     const attackerStrength = attacker.networth;
     const defenderStrength = defender.networth;
-    const ratio = attackerStrength / defenderStrength;
+    const ratio = attackerStrength / Math.max(defenderStrength, 1);
     
     // Attacker wins if 1.2x stronger
     if (ratio >= 1.2) {
@@ -149,7 +149,7 @@ export class AIActionService {
         attacker: {
           resources: {
             ...attacker.resources,
-            turns: attacker.resources.turns - 4,
+            turns: Math.max(0, attacker.resources.turns - 4),
             land: attacker.resources.land + landGain,
             gold: attacker.resources.gold + goldGain
           }
@@ -157,7 +157,7 @@ export class AIActionService {
         defender: {
           resources: {
             ...defender.resources,
-            land: defender.resources.land - landGain,
+            land: Math.max(0, defender.resources.land - landGain),
             gold: Math.max(0, defender.resources.gold - goldGain)
           }
         }
@@ -169,7 +169,7 @@ export class AIActionService {
       attacker: {
         resources: {
           ...attacker.resources,
-          turns: attacker.resources.turns - 4
+          turns: Math.max(0, attacker.resources.turns - 4)
         }
       },
       defender: {}

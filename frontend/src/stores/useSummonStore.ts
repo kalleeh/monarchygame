@@ -26,6 +26,7 @@ interface SummonStore {
   // State
   availableUnits: TrainableUnit[];
   accumulatedGoldSpent: number; // Track total gold spent on troops
+  currentRace: string; // Track race for unit lookups
   loading: boolean;
   error: string | null;
 
@@ -43,6 +44,7 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
   // Initial state
   availableUnits: [],
   accumulatedGoldSpent: 0,
+  currentRace: 'HUMAN',
   loading: false,
   error: null,
 
@@ -71,9 +73,10 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
         }
       });
       
-      set({ 
+      set({
         availableUnits: trainableUnits,
         accumulatedGoldSpent: totalGoldSpent,
+        currentRace: race,
         loading: false,
         error: null
       });
@@ -122,8 +125,9 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
 
   // Summon units (instant, gold-cost-based) - adds to kingdom store
   summonUnits: async (_kingdomId: string, unitType: string, quantity: number) => {
+    if (get().loading) return;
     set({ loading: true, error: null });
-    
+
     try {
       const kingdomStore = useKingdomStore.getState();
       const resources = kingdomStore.resources;
@@ -186,7 +190,8 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
       });
 
       // Add units
-      const raceUnits = getUnitsForRace('HUMAN'); // Default to HUMAN since race not in store
+      const race = get().currentRace || 'HUMAN';
+      const raceUnits = getUnitsForRace(race);
       const fullUnitData = raceUnits.find(u => u.id === unitType);
       
       if (fullUnitData) {
