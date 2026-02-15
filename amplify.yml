@@ -12,6 +12,7 @@ applications:
         preBuild:
           commands:
             - npm ci --prefix frontend
+            - cp amplify_outputs.json frontend/amplify_outputs.json 2>/dev/null || true
         build:
           commands:
             - npm run build --prefix frontend
