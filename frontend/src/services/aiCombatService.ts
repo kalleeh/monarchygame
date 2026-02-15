@@ -8,6 +8,7 @@
 import type { AIKingdom } from '../stores/aiKingdomStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
+import { useCombatStore } from '../stores/combatStore';
 
 export interface BattleResult {
   success: boolean;
@@ -122,7 +123,22 @@ export class AICombatService {
         turns: Math.max(0, (kingdomStore.resources.turns || 0) - 4)
       });
     }
-    
+
+    // Record battle in combat store history
+    const combatStore = useCombatStore.getState();
+    combatStore.addBattleToHistory({
+      id: `battle-${Date.now()}`,
+      timestamp: Date.now(),
+      attacker: 'current-player',
+      defender: aiKingdom.id,
+      attackerUnits: [],
+      defenderUnits: [],
+      result: result.success ? 'victory' : 'defeat',
+      casualties: { attacker: {}, defender: {} },
+      landGained: result.landGained,
+      resourcesGained: result.goldGained > 0 ? { gold: result.goldGained } : undefined
+    });
+
     return result;
   }
   

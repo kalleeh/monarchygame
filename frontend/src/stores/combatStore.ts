@@ -223,6 +223,14 @@ export const useCombatStore = create(
         }
       },
 
+      // Add a battle report to history (used by AICombatService)
+      addBattleToHistory: (report: BattleReport) => {
+        set((state) => ({
+          currentBattle: report,
+          battleHistory: [report, ...state.battleHistory.slice(0, 49)],
+        }));
+      },
+
       // Siege warfare
       startSiege: async (territoryId: string, units: Unit[]) => {
         const siege: SiegeOperation = {

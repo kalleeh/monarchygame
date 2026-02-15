@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { type TrainableUnit } from '../services/TrainingService';
 import { useKingdomStore } from './kingdomStore';
 import { getUnitsForRace, type UnitType } from '../utils/units';
+import { calculateActionTurnCost } from '../../../shared/mechanics/turn-mechanics';
 
 // Troop cap based on accumulated gold cost (from hire-screen.md)
 const TROOP_CAP_GOLD = 10_000_000; // 10 million gold cap
@@ -133,9 +134,10 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
       const resources = kingdomStore.resources;
       const { availableUnits, accumulatedGoldSpent } = get();
       
-      // Check turns (1 turn per summon action)
-      if ((resources.turns || 0) < 1) {
-        set({ error: 'Not enough turns (need 1)', loading: false });
+      // Check turns using shared turn-mechanics cost calculation
+      const turnCost = calculateActionTurnCost('TRAINING');
+      if ((resources.turns || 0) < turnCost) {
+        set({ error: `Not enough turns (need ${turnCost})`, loading: false });
         return;
       }
       
@@ -182,11 +184,11 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
         console.warn(`⚠️ High upkeep: ${totalUpkeep}g/turn (${Math.round(totalUpkeep / (resources.gold || 1) * 100)}% of treasury)`);
       }
 
-      // Deduct resources
+      // Deduct resources (turn cost from shared turn-mechanics)
       kingdomStore.updateResources({
         gold: (resources.gold || 0) - totalGold,
         population: (resources.population || 0) - totalPop,
-        turns: (resources.turns || 0) - 1
+        turns: (resources.turns || 0) - turnCost
       });
 
       // Add units

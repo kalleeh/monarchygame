@@ -7,6 +7,7 @@ import { ToastService } from '../services/toastService';
 import { TopNavigation } from './TopNavigation';
 import { LoadingButton } from './ui/loading/LoadingButton';
 import { SkeletonCard } from './ui/loading/Skeleton';
+import { getBuildingName } from '../../../shared/mechanics/building-mechanics';
 
 const client = generateClient<Schema>();
 
@@ -89,7 +90,8 @@ export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProp
 
   const handleBuildConstruction = async (territoryId: string, buildingType: string, quantity: number) => {
     setBuildingLoading(true);
-    
+    const displayName = getBuildingName(kingdom.race || 'HUMAN', buildingType);
+
     try {
       const result = await ToastService.promise(
         AmplifyFunctionService.constructBuildings({
@@ -99,8 +101,8 @@ export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProp
           quantity
         }),
         {
-          loading: `Constructing ${quantity} ${buildingType}...`,
-          success: `Successfully constructed ${quantity} ${buildingType}!`,
+          loading: `Constructing ${quantity} ${displayName}...`,
+          success: `Successfully constructed ${quantity} ${displayName}!`,
           error: (error) => `Construction failed: ${error.message}`
         }
       ) as { success: boolean };
@@ -247,13 +249,15 @@ export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProp
                 <div className="territory-actions">
                   <button className="manage-btn" onClick={() => ToastService.info(`Managing territory: ${territory.name}`)}>Manage</button>
                   <LoadingButton
-                    onClick={() => handleBuildConstruction(territory.id!, 'quarries', 1)}
+                    onClick={() => handleBuildConstruction(territory.id!, 'buildrate', 1)}
                     loading={buildingLoading}
                     className="build-btn"
                   >
-                    Build
+                    Build {getBuildingName(kingdom.race || 'HUMAN', 'buildrate')}
                   </LoadingButton>
-                  <button className="fortify-btn" onClick={() => handleBuildConstruction(territory.id!, 'forts', 1)}>Fortify</button>
+                  <button className="fortify-btn" onClick={() => handleBuildConstruction(territory.id!, 'fortress', 1)}>
+                    Build {getBuildingName(kingdom.race || 'HUMAN', 'fortress')}
+                  </button>
                 </div>
               </div>
             ))}

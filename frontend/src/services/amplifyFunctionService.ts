@@ -62,8 +62,18 @@ export class AmplifyFunctionService {
       // In demo mode, return mock success without calling Lambda
       if (isDemoMode()) {
         switch (functionName) {
-          case 'building-constructor':
-            return { success: true, buildings: '{}' };
+          case 'building-constructor': {
+            // Persist building construction to localStorage
+            const kingdomKey = `kingdom-${payload.kingdomId}`;
+            const kingdomData = JSON.parse(localStorage.getItem(kingdomKey) || '{}');
+            const buildings = kingdomData.buildings ? (typeof kingdomData.buildings === 'string' ? JSON.parse(kingdomData.buildings) : kingdomData.buildings) : {};
+            const buildingType = payload.buildingType || 'unknown';
+            const quantity = payload.quantity || 1;
+            buildings[buildingType] = (buildings[buildingType] || 0) + quantity;
+            kingdomData.buildings = buildings;
+            localStorage.setItem(kingdomKey, JSON.stringify(kingdomData));
+            return { success: true, buildings: JSON.stringify(buildings) };
+          }
           case 'unit-trainer':
             return { success: true, units: '{}' };
           case 'resource-manager':
@@ -165,7 +175,7 @@ export class AmplifyFunctionService {
     if (isDemoMode()) {
       switch (action) {
         case 'cast':
-          return { success: true, spellResult: 'cast', spellId, casterId: kingdomId };
+          return { success: true, spellResult: 'cast', spellId, casterId: kingdomId, elanCost: this.getSpellManaCost(spellId), damage: 0 };
         default:
           return this.getMockSpellData(action, spellId);
       }

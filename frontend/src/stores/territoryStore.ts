@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { combine } from 'zustand/middleware';
 import { useKingdomStore } from './kingdomStore';
+import { calculateActionTurnCost } from '../../../shared/mechanics/turn-mechanics';
 
 interface Territory {
   id: string;
@@ -115,6 +116,13 @@ export const useTerritoryStore = create(
           return false;
         }
 
+        // Check turns using shared turn-mechanics cost calculation
+        const turnCost = calculateActionTurnCost('BUILDING');
+        if ((kingdomResources.turns || 0) < turnCost) {
+          set({ error: `Not enough turns! Need ${turnCost}, have ${kingdomResources.turns || 0}` });
+          return false;
+        }
+
         set({ loading: true, error: null });
 
         try {
@@ -144,7 +152,8 @@ export const useTerritoryStore = create(
             const freshResources = useKingdomStore.getState().resources;
             useKingdomStore.getState().updateResources({
               gold: (freshResources.gold || 0) - expansion.cost.gold,
-              population: (freshResources.population || 0) - expansion.cost.population
+              population: (freshResources.population || 0) - expansion.cost.population,
+              turns: (freshResources.turns || 0) - turnCost
             });
             
             set((state) => ({

@@ -9,6 +9,7 @@ import { combine } from 'zustand/middleware';
 import { SpellService } from '../services/SpellService';
 import { SPELLS } from '../shared-spells';
 import { calculateMaxElan } from '../../../shared/mechanics/elan-mechanics';
+import { RACIAL_SPELL_EFFECTIVENESS, calculateSpellDamage } from '../../../shared/mechanics/sorcery-mechanics';
 
 interface SpellEffect {
   id: string;
@@ -264,6 +265,16 @@ export const useSpellStore = create(
       getSpellCooldown: (spellId: string): number => {
         const cooldown = get().cooldowns.find(cd => cd.spellId === spellId);
         return cooldown?.remainingTime || 0;
+      },
+
+      // Get race-specific spell effectiveness data for UI display
+      getRacialSpellEffectiveness: (race: string) => {
+        return RACIAL_SPELL_EFFECTIVENESS[race.toUpperCase() as keyof typeof RACIAL_SPELL_EFFECTIVENESS] || null;
+      },
+
+      // Calculate expected spell damage for a given race and target
+      getExpectedSpellDamage: (spellName: string, casterRace: string, targetStructures: number, targetForts: number, targetPeasants: number) => {
+        return calculateSpellDamage(spellName, casterRace, targetStructures, targetForts, targetPeasants);
       },
 
       // Clear error
