@@ -40,12 +40,25 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
     }
 
     const kingdom = result.data;
+    const resources = (kingdom.resources as any) || {};
+    const goldCost = quantity * 250;
+
+    if ((resources.gold || 0) < goldCost) {
+      return { success: false, error: `Insufficient gold: need ${goldCost}, have ${resources.gold || 0}` };
+    }
+
     const buildings: Record<string, number> = (kingdom.buildings as Record<string, number>) || {};
     buildings[buildingType] = (buildings[buildingType] || 0) + quantity;
 
+    const updatedResources = {
+      ...resources,
+      gold: (resources.gold || 0) - goldCost
+    };
+
     await client.models.Kingdom.update({
       id: kingdomId,
-      buildings
+      buildings,
+      resources: updatedResources
     });
 
     return { success: true, buildings: JSON.stringify(buildings) };

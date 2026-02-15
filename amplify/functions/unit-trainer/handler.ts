@@ -39,12 +39,25 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
     }
 
     const kingdom = result.data;
+    const resources = (kingdom.resources as any) || {};
+    const goldCost = quantity * 100;
+
+    if ((resources.gold || 0) < goldCost) {
+      return { success: false, error: `Insufficient gold: need ${goldCost}, have ${resources.gold || 0}` };
+    }
+
     const units: Record<string, number> = (kingdom.totalUnits as Record<string, number>) || {};
     units[unitType] = (units[unitType] || 0) + quantity;
 
+    const updatedResources = {
+      ...resources,
+      gold: (resources.gold || 0) - goldCost
+    };
+
     await client.models.Kingdom.update({
       id: kingdomId,
-      totalUnits: units
+      totalUnits: units,
+      resources: updatedResources
     });
 
     return { success: true, units: JSON.stringify(units) };

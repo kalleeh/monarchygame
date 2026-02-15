@@ -37,6 +37,34 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
       return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
+    // Check kingdom has enough gold
+    const resources = (kingdomResult.data.resources ?? {}) as { gold?: number; population?: number; mana?: number; land?: number };
+    const currentGold = resources.gold ?? 0;
+    if (currentGold < 500) {
+      return { success: false, error: `Insufficient gold: need 500, have ${currentGold}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
+    }
+
+    // Check for duplicate territory at same coordinates
+    const coordStr = JSON.stringify(coordObj);
+    const existingTerritories = await client.models.Territory.list({
+      filter: { kingdomId: { eq: kingdomId } }
+    });
+    const duplicate = existingTerritories.data?.find(
+      (t: any) => t.coordinates === coordStr
+    );
+    if (duplicate) {
+      return { success: false, error: 'Territory already claimed at these coordinates', errorCode: ErrorCode.INVALID_PARAM };
+    }
+
+    // Deduct gold cost
+    await client.models.Kingdom.update({
+      id: kingdomId,
+      resources: {
+        ...resources,
+        gold: currentGold - 500
+      }
+    });
+
     await client.models.Territory.create({
       name: territoryName,
       type: territoryType || 'settlement',

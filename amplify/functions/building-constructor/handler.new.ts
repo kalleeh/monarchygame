@@ -1,6 +1,6 @@
 import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
-import type { KingdomBuildings } from '../../../shared/types/kingdom';
+import type { KingdomBuildings, KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 
 const VALID_BUILDING_TYPES = ['castle', 'barracks', 'farm', 'mine', 'temple', 'tower', 'wall'] as const;
@@ -32,6 +32,14 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
       return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
+    const resources = (result.data.resources ?? {}) as KingdomResources;
+    const goldCost = quantity * 250;
+    const currentGold = resources.gold ?? 0;
+
+    if (currentGold < goldCost) {
+      return { success: false, error: `Insufficient gold: need ${goldCost}, have ${currentGold}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
+    }
+
     const buildings = (result.data.buildings ?? {}) as KingdomBuildings;
     const currentCount = buildings[buildingType as keyof KingdomBuildings] ?? 0;
     const updatedBuildings: KingdomBuildings = {
@@ -39,9 +47,15 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
       [buildingType]: currentCount + quantity
     };
 
+    const updatedResources: KingdomResources = {
+      ...resources,
+      gold: currentGold - goldCost
+    };
+
     await client.models.Kingdom.update({
       id: kingdomId,
-      buildings: updatedBuildings
+      buildings: updatedBuildings,
+      resources: updatedResources
     });
 
     return { success: true, buildings: JSON.stringify(updatedBuildings) };

@@ -12,6 +12,18 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       return { success: false, error: 'Missing parameters' };
     }
 
+    const validSpells = ['fireball', 'heal', 'shield', 'lightning', 'earthquake', 'restoration'];
+    if (!validSpells.includes(spellId)) {
+      return { success: false, error: `Invalid spell. Must be one of: ${validSpells.join(', ')}` };
+    }
+
+    if (targetId) {
+      const targetResult = await client.models.Kingdom.get({ id: targetId });
+      if (!targetResult.data) {
+        return { success: false, error: 'Target kingdom not found' };
+      }
+    }
+
     const result = await client.models.Kingdom.get({ id: casterId });
 
     if (!result.data) {

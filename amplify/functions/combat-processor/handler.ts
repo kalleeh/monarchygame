@@ -23,6 +23,10 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       return { success: false, error: 'Missing parameters' };
     }
 
+    if (attackerId === defenderId) {
+      return { success: false, error: 'Cannot attack your own kingdom' };
+    }
+
     const [attacker, defender] = await Promise.all([
       client.models.Kingdom.get({ id: attackerId }),
       client.models.Kingdom.get({ id: defenderId })
@@ -34,6 +38,15 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
     // Parse units from input
     const attackerUnits = typeof units === 'string' ? JSON.parse(units) : units;
+    const ownedUnits = parseJsonField<Record<string, number>>(attacker.data.totalUnits, {});
+
+    // Validate that attacker has enough units
+    for (const [unitType, count] of Object.entries(attackerUnits as Record<string, number>)) {
+      if (count > (ownedUnits[unitType] || 0)) {
+        return { success: false, error: `Insufficient ${unitType}: sending ${count}, but only have ${ownedUnits[unitType] || 0}` };
+      }
+    }
+
     const defenderUnits = parseJsonField<Record<string, number>>(defender.data.totalUnits, {});
     const defenderResources = parseJsonField<KingdomResources>(defender.data.resources, { gold: 0, population: 0, mana: 0, land: 1000 });
     const defenderLand = defenderResources.land || 1000;
@@ -61,7 +74,22 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       timestamp: new Date().toISOString()
     });
 
-    // Update defender's land and resources if successful
+    // Deduct casualties from both sides' units
+    const casualties = combatResult.casualties || {} as any;
+    const attackerCasualties = casualties.attacker || {};
+    const defenderCasualties = casualties.defender || {};
+
+    const updatedAttackerUnits: Record<string, number> = { ...ownedUnits };
+    for (const [unitType, lost] of Object.entries(attackerCasualties as Record<string, number>)) {
+      updatedAttackerUnits[unitType] = Math.max(0, (updatedAttackerUnits[unitType] || 0) - lost);
+    }
+
+    const updatedDefenderUnits: Record<string, number> = { ...defenderUnits };
+    for (const [unitType, lost] of Object.entries(defenderCasualties as Record<string, number>)) {
+      updatedDefenderUnits[unitType] = Math.max(0, (updatedDefenderUnits[unitType] || 0) - lost);
+    }
+
+    // Update defender's land, resources, and units
     if (combatResult.success && combatResult.landGained > 0) {
       const updatedDefenderResources: KingdomResources = {
         ...defenderResources,
@@ -71,7 +99,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
       await client.models.Kingdom.update({
         id: defenderId,
-        resources: updatedDefenderResources
+        resources: updatedDefenderResources,
+        totalUnits: updatedDefenderUnits
       });
 
       // Update attacker's resources with gains
@@ -84,8 +113,21 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
       await client.models.Kingdom.update({
         id: attackerId,
-        resources: updatedAttackerResources
+        resources: updatedAttackerResources,
+        totalUnits: updatedAttackerUnits
       });
+    } else {
+      // Even if combat was not successful, still deduct casualties
+      await Promise.all([
+        client.models.Kingdom.update({
+          id: attackerId,
+          totalUnits: updatedAttackerUnits
+        }),
+        client.models.Kingdom.update({
+          id: defenderId,
+          totalUnits: updatedDefenderUnits
+        })
+      ]);
     }
 
     return {

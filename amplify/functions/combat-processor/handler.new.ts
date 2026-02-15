@@ -14,6 +14,10 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       return { success: false, error: 'Missing attacker or defender ID', errorCode: ErrorCode.MISSING_PARAMS };
     }
 
+    if (attackerId === defenderId) {
+      return { success: false, error: 'Cannot attack your own kingdom', errorCode: ErrorCode.INVALID_PARAM };
+    }
+
     if (!units) {
       return { success: false, error: 'No units specified for attack', errorCode: ErrorCode.MISSING_PARAMS };
     }
@@ -31,6 +35,15 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     }
 
     const attackerUnits: Record<string, number> = typeof units === 'string' ? JSON.parse(units) : units;
+    const ownedUnits = (attacker.data.totalUnits ?? {}) as Record<string, number>;
+
+    // Validate that attacker has enough units
+    for (const [unitType, count] of Object.entries(attackerUnits)) {
+      if (count > (ownedUnits[unitType] ?? 0)) {
+        return { success: false, error: `Insufficient ${unitType}: sending ${count}, but only have ${ownedUnits[unitType] ?? 0}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
+      }
+    }
+
     const defenderResources = (defender.data.resources ?? {}) as KingdomResources;
     const defenderUnits = (defender.data.totalUnits ?? {}) as Record<string, number>;
     const defenderLand = defenderResources.land ?? 1000;
@@ -56,6 +69,21 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       timestamp: new Date().toISOString()
     });
 
+    // Deduct casualties from both sides' units
+    const casualties = combatResult.casualties || {} as any;
+    const attackerCasualties = casualties.attacker || {};
+    const defenderCasualties = casualties.defender || {};
+
+    const updatedAttackerUnits: Record<string, number> = { ...ownedUnits };
+    for (const [unitType, lost] of Object.entries(attackerCasualties as Record<string, number>)) {
+      updatedAttackerUnits[unitType] = Math.max(0, (updatedAttackerUnits[unitType] ?? 0) - lost);
+    }
+
+    const updatedDefenderUnits: Record<string, number> = { ...defenderUnits };
+    for (const [unitType, lost] of Object.entries(defenderCasualties as Record<string, number>)) {
+      updatedDefenderUnits[unitType] = Math.max(0, (updatedDefenderUnits[unitType] ?? 0) - lost);
+    }
+
     if (combatResult.success && combatResult.landGained > 0) {
       const attackerResources = (attacker.data.resources ?? {}) as KingdomResources;
 
@@ -66,7 +94,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
             ...defenderResources,
             land: Math.max(1000, (defenderResources.land ?? 1000) - combatResult.landGained),
             gold: Math.max(0, (defenderResources.gold ?? 0) - combatResult.goldLooted)
-          }
+          },
+          totalUnits: updatedDefenderUnits
         }),
         client.models.Kingdom.update({
           id: attackerId,
@@ -74,7 +103,20 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
             ...attackerResources,
             land: (attackerResources.land ?? 1000) + combatResult.landGained,
             gold: (attackerResources.gold ?? 0) + combatResult.goldLooted
-          }
+          },
+          totalUnits: updatedAttackerUnits
+        })
+      ]);
+    } else {
+      // Even if combat was not successful, still deduct casualties
+      await Promise.all([
+        client.models.Kingdom.update({
+          id: attackerId,
+          totalUnits: updatedAttackerUnits
+        }),
+        client.models.Kingdom.update({
+          id: defenderId,
+          totalUnits: updatedDefenderUnits
         })
       ]);
     }

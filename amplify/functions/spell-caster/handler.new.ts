@@ -19,6 +19,18 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       return { success: false, error: 'Invalid spellId format', errorCode: ErrorCode.INVALID_PARAM };
     }
 
+    const validSpells = ['fireball', 'heal', 'shield', 'lightning', 'earthquake', 'restoration'];
+    if (!validSpells.includes(spellId)) {
+      return { success: false, error: `Invalid spell. Must be one of: ${validSpells.join(', ')}`, errorCode: ErrorCode.INVALID_PARAM };
+    }
+
+    if (targetId) {
+      const targetResult = await client.models.Kingdom.get({ id: targetId });
+      if (!targetResult.data) {
+        return { success: false, error: 'Target kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+      }
+    }
+
     const result = await client.models.Kingdom.get({ id: casterId });
 
     if (!result.data) {

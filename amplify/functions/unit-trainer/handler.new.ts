@@ -1,6 +1,6 @@
 import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
-import type { KingdomUnits } from '../../../shared/types/kingdom';
+import type { KingdomUnits, KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 
 const VALID_UNIT_TYPES = ['infantry', 'archers', 'cavalry', 'siege', 'mages', 'scouts'] as const;
@@ -32,6 +32,14 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
       return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
+    const resources = (result.data.resources ?? {}) as KingdomResources;
+    const goldCost = quantity * 100;
+    const currentGold = resources.gold ?? 0;
+
+    if (currentGold < goldCost) {
+      return { success: false, error: `Insufficient gold: need ${goldCost}, have ${currentGold}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
+    }
+
     const units = (result.data.totalUnits ?? {}) as KingdomUnits;
     const currentCount = units[unitType as keyof KingdomUnits] ?? 0;
     const updatedUnits: KingdomUnits = {
@@ -39,9 +47,15 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
       [unitType]: currentCount + quantity
     };
 
+    const updatedResources: KingdomResources = {
+      ...resources,
+      gold: currentGold - goldCost
+    };
+
     await client.models.Kingdom.update({
       id: kingdomId,
-      totalUnits: updatedUnits
+      totalUnits: updatedUnits,
+      resources: updatedResources
     });
 
     return { success: true, units: JSON.stringify(updatedUnits) };
