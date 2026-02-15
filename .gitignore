@@ -1,0 +1,62 @@
+# amplify
+node_modules
+.amplify
+amplify_outputs*
+amplifyconfiguration*
+
+# Environment files
+.env
+.env.local
+.env*.local
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.tmp
+*.bak
+temp_*
+backup_*
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+dev.log
+
+# Test artifacts
+playwright-report/
+test-results/
+coverage/
+.nyc_output/
+temp_tests/
+test-screenshots/
+visual-test-results/
+
+# Build artifacts
+dist/
+build/
+out/
+target/
+bin/
+*.tsbuildinfo
+
+# Generated files
+schema.ts
+index.ts
+test-*.js
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Development artifacts
+test-integration.js

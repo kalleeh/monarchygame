@@ -1,0 +1,402 @@
+/* Terrain Selector */
+.terrain-selector {
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.terrain-selector h3 {
+  color: #fff;
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+}
+
+.terrain-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.terrain-option {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(139, 92, 246, 0.3);
+  border-radius: 8px;
+  padding: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.terrain-option:hover {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.terrain-option.selected {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: #8b5cf6;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
+}
+
+.terrain-icon {
+  font-size: 2rem;
+}
+
+.terrain-name {
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.terrain-details {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.details-toggle {
+  background: none;
+  border: none;
+  color: #8b5cf6;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+
+.terrain-description {
+  color: #a0a0a0;
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
+}
+
+.modifier-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.modifier {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.modifier-name {
+  color: #a0a0a0;
+  text-transform: capitalize;
+}
+
+.modifier.positive .modifier-value {
+  color: #10b981;
+}
+
+.modifier.negative .modifier-value {
+  color: #ef4444;
+}
+
+/* Formation Selector */
+.formation-selector {
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.formation-selector h3 {
+  color: #fff;
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+}
+
+.formation-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.formation-option {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(139, 92, 246, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-align: left;
+}
+
+.formation-option:hover {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.formation-option.selected {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: #8b5cf6;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
+}
+
+.formation-icon {
+  font-size: 2.5rem;
+  flex-shrink: 0;
+}
+
+.formation-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.formation-name {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.formation-description {
+  color: #a0a0a0;
+  font-size: 0.85rem;
+}
+
+.formation-modifiers {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.formation-modifiers .positive {
+  color: #10b981;
+}
+
+.formation-modifiers .negative {
+  color: #ef4444;
+}
+
+/* Combat Replay Viewer */
+.replay-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.replay-viewer {
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.98) 0%, rgba(22, 33, 62, 0.98) 100%);
+  border: 2px solid rgba(139, 92, 246, 0.5);
+  border-radius: 16px;
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.replay-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.replay-header h2 {
+  color: #fff;
+  margin: 0;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  line-height: 1;
+}
+
+.replay-info {
+  padding: 1.5rem;
+}
+
+.battle-participants {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.participant {
+  text-align: center;
+}
+
+.participant h3 {
+  color: #fff;
+  margin: 0 0 0.5rem 0;
+}
+
+.participant p {
+  color: #a0a0a0;
+  margin: 0;
+}
+
+.vs {
+  color: #8b5cf6;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.battle-conditions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.condition {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.75rem;
+  border-radius: 8px;
+}
+
+.condition .label {
+  color: #a0a0a0;
+  font-size: 0.85rem;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.condition .value {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.condition .value.victory {
+  color: #10b981;
+}
+
+.condition .value.defeat {
+  color: #ef4444;
+}
+
+.replay-timeline {
+  padding: 1.5rem;
+  border-top: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.replay-timeline h3 {
+  color: #fff;
+  margin: 0 0 1rem 0;
+  text-align: center;
+}
+
+.round-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-group {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.stat-group h4 {
+  color: #8b5cf6;
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.stat-group p {
+  color: #fff;
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.casualties {
+  color: #ef4444 !important;
+}
+
+.replay-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.replay-controls button {
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  color: #fff;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.replay-controls button:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.3);
+  border-color: #8b5cf6;
+}
+
+.replay-controls button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.round-indicator {
+  color: #a0a0a0;
+  font-size: 0.9rem;
+}
+
+.replay-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(139, 92, 246, 0.3);
+  text-align: center;
+}
+
+.timestamp {
+  color: #a0a0a0;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .terrain-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .battle-participants {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .vs {
+    transform: rotate(90deg);
+  }
+
+  .round-stats {
+    grid-template-columns: 1fr;
+  }
+}

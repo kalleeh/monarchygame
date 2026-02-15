@@ -1,0 +1,202 @@
+/* App - Mobile-First Responsive Design */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #f3f4f6;
+  line-height: 1.5;
+}
+
+/* Mobile-first app container */
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mobile-first app header */
+.app-header {
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.98) 0%, rgba(22, 33, 62, 0.98) 100%);
+  backdrop-filter: blur(10px);
+  border-bottom: 2px solid rgba(78, 205, 196, 0.3);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+@media (min-width: 768px) {
+  .app-header {
+    padding: 1rem 2rem;
+  }
+}
+
+.app-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #4ecdc4;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 0 10px rgba(78, 205, 196, 0.3);
+}
+
+@media (min-width: 640px) {
+  .app-title {
+    font-size: 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .app-title {
+    font-size: 1.75rem;
+  }
+}
+
+/* Mobile-first user info */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: #a0a0a0;
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .user-info {
+    font-size: 0.9rem;
+  }
+}
+
+.user-info span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+
+@media (min-width: 640px) {
+  .user-info span {
+    max-width: 200px;
+  }
+}
+
+.sign-out-btn {
+  padding: 0.5rem 0.75rem;
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px; /* Touch-friendly */
+  flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+  .sign-out-btn {
+    padding: 0.5rem 1rem;
+  }
+}
+
+.sign-out-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+.sign-out-btn:active {
+  transform: scale(0.98);
+}
+
+/* Mobile-first game content */
+.game-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Touch improvements */
+@media (hover: none) and (pointer: coarse) {
+  .sign-out-btn:hover {
+    transform: none;
+  }
+  
+  .sign-out-btn:active {
+    transform: scale(0.95);
+  }
+}
+
+/* Safe area support for mobile devices */
+@supports (padding: max(0px)) {
+  .app-header {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+/* Placeholder component styles */
+.placeholder-component {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: white;
+  padding: 2rem;
+}
+
+.placeholder-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #333;
+}
+
+.placeholder-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  color: #ffd700;
+}
+
+.placeholder-content {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 3rem 2rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.placeholder-content h3 {
+  color: #ffd700;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.placeholder-content p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+  color: #ccc;
+}
+
+.placeholder-content em {
+  color: #ffd700;
+  font-style: italic;
+  font-weight: 500;
+}

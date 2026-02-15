@@ -1,0 +1,33 @@
+version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - npm ci --cache .npm --prefer-offline
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+applications:
+  - appRoot: .
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci --prefix frontend
+        build:
+          commands:
+            - npm run build --prefix frontend
+      artifacts:
+        baseDirectory: frontend/dist
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - frontend/node_modules/**/*
+    customHeaders:
+      - pattern: '**/*'
+        headers:
+          - key: 'Access-Control-Allow-Origin'
+            value: '*'
+          - key: 'Access-Control-Allow-Methods'
+            value: 'GET, POST, PUT, DELETE, OPTIONS'
+          - key: 'Access-Control-Allow-Headers'
+            value: 'Content-Type, Authorization'

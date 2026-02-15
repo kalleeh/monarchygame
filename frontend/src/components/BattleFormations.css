@@ -1,0 +1,376 @@
+/* Battle Formations Styles - Dark Theme Compliant */
+
+.battle-formations {
+  padding: 1.5rem;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* Error Banner */
+.error-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid #ef4444;
+  border-radius: 0.5rem;
+  color: #ef4444;
+}
+
+.error-banner button {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+}
+
+/* Battle Statistics */
+.battle-stats {
+  margin-bottom: 2rem;
+}
+
+.battle-stats h2 {
+  color: var(--text-accent);
+  margin-bottom: 1rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.5rem;
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: var(--primary);
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+/* Unit Selection */
+.unit-selection {
+  margin-bottom: 2rem;
+}
+
+.unit-selection h3 {
+  color: var(--text-accent);
+  margin-bottom: 1rem;
+}
+
+.unit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.unit-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: var(--bg-card);
+  border: 2px solid var(--border-primary);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.unit-card:hover {
+  background-color: var(--hover);
+  transform: translateY(-2px);
+}
+
+.unit-card.selected {
+  border-color: #4ecdc4;
+  box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.3);
+}
+
+.unit-icon {
+  font-size: 1.5rem;
+}
+
+.unit-info h4 {
+  margin: 0;
+  color: var(--text-primary);
+  text-transform: capitalize;
+}
+
+.unit-count {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.unit-stats {
+  margin-left: auto;
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* Formation Editor */
+.formation-editor {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.5rem;
+}
+
+.formation-editor h3 {
+  color: var(--text-accent);
+  margin-bottom: 1rem;
+}
+
+.formation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+  min-height: 200px;
+  padding: 1rem;
+  background-color: var(--bg-tertiary);
+  border: 2px dashed var(--border-primary);
+  border-radius: 0.5rem;
+}
+
+.sortable-unit-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.375rem;
+  cursor: grab;
+  transition: all 0.2s ease;
+}
+
+.sortable-unit-card:active {
+  cursor: grabbing;
+}
+
+.sortable-unit-card:hover {
+  background-color: var(--hover);
+  transform: scale(1.05);
+}
+
+.sortable-unit-card .unit-icon {
+  font-size: 1.2rem;
+}
+
+.sortable-unit-card .unit-info {
+  text-align: center;
+}
+
+.sortable-unit-card .unit-info h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.sortable-unit-card .unit-count {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* Formation Controls */
+.formation-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.formation-name-input {
+  flex: 1;
+  padding: 0.5rem;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.375rem;
+}
+
+.create-formation-btn {
+  padding: 0.5rem 1rem;
+  background-color: var(--primary);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.create-formation-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.create-formation-btn:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+}
+
+/* Saved Formations */
+.saved-formations {
+  margin-bottom: 2rem;
+}
+
+.saved-formations h3 {
+  color: var(--text-accent);
+  margin-bottom: 1rem;
+}
+
+.formations-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.formation-card {
+  padding: 1rem;
+  background-color: var(--bg-card);
+  border: 2px solid var(--border-primary);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.formation-card:hover {
+  background-color: var(--hover);
+  transform: translateY(-2px);
+}
+
+.formation-card.active {
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+}
+
+.formation-card h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary);
+}
+
+.formation-bonuses {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.formation-units {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* Battle Controls */
+.battle-controls {
+  padding: 1rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.5rem;
+}
+
+.battle-controls h3 {
+  color: var(--text-accent);
+  margin-bottom: 1rem;
+}
+
+.battle-form {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.battle-target-input {
+  flex: 1;
+  padding: 0.5rem;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.375rem;
+}
+
+.execute-battle-btn {
+  padding: 0.5rem 1rem;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.execute-battle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.execute-battle-btn:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .unit-grid,
+  .formations-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .formation-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .formation-controls,
+  .battle-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* Accessibility */
+.unit-card:focus,
+.formation-card:focus,
+.sortable-unit-card:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unit-card,
+  .formation-card,
+  .sortable-unit-card {
+    transition: none;
+  }
+  
+  .unit-card:hover,
+  .formation-card:hover,
+  .sortable-unit-card:hover {
+    transform: none;
+  }
+}

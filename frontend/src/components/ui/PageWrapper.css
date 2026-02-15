@@ -1,0 +1,19 @@
+/* Consistent Page Wrapper Styling */
+
+.page-wrapper {
+  min-height: 100vh;
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
+  color: #fff;
+}
+
+.page-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+@media (max-width: 768px) {
+  .page-content {
+    padding: 16px;
+  }
+}

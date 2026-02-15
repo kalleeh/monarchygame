@@ -1,0 +1,234 @@
+/* Tutorial Component Styles */
+
+.tutorial-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 9998;
+  backdrop-filter: blur(2px);
+}
+
+.tutorial-spotlight {
+  position: absolute;
+  border: 3px solid #4ecdc4;
+  border-radius: 8px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
+  z-index: 9999;
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+.tutorial-card {
+  position: fixed;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 2px solid #4ecdc4;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 500px;
+  z-index: 10000;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.tutorial-card-bottom {
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tutorial-card-top {
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tutorial-card-left {
+  left: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.tutorial-card-right {
+  right: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.tutorial-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.tutorial-header h3 {
+  color: #4ecdc4;
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.tutorial-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.tutorial-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: rotate(90deg);
+}
+
+.tutorial-body {
+  margin-bottom: 20px;
+}
+
+.tutorial-body p {
+  color: #e0e0e0;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0 0 16px 0;
+}
+
+.tutorial-action-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.tutorial-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+.tutorial-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 16px;
+}
+
+.tutorial-progress {
+  margin-bottom: 16px;
+}
+
+.tutorial-progress-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.tutorial-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4ecdc4 0%, #44a08d 100%);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.tutorial-progress-text {
+  color: #a0a0a0;
+  font-size: 0.875rem;
+}
+
+.tutorial-navigation {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.tutorial-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.tutorial-btn-primary {
+  background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+  color: white;
+}
+
+.tutorial-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(78, 205, 196, 0.4);
+}
+
+.tutorial-btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.tutorial-btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.tutorial-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tutorial-hint {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.tutorial-hint span {
+  color: #a0a0a0;
+  font-size: 0.8rem;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .tutorial-card {
+    max-width: 90%;
+    padding: 20px;
+  }
+
+  .tutorial-card-bottom,
+  .tutorial-card-top {
+    bottom: 20px;
+  }
+
+  .tutorial-card-left,
+  .tutorial-card-right {
+    left: 5%;
+    right: 5%;
+    transform: none;
+  }
+
+  .tutorial-header h3 {
+    font-size: 1.25rem;
+  }
+
+  .tutorial-body p {
+    font-size: 0.95rem;
+  }
+
+  .tutorial-navigation {
+    flex-direction: column;
+  }
+
+  .tutorial-btn {
+    width: 100%;
+  }
+}

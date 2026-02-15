@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/frontend/node_modules
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+
+  test:
+    build: .
+    volumes:
+      - .:/app
+    command: npm run test:watch
+    
+  e2e:
+    build: .
+    volumes:
+      - .:/app
+    command: npx playwright test
+    depends_on:
+      - app

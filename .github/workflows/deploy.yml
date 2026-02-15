@@ -1,0 +1,35 @@
+name: Deploy to Environments
+
+on:
+  push:
+    branches:
+      - develop # Deploy to staging
+      - main    # Deploy to production
+
+jobs:
+  deploy-staging:
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Staging
+        run: |
+          npx ampx pipeline-deploy --branch staging --app-id ${{ secrets.AMPLIFY_STAGING_APP_ID }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  deploy-production:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [test, security]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Production
+        run: |
+          npx ampx pipeline-deploy --branch main --app-id ${{ secrets.AMPLIFY_PROD_APP_ID }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
