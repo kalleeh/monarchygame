@@ -89,7 +89,7 @@ export const AGE_MECHANICS = {
 
 // Age calculation functions
 export const calculateCurrentAge = (gameStartTime: Date, currentTime: Date = new Date()): AgeStatus => {
-  const gameElapsedHours = (currentTime.getTime() - gameStartTime.getTime()) / (1000 * 60 * 60)
+  const gameElapsedHours = Math.max(0, (currentTime.getTime() - gameStartTime.getTime()) / (1000 * 60 * 60))
   const totalGameHours = AGE_MECHANICS.AGE_DURATIONS.TOTAL_GAME_HOURS
   const gameProgress = gameElapsedHours / totalGameHours
 
@@ -193,11 +193,11 @@ export const calculateAgeBasedCosts = (
 ): number => {
   const ageEffects = calculateAgeEffects(currentAge)
   
-  const multiplier = costType === 'building' ? 
+  const multiplier = costType === 'building' ?
     ageEffects.economicModifiers.buildingCostMultiplier :
     ageEffects.economicModifiers.trainingCostMultiplier
-  
-  return Math.ceil(baseCost * multiplier)
+
+  return Math.ceil(Math.max(0, baseCost) * multiplier)
 }
 
 export const calculateAgeBasedIncome = (

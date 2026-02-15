@@ -119,7 +119,7 @@ export const getFaithBonuses = (
   if (!alignment) return {}
 
   const bonuses: Record<string, number> = {}
-  const levelMultiplier = 1 + (faithLevel * 0.1) // 10% per faith level
+  const levelMultiplier = Math.max(0, 1 + (faithLevel * 0.1)) // 10% per faith level
 
   Object.entries(alignment.bonuses).forEach(([key, value]) => {
     bonuses[key] = value * levelMultiplier
@@ -175,8 +175,8 @@ export const updateFocusPoints = (
   generationRate: number,
   currentTime: Date = new Date()
 ): number => {
-  const hoursElapsed = (currentTime.getTime() - lastUpdateTime.getTime()) / (1000 * 60 * 60)
-  const pointsGenerated = Math.floor(hoursElapsed * generationRate)
+  const hoursElapsed = Math.max(0, (currentTime.getTime() - lastUpdateTime.getTime()) / (1000 * 60 * 60))
+  const pointsGenerated = Math.floor(hoursElapsed * Math.max(0, generationRate))
   
   return Math.min(maxPoints, currentPoints + pointsGenerated)
 }

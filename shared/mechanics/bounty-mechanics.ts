@@ -136,7 +136,7 @@ export const calculateSharedKillBenefit = (
   // Calculate total efficiency
   const totalTurns = sorcererTurns + warriorTurns
   const totalBenefit = sorcererBenefit.totalValue + warriorBenefit.totalValue
-  const totalEfficiency = totalBenefit / totalTurns
+  const totalEfficiency = totalTurns > 0 ? totalBenefit / totalTurns : 0
   
   return { sorcererBenefit, warriorBenefit, totalEfficiency }
 }
@@ -201,8 +201,8 @@ export const calculateBountyEfficiency = (
   turnsInvested: number,
   alternativeWarGains: number = 2000 // Typical "low level" war gains
 ): { efficiency: number, comparison: 'better' | 'worse' | 'equal', advantage: number } => {
-  const bountyEfficiency = bountyReward.totalValue / turnsInvested
-  const warEfficiency = alternativeWarGains / turnsInvested
+  const bountyEfficiency = turnsInvested > 0 ? bountyReward.totalValue / turnsInvested : 0
+  const warEfficiency = turnsInvested > 0 ? alternativeWarGains / turnsInvested : 0
   
   let comparison: 'better' | 'worse' | 'equal'
   const advantage = bountyEfficiency - warEfficiency
@@ -234,7 +234,7 @@ export const identifyOptimalBountyTargets = (
       )
       return {
         ...target,
-        efficiency: reward.totalValue / target.estimatedTurns
+        efficiency: target.estimatedTurns > 0 ? reward.totalValue / target.estimatedTurns : 0
       }
     })
     .sort((a, b) => b.efficiency - a.efficiency)
@@ -248,8 +248,8 @@ export const calculateNPCBountyAdvantage = (
   const npcReward = calculateBountyValue(npcTarget.totalLand, npcTarget.totalStructures, npcTarget.buildRatio)
   const playerReward = calculateBountyValue(playerTarget.totalLand, playerTarget.totalStructures, playerTarget.buildRatio)
   
-  const npcEfficiency = npcReward.totalValue / npcTarget.estimatedTurns
-  const playerEfficiency = playerReward.totalValue / playerTarget.estimatedTurns
+  const npcEfficiency = npcTarget.estimatedTurns > 0 ? npcReward.totalValue / npcTarget.estimatedTurns : 0
+  const playerEfficiency = playerTarget.estimatedTurns > 0 ? playerReward.totalValue / playerTarget.estimatedTurns : 0
   
   const npcAdvantage = npcEfficiency - playerEfficiency
   const recommendNPC = npcAdvantage > 0

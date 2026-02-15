@@ -131,7 +131,7 @@ export const calculateDetectionRate = (
   const enemyStrength = enemyScum * enemyEffectiveness
 
   // Detection rate based on relative strength
-  const detectionRate = yourStrength / (yourStrength + enemyStrength)
+  const detectionRate = (yourStrength + enemyStrength) > 0 ? yourStrength / (yourStrength + enemyStrength) : 0
   
   // Cap at 95% to maintain uncertainty
   return Math.min(0.95, detectionRate)
@@ -147,8 +147,11 @@ export const calculateOptimalScumCount = (
   const enemyEffectiveness = RACIAL_SCUM_EFFECTIVENESS[enemyRace.toUpperCase() as keyof typeof RACIAL_SCUM_EFFECTIVENESS]?.effectiveness || 1.0
 
   // Calculate required scum for target detection rate
-  const requiredScum = (expectedEnemyScum * enemyEffectiveness * targetDetectionRate) / 
-                      (yourEffectiveness * (1 - targetDetectionRate))
+  const denominator = yourEffectiveness * (1 - targetDetectionRate)
+  if (denominator <= 0) {
+    return THIEVERY_MECHANICS.DETECTION.MINIMUM_SCUM
+  }
+  const requiredScum = (expectedEnemyScum * enemyEffectiveness * targetDetectionRate) / denominator
 
   return Math.max(THIEVERY_MECHANICS.DETECTION.MINIMUM_SCUM, Math.ceil(requiredScum))
 }
@@ -245,8 +248,8 @@ export const calculateScumCostEffectiveness = (
 
   const totalCost = (trainingCost * racialData.trainingCost) + maintenanceCost
   const protectionValue = scumCount * racialData.effectiveness * racialData.survivalRate
-  const costPerProtection = totalCost / protectionValue
-  const efficiency = protectionValue / totalCost
+  const costPerProtection = protectionValue > 0 ? totalCost / protectionValue : Infinity
+  const efficiency = totalCost > 0 ? protectionValue / totalCost : 0
 
   return { protectionValue, costPerProtection, efficiency }
 }
@@ -257,7 +260,7 @@ export const calculateLayeredDefense = (
   totalMilitary: number,
   scumAllocation: number
 ): { scumPercentage: number, militaryPercentage: number, effectiveness: number } => {
-  const scumPercentage = scumAllocation / (scumAllocation + totalMilitary)
+  const scumPercentage = (scumAllocation + totalMilitary) > 0 ? scumAllocation / (scumAllocation + totalMilitary) : 0
   const militaryPercentage = 1 - scumPercentage
 
   let effectiveness: number

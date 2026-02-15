@@ -106,7 +106,7 @@ export function calculateTurnCost(
   attackerNetworth: number,
   defenderNetworth: number
 ): number {
-  const ratio = defenderNetworth / attackerNetworth;
+  const ratio = defenderNetworth / Math.max(1, attackerNetworth);
   const { BASE_COST, NETWORTH_THRESHOLD, EASY_TARGET_MULTIPLIER, HARD_TARGET_MULTIPLIER } = COMBAT_MECHANICS.TURN_COSTS;
 
   // Target much smaller (easy)
@@ -189,8 +189,8 @@ export const calculateLandGained = (
   attackType: 'full_strike' | 'controlled_strike',
   csPercentage?: number
 ): number => {
-  const offenseRatio = attackerOffense / defenderDefense
-  
+  const offenseRatio = attackerOffense / Math.max(1, defenderDefense)
+
   if (attackType === 'controlled_strike') {
     const targetPercentage = csPercentage || COMBAT_MECHANICS.CONTROLLED_STRIKE.CS1_PERCENTAGE
     return Math.floor(targetLand * targetPercentage)
@@ -232,7 +232,7 @@ export const calculateCombatResult = (
     effectiveAttackerOffense *= (1 - COMBAT_MECHANICS.AMBUSH.SUCCESS_RATE)
   }
 
-  const offenseRatio = effectiveAttackerOffense / effectiveDefenderDefense
+  const offenseRatio = effectiveAttackerOffense / Math.max(1, effectiveDefenderDefense)
   
   // Determine result type - creates natural progression strategy
   let resultType: 'with_ease' | 'good_fight' | 'failed'
@@ -325,7 +325,7 @@ export const calculatePassThePlateEfficiency = (
   return {
     totalLandGained,
     turnsRequired: totalTurns,
-    efficiency: totalLandGained / totalTurns
+    efficiency: totalTurns > 0 ? totalLandGained / totalTurns : 0
   }
 }
 

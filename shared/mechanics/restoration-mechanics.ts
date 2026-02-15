@@ -73,8 +73,8 @@ export const assessDamageForRestoration = (
   preAttackState: { structures: number, population: number, criticalBuildings: string[] },
   postAttackState: { structures: number, population: number, criticalBuildings: string[] }
 ): KingdomDamageAssessment => {
-  const structureLossPercentage = 1 - (postAttackState.structures / preAttackState.structures)
-  const populationLossPercentage = 1 - (postAttackState.population / preAttackState.population)
+  const structureLossPercentage = preAttackState.structures > 0 ? 1 - (postAttackState.structures / preAttackState.structures) : 0
+  const populationLossPercentage = preAttackState.population > 0 ? 1 - (postAttackState.population / preAttackState.population) : 0
   
   // Check for critical infrastructure destruction
   const criticalInfrastructureDestroyed = preAttackState.criticalBuildings.some(building =>
@@ -181,10 +181,10 @@ export const calculateSorceryKillVsRestorationEfficiency = (
   alternativeTargetValue: number
 ): { efficiency: number, recommendation: 'sorcery_kill' | 'alternative_target', reasoning: string[] } => {
   // Sorcery kill efficiency: turns invested vs hours of target removal
-  const sorceryEfficiency = targetRemovalHours / sorceryTurns
-  
+  const sorceryEfficiency = sorceryTurns > 0 ? targetRemovalHours / sorceryTurns : 0
+
   // Alternative efficiency: immediate gains vs turn investment
-  const alternativeEfficiency = alternativeTargetValue / sorceryTurns
+  const alternativeEfficiency = sorceryTurns > 0 ? alternativeTargetValue / sorceryTurns : 0
   
   const reasoning = []
   let recommendation: 'sorcery_kill' | 'alternative_target'
@@ -209,7 +209,7 @@ export const calculateGuildRestorationCoordination = (
   activeRealms: number,
   guildResourcePool: number
 ): { resourceReallocation: number, coordinationEfficiency: number, strategicAdvantage: number } => {
-  const restorationRatio = restoredRealms / (restoredRealms + activeRealms)
+  const restorationRatio = (restoredRealms + activeRealms) > 0 ? restoredRealms / (restoredRealms + activeRealms) : 0
   
   // Resource reallocation to active realms
   const resourceReallocation = guildResourcePool * restorationRatio

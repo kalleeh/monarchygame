@@ -92,8 +92,8 @@ export const calculateCurrentTurns = (
   currentTime: Date = new Date(),
   encampStatus: EncampStatus | null = null
 ): TurnStatus => {
-  const hoursElapsed = (currentTime.getTime() - lastUpdateTime.getTime()) / (1000 * 60 * 60)
-  
+  const hoursElapsed = Math.max(0, (currentTime.getTime() - lastUpdateTime.getTime()) / (1000 * 60 * 60))
+
   // Calculate base turn generation
   let newTurns = Math.floor(hoursElapsed * TURN_MECHANICS.BASE_GENERATION.TURNS_PER_HOUR)
   
@@ -222,39 +222,43 @@ export const calculateTurnEfficiency = (
   turnsSpent: number,
   resultsAchieved: { landGained?: number, structuresBuilt?: number, unitsTrained?: number, enemiesDefeated?: number }
 ): { efficiency: number, breakdown: Record<string, number> } => {
+  if (turnsSpent === 0) {
+    return { efficiency: 0, breakdown: {} }
+  }
+
   const breakdown: Record<string, number> = {}
   let totalValue = 0
-  
+
   // Land efficiency (most valuable)
   if (resultsAchieved.landGained) {
     const landEfficiency = resultsAchieved.landGained / turnsSpent
     breakdown.landEfficiency = landEfficiency
     totalValue += resultsAchieved.landGained * 10 // Weight land highly
   }
-  
+
   // Structure efficiency
   if (resultsAchieved.structuresBuilt) {
     const structureEfficiency = resultsAchieved.structuresBuilt / turnsSpent
     breakdown.structureEfficiency = structureEfficiency
     totalValue += resultsAchieved.structuresBuilt * 5 // Weight structures moderately
   }
-  
+
   // Unit efficiency
   if (resultsAchieved.unitsTrained) {
     const unitEfficiency = resultsAchieved.unitsTrained / turnsSpent
     breakdown.unitEfficiency = unitEfficiency
     totalValue += resultsAchieved.unitsTrained * 3 // Weight units lower
   }
-  
+
   // Combat efficiency
   if (resultsAchieved.enemiesDefeated) {
     const combatEfficiency = resultsAchieved.enemiesDefeated / turnsSpent
     breakdown.combatEfficiency = combatEfficiency
     totalValue += resultsAchieved.enemiesDefeated * 8 // Weight combat highly
   }
-  
+
   const efficiency = totalValue / turnsSpent
-  
+
   return { efficiency, breakdown }
 }
 

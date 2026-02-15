@@ -64,7 +64,8 @@ export function calculateBRT(quarryPercentage: number): number {
  * @returns Number of turns required
  */
 export function calculateBuildTurns(buildingCount: number, brt: number): number {
-  return Math.ceil(buildingCount / brt);
+  if (buildingCount < 0) buildingCount = 0;
+  return Math.ceil(buildingCount / Math.max(1, brt));
 }
 
 /**

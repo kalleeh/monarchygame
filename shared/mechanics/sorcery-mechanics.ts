@@ -155,8 +155,8 @@ export const calculateSpellSuccess = (
   targetTotalStructures: number,
   spellTier: number
 ): boolean => {
-  const casterTemplePercentage = casterTemples / casterTotalStructures
-  const targetTemplePercentage = targetTemples / targetTotalStructures
+  const casterTemplePercentage = casterTemples / Math.max(1, casterTotalStructures)
+  const targetTemplePercentage = targetTemples / Math.max(1, targetTotalStructures)
   
   // Get required threshold for spell tier
   const thresholds = Object.values(SORCERY_MECHANICS.TEMPLE_THRESHOLDS)
