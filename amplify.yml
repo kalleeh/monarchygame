@@ -11,10 +11,10 @@ applications:
       phases:
         preBuild:
           commands:
-            - npm ci --cache .npm --prefer-offline
+            - npm install
             - npx ampx generate outputs --branch $AWS_BRANCH --app-id $AWS_APP_ID
             - cp amplify_outputs.json frontend/amplify_outputs.json
-            - npm ci --prefix frontend
+            - npm install --prefix frontend
         build:
           commands:
             - npm run build --prefix frontend
