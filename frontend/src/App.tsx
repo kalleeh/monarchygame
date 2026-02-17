@@ -240,10 +240,10 @@ function AppContent() {
         const newKingdom = await client.models.Kingdom.create({
           name: kingdomName || 'New Kingdom',
           race: raceName,
-          resources: startingResources,
-          stats: {},
-          buildings: {},
-          totalUnits: {},
+          resources: JSON.stringify(startingResources),
+          stats: JSON.stringify({}),
+          buildings: JSON.stringify({}),
+          totalUnits: JSON.stringify({}),
           currentAge: 'early',
           isActive: true,
           isOnline: true
