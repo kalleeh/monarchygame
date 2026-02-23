@@ -34,6 +34,8 @@ import { test, expect } from '@playwright/test';
 // Shared helper: enter demo mode from a clean state.
 // ---------------------------------------------------------------------------
 async function enterDemoMode(page: import('@playwright/test').Page) {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
   await page.evaluate(() => {
     localStorage.removeItem('demo-mode');
     localStorage.removeItem('demo-kingdoms');
@@ -48,11 +50,10 @@ async function enterDemoMode(page: import('@playwright/test').Page) {
   await page.locator('button:has-text("🎮 Demo Mode")').click();
   await page.waitForLoadState('networkidle');
 
-  const skipButton = page.locator('button:has-text("Skip Tutorial")');
-  if (await skipButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await skipButton.click();
-    await page.waitForTimeout(300);
-  }
+  try {
+    await page.locator('button:has-text("Skip Tutorial")').click({ timeout: 5000 });
+    await page.waitForTimeout(500);
+  } catch { /* no tutorial */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -70,14 +71,15 @@ async function createAndEnterKingdom(page: import('@playwright/test').Page, name
 
   // From /kingdoms, enter the kingdom.
   await page.locator('.kingdom-card', { hasText: name }).locator('button:has-text("Enter Kingdom")').click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(3000);
 
-  // Dismiss dashboard tutorial.
-  const skipDash = page.locator('button:has-text("Skip Tutorial")');
-  if (await skipDash.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await skipDash.click();
+  // Dismiss dashboard tutorial — uses "×" close button or ESC.
+  try {
+    await page.locator('button:has-text("Skip Tutorial")').click({ timeout: 2000 });
     await page.waitForTimeout(300);
-  }
+  } catch { /* no skip button */ }
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(500);
 
   // Return the kingdom id from the URL path (/kingdom/:id).
   const url = page.url();
@@ -92,7 +94,9 @@ test.describe('Navigation', () => {
   test.describe('Welcome Page', () => {
 
     test.beforeEach(async ({ page }) => {
-      // Always start from a clean welcome page (not in demo mode).
+      // Navigate first so localStorage is accessible, then clear demo state.
+      await page.goto('/');
+      await page.waitForLoadState('networkidle');
       await page.evaluate(() => {
         localStorage.removeItem('demo-mode');
         localStorage.removeItem('demo-kingdoms');
@@ -177,7 +181,9 @@ test.describe('Navigation', () => {
     });
 
     test('/creation outside demo mode redirects away (not creation form for guests)', async ({ page }) => {
-      // Clear demo mode so no auth.
+      // Navigate first, then clear demo mode so no auth.
+      await page.goto('/');
+      await page.waitForLoadState('networkidle');
       await page.evaluate(() => localStorage.removeItem('demo-mode'));
       await page.goto('/creation');
       await page.waitForLoadState('networkidle');

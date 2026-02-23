@@ -1,6 +1,7 @@
 /* eslint-disable */
 import React, { useState, useCallback, useMemo, memo } from 'react';
-import { AIBalanceTester, BalanceTestResult } from '../balance-testing/AIBalanceTester';
+import { AIBalanceTester } from '../balance-testing/AIBalanceTester';
+import type { BalanceTestResult } from '../balance-testing/AIBalanceTester';
 
 interface BalanceTestRunnerProps {
   onClose: () => void;
