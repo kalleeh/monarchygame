@@ -123,6 +123,46 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onGetStarted }) => {
         </div>
       </section>
 
+      {/* Gameplay Loop Section */}
+      <section className="gameplay-loop-section">
+        <h2 className="loop-title">How Monarchy Works</h2>
+        <p className="loop-subtitle">Master the cycle of power in 5 steps</p>
+        <div className="loop-steps">
+          <div className="loop-step">
+            <div className="loop-icon">⏱️</div>
+            <div className="loop-step-title">Generate Turns</div>
+            <div className="loop-step-desc">Turns regenerate automatically every 20 minutes (3/hour). Log in to collect them.</div>
+          </div>
+          <div className="loop-arrow">→</div>
+          <div className="loop-step">
+            <div className="loop-icon">⚔️</div>
+            <div className="loop-step-title">Take Actions</div>
+            <div className="loop-step-desc">Spend turns to build, train units, cast spells, or attack enemies. Most actions cost 1–4 turns.</div>
+          </div>
+          <div className="loop-arrow">→</div>
+          <div className="loop-step">
+            <div className="loop-icon">💰</div>
+            <div className="loop-step-title">Earn Resources</div>
+            <div className="loop-step-desc">Buildings generate gold, population, and mana each turn. More buildings = more income.</div>
+          </div>
+          <div className="loop-arrow">→</div>
+          <div className="loop-step">
+            <div className="loop-icon">🏗️</div>
+            <div className="loop-step-title">Expand Your Realm</div>
+            <div className="loop-step-desc">Claim territories, construct buildings, and grow your army to dominate the leaderboard.</div>
+          </div>
+          <div className="loop-arrow">→</div>
+          <div className="loop-step">
+            <div className="loop-icon">🏆</div>
+            <div className="loop-step-title">Climb the Ranks</div>
+            <div className="loop-step-desc">Your networth (Land × 1,000 + Gold + Units × 100) determines your leaderboard rank.</div>
+          </div>
+        </div>
+        <div className="loop-tip">
+          💡 <strong>Key insight:</strong> You don't need to be online constantly — turns accumulate while you're away. Log in once or twice a day to collect turns and take actions.
+        </div>
+      </section>
+
       {/* Features Section */}
       <section id="features" className="features">
         <h2>Game Features</h2>

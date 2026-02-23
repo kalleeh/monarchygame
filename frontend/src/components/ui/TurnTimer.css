@@ -135,6 +135,8 @@
   font-size: 0.85rem;
 }
 
+.timer-info-secondary { font-size: 0.75rem; color: #6b7280; margin-top: 0.2rem; }
+
 /* Compact variant */
 .turn-timer-compact {
   display: inline-flex;

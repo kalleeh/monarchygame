@@ -3,6 +3,16 @@ import { RACES } from "../shared-races";
 import { StatBar } from './StatBar';
 import './KingdomCreation.css';
 
+const PLAYSTYLES = [
+  { id: 'conqueror',  icon: '⚔️', label: 'Conqueror',  desc: 'Combat & expansion. Attack enemies, claim land.',         recommended: ['Droben', 'Goblin', 'Elemental'] },
+  { id: 'sorcerer',   icon: '🔮', label: 'Sorcerer',   desc: 'Magic & spells. Cast powerful spells to weaken enemies.',  recommended: ['Sidhe', 'Elemental', 'Elven'] },
+  { id: 'diplomat',   icon: '🤝', label: 'Diplomat',   desc: 'Trade & alliances. Build wealth through cooperation.',     recommended: ['Human', 'Fae', 'Elven'] },
+  { id: 'saboteur',   icon: '🕵️', label: 'Saboteur',   desc: 'Espionage & disruption. Steal and undermine enemies.',    recommended: ['Centaur', 'Vampire', 'Human'] },
+  { id: 'balanced',   icon: '⚖️', label: 'Balanced',   desc: 'Try everything. Good for exploring the game systems.',    recommended: ['Human'] },
+] as const;
+
+type PlaystyleId = typeof PLAYSTYLES[number]['id'];
+
 const RACE_PLAYSTYLE: Record<string, { style: string; difficulty: 'Easy' | 'Medium' | 'Hard'; bestFor: string; color: string }> = {
   Human:    { style: '⚖️ Balanced',    difficulty: 'Easy',   bestFor: 'New players, trade & economy',   color: '#60a5fa' },
   Elven:    { style: '🛡️ Defensive',   difficulty: 'Easy',   bestFor: 'Building & magical defense',      color: '#34d399' },
@@ -93,6 +103,7 @@ const KingdomCreation: React.FC<KingdomCreationProps> = ({ onKingdomCreated }) =
   const [kingdomName, setKingdomName] = useState('');
   const [selectedRace, setSelectedRace] = useState<Race | null>(races[0]);
   const [errors, setErrors] = useState<{ name?: string; race?: string }>({});
+  const [selectedPlaystyle, setSelectedPlaystyle] = useState<PlaystyleId>('balanced');
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -116,9 +127,12 @@ const KingdomCreation: React.FC<KingdomCreationProps> = ({ onKingdomCreated }) =
     }
     
     if (kingdomName.trim() && selectedRace) {
+      // Store playstyle — will be read by KingdomDashboard to reorder actions
+      // Use a temporary key that will be updated once we have the kingdom ID
+      localStorage.setItem('pending-playstyle', selectedPlaystyle);
       onKingdomCreated(kingdomName.trim(), selectedRace.id);
     }
-  }, [kingdomName, selectedRace, onKingdomCreated]);
+  }, [kingdomName, selectedRace, selectedPlaystyle, onKingdomCreated]);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setKingdomName(e.target.value);
@@ -271,7 +285,33 @@ const KingdomCreation: React.FC<KingdomCreationProps> = ({ onKingdomCreated }) =
             ))}
           </div>
         </div>
-        
+
+        {/* Playstyle Selector */}
+        <div className="playstyle-section">
+          <h3 className="playstyle-title">How do you want to play?</h3>
+          <p className="playstyle-subtitle">This customises your dashboard layout. You can change it later.</p>
+          <div className="playstyle-grid">
+            {PLAYSTYLES.map((ps) => {
+              const isRecommended = selectedRace && ps.recommended.includes(selectedRace.name as any);
+              return (
+                <div
+                  key={ps.id}
+                  className={`playstyle-card ${selectedPlaystyle === ps.id ? 'selected' : ''} ${isRecommended ? 'recommended' : ''}`}
+                  onClick={() => setSelectedPlaystyle(ps.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && setSelectedPlaystyle(ps.id)}
+                >
+                  <span className="playstyle-icon">{ps.icon}</span>
+                  <span className="playstyle-label">{ps.label}</span>
+                  <span className="playstyle-desc">{ps.desc}</span>
+                  {isRecommended && <span className="playstyle-badge">✓ Good for {selectedRace?.name}</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         <button type="submit" disabled={!kingdomName.trim() || !selectedRace}>
           Create Kingdom
         </button>

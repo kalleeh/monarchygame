@@ -119,6 +119,9 @@ function TurnTimer({
       <div className="timer-info">
         <span>💡 Turns generate every 20 minutes (3 per hour)</span>
       </div>
+      <div className="timer-info timer-info-secondary">
+        ⚔️ Actions cost 1–4 turns · Build=1 · Train=1 · Attack=4 · Spell=1
+      </div>
     </div>
   );
 }
