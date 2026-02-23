@@ -109,6 +109,27 @@ export const RACIAL_SCUM_EFFECTIVENESS = {
     trainingCost: 1.3,          // 30% higher cost
     survivalRate: 0.9,          // 10% worse survival
     specialAbility: 'none'
+  },
+
+  DROBEN: {
+    effectiveness: 0.75,         // Heavy war race, poor at espionage
+    trainingCost: 1.3,          // 30% higher cost
+    survivalRate: 0.85,         // 15% worse survival
+    specialAbility: 'none'
+  },
+
+  ELEMENTAL: {
+    effectiveness: 0.85,         // Magic/builder hybrid, below-average thievery
+    trainingCost: 1.2,          // 20% higher cost
+    survivalRate: 0.9,          // 10% worse survival
+    specialAbility: 'none'
+  },
+
+  FAE: {
+    effectiveness: 0.95,         // Versatile magic race, moderate thievery
+    trainingCost: 1.1,          // 10% higher cost
+    survivalRate: 0.95,         // 5% worse survival
+    specialAbility: 'none'
   }
 }
 

@@ -145,9 +145,25 @@ export const SPELLS: Record<string, Spell> = {
           damage: 0.0438,      // 4.38% structures
           backlash: 0.08       // 8% backlash
         },
-        HUMAN: { 
+        HUMAN: {
           damage: 0.0313,      // 3.13% structures
           backlash: 0.11       // 11% backlash
+        },
+        GOBLIN: {
+          damage: 0.025,       // 2.5% structures (slight siege bonus)
+          backlash: 0.14       // 14% backlash
+        },
+        DWARVEN: {
+          damage: 0.025,       // 2.5% structures
+          backlash: 0.15       // 15% backlash
+        },
+        CENTAUR: {
+          damage: 0.028,       // 2.8% structures
+          backlash: 0.13       // 13% backlash
+        },
+        DROBEN: {
+          damage: 0.02,        // 2.0% structures (worst magic)
+          backlash: 0.18       // 18% backlash
         }
       }
     },
@@ -188,9 +204,25 @@ export const SPELLS: Record<string, Spell> = {
           damage: 0.0875,      // 8.75% forts only
           backlash: 0.08       // 8% backlash
         },
-        HUMAN: { 
+        HUMAN: {
           damage: 0.075,       // 7.5% forts only
           backlash: 0.09       // 9% backlash
+        },
+        GOBLIN: {
+          damage: 0.04,        // 4.0% forts (slight siege bonus)
+          backlash: 0.14       // 14% backlash
+        },
+        DWARVEN: {
+          damage: 0.05,        // 5.0% forts (fortified)
+          backlash: 0.15       // 15% backlash
+        },
+        CENTAUR: {
+          damage: 0.04,        // 4.0% forts
+          backlash: 0.13       // 13% backlash
+        },
+        DROBEN: {
+          damage: 0.035,       // 3.5% forts (worst magic)
+          backlash: 0.18       // 18% backlash
         }
       }
     },
@@ -232,9 +264,25 @@ export const SPELLS: Record<string, Spell> = {
           damage: 0.05,        // 5.0% structures (no fort effect)
           backlash: 0.08       // 8% backlash
         },
-        HUMAN: { 
+        HUMAN: {
           damage: 0.0375,      // 3.75% structures (no fort effect)
           backlash: 0.09       // 9% backlash
+        },
+        GOBLIN: {
+          damage: 0.025,       // 2.5% structures (slight siege bonus)
+          backlash: 0.14       // 14% backlash
+        },
+        DWARVEN: {
+          damage: 0.025,       // 2.5% structures
+          backlash: 0.15       // 15% backlash
+        },
+        CENTAUR: {
+          damage: 0.028,       // 2.8% structures
+          backlash: 0.13       // 13% backlash
+        },
+        DROBEN: {
+          damage: 0.02,        // 2.0% structures (worst magic)
+          backlash: 0.18       // 18% backlash
         }
       }
     },
@@ -276,9 +324,25 @@ export const SPELLS: Record<string, Spell> = {
           damage: 0.06,        // 6% peasant kill rate
           backlash: 0.08       // 8% backlash
         },
-        HUMAN: { 
+        HUMAN: {
           damage: 0.04,        // 4% peasant kill rate (<30 peasants per cast)
           backlash: 0.09       // 9% backlash
+        },
+        GOBLIN: {
+          damage: 0.032,       // 3.2% peasant kill rate
+          backlash: 0.14       // 14% backlash
+        },
+        DWARVEN: {
+          damage: 0.032,       // 3.2% peasant kill rate
+          backlash: 0.15       // 15% backlash
+        },
+        CENTAUR: {
+          damage: 0.036,       // 3.6% peasant kill rate
+          backlash: 0.13       // 13% backlash
+        },
+        DROBEN: {
+          damage: 0.026,       // 2.6% peasant kill rate (worst magic)
+          backlash: 0.18       // 18% backlash
         }
       }
     },

@@ -16,6 +16,34 @@ const FORMATION_BONUSES: Record<string, number> = {
   'standard': 1.0,       // no bonus
 };
 
+// Race offensive combat bonuses (based on warOffense stat 1-5)
+const RACE_OFFENSE_BONUSES: Record<string, number> = {
+  'Droben':    1.20,  // warOffense: 5 — elite warriors, +20% offense
+  'Goblin':    1.10,  // warOffense: 4 — aggressive fighters, +10% offense
+  'Elemental': 1.10,  // warOffense: 4 — fighter-mage hybrid
+  'Human':     1.05,  // warOffense: 3 — balanced
+  'Centaur':   1.05,  // warOffense: 3 — moderate offense
+  'Sidhe':     1.00,  // warOffense: 2 — sorcerers, standard
+  'Elven':     1.00,  // warOffense: 2 — standard
+  'Vampire':   1.05,  // warOffense: 3 — moderate offense
+  'Fae':       1.00,  // warOffense: 2 — standard
+  'Dwarven':   1.05,  // warOffense: 3 — moderate, fortress breakers
+};
+
+// Race defensive combat bonuses (based on warDefense stat 1-5)
+const RACE_DEFENSE_BONUSES: Record<string, number> = {
+  'Dwarven':   1.20,  // warDefense: 5 — fortress defenders, +20% defense
+  'Elven':     1.10,  // warDefense: 4 — defensive specialists
+  'Vampire':   1.10,  // warDefense: 4 — resilient
+  'Human':     1.05,  // warDefense: 3 — balanced
+  'Fae':       1.05,  // warDefense: 3 — moderate defense
+  'Goblin':    1.00,  // warDefense: 2 — glass cannon
+  'Droben':    1.05,  // warDefense: 3 — tough but offensive-focused
+  'Elemental': 1.05,  // warDefense: 3 — moderate
+  'Centaur':   1.00,  // warDefense: 2 — low defense
+  'Sidhe':     1.00,  // warDefense: 2 — fragile
+};
+
 export const handler: Schema["processCombat"]["functionHandler"] = async (event) => {
   const { attackerId, defenderId, attackType, units, formationId } = event.arguments;
 
@@ -135,9 +163,23 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       Object.entries(effectiveAttackerUnits).map(([k, v]) => [k, Math.floor(v * ageCombatBonus)])
     );
 
+    // Race offense bonus — applied multiplicatively after age bonus
+    const attackerRace = attacker.data.race as string ?? 'Human';
+    const raceOffenseBonus = RACE_OFFENSE_BONUSES[attackerRace] ?? 1.0;
+    effectiveAttackerUnits = Object.fromEntries(
+      Object.entries(effectiveAttackerUnits).map(([k, v]) => [k, Math.floor(v * raceOffenseBonus)])
+    );
+
+    // Race defense bonus — scale defender unit counts before combat resolution
+    const defenderRace = defender.data.race as string ?? 'Human';
+    const raceDefenseBonus = RACE_DEFENSE_BONUSES[defenderRace] ?? 1.0;
+    const effectiveDefenderUnits = Object.fromEntries(
+      Object.entries(defenderUnits).map(([k, v]) => [k, Math.floor((v as number) * raceDefenseBonus)])
+    );
+
     const combatResult = calculateCombatResult(
       effectiveAttackerUnits,
-      defenderUnits,
+      effectiveDefenderUnits,
       defenderLand
     ) as CombatResultData;
 

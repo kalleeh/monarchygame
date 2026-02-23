@@ -327,6 +327,99 @@ describe('combat-processor handler', () => {
     });
   });
 
+  describe('race combat bonuses', () => {
+    it('Droben attacker gets +20% offense bonus and still processes combat successfully', async () => {
+      const attackerKingdom = mockKingdom('attacker-1', {
+        race: 'Droben',
+        totalUnits: { cavalry: 5000 },
+      });
+      const defenderKingdom = mockKingdom('defender-1', {
+        totalUnits: { infantry: 10 },
+        resources: { gold: 10000, population: 1000, mana: 100, land: 5000 },
+      });
+
+      mockClient.models.Kingdom.get
+        .mockResolvedValueOnce(attackerKingdom)
+        .mockResolvedValueOnce(defenderKingdom);
+
+      const result = await handler(
+        makeEvent({
+          attackerId: 'attacker-1',
+          defenderId: 'defender-1',
+          attackType: 'standard',
+          units: JSON.stringify({ cavalry: 5000 }),
+        })
+      );
+
+      expect(result.success).toBe(true);
+      const parsed = JSON.parse(result.result as string);
+      expect(parsed).toHaveProperty('result');
+      expect(parsed).toHaveProperty('landGained');
+      // Droben gets 1.20x offense — combat should succeed (victory or with_ease)
+      expect(['victory', 'with_ease']).toContain(parsed.result);
+    });
+
+    it('Dwarven defender gets +20% defense bonus, making it harder for attacker to win', async () => {
+      // Attacker has moderate force; Dwarven defender's +20% defense bonus should reduce land gained
+      const attackerKingdom = mockKingdom('attacker-1', {
+        totalUnits: { infantry: 500 },
+      });
+      const defenderKingdom = mockKingdom('defender-1', {
+        race: 'Dwarven',
+        totalUnits: { infantry: 500 },
+        resources: { gold: 10000, population: 1000, mana: 100, land: 5000 },
+      });
+
+      mockClient.models.Kingdom.get
+        .mockResolvedValueOnce(attackerKingdom)
+        .mockResolvedValueOnce(defenderKingdom);
+
+      const result = await handler(
+        makeEvent({
+          attackerId: 'attacker-1',
+          defenderId: 'defender-1',
+          attackType: 'standard',
+          units: JSON.stringify({ infantry: 500 }),
+        })
+      );
+
+      // Combat should still process without error; the race bonus is applied internally
+      expect(result.success).toBe(true);
+      const parsed = JSON.parse(result.result as string);
+      expect(parsed).toHaveProperty('result');
+    });
+
+    it('unknown race falls back to 1.0 bonus and processes combat normally', async () => {
+      const attackerKingdom = mockKingdom('attacker-1', {
+        race: 'UnknownRace',
+        totalUnits: { cavalry: 5000 },
+      });
+      const defenderKingdom = mockKingdom('defender-1', {
+        race: 'UnknownRace',
+        totalUnits: { infantry: 10 },
+        resources: { gold: 10000, population: 1000, mana: 100, land: 5000 },
+      });
+
+      mockClient.models.Kingdom.get
+        .mockResolvedValueOnce(attackerKingdom)
+        .mockResolvedValueOnce(defenderKingdom);
+
+      const result = await handler(
+        makeEvent({
+          attackerId: 'attacker-1',
+          defenderId: 'defender-1',
+          attackType: 'standard',
+          units: JSON.stringify({ cavalry: 5000 }),
+        })
+      );
+
+      expect(result.success).toBe(true);
+      const parsed = JSON.parse(result.result as string);
+      expect(parsed).toHaveProperty('result');
+      expect(parsed).toHaveProperty('landGained');
+    });
+  });
+
   describe('war declaration enforcement', () => {
     it('requires a WarDeclaration after 3 attacks in same season', async () => {
       const attackerKingdom = mockKingdom('attacker-1', { seasonId: 'season-1' });

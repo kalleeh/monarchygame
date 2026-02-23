@@ -79,6 +79,12 @@ export const FOCUS_MECHANICS = {
       sidhe: 1.15,               // 15% more focus generation/storage
       elemental: 1.1,            // 10% more focus generation/storage
       human: 1.0,                // Standard generation
+      elven: 1.1,                // Magic-compatible training race
+      fae: 1.15,                 // Versatile magic user, high tithe
+      goblin: 0.85,              // War race, low magic
+      droben: 0.75,              // Pure war race, minimal magic
+      centaur: 0.9,              // Espionage specialist, moderate magic
+      dwarven: 0.8,              // Defense/forge race, low magic
     }
   },
 

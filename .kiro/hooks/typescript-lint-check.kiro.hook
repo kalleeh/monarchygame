@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "TypeScript Lint Check",
+  "description": "Automatically checks for TypeScript linting errors and warnings whenever TypeScript files are edited, ensuring zero tolerance quality standards are maintained",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.ts",
+      "**/*.tsx"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A TypeScript file has been modified. Please run the following checks immediately:\n\n1. Run `npx tsc --noEmit` to check for TypeScript compilation errors\n2. Run `npm run lint` to check for ESLint errors and warnings\n3. If any errors or warnings are found, analyze them and provide fixes\n4. Ensure zero errors and zero warnings before considering the change complete\n\nReport the results and provide immediate fixes if needed. This is a zero-tolerance quality check - no TypeScript errors or warnings are acceptable."
+  }
+}
