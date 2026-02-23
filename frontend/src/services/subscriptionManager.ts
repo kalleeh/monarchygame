@@ -160,6 +160,7 @@ export class SubscriptionManager {
   subscribeToTradeOffers(seasonId: string): void {
     const key = `trade:${seasonId}`;
     this.unsubscribe(key);
+    if (!client.models.TradeOffer) return;
 
     const sub = client.models.TradeOffer.observeQuery({
       filter: { seasonId: { eq: seasonId }, status: { eq: 'open' } }
@@ -190,6 +191,7 @@ export class SubscriptionManager {
   subscribeToWarDeclarations(kingdomId: string): void {
     const key = `war:${kingdomId}`;
     this.unsubscribe(key);
+    if (!client.models.WarDeclaration) return;
 
     const sub = client.models.WarDeclaration.observeQuery({
       filter: {
@@ -222,6 +224,7 @@ export class SubscriptionManager {
   subscribeToTreaties(kingdomId: string): void {
     const key = `treaty:${kingdomId}`;
     this.unsubscribe(key);
+    if (!client.models.Treaty) return;
 
     const sub = client.models.Treaty.observeQuery({
       filter: {
@@ -337,6 +340,7 @@ export class SubscriptionManager {
 
     // --- TradeOffer: notify when a new open trade offer appears ---
     const tradeKey = `tradeAlert:${kingdomId}`;
+    if (client.models.TradeOffer) {
     let firstTradeSyncDone = false;
     let lastKnownTradeCount = 0;
     const seasonId = ''; // season-agnostic — watch all open offers
@@ -381,9 +385,11 @@ export class SubscriptionManager {
     // suppress unused variable warning — seasonId intentionally kept for future use
     void seasonId;
     this.subscriptions.set(tradeKey, { key: tradeKey, unsubscribe: () => tradeSub.unsubscribe() });
+    } // end TradeOffer guard
 
     // --- WarDeclaration: notify when war is declared against this kingdom ---
     const warAlertKey = `warAlert:${kingdomId}`;
+    if (client.models.WarDeclaration) {
     let firstWarSyncDone = false;
     let lastKnownWarCount = 0;
     const warSub = client.models.WarDeclaration.observeQuery({
@@ -418,6 +424,7 @@ export class SubscriptionManager {
       }
     });
     this.subscriptions.set(warAlertKey, { key: warAlertKey, unsubscribe: () => warSub.unsubscribe() });
+    } // end WarDeclaration guard
   }
 
   /**
