@@ -21,107 +21,68 @@ body {
   flex-direction: column;
 }
 
-/* Mobile-first app header */
-.app-header {
-  background: linear-gradient(135deg, rgba(26, 26, 46, 0.98) 0%, rgba(22, 33, 62, 0.98) 100%);
-  backdrop-filter: blur(10px);
-  border-bottom: 2px solid rgba(78, 205, 196, 0.3);
-  padding: 0.75rem 1rem;
+/* Thin utility bar — exit demo / sign out only, no game title */
+.app-utility-bar {
+  background: rgba(10, 12, 24, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0 1rem;
+  height: 32px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  justify-content: flex-end;
+  gap: 0.75rem;
   position: sticky;
   top: 0;
-  z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 200;
 }
 
-@media (min-width: 768px) {
-  .app-header {
-    padding: 1rem 2rem;
-  }
-}
-
-.app-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #4ecdc4;
-  margin: 0;
+.utility-bar-label {
+  font-size: 0.7rem;
+  color: rgba(160, 160, 180, 0.6);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  text-shadow: 0 0 10px rgba(78, 205, 196, 0.3);
 }
 
-@media (min-width: 640px) {
-  .app-title {
-    font-size: 1.5rem;
-  }
-}
-
-@media (min-width: 768px) {
-  .app-title {
-    font-size: 1.75rem;
-  }
-}
-
-/* Mobile-first user info */
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.875rem;
-  color: #a0a0a0;
-  overflow: hidden;
-}
-
-@media (min-width: 640px) {
-  .user-info {
-    font-size: 0.9rem;
-  }
-}
-
-.user-info span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 150px;
-}
-
-@media (min-width: 640px) {
-  .user-info span {
-    max-width: 200px;
-  }
-}
-
-.sign-out-btn {
-  padding: 0.5rem 0.75rem;
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  border-radius: 6px;
-  font-size: 0.875rem;
+.utility-bar-btn {
+  padding: 0.2rem 0.6rem;
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+  font-size: 0.7rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  min-height: 44px; /* Touch-friendly */
+  transition: background 0.15s ease;
   flex-shrink: 0;
+  height: 22px;
+  line-height: 1;
 }
 
-@media (min-width: 640px) {
-  .sign-out-btn {
-    padding: 0.5rem 1rem;
-  }
+.utility-bar-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.utility-bar-btn--signout {
+  /* same styling as the default; extend here if needed */
+}
+
+/* sign-out-btn kept for any external references; real styles now on utility-bar-btn */
+.sign-out-btn {
+  padding: 0.25rem 0.6rem;
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
 
 .sign-out-btn:hover {
-  background: rgba(239, 68, 68, 0.3);
-  border-color: rgba(239, 68, 68, 0.6);
-}
-
-.sign-out-btn:active {
-  transform: scale(0.98);
+  background: rgba(239, 68, 68, 0.25);
 }
 
 /* Mobile-first game content */
@@ -131,20 +92,9 @@ body {
   flex-direction: column;
 }
 
-/* Touch improvements */
-@media (hover: none) and (pointer: coarse) {
-  .sign-out-btn:hover {
-    transform: none;
-  }
-  
-  .sign-out-btn:active {
-    transform: scale(0.95);
-  }
-}
-
 /* Safe area support for mobile devices */
 @supports (padding: max(0px)) {
-  .app-header {
+  .app-utility-bar {
     padding-left: max(1rem, env(safe-area-inset-left));
     padding-right: max(1rem, env(safe-area-inset-right));
   }

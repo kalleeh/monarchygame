@@ -59,6 +59,7 @@
 .turn-generation-panel h2,
 .territories-panel h2,
 .actions-panel h2 {
+  font-family: var(--font-display);
   margin: 0 0 1.5rem 0;
   color: #4ecdc4;
   font-size: 1.25rem;
@@ -305,6 +306,7 @@
   .race-stats-panel h2,
   .kingdom-stats-panel h2,
   .quick-actions-panel h2 {
+    font-family: var(--font-display);
     font-size: 1.5rem;
   }
 }

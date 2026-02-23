@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import type { Kingdom } from '../types/kingdom';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import '../components/TerritoryExpansion.css';
+import '../components/Leaderboard.css';
 
 interface LeaderboardFilters {
   showOnlyFairTargets: boolean;
@@ -116,34 +117,56 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
   return (
     <div className="leaderboard-container">
       {/* Filters */}
-      <div className="filters mb-4 flex gap-4">
-        <label className="flex items-center gap-2 text-gray-300">
-          <input
-            type="checkbox"
-            checked={filters.showOnlyFairTargets}
-            onChange={(e) => setFilters({ ...filters, showOnlyFairTargets: e.target.checked })}
-            className="rounded"
-          />
-          Show fair targets only
-        </label>
-        <label className="flex items-center gap-2 text-gray-300">
-          <input
-            type="checkbox"
-            checked={filters.hideNPPKingdoms}
-            onChange={(e) => setFilters({ ...filters, hideNPPKingdoms: e.target.checked })}
-            className="rounded"
-          />
-          Hide protected players
-        </label>
-        <label className="flex items-center gap-2 text-gray-300">
-          <input
-            type="checkbox"
-            checked={filters.showOnlyYourFaith}
-            onChange={(e) => setFilters({ ...filters, showOnlyYourFaith: e.target.checked })}
-            className="rounded"
-          />
-          Show guild-eligible
-        </label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', marginBottom: '1rem' }}>
+        {([
+          { key: 'showOnlyFairTargets', label: 'Show fair targets only', checked: filters.showOnlyFairTargets },
+          { key: 'hideNPPKingdoms',     label: 'Hide protected players', checked: filters.hideNPPKingdoms },
+          { key: 'showOnlyYourFaith',   label: 'Show guild-eligible',    checked: filters.showOnlyYourFaith },
+        ] as const).map(({ key, label, checked }) => (
+          <label
+            key={key}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', userSelect: 'none', color: '#d1d5db' }}
+          >
+            {/* Hidden native checkbox keeps accessibility / keyboard support */}
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={(e) => setFilters({ ...filters, [key]: e.target.checked })}
+              style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+            />
+            {/* Pill-shaped toggle track */}
+            <span
+              aria-hidden="true"
+              style={{
+                display: 'inline-block',
+                position: 'relative',
+                width: '40px',
+                height: '22px',
+                borderRadius: '11px',
+                background: checked ? '#14b8a6' : '#374151',
+                transition: 'background 0.2s ease',
+                flexShrink: 0,
+                boxShadow: checked ? '0 0 6px rgba(20,184,166,0.5)' : 'none',
+              }}
+            >
+              {/* Thumb */}
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '3px',
+                  left: checked ? '21px' : '3px',
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '50%',
+                  background: '#fff',
+                  transition: 'left 0.2s ease',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                }}
+              />
+            </span>
+            {label}
+          </label>
+        ))}
       </div>
 
       {/* Leaderboard Grid */}

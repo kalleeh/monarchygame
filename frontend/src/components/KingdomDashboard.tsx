@@ -143,92 +143,6 @@ interface KingdomDashboardProps {
   onViewLeaderboard?: () => void;
 }
 
-// Memoized sub-components for performance
-const MemoizedResourceDisplay = memo(({ resources, buildingStats, upkeepInfo }: {
-  resources: KingdomResources;
-  buildingStats: any;
-  upkeepInfo: any;
-}) => (
-  <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-    <h2 className="text-xl font-bold mb-4">Kingdom Resources</h2>
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div className="text-center">
-        <div className="text-2xl font-bold text-yellow-600">{resources.gold?.toLocaleString() || 0}</div>
-        <div className="text-sm text-gray-600">Gold</div>
-      </div>
-      <div className="text-center">
-        <div className="text-2xl font-bold text-green-600">{resources.land?.toLocaleString() || 0}</div>
-        <div className="text-sm text-gray-600">Land</div>
-      </div>
-      <div className="text-center">
-        <div className="text-2xl font-bold text-blue-600">{resources.population?.toLocaleString() || 0}</div>
-        <div className="text-sm text-gray-600">Population</div>
-      </div>
-      <div className="text-center">
-        <div className="text-2xl font-bold text-purple-600">{resources.mana?.toLocaleString() || 0}</div>
-        <div className="text-sm text-gray-600">Mana</div>
-      </div>
-    </div>
-    <div className="mt-4 text-sm text-gray-600">
-      <div>BRT: {buildingStats.brt.toFixed(2)}%</div>
-      <div>Upkeep: {upkeepInfo.totalUpkeep.toLocaleString()} gold ({upkeepInfo.upkeepPercentage.toFixed(1)}%)</div>
-    </div>
-  </div>
-));
-
-const MemoizedActionButtons = memo(({ 
-  onManageTerritories, 
-  onManageCombat, 
-  onManageAlliance, 
-  onViewWorldMap, 
-  onCastSpells, 
-  onManageTrade, 
-  onSummonUnits, 
-  onDiplomacy, 
-  onBattleReports, 
-  onViewLeaderboard,
-  onShowBalanceTester 
-}: {
-  onManageTerritories?: () => void;
-  onManageCombat?: () => void;
-  onManageAlliance?: () => void;
-  onViewWorldMap?: () => void;
-  onCastSpells?: () => void;
-  onManageTrade?: () => void;
-  onSummonUnits?: () => void;
-  onDiplomacy?: () => void;
-  onBattleReports?: () => void;
-  onViewLeaderboard?: () => void;
-  onShowBalanceTester: () => void;
-}) => (
-  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-    <button onClick={onManageTerritories} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
-      🏰 Territories
-    </button>
-    <button onClick={onManageCombat} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">
-      ⚔️ Combat
-    </button>
-    <button onClick={onManageAlliance} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
-      🤝 Alliance
-    </button>
-    <button onClick={onViewWorldMap} className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">
-      🗺️ World Map
-    </button>
-    <button onClick={onCastSpells} className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded">
-      🔮 Magic
-    </button>
-    <button onClick={onManageTrade} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">
-      💰 Trade
-    </button>
-    <button onClick={onSummonUnits} className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
-      👥 Units
-    </button>
-    <button onClick={onShowBalanceTester} className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded">
-      ⚖️ Balance Tester
-    </button>
-  </div>
-));
-
 function KingdomDashboard({ 
   kingdom, 
   onBack, 
@@ -353,37 +267,6 @@ function KingdomDashboard({
     onBack();
   }, [onBack]);
 
-  // Memoized event handlers for performance
-  const handleShowBalanceTester = useCallback(() => {
-    setShowBalanceTester(true);
-  }, []);
-
-  const handleCloseBalanceTester = useCallback(() => {
-    setShowBalanceTester(false);
-  }, []);
-
-  const handleUpdateResources = useCallback(async () => {
-    if (!kingdom?.id) return;
-    
-    setResourceLoading(true);
-    try {
-      const result = await AmplifyFunctionService.updateResources(kingdom.id);
-      if (result.success && result.resources) {
-        const newResources = JSON.parse(result.resources);
-        setResources(newResources);
-        ToastService.success('Resources updated successfully!');
-      }
-    } catch (error) {
-      console.error('Failed to update resources:', error);
-      ToastService.error('Failed to update resources');
-    } finally {
-      setResourceLoading(false);
-    }
-  }, [kingdom?.id, setResources]);
-
-  const handleTutorialComplete = useCallback(() => {
-    completeTutorial();
-  }, [completeTutorial]);
 
   const upkeepInfo = useMemo(() => {
     const totalUpkeep = getTotalUpkeep();
@@ -430,7 +313,7 @@ function KingdomDashboard({
   useEffect(() => {
     const initializeData = async () => {
       try {
-        await initializeTerritories();
+        initializeTerritories();
       } catch (error) {
         console.error('Failed to initialize territories:', error);
       } finally {
@@ -943,9 +826,6 @@ function KingdomDashboard({
                 )}
               </div>
             )}
-            <p className="special-ability">
-              <strong>Special:</strong> {raceData?.specialAbility?.description}
-            </p>
             <div className="stats-mini">
               {raceData && Object.entries(raceData.stats).slice(0, 4).map(([stat, value]) => (
                 <div key={stat} className="stat-mini">
@@ -963,7 +843,7 @@ function KingdomDashboard({
         </div>
 
         <div className="race-stats-panel">
-          <h2>🏗️ Buildings & Economy</h2>
+          <h2><img src="/buildings-economy-icon.png" alt="" style={{width:'28px',height:'28px',objectFit:'contain',verticalAlign:'middle',marginRight:'0.5rem'}} />Buildings & Economy</h2>
           
           {/* BRT Display */}
           <div className="brt-display" style={{

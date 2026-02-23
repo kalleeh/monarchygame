@@ -137,8 +137,10 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
             ← Back to Kingdom
           </button>
         )}
-        <h1>🔮 Spell Casting</h1>
-        <div className="mana-display">Elan: {currentElan}/{maxElan}</div>
+        <h1>
+          <img src="/magic-spells-icon.png" alt="Magic" style={{width:'32px',height:'32px',objectFit:'contain',verticalAlign:'middle',marginRight:'0.5rem'}} />
+          Spell Casting
+        </h1>
       </div>
 
       {/* Error Display */}
@@ -152,8 +154,11 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
       {/* Elan Bar */}
       <div className="mana-section">
         <div className="mana-info">
-          <span>Elan: {currentElan}/{maxElan}</span>
+          <img src="/elan-resource-icon.png" alt="Elan" style={{width:'22px',height:'22px',objectFit:'contain',verticalAlign:'middle',marginRight:'0.4rem'}} /><span>Elan: {currentElan}/{maxElan}</span>
         </div>
+        <p style={{margin:'0.25rem 0 0.5rem 0',fontSize:'0.8rem',color:'var(--text-secondary)'}}>
+          Elan is your magical energy. It regenerates over time and is consumed when casting spells.
+        </p>
         <div className="mana-bar">
           <animated.div className="mana-fill" style={elanSpring} />
         </div>
@@ -163,6 +168,22 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
       <animated.div className="spell-grid" style={castingSpring}>
         {spellCards}
       </animated.div>
+
+      {/* Magic Tips */}
+      <div style={{
+        margin:'1rem 0 2rem 0',
+        padding:'1rem',
+        border:'1px solid rgba(255,255,255,0.1)',
+        borderRadius:'0.5rem',
+        background:'rgba(255,255,255,0.03)'
+      }}>
+        <p style={{margin:'0 0 0.5rem 0',fontSize:'0.8rem',color:'#6b7280',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em'}}>Magic Tips</p>
+        <ul style={{margin:0,paddingLeft:'1.25rem',listStyle:'disc'}}>
+          <li style={{fontSize:'0.82rem',color:'#6b7280',marginBottom:'0.25rem'}}>Elan regenerates 1 point every 3 turns</li>
+          <li style={{fontSize:'0.82rem',color:'#6b7280',marginBottom:'0.25rem'}}>Some spells target buildings, others target population</li>
+          <li style={{fontSize:'0.82rem',color:'#6b7280'}}>Higher sorcery stat means more elan capacity</li>
+        </ul>
+      </div>
 
       {/* Active Effects */}
       <div className="spell-effects">
@@ -275,6 +296,30 @@ const SpellCard: React.FC<SpellCardProps> = ({
           <span>Casting...</span>
         </div>
       )}
+
+      <button
+        onClick={(e) => { e.stopPropagation(); onCast(spell.id); }}
+        disabled={!canCast}
+        style={{
+          marginTop:'0.75rem',
+          width:'100%',
+          padding:'0.5rem 1rem',
+          background: canCast
+            ? 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)'
+            : 'rgba(255,255,255,0.08)',
+          color: canCast ? '#fff' : '#6b7280',
+          border: canCast ? 'none' : '1px solid rgba(255,255,255,0.1)',
+          borderRadius:'0.375rem',
+          fontWeight:600,
+          fontSize:'0.875rem',
+          cursor: canCast ? 'pointer' : 'not-allowed',
+          opacity: canCast ? 1 : 0.6,
+          transition:'all 0.2s ease'
+        }}
+        aria-label={`Cast ${spell.name}`}
+      >
+        Cast Spell
+      </button>
     </animated.div>
   );
 };

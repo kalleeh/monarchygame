@@ -1,6 +1,39 @@
 @import './styles/themes.css';
 
 :root {
+  /* Fonts */
+  --font-display: 'Cinzel', serif;
+  --font-body: 'Crimson Text', Georgia, serif;
+  --font-ui: system-ui, sans-serif;
+
+  /* Core colors */
+  --color-bg-deep: #080d1a;
+  --color-bg-base: #0f1629;
+  --color-bg-surface: #1a2340;
+  --color-bg-card: #1e2a45;
+  --color-border: rgba(255,255,255,0.08);
+  --color-border-accent: rgba(255,255,255,0.15);
+
+  /* Accent colors */
+  --color-gold: #d4a017;
+  --color-gold-bright: #f0c040;
+  --color-teal: #14b8a6;
+  --color-teal-dark: #0d9488;
+  --color-purple: #7c3aed;
+  --color-purple-light: #a78bfa;
+  --color-red: #dc2626;
+  --color-green: #16a34a;
+
+  /* Text */
+  --color-text-primary: #f0e6cc;
+  --color-text-secondary: #9ca3af;
+  --color-text-muted: #6b7280;
+
+  /* Shadows */
+  --shadow-card: 0 4px 24px rgba(0,0,0,0.4);
+  --shadow-glow-gold: 0 0 20px rgba(212,160,23,0.3);
+  --shadow-glow-teal: 0 0 20px rgba(20,184,166,0.3);
+
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -124,6 +157,17 @@ input, select, textarea {
 
 h1, h2, h3, h4, h5, h6 {
   color: var(--text-primary) !important;
+}
+
+h1, h2, h3, .display-font {
+  font-family: var(--font-display);
+  letter-spacing: 0.03em;
+}
+
+body {
+  font-family: var(--font-ui);
+  background-color: var(--color-bg-deep);
+  color: var(--color-text-primary);
 }
 
 /* Combat interface specific fixes */

@@ -108,7 +108,10 @@ function KingdomList({ kingdoms: propKingdoms }: { kingdoms: Schema['Kingdom']['
   return (
     <div className="kingdom-management">
       <div className="kingdoms-header">
-        <h2>Your Kingdoms</h2>
+        <div>
+          <h2>Your Kingdoms</h2>
+          <p style={{margin:'0.25rem 0 0 0',fontSize:'0.9rem',color:'#9ca3af',fontStyle:'italic'}}>Rule wisely. Conquer boldly.</p>
+        </div>
         <button className="create-new-btn" onClick={() => navigate('/creation')}>
           Create New Kingdom
         </button>
@@ -127,7 +130,10 @@ function KingdomList({ kingdoms: propKingdoms }: { kingdoms: Schema['Kingdom']['
             const resources = getKingdomResources(kingdom);
             return (
               <div key={kingdom.id} className="kingdom-card">
-                <h3>{kingdom.name}</h3>
+                <h3 style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+                  <img src="/logo.png" style={{width:'24px',height:'24px',objectFit:'contain',flexShrink:0}} alt="" />
+                  {kingdom.name}
+                </h3>
                 <div className="kingdom-info">
                   <p><strong>Race:</strong> {kingdom.race}</p>
                   <p><strong>💰 Gold:</strong> {resources?.gold?.toLocaleString() || 0}</p>
@@ -146,6 +152,20 @@ function KingdomList({ kingdoms: propKingdoms }: { kingdoms: Schema['Kingdom']['
               </div>
             );
           })}
+        </div>
+      )}
+
+      {kingdoms.length > 0 && (
+        <div style={{
+          marginTop:'2rem',
+          padding:'0.875rem 1rem',
+          border:'1px solid rgba(255,255,255,0.1)',
+          borderRadius:'8px',
+          background:'rgba(255,255,255,0.03)'
+        }}>
+          <p style={{margin:0,fontSize:'0.85rem',color:'#9ca3af'}}>
+            💡 Tip: Claim territories to increase your income each turn.
+          </p>
         </div>
       )}
     </div>
@@ -358,7 +378,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
                       previousSeasonNetworth: rawStats.previousSeasonNetworth != null ? Number(rawStats.previousSeasonNetworth) : undefined,
                       previousSeasonNumber: rawStats.previousSeasonNumber != null ? Number(rawStats.previousSeasonNumber) : undefined,
                     },
-                    totalUnits: (k.totalUnits as Record<string, number> | null) || { peasants: 0, militia: 0, knights: 0, cavalry: 0 },
+                    totalUnits: ((k.totalUnits as Record<string, number> | null) || { peasants: 0, militia: 0, knights: 0, cavalry: 0 }) as { peasants: number; militia: number; knights: number; cavalry: number },
                     isOnline: k.isOnline ?? false,
                     lastActive: k.lastActive ? new Date(k.lastActive) : undefined,
                     guildId: k.guildId || undefined
@@ -392,7 +412,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
                       previousSeasonNetworth: rawStats.previousSeasonNetworth != null ? Number(rawStats.previousSeasonNetworth) : undefined,
                       previousSeasonNumber: rawStats.previousSeasonNumber != null ? Number(rawStats.previousSeasonNumber) : undefined,
                     },
-                    totalUnits: (kingdom.totalUnits as Record<string, number> | null) || { peasants: 0, militia: 0, knights: 0, cavalry: 0 },
+                    totalUnits: ((kingdom.totalUnits as Record<string, number> | null) || { peasants: 0, militia: 0, knights: 0, cavalry: 0 }) as { peasants: number; militia: number; knights: number; cavalry: number },
                     isOnline: kingdom.isOnline ?? false,
                     lastActive: kingdom.lastActive ? new Date(kingdom.lastActive) : undefined,
                     guildId: kingdom.guildId || undefined
@@ -434,9 +454,9 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
             <KingdomBrowser
               kingdomId={kingdom.id}
               onBack={handleBackToDashboard}
-              onAttack={(targetId) => navigate(`/kingdom/${kingdomId}/combat`)}
-              onTrade={(targetId) => navigate(`/kingdom/${kingdomId}/trade`)}
-              onDiplomacy={(targetId) => navigate(`/kingdom/${kingdomId}/diplomacy`)}
+              onAttack={(_targetId) => navigate(`/kingdom/${kingdomId}/combat`)}
+              onTrade={(_targetId) => navigate(`/kingdom/${kingdomId}/trade`)}
+              onDiplomacy={(_targetId) => navigate(`/kingdom/${kingdomId}/diplomacy`)}
             />
           </Suspense>
         } />

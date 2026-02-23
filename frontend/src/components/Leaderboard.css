@@ -1,0 +1,5 @@
+/* Leaderboard page styles */
+.leaderboard-header h1 {
+  font-family: var(--font-display);
+  letter-spacing: 0.03em;
+}

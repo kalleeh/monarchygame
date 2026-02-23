@@ -240,7 +240,7 @@ function AppContent() {
 
         const newKingdom = await client.models.Kingdom.create({
           name: kingdomName || 'New Kingdom',
-          race: raceName,
+          race: raceName as "Human" | "Elven" | "Goblin" | "Droben" | "Vampire" | "Elemental" | "Centaur" | "Sidhe" | "Dwarven" | "Fae",
           resources: JSON.stringify(startingResources),
           stats: JSON.stringify({}),
           buildings: JSON.stringify({}),
@@ -252,7 +252,7 @@ function AppContent() {
 
         if (newKingdom.data) {
           // Add to local state
-          setKingdoms(prev => [...prev, newKingdom.data]);
+          setKingdoms(prev => [...prev, newKingdom.data].filter(Boolean) as typeof prev);
           navigate('/kingdoms');
         } else if (newKingdom.errors) {
           throw new Error(`Failed to create kingdom: ${newKingdom.errors.map((e: { message: string }) => e.message).join(', ')}`);
@@ -282,37 +282,31 @@ function AppContent() {
     return (
       <main className="app">
         <TutorialOverlay />
-        <header className="app-header">
-          <h1>
-            <img src="/logo.png" alt="Monarchy" style={{ width: '64px', height: '64px', verticalAlign: 'middle', marginRight: '12px' }} />
-            Monarchy Game - Demo Mode
-          </h1>
-          <div className="user-info">
-            <span>Demo Player</span>
-            <button 
-              onClick={() => {
-                // Clear all demo data
-                const savedKingdoms = localStorage.getItem('demo-kingdoms');
-                if (savedKingdoms) {
-                  const kingdoms = JSON.parse(savedKingdoms);
-                  kingdoms.forEach((k: Schema['Kingdom']['type']) => {
-                    localStorage.removeItem(`kingdom-${k.id}`);
-                  });
-                }
-                disableDemoMode();
-                localStorage.removeItem('demo-kingdoms');
-                localStorage.removeItem('tutorial-progress');
-                window.location.href = '/';
-              }} 
-              className="sign-out-btn"
-            >
-              Exit Demo
-            </button>
-          </div>
-        </header>
-        
+        <div className="app-utility-bar">
+          <span className="utility-bar-label">Demo Mode</span>
+          <button
+            onClick={() => {
+              // Clear all demo data
+              const savedKingdoms = localStorage.getItem('demo-kingdoms');
+              if (savedKingdoms) {
+                const kingdoms = JSON.parse(savedKingdoms);
+                kingdoms.forEach((k: Schema['Kingdom']['type']) => {
+                  localStorage.removeItem(`kingdom-${k.id}`);
+                });
+              }
+              disableDemoMode();
+              localStorage.removeItem('demo-kingdoms');
+              localStorage.removeItem('tutorial-progress');
+              window.location.href = '/';
+            }}
+            className="utility-bar-btn"
+          >
+            Exit Demo
+          </button>
+        </div>
+
         <div className="game-content">
-          <AppRouter 
+          <AppRouter
             kingdoms={kingdoms}
             onGetStarted={handleGetStarted}
             onKingdomCreated={handleKingdomCreated}
@@ -380,19 +374,16 @@ function AppContent() {
     return (
       <main className="app">
         <Toaster />
-        <header className="app-header">
-          <h1>🏰 Monarchy Game</h1>
-          <div className="user-info">
-            <span>Welcome, {username}</span>
-            <button onClick={signOut} className="sign-out-btn">
-              Sign Out
-            </button>
-          </div>
-        </header>
-        
+        <div className="app-utility-bar">
+          <span className="utility-bar-label">Welcome, {username}</span>
+          <button onClick={signOut} className="utility-bar-btn utility-bar-btn--signout">
+            Sign Out
+          </button>
+        </div>
+
         <div className="game-content">
           <ErrorBoundary>
-            <AppRouter 
+            <AppRouter
               kingdoms={kingdoms}
               onGetStarted={handleGetStarted}
               onKingdomCreated={handleKingdomCreatedWithAuth}

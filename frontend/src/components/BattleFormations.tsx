@@ -501,10 +501,45 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
             onClick={handleExecuteBattle}
             disabled={!selectedTarget || selectedUnits.length === 0 || loading}
             className={`execute-battle-btn ${(!selectedTarget || selectedUnits.length === 0) ? 'disabled' : ''}`}
+            style={{
+              ...(!selectedTarget || selectedUnits.length === 0 || loading
+                ? {
+                    opacity: 0.45,
+                    cursor: 'not-allowed',
+                    background: '#4b5563',
+                    borderColor: '#6b7280',
+                    color: '#9ca3af',
+                    pointerEvents: 'none',
+                  }
+                : {}),
+            }}
+            title={
+              !selectedTarget
+                ? 'Select a target kingdom first'
+                : selectedUnits.length === 0
+                ? 'Select at least one unit'
+                : undefined
+            }
           >
             {loading ? 'Executing...' : 'Execute Battle'}
           </button>
         </div>
+      </div>
+
+      {/* Battle Tips */}
+      <div style={{
+        marginTop:'1.5rem',
+        padding:'1rem',
+        border:'1px solid rgba(255,255,255,0.1)',
+        borderRadius:'0.5rem',
+        background:'rgba(255,255,255,0.03)'
+      }}>
+        <p style={{margin:'0 0 0.5rem 0',fontSize:'0.8rem',color:'#6b7280',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em'}}>Battle Tips</p>
+        <ul style={{margin:0,paddingLeft:'1.25rem',listStyle:'disc'}}>
+          <li style={{fontSize:'0.82rem',color:'#6b7280',marginBottom:'0.25rem'}}>Ambush gives 95% defense bonus when attacked</li>
+          <li style={{fontSize:'0.82rem',color:'#6b7280',marginBottom:'0.25rem'}}>Cavalry Charge formation maximizes offense</li>
+          <li style={{fontSize:'0.82rem',color:'#6b7280'}}>Train units before attacking for best results</li>
+        </ul>
       </div>
 
       {/* Battle Result Modal */}

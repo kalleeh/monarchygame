@@ -96,6 +96,7 @@ const mockKingdom = {
   id: '1',
   name: 'Test Kingdom',
   race: 'Human',
+  currentAge: 'early' as const,
   resources: {
     gold: 1000,
     population: 500,
@@ -144,7 +145,6 @@ describe('KingdomDashboard', () => {
       availableExpansions: [],
       pendingExpansions: [],
       expansionHistory: [],
-      showExpansionDialog: false,
       loading: false,
       error: null,
       initialized: true // Prevent initializeTerritories from populating mock data
@@ -177,10 +177,15 @@ describe('KingdomDashboard', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText('1000')).toBeInTheDocument()  // Gold
-      expect(screen.getByText('500')).toBeInTheDocument()   // Population
-      expect(screen.getByText('100')).toBeInTheDocument()   // Land
-      expect(screen.getByText('50')).toBeInTheDocument()    // Turns
+      // Gold shows as "1000" only in the dashboard body (nav shows "1.0K")
+      expect(screen.getByText('1000')).toBeInTheDocument()
+      // Population — only appears in dashboard body
+      expect(screen.getByText('500')).toBeInTheDocument()
+      // Land (100) appears in both the nav resource bar and the dashboard body;
+      // verify at least one instance is present
+      expect(screen.getAllByText('100').length).toBeGreaterThanOrEqual(1)
+      // Turns — only appears in dashboard body (nav shows the same value, use getAllByText)
+      expect(screen.getAllByText('50').length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -191,7 +196,7 @@ describe('KingdomDashboard', () => {
 
     expect(screen.getByText('Race Abilities')).toBeInTheDocument()
     await waitFor(() => {
-      expect(screen.getByText('Special:')).toBeInTheDocument()
+      expect(screen.getByText('✨ Special Ability')).toBeInTheDocument()
     })
   })
 
