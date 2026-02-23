@@ -221,6 +221,25 @@
   }
 }
 
+/* Mini resource bar in nav */
+.nav-resources {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.nav-resource {
+  font-size: 0.8rem;
+  color: #a0a0a0;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .nav-resources {
+    display: none;
+  }
+}
+
 /* Touch improvements */
 @media (hover: none) and (pointer: coarse) {
   .back-btn:hover,

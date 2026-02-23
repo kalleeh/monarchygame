@@ -141,24 +141,32 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
       {/* Market Overview */}
       <animated.div className="market-overview" style={marketSpring}>
         <h2>Market Overview</h2>
-        
+
         {/* Economic Indicators */}
-        <div className="economic-indicators">
-          {indicatorTransitions((style, indicator) => (
-            <animated.div key={indicator.name} style={style} className="indicator-card">
-              <div className="indicator-header">
-                <span className="indicator-name">{indicator.name}</span>
-                <span className={`indicator-trend ${indicator.trend}`}>
-                  {indicator.trend === 'up' ? '↗️' : indicator.trend === 'down' ? '↘️' : '➡️'}
-                </span>
-              </div>
-              <div className="indicator-value">{(indicator.value || 0).toLocaleString()}</div>
-              <div className={`indicator-change ${(indicator.change || 0) >= 0 ? 'positive' : 'negative'}`}>
-                {(indicator.change || 0) >= 0 ? '+' : ''}{(indicator.change || 0).toFixed(1)}%
-              </div>
-            </animated.div>
-          ))}
-        </div>
+        {economicIndicators.tradeVolume === 0 ? (
+          <div className="market-empty">
+            <p style={{ color: '#9ca3af', textAlign: 'center', padding: '2rem' }}>
+              📊 Market data will appear as trades are made
+            </p>
+          </div>
+        ) : (
+          <div className="economic-indicators">
+            {indicatorTransitions((style, indicator) => (
+              <animated.div key={indicator.name} style={style} className="indicator-card">
+                <div className="indicator-header">
+                  <span className="indicator-name">{indicator.name}</span>
+                  <span className={`indicator-trend ${indicator.trend}`}>
+                    {indicator.trend === 'up' ? '↗️' : indicator.trend === 'down' ? '↘️' : '➡️'}
+                  </span>
+                </div>
+                <div className="indicator-value">{(indicator.value || 0).toLocaleString()}</div>
+                <div className={`indicator-change ${(indicator.change || 0) >= 0 ? 'positive' : 'negative'}`}>
+                  {(indicator.change || 0) >= 0 ? '+' : ''}{(indicator.change || 0).toFixed(1)}%
+                </div>
+              </animated.div>
+            ))}
+          </div>
+        )}
 
         {/* Resource Market */}
         <div className="resource-market">
@@ -167,7 +175,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
             {resources.map(resource => {
               const trendData = (marketTrends[resource.id] as unknown as TrendData[])?.[0];
               const trend = trendData ? (trendData.change > 0 ? 'bullish' : trendData.change < 0 ? 'bearish' : 'neutral') : 'neutral';
-              
+
               return (
                 <ResourceCard
                   key={resource.id}

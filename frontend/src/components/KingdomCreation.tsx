@@ -3,6 +3,32 @@ import { RACES } from "../shared-races";
 import { StatBar } from './StatBar';
 import './KingdomCreation.css';
 
+const RACE_PLAYSTYLE: Record<string, { style: string; difficulty: 'Easy' | 'Medium' | 'Hard'; bestFor: string; color: string }> = {
+  Human:    { style: '⚖️ Balanced',    difficulty: 'Easy',   bestFor: 'New players, trade & economy',   color: '#60a5fa' },
+  Elven:    { style: '🛡️ Defensive',   difficulty: 'Easy',   bestFor: 'Building & magical defense',      color: '#34d399' },
+  Goblin:   { style: '⚔️ Aggressive',  difficulty: 'Medium', bestFor: 'Early raiding, siege warfare',    color: '#f87171' },
+  Droben:   { style: '⚔️ Warrior',     difficulty: 'Medium', bestFor: 'Elite combat, heavy offense',     color: '#fb923c' },
+  Vampire:  { style: '🦇 Fortress',    difficulty: 'Hard',   bestFor: 'Experienced defenders (2× costs)', color: '#c084fc' },
+  Elemental:{ style: '🔥 Hybrid',      difficulty: 'Medium', bestFor: 'Magic + combat combination',      color: '#38bdf8' },
+  Centaur:  { style: '🕵️ Saboteur',    difficulty: 'Medium', bestFor: 'Espionage & disruption',          color: '#a78bfa' },
+  Sidhe:    { style: '🔮 Sorcerer',    difficulty: 'Hard',   bestFor: 'Mastering the magic system',      color: '#e879f9' },
+  Dwarven:  { style: '🏰 Defender',    difficulty: 'Easy',   bestFor: 'Strong fortifications, mining',   color: '#fbbf24' },
+  Fae:      { style: '✨ Mystic',      difficulty: 'Medium', bestFor: 'High income, versatile magic',    color: '#f0abfc' },
+};
+
+const STAT_DESCRIPTIONS: Record<string, string> = {
+  offense:  'Attack strength in combat — higher = more land gained',
+  defense:  'Resistance to attacks — higher = fewer losses',
+  sorcery:  'Spell casting power — higher = stronger magic damage',
+  scum:     'Espionage skill — higher = better thievery operations',
+  forts:    'Fortification strength — high forts resist spells & raids',
+  tithe:    'Religious income — higher = more gold from temples',
+  training: 'Unit training speed — higher = cheaper army upkeep',
+  siege:    'Siege warfare bonus — affects controlled strikes',
+  economy:  'Gold generation — higher = more income per turn',
+  building: 'Construction speed — higher = faster BRT (build rate)',
+};
+
 // Simple random name generator
 const generateRandomName = (): string => {
   const prefixes = ['North', 'South', 'East', 'West', 'High', 'Low', 'Great', 'New', 'Old'];
@@ -146,6 +172,9 @@ const KingdomCreation: React.FC<KingdomCreationProps> = ({ onKingdomCreated }) =
         {selectedRace && (
           <div className="starting-resources">
             <h4>Starting Resources:</h4>
+            <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem' }}>
+              {selectedRace.name === 'Vampire' ? '⚠️ All costs doubled for Vampire kingdoms' : ''}
+            </p>
             <div className="resources-grid">
               <div className="resource-item">
                 <img src="/gold-resource-icon.png" alt="Gold" className="resource-icon" />
@@ -208,20 +237,36 @@ const KingdomCreation: React.FC<KingdomCreationProps> = ({ onKingdomCreated }) =
               >
                 <img src={race.image} alt={race.name} />
                 <h4>{race.name}</h4>
+                {(() => {
+                  const ps = RACE_PLAYSTYLE[race.name];
+                  if (!ps) return null;
+                  return (
+                    <div className="race-playstyle">
+                      <span className="race-style-badge" style={{ color: ps.color }}>{ps.style}</span>
+                      <span className={`race-difficulty difficulty-${ps.difficulty.toLowerCase()}`}>{ps.difficulty}</span>
+                    </div>
+                  );
+                })()}
+                <p className="race-best-for">Best for: {RACE_PLAYSTYLE[race.name]?.bestFor}</p>
                 <p>{race.description}</p>
+                {race.name === 'Vampire' && (
+                  <div className="race-cost-warning">
+                    ⚠️ Requires 2× resources to maintain
+                  </div>
+                )}
 
                 <div className="stats">
-                <StatBar value={race.stats.warOffense} statType="offense" />
-                <StatBar value={race.stats.warDefense} statType="defense" />
-                <StatBar value={race.stats.sorcery} statType="sorcery" />
-                <StatBar value={race.stats.scum} statType="scum" />
-                <StatBar value={race.stats.forts} statType="forts" />
-                <StatBar value={race.stats.tithe} statType="tithe" />
-                <StatBar value={race.stats.training} statType="training" />
-                <StatBar value={race.stats.siege} statType="siege" />
-                <StatBar value={race.stats.economy} statType="economy" />
-                <StatBar value={race.stats.building} statType="building" />
-              </div>
+                  <div title={STAT_DESCRIPTIONS['offense']}><StatBar value={race.stats.warOffense} statType="offense" /></div>
+                  <div title={STAT_DESCRIPTIONS['defense']}><StatBar value={race.stats.warDefense} statType="defense" /></div>
+                  <div title={STAT_DESCRIPTIONS['sorcery']}><StatBar value={race.stats.sorcery} statType="sorcery" /></div>
+                  <div title={STAT_DESCRIPTIONS['scum']}><StatBar value={race.stats.scum} statType="scum" /></div>
+                  <div title={STAT_DESCRIPTIONS['forts']}><StatBar value={race.stats.forts} statType="forts" /></div>
+                  <div title={STAT_DESCRIPTIONS['tithe']}><StatBar value={race.stats.tithe} statType="tithe" /></div>
+                  <div title={STAT_DESCRIPTIONS['training']}><StatBar value={race.stats.training} statType="training" /></div>
+                  <div title={STAT_DESCRIPTIONS['siege']}><StatBar value={race.stats.siege} statType="siege" /></div>
+                  <div title={STAT_DESCRIPTIONS['economy']}><StatBar value={race.stats.economy} statType="economy" /></div>
+                  <div title={STAT_DESCRIPTIONS['building']}><StatBar value={race.stats.building} statType="building" /></div>
+                </div>
               </div>
             ))}
           </div>

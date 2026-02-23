@@ -115,8 +115,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
 
   return (
     <div className="leaderboard-container">
-      <h2>Kingdom Scrolls</h2>
-      
       {/* Filters */}
       <div className="filters mb-4 flex gap-4">
         <label className="flex items-center gap-2 text-gray-300">

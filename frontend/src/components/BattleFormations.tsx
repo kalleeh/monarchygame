@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
@@ -12,6 +13,12 @@ import { useSpring, animated, config } from '@react-spring/web';
 import { useCombatStore } from '../stores/combatStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
+
+const FORMATION_DESCRIPTIONS: Record<string, string> = {
+  'Defensive Wall': 'Minimizes casualties when defending',
+  'Cavalry Charge': 'Maximizes offense for a swift attack',
+  'Balanced Formation': 'Equal offense and defense for versatility',
+};
 
 interface BattleFormationsProps {
   kingdomId: string;
@@ -67,7 +74,8 @@ const SortableUnit: React.FC<SortableUnitProps> = ({ id, unit, isSelected, onTog
   );
 };
 
-const BattleFormations: React.FC<BattleFormationsProps> = ({ onBack }) => {
+const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }) => {
+  const navigate = useNavigate();
   const {
     selectedUnits,
     formations,
@@ -322,21 +330,31 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ onBack }) => {
       {/* Drag & Drop Unit Selection */}
       <div className="unit-selection">
         <h3>Available Units (Drag to Reorder)</h3>
-        <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={unitOrder} strategy={verticalListSortingStrategy}>
-            <div className="unit-grid">
-              {orderedUnits.map(unit => (
-                <SortableUnit
-                  key={unit.id}
-                  id={unit.id}
-                  unit={unit}
-                  isSelected={selectedUnits.some(u => u.id === unit.id)}
-                  onToggle={() => handleUnitToggle(unit.id)}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+        {availableUnits.length === 0 ? (
+          <div className="combat-empty-state">
+            <p>🗡️ You have no units trained yet.</p>
+            <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>You need units to attack. Train some first.</p>
+            <button onClick={() => navigate(`/kingdom/${kingdomId}/summon`)}>
+              ⚔️ Train Units First
+            </button>
+          </div>
+        ) : (
+          <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={unitOrder} strategy={verticalListSortingStrategy}>
+              <div className="unit-grid">
+                {orderedUnits.map(unit => (
+                  <SortableUnit
+                    key={unit.id}
+                    id={unit.id}
+                    unit={unit}
+                    isSelected={selectedUnits.some(u => u.id === unit.id)}
+                    onToggle={() => handleUnitToggle(unit.id)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
       </div>
 
       {/* Battle Preview */}
@@ -441,6 +459,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ onBack }) => {
               onClick={() => handleLoadFormation(formation.id)}
             >
               <h4>{formation.name}</h4>
+              <p className="formation-desc">{FORMATION_DESCRIPTIONS[formation.name] || ''}</p>
               <div className="formation-bonuses">
                 <span>⚔️+{formation.bonuses.attack}</span>
                 <span>🛡️+{formation.bonuses.defense}</span>
@@ -480,8 +499,8 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ onBack }) => {
           </label>
           <button
             onClick={handleExecuteBattle}
-            disabled={selectedUnits.length === 0 || loading}
-            className="execute-battle-btn"
+            disabled={!selectedTarget || selectedUnits.length === 0 || loading}
+            className={`execute-battle-btn ${(!selectedTarget || selectedUnits.length === 0) ? 'disabled' : ''}`}
           >
             {loading ? 'Executing...' : 'Execute Battle'}
           </button>

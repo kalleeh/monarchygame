@@ -386,6 +386,81 @@
   /* Uses same styling as other panels */
 }
 
+/* Action groups — Change 1 */
+.action-group {
+  margin-bottom: 1.5rem;
+}
+
+.action-group-header {
+  font-size: 0.85rem;
+  color: #a0a0a0;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+}
+
+/* Next Step banner — Change 2 */
+.next-step-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(78, 205, 196, 0.1);
+  border: 1px solid rgba(78, 205, 196, 0.3);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.next-step-text {
+  flex: 1;
+  font-size: 0.9rem;
+  color: #e0e0e0;
+}
+
+.next-step-btn {
+  background: #4ecdc4;
+  color: #1a1a2e;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.next-step-icon {
+  font-size: 1.1rem;
+}
+
+/* Race ability highlight — Change 3 */
+.race-ability-highlight {
+  background: rgba(255, 215, 0, 0.08);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.race-ability-name {
+  font-size: 0.75rem;
+  color: #ffd700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.race-ability-desc {
+  font-size: 0.95rem;
+  color: #e0e0e0;
+  margin-bottom: 0.25rem;
+}
+
+.race-ability-effect {
+  font-size: 0.8rem;
+  color: #a0a0a0;
+  font-style: italic;
+}
+
 /* Touch improvements */
 @media (hover: none) and (pointer: coarse) {
   .resource-item:hover {

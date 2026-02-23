@@ -691,6 +691,23 @@ function KingdomDashboard({
   const raceKey = kingdom.race ? kingdom.race.charAt(0).toUpperCase() + kingdom.race.slice(1).toLowerCase() : 'Human';
   const raceData = RACES[raceKey as keyof typeof RACES];
 
+  // Calculate context-aware "Next Step" recommendation
+  const getNextStepRecommendation = () => {
+    if (ownedTerritories.length === 0) {
+      return { text: 'Claim your first territory to start earning resources', action: 'Claim Territory', onClick: onManageTerritories };
+    }
+    const units = useKingdomStore.getState().units;
+    if (!units || units.length === 0) {
+      return { text: 'Train units to build your army', action: 'Summon Units', onClick: onSummonUnits };
+    }
+    if ((resources.turns || 0) > 20 && ownedTerritories.length > 0) {
+      return { text: 'You have turns ready — attack a kingdom to gain land', action: 'View Targets', onClick: onManageCombat };
+    }
+    return null;
+  };
+
+  const nextStep = getNextStepRecommendation();
+
   return (
     <div className="kingdom-dashboard">
       {/* Tutorial overlay */}
@@ -750,6 +767,15 @@ function KingdomDashboard({
               {prohibitedActions.join(', ')}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Next Step contextual banner */}
+      {nextStep && (
+        <div className="next-step-banner">
+          <span className="next-step-icon">📌</span>
+          <span className="next-step-text">{nextStep.text}</span>
+          <button className="next-step-btn" onClick={nextStep.onClick}>{nextStep.action} →</button>
         </div>
       )}
 
@@ -831,6 +857,15 @@ function KingdomDashboard({
         <div className="race-stats-panel">
           <h2>Race Abilities</h2>
           <div className="race-info">
+            {raceData && (
+              <div className="race-ability-highlight">
+                <div className="race-ability-name">✨ Special Ability</div>
+                <div className="race-ability-desc">{raceData.specialAbility.description}</div>
+                {(raceData.specialAbility as any).strategicValue && (
+                  <div className="race-ability-effect">{(raceData.specialAbility as any).strategicValue}</div>
+                )}
+              </div>
+            )}
             <p className="special-ability">
               <strong>Special:</strong> {raceData?.specialAbility?.description}
             </p>
@@ -1001,135 +1036,154 @@ function KingdomDashboard({
 
         <div className="actions-panel">
           <h2>Kingdom Actions</h2>
-          <div className="action-buttons">
-            <button
-              className="action-btn primary"
-              onClick={onManageTerritories}
-            >
-              <img src="/territories-icon.png" alt="Territories" className="action-icon" />
-              Manage Territories
-            </button>
-            <button
-              className="action-btn primary"
-              onClick={onViewWorldMap}
-            >
-              <img src="/world-map-icon.png" alt="World Map" className="action-icon" />
-              World Map
-            </button>
-            <button
-              className={`action-btn${isActionProhibited('combat_attacks') ? ' opacity-50 cursor-not-allowed' : ''}`}
-              onClick={isActionProhibited('combat_attacks') ? undefined : onManageCombat}
-              disabled={isActionProhibited('combat_attacks')}
-              title={isActionProhibited('combat_attacks') ? 'In restoration — combat prohibited' : undefined}
-            >
-              <img src="/combat-icon.png" alt="Combat" className="action-icon" />
-              Combat Operations
-            </button>
-            <button
-              className={`action-btn${isActionProhibited('alliance_changes') ? ' opacity-50 cursor-not-allowed' : ''}`}
-              onClick={isActionProhibited('alliance_changes') ? undefined : onManageAlliance}
-              disabled={isActionProhibited('alliance_changes')}
-              title={isActionProhibited('alliance_changes') ? 'In restoration — alliance changes prohibited' : undefined}
-            >
-              <img src="/alliance-icon.png" alt="Alliance" className="action-icon" />
-              Alliance Management
-            </button>
-            <button
-              className={`action-btn${isActionProhibited('sorcery_casting') ? ' opacity-50 cursor-not-allowed' : ''}`}
-              onClick={isActionProhibited('sorcery_casting') ? undefined : onCastSpells}
-              disabled={isActionProhibited('sorcery_casting')}
-              title={isActionProhibited('sorcery_casting') ? 'In restoration — spellcasting prohibited' : undefined}
-            >
-              <img src="/magic-spells-icon.png" alt="Magic" className="action-icon" />
-              Cast Spells
-            </button>
-            <button
-              className="action-btn"
-              onClick={onSummonUnits}
-            >
-              <img src="/train-units-icon.png" alt="Summon Units" className="action-icon" />
-              ⚔️ Summon Units
-            </button>
-            <button
-              className={`action-btn trade-btn${isActionProhibited('diplomatic_actions') ? ' opacity-50 cursor-not-allowed' : ''}`}
-              onClick={isActionProhibited('diplomatic_actions') ? undefined : onManageTrade}
-              disabled={isActionProhibited('diplomatic_actions')}
-              title={isActionProhibited('diplomatic_actions') ? 'In restoration — trade prohibited' : undefined}
-            >
-              <img src="/trade-economy-icon.png" alt="Trade" className="action-icon" />
-              Trade
-            </button>
-            <button
-              className={`action-btn${isActionProhibited('diplomatic_actions') ? ' opacity-50 cursor-not-allowed' : ''}`}
-              onClick={isActionProhibited('diplomatic_actions') ? undefined : onDiplomacy}
-              disabled={isActionProhibited('diplomatic_actions')}
-              title={isActionProhibited('diplomatic_actions') ? 'In restoration — diplomacy prohibited' : undefined}
-            >
-              <img src="/diplomacy-icon.png" alt="Diplomacy" className="action-icon" />
-              Diplomacy
-            </button>
-            <button
-              className="action-btn danger"
-              onClick={onBattleReports}
-            >
-              <img src="/battle-reports-icon.png" alt="Battle Reports" className="action-icon" />
-              Battle Reports
-            </button>
-            <button
-              className="action-btn primary"
-              onClick={() => navigate(`/kingdom/${kingdom.id}/multiplayer`)}
-            >
-              🌐 Multiplayer
-            </button>
-            <button
-              className="action-btn primary"
-              onClick={onViewLeaderboard}
-            >
-              🏆 Kingdom Scrolls
-            </button>
-            <button
-              className="action-btn"
-              onClick={() => useTutorialStore.getState().restartTutorial()}
-              title="Restart tutorial"
-            >
-              📚 Tutorial
-            </button>
-            <button
-              className="action-btn"
-              onClick={() => navigate(`/kingdom/${kingdom.id}/achievements`)}
-              title="View achievements"
-            >
-              🏆 Achievements
-            </button>
-            <button
-              className="action-btn"
-              onClick={() => setShowBalanceTester(true)}
-              title="Run AI balance tests"
-            >
-              🎮 Balance Tester
-            </button>
-            <button
-              className={`action-btn${isActionProhibited('espionage_operations') ? ' opacity-50 cursor-not-allowed' : ''}`}
-              onClick={isActionProhibited('espionage_operations') ? undefined : () => navigate(`/kingdom/${kingdom.id}/espionage`)}
-              disabled={isActionProhibited('espionage_operations')}
-              title={isActionProhibited('espionage_operations') ? 'In restoration — espionage prohibited' : 'Espionage operations'}
-            >
-              🕵️ Espionage
-            </button>
-            <button
-              className="action-btn"
-              onClick={() => navigate(`/kingdom/${kingdom.id}/bounties`)}
-              title="Hunt bounties for rewards"
-            >
-              🎯 Bounty Board
-            </button>
-            <button
-              className="action-btn"
-              onClick={() => navigate(`/kingdom/${kingdom.id}/faith`)}
-              title="Manage faith and focus"
-            >
-              🙏 Faith & Focus
-            </button>
+
+          {/* Warfare group */}
+          <div className="action-group">
+            <h4 className="action-group-header">⚔️ Warfare</h4>
+            <div className="action-buttons">
+              <button
+                className={`action-btn${isActionProhibited('combat_attacks') ? ' opacity-50 cursor-not-allowed' : ''}`}
+                onClick={isActionProhibited('combat_attacks') ? undefined : onManageCombat}
+                disabled={isActionProhibited('combat_attacks')}
+                title={isActionProhibited('combat_attacks') ? 'In restoration — combat prohibited' : undefined}
+              >
+                <img src="/combat-icon.png" alt="Combat" className="action-icon" />
+                Combat Operations
+              </button>
+              <button
+                className="action-btn"
+                onClick={onSummonUnits}
+              >
+                <img src="/train-units-icon.png" alt="Summon Units" className="action-icon" />
+                Summon Units
+              </button>
+              <button
+                className={`action-btn${isActionProhibited('espionage_operations') ? ' opacity-50 cursor-not-allowed' : ''}`}
+                onClick={isActionProhibited('espionage_operations') ? undefined : () => navigate(`/kingdom/${kingdom.id}/espionage`)}
+                disabled={isActionProhibited('espionage_operations')}
+                title={isActionProhibited('espionage_operations') ? 'In restoration — espionage prohibited' : 'Espionage operations'}
+              >
+                🕵️ Espionage
+              </button>
+              <button
+                className="action-btn danger"
+                onClick={onBattleReports}
+              >
+                <img src="/battle-reports-icon.png" alt="Battle Reports" className="action-icon" />
+                Battle Reports
+              </button>
+            </div>
+          </div>
+
+          {/* Kingdom group */}
+          <div className="action-group">
+            <h4 className="action-group-header">🏛️ Kingdom</h4>
+            <div className="action-buttons">
+              <button
+                className="action-btn primary"
+                onClick={onManageTerritories}
+              >
+                <img src="/territories-icon.png" alt="Territories" className="action-icon" />
+                Manage Territories
+              </button>
+              <button
+                className="action-btn primary"
+                onClick={onViewWorldMap}
+              >
+                <img src="/world-map-icon.png" alt="World Map" className="action-icon" />
+                World Map
+              </button>
+              <button
+                className="action-btn"
+                onClick={() => navigate(`/kingdom/${kingdom.id}/bounties`)}
+                title="Hunt bounties for rewards"
+              >
+                🎯 Bounty Board
+              </button>
+              <button
+                className="action-btn"
+                onClick={() => navigate(`/kingdom/${kingdom.id}/faith`)}
+                title="Manage faith and focus"
+              >
+                🙏 Faith &amp; Focus
+              </button>
+            </div>
+          </div>
+
+          {/* Social group */}
+          <div className="action-group">
+            <h4 className="action-group-header">🤝 Social</h4>
+            <div className="action-buttons">
+              <button
+                className={`action-btn${isActionProhibited('alliance_changes') ? ' opacity-50 cursor-not-allowed' : ''}`}
+                onClick={isActionProhibited('alliance_changes') ? undefined : onManageAlliance}
+                disabled={isActionProhibited('alliance_changes')}
+                title={isActionProhibited('alliance_changes') ? 'In restoration — alliance changes prohibited' : undefined}
+              >
+                <img src="/alliance-icon.png" alt="Alliance" className="action-icon" />
+                Alliance Management
+              </button>
+              <button
+                className={`action-btn trade-btn${isActionProhibited('diplomatic_actions') ? ' opacity-50 cursor-not-allowed' : ''}`}
+                onClick={isActionProhibited('diplomatic_actions') ? undefined : onManageTrade}
+                disabled={isActionProhibited('diplomatic_actions')}
+                title={isActionProhibited('diplomatic_actions') ? 'In restoration — trade prohibited' : undefined}
+              >
+                <img src="/trade-economy-icon.png" alt="Trade" className="action-icon" />
+                Trade
+              </button>
+              <button
+                className={`action-btn${isActionProhibited('diplomatic_actions') ? ' opacity-50 cursor-not-allowed' : ''}`}
+                onClick={isActionProhibited('diplomatic_actions') ? undefined : onDiplomacy}
+                disabled={isActionProhibited('diplomatic_actions')}
+                title={isActionProhibited('diplomatic_actions') ? 'In restoration — diplomacy prohibited' : undefined}
+              >
+                <img src="/diplomacy-icon.png" alt="Diplomacy" className="action-icon" />
+                Diplomacy
+              </button>
+              <button
+                className="action-btn primary"
+                onClick={onViewLeaderboard}
+              >
+                🏆 Kingdom Scrolls
+              </button>
+            </div>
+          </div>
+
+          {/* Advanced group */}
+          <div className="action-group">
+            <h4 className="action-group-header">🔮 Advanced</h4>
+            <div className="action-buttons">
+              <button
+                className={`action-btn${isActionProhibited('sorcery_casting') ? ' opacity-50 cursor-not-allowed' : ''}`}
+                onClick={isActionProhibited('sorcery_casting') ? undefined : onCastSpells}
+                disabled={isActionProhibited('sorcery_casting')}
+                title={isActionProhibited('sorcery_casting') ? 'In restoration — spellcasting prohibited' : undefined}
+              >
+                <img src="/magic-spells-icon.png" alt="Magic" className="action-icon" />
+                Cast Spells
+              </button>
+              <button
+                className="action-btn"
+                onClick={() => navigate(`/kingdom/${kingdom.id}/achievements`)}
+                title="View achievements"
+              >
+                🏆 Achievements
+              </button>
+              <button
+                className="action-btn primary"
+                onClick={() => navigate(`/kingdom/${kingdom.id}/multiplayer`)}
+              >
+                🌐 Multiplayer
+              </button>
+              <button
+                className="action-btn"
+                onClick={() => useTutorialStore.getState().restartTutorial()}
+                title="Restart tutorial"
+              >
+                📚 Tutorial
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -409,3 +409,15 @@
   color: var(--text-secondary);
   line-height: 1;
 }
+
+/* Race playstyle badge */
+.race-playstyle { display: flex; align-items: center; gap: 0.5rem; margin: 0.25rem 0; }
+.race-style-badge { font-size: 0.8rem; font-weight: 600; }
+.race-difficulty { font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 3px; font-weight: 600; }
+.difficulty-easy { background: rgba(52, 211, 153, 0.2); color: #34d399; }
+.difficulty-medium { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+.difficulty-hard { background: rgba(248, 113, 113, 0.2); color: #f87171; }
+.race-best-for { font-size: 0.75rem; color: #9ca3af; margin: 0.2rem 0 0.4rem; font-style: italic; }
+
+/* Vampire cost warning */
+.race-cost-warning { background: rgba(248, 113, 113, 0.15); border: 1px solid rgba(248, 113, 113, 0.4); border-radius: 4px; padding: 0.25rem 0.5rem; font-size: 0.75rem; color: #f87171; margin-bottom: 0.5rem; }
