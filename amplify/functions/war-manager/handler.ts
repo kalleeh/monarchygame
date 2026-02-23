@@ -1,6 +1,7 @@
 import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { ErrorCode } from '../../../shared/types/kingdom';
+import { log } from '../logger';
 
 const client = generateClient<Schema>();
 
@@ -8,6 +9,12 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
   const args = event.arguments;
 
   try {
+    // Verify caller identity
+    const identity = event.identity as { sub?: string; username?: string } | null;
+    if (!identity?.sub) {
+      return JSON.stringify({ success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED });
+    }
+
     // Route based on which mutation was called
     if ('warId' in args && 'resolution' in args) {
       return await handleResolveWar(args as { warId: string; resolution: string });
@@ -27,6 +34,16 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
 
     if (attackerId === defenderId) {
       return JSON.stringify({ success: false, error: 'Cannot declare war on yourself', errorCode: ErrorCode.INVALID_PARAM });
+    }
+
+    // Verify kingdom ownership (attacker)
+    const { data: attackerKingdom } = await client.models.Kingdom.get({ id: attackerId });
+    if (!attackerKingdom) {
+      return JSON.stringify({ success: false, error: 'Attacker kingdom not found', errorCode: ErrorCode.NOT_FOUND });
+    }
+    const attackerOwnerField = (attackerKingdom as any).owner as string | null;
+    if (!attackerOwnerField || (!attackerOwnerField.includes(identity.sub) && !attackerOwnerField.includes(identity.username ?? ''))) {
+      return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
     }
 
     // Check for existing active war
@@ -97,6 +114,7 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
       });
     }
 
+    log.info('war-manager', 'declareWar', { attackerId, defenderId, seasonId });
     return JSON.stringify({
       success: true,
       warDeclaration: {
@@ -108,8 +126,7 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
       }
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('War manager error:', message);
+    log.error('war-manager', error);
     return JSON.stringify({ success: false, error: 'War operation failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }
 };

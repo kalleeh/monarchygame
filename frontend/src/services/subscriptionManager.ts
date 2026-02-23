@@ -5,6 +5,8 @@
 
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
+import { ToastService } from './toastService';
+import { isDemoMode } from '../utils/authMode';
 
 const client = generateClient<Schema>();
 
@@ -274,6 +276,174 @@ export class SubscriptionManager {
   get activeCount(): number {
     return this.subscriptions.size;
   }
+
+  /**
+   * Convenience method: start all real-time subscriptions for a kingdom and
+   * automatically show toast notifications for hostile/important events.
+   * Calling this again with a new kingdomId will cleanly replace existing subs.
+   */
+  startSubscriptions(
+    kingdomId: string,
+    callbacks?: {
+      onAttackReceived?: (report: BattleReportEvent) => void;
+      onTradeOfferReceived?: (offers: TradeOfferEvent[]) => void;
+      onWarDeclared?: (war: WarDeclarationEvent) => void;
+    }
+  ): void {
+    if (isDemoMode()) return;
+
+    // Clean up any previous subscriptions first
+    this.stopSubscriptions();
+
+    // --- BattleReport: notify when this kingdom is attacked ---
+    const battleKey = `battle:${kingdomId}`;
+    let firstBattleSyncDone = false;
+    const battleSub = client.models.BattleReport.observeQuery({
+      filter: { defenderId: { eq: kingdomId } }
+    }).subscribe({
+      next: ({ items, isSynced }) => {
+        if (!isSynced) return;
+        if (!firstBattleSyncDone) {
+          // On first sync we only record the current snapshot — no toasts for old data
+          firstBattleSyncDone = true;
+          this.lastKnownBattleCount = items.length;
+          return;
+        }
+        if (items.length > this.lastKnownBattleCount) {
+          const newReports = items.slice(0, items.length - this.lastKnownBattleCount);
+          this.lastKnownBattleCount = items.length;
+          for (const report of newReports) {
+            const mapped: BattleReportEvent = {
+              id: report.id,
+              attackerId: report.attackerId,
+              defenderId: report.defenderId,
+              attackType: (report.attackType as string) || 'standard',
+              timestamp: report.timestamp,
+            };
+            ToastService.error('Your kingdom was attacked!');
+            callbacks?.onAttackReceived?.(mapped);
+          }
+        }
+      },
+      error: (err) => {
+        console.error('[SubscriptionManager] BattleReport subscription error:', err);
+        this.onError?.(err);
+      }
+    });
+    this.subscriptions.set(battleKey, { key: battleKey, unsubscribe: () => battleSub.unsubscribe() });
+
+    // --- CombatNotification: live in-game notifications for this kingdom ---
+    this.subscribeToKingdom(kingdomId);
+
+    // --- TradeOffer: notify when a new open trade offer appears ---
+    const tradeKey = `tradeAlert:${kingdomId}`;
+    let firstTradeSyncDone = false;
+    let lastKnownTradeCount = 0;
+    const seasonId = ''; // season-agnostic — watch all open offers
+    const tradeSub = client.models.TradeOffer.observeQuery({
+      filter: { status: { eq: 'open' } }
+    }).subscribe({
+      next: ({ items, isSynced }) => {
+        if (!isSynced) return;
+        if (!firstTradeSyncDone) {
+          firstTradeSyncDone = true;
+          lastKnownTradeCount = items.length;
+          return;
+        }
+        if (items.length > lastKnownTradeCount) {
+          const newOffers = items.slice(0, items.length - lastKnownTradeCount);
+          lastKnownTradeCount = items.length;
+          // Only show toast for offers NOT made by this kingdom
+          const inboundOffers = newOffers.filter(o => o.sellerId !== kingdomId);
+          if (inboundOffers.length > 0) {
+            ToastService.info(`${inboundOffers.length} new trade offer${inboundOffers.length > 1 ? 's' : ''} available in the marketplace!`);
+          }
+          const mapped: TradeOfferEvent[] = items.map(item => ({
+            id: item.id,
+            sellerId: item.sellerId,
+            resourceType: item.resourceType,
+            quantity: item.quantity,
+            pricePerUnit: item.pricePerUnit,
+            totalPrice: item.totalPrice,
+            status: (item.status as string) || 'open',
+            expiresAt: item.expiresAt,
+          }));
+          callbacks?.onTradeOfferReceived?.(mapped);
+        } else {
+          lastKnownTradeCount = items.length;
+        }
+      },
+      error: (err) => {
+        console.error('[SubscriptionManager] TradeOffer (alert) subscription error:', err);
+        this.onError?.(err);
+      }
+    });
+    // suppress unused variable warning — seasonId intentionally kept for future use
+    void seasonId;
+    this.subscriptions.set(tradeKey, { key: tradeKey, unsubscribe: () => tradeSub.unsubscribe() });
+
+    // --- WarDeclaration: notify when war is declared against this kingdom ---
+    const warAlertKey = `warAlert:${kingdomId}`;
+    let firstWarSyncDone = false;
+    let lastKnownWarCount = 0;
+    const warSub = client.models.WarDeclaration.observeQuery({
+      filter: { defenderId: { eq: kingdomId } }
+    }).subscribe({
+      next: ({ items, isSynced }) => {
+        if (!isSynced) return;
+        if (!firstWarSyncDone) {
+          firstWarSyncDone = true;
+          lastKnownWarCount = items.length;
+          return;
+        }
+        if (items.length > lastKnownWarCount) {
+          const newWars = items.slice(0, items.length - lastKnownWarCount);
+          lastKnownWarCount = items.length;
+          for (const war of newWars) {
+            const mapped: WarDeclarationEvent = {
+              id: war.id,
+              attackerId: war.attackerId,
+              defenderId: war.defenderId,
+              status: (war.status as string) || 'declared',
+              declaredAt: war.declaredAt,
+            };
+            ToastService.error('War has been declared against your kingdom!');
+            callbacks?.onWarDeclared?.(mapped);
+          }
+        }
+      },
+      error: (err) => {
+        console.error('[SubscriptionManager] WarDeclaration (alert) subscription error:', err);
+        this.onError?.(err);
+      }
+    });
+    this.subscriptions.set(warAlertKey, { key: warAlertKey, unsubscribe: () => warSub.unsubscribe() });
+  }
+
+  /**
+   * Stop all subscriptions started by startSubscriptions (and any others).
+   * Alias for unsubscribeAll() that does not clear the callbacks — useful when
+   * the caller wants to re-register the same callbacks later.
+   */
+  stopSubscriptions(): void {
+    for (const [, sub] of this.subscriptions) {
+      try { sub.unsubscribe(); } catch { /* ignore */ }
+    }
+    this.subscriptions.clear();
+    this.lastKnownBattleCount = 0;
+  }
+
+  private lastKnownBattleCount = 0;
 }
+
+interface BattleReportEvent {
+  id: string;
+  attackerId: string;
+  defenderId: string;
+  attackType: string;
+  timestamp: string;
+}
+
+export type { BattleReportEvent };
 
 export const subscriptionManager = new SubscriptionManager();

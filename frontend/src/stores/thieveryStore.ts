@@ -13,6 +13,8 @@ import {
   THIEVERY_MECHANICS
 } from '../../../shared/mechanics/thievery-mechanics';
 import type { ThieveryResult } from '../../../shared/mechanics/thievery-mechanics';
+import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { isDemoMode } from '../utils/authMode';
 
 export type OperationType = 'scout' | 'steal' | 'sabotage' | 'burn';
 
@@ -30,6 +32,9 @@ export interface ThieveryOperation {
 export const useThieveryStore = create(
   combine(
     {
+      // Kingdom identity
+      kingdomId: '' as string,
+
       // Scum counts
       scumCount: 0,
       eliteScumCount: 0,
@@ -75,6 +80,7 @@ export const useThieveryStore = create(
         }
 
         set({
+          kingdomId,
           scumCount,
           eliteScumCount,
           race,
@@ -213,6 +219,16 @@ export const useThieveryStore = create(
           operations: [operation, ...prev.operations.slice(0, 49)],
           loading: false,
         }));
+
+        // In auth mode, persist the operation to the backend
+        if (!isDemoMode()) {
+          const { kingdomId } = get();
+          AmplifyFunctionService.callFunction('thievery-processor', {
+            kingdomId,
+            action: type,
+            targetId,
+          }).catch(error => console.error('[thieveryStore] Lambda call failed, using local result:', error));
+        }
 
         return operation;
       },

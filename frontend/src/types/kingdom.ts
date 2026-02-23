@@ -25,6 +25,10 @@ export interface Kingdom {
     siege: number;
     economy: number;
     building: number;
+    // Set by season-lifecycle Lambda when a season ends
+    previousSeasonRank?: number;
+    previousSeasonNetworth?: number;
+    previousSeasonNumber?: number;
   };
   territories?: Territory[];
   totalUnits: {

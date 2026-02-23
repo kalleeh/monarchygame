@@ -5,6 +5,7 @@ import { getUnitsForRace, type UnitType } from '../utils/units';
 import { calculateActionTurnCost } from '../../../shared/mechanics/turn-mechanics';
 import { isDemoMode } from '../utils/authMode';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { achievementTriggers } from '../utils/achievementTriggers';
 
 // Troop cap based on accumulated gold cost (from hire-screen.md)
 const TROOP_CAP_GOLD = 10_000_000; // 10 million gold cap
@@ -207,6 +208,10 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
             accumulatedGoldSpent: accumulatedGoldSpent + totalGold,
             loading: false
           });
+
+          // Fire achievement trigger on confirmed server unit training
+          achievementTriggers.onGoldChanged();
+
           return;
         } catch (err) {
           set({ error: err instanceof Error ? err.message : 'Failed to summon units', loading: false });

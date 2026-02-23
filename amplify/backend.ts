@@ -12,6 +12,11 @@ import { warManager } from './functions/war-manager/resource';
 import { tradeProcessor } from './functions/trade-processor/resource';
 import { diplomacyProcessor } from './functions/diplomacy-processor/resource';
 import { seasonLifecycle } from './functions/season-lifecycle/resource';
+import { thieveryProcessor } from './functions/thievery-processor/resource';
+import { faithProcessor } from './functions/faith-processor/resource';
+import { bountyProcessor } from './functions/bounty-processor/resource';
+import { allianceTreasury } from './functions/alliance-treasury/resource';
+import { allianceManager } from './functions/alliance-manager/resource';
 
 export const backend = defineBackend({
   auth,
@@ -26,5 +31,10 @@ export const backend = defineBackend({
   warManager,
   tradeProcessor,
   diplomacyProcessor,
-  seasonLifecycle
+  seasonLifecycle,
+  thieveryProcessor,
+  faithProcessor,
+  bountyProcessor,
+  allianceTreasury,
+  allianceManager
 });

@@ -128,7 +128,7 @@ export function calculateTurnCost(
  * From documentation: After 3 offensive actions, must declare war
  */
 export function requiresWarDeclaration(attackCount: number): boolean {
-  return attackCount > COMBAT_MECHANICS.WAR_DECLARATION.ATTACKS_BEFORE_DECLARATION;
+  return attackCount >= COMBAT_MECHANICS.WAR_DECLARATION.ATTACKS_BEFORE_DECLARATION;
 }
 
 /**

@@ -1,6 +1,7 @@
 import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { ErrorCode } from '../../../shared/types/kingdom';
+import { log } from '../logger';
 
 const client = generateClient<Schema>();
 
@@ -26,6 +27,12 @@ function isSeasonExpired(startDate: Date): boolean {
 // Handler for getActiveSeason query
 export const handler: Schema["getActiveSeason"]["functionHandler"] = async (event) => {
   try {
+    // Verify caller identity
+    const identity = event.identity as { sub?: string; username?: string } | null;
+    if (!identity?.sub) {
+      return JSON.stringify({ success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED });
+    }
+
     // Find the active season
     const { data: seasons } = await client.models.GameSeason.list({
       filter: { status: { eq: 'active' } }
@@ -61,6 +68,7 @@ export const handler: Schema["getActiveSeason"]["functionHandler"] = async (even
       });
     }
 
+    log.info('season-manager', 'getActiveSeason', { seasonId: season.id, currentAge });
     return JSON.stringify({
       success: true,
       season: {
@@ -73,8 +81,7 @@ export const handler: Schema["getActiveSeason"]["functionHandler"] = async (even
       }
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Season manager error:', message);
+    log.error('season-manager', error);
     return JSON.stringify({ success: false, error: 'Season query failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }
 };

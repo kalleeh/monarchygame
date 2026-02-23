@@ -4,7 +4,11 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { generateClient } from 'aws-amplify/data';
 import { GuildService, type GuildData, type GuildMessage, type GuildInvitation } from '../services/GuildService';
+import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { ToastService } from '../services/toastService';
+import { isDemoMode } from '../utils/authMode';
 import { ErrorBoundary } from './ErrorBoundary';
 import { TopNavigation } from './TopNavigation';
 import type { Schema } from '../../../amplify/data/resource';
@@ -30,6 +34,20 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
   const [charterRequirements, setCharterRequirements] = useState('');
   const [charterRules, setCharterRules] = useState('');
   const [charterAutoApprove, setCharterAutoApprove] = useState(false);
+  const [pendingAllianceInvitations, setPendingAllianceInvitations] = useState<Schema['AllianceInvitation']['type'][]>([]);
+
+  const loadPendingInvitations = useCallback(async () => {
+    if (isDemoMode() || !kingdom?.id) return;
+    try {
+      const dataClient = generateClient<Schema>();
+      const { data } = await dataClient.models.AllianceInvitation.list({
+        filter: { inviteeId: { eq: kingdom.id }, status: { eq: 'pending' } },
+      });
+      setPendingAllianceInvitations(data || []);
+    } catch (error) {
+      console.error('Failed to load pending invitations:', error);
+    }
+  }, [kingdom?.id]);
 
   const loadGuilds = useCallback(async () => {
     try {
@@ -57,10 +75,11 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
   // Load initial data
   useEffect(() => {
     loadGuilds();
+    loadPendingInvitations();
     if (kingdom.guildId) {
       loadGuildMessages();
     }
-  }, [kingdom.guildId, loadGuilds, loadGuildMessages]);
+  }, [kingdom.guildId, loadGuilds, loadGuildMessages, loadPendingInvitations]);
 
   // Set up real-time subscriptions
   useEffect(() => {
@@ -69,12 +88,42 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
 
     try {
       if (kingdom.guildId) {
-        messageSubscription = GuildService.subscribeToGuildMessages(
-          kingdom.guildId,
-          (message) => {
-            setMessages(prev => [...prev, message]);
-          }
-        );
+        if (isDemoMode()) {
+          // Demo mode: use GuildService mock subscription (fires on individual new messages)
+          messageSubscription = GuildService.subscribeToGuildMessages(
+            kingdom.guildId,
+            (message) => {
+              setMessages(prev => [...prev, message]);
+            }
+          );
+        } else {
+          // Auth mode: use AllianceMessage.observeQuery for full real-time sync
+          const dataClient = generateClient<Schema>();
+          const sub = dataClient.models.AllianceMessage.observeQuery({
+            filter: { guildId: { eq: kingdom.guildId! } }
+          }).subscribe({
+            next: ({ items, isSynced }) => {
+              if (!isSynced) return;
+              const mapped: GuildMessage[] = items
+                .map(item => ({
+                  id: item.id,
+                  guildId: item.guildId,
+                  senderId: item.senderId,
+                  senderName: item.senderId, // AllianceMessage has no senderName field
+                  content: item.content,
+                  messageType: 'CHAT' as const,
+                  createdAt: item.createdAt ?? new Date().toISOString(),
+                }))
+                .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                .slice(-50); // Keep last 50 messages
+              setMessages(mapped);
+            },
+            error: (err) => {
+              console.error('[GuildManagement] Chat subscription error:', err);
+            }
+          });
+          messageSubscription = { unsubscribe: () => sub.unsubscribe() };
+        }
       }
 
       invitationSubscription = GuildService.subscribeToInvitations(
@@ -103,19 +152,41 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
 
     try {
       setLoading(true);
-      await GuildService.createGuild({
-        name: newGuildName.trim(),
-        tag: newGuildTag.trim().toUpperCase(),
-        description: newGuildDesc.trim() || undefined,
-      });
-      
+
+      if (isDemoMode()) {
+        // Demo mode: use GuildService (mock)
+        await GuildService.createGuild({
+          name: newGuildName.trim(),
+          tag: newGuildTag.trim().toUpperCase(),
+          description: newGuildDesc.trim() || undefined,
+        });
+        ToastService.success('Alliance created!');
+      } else {
+        // Auth mode: call the alliance-manager Lambda
+        const result = await AmplifyFunctionService.callFunction('alliance-manager', {
+          kingdomId: kingdom.id,
+          action: 'create',
+          name: newGuildName.trim(),
+          description: newGuildDesc.trim() || undefined,
+          isPublic: true,
+        });
+        const parsed = JSON.parse((result as Record<string, string>).result || '{}');
+        console.log('[GuildManagement] Alliance created:', parsed);
+        ToastService.success('Alliance created!');
+      }
+
       setNewAllianceName('');
       setNewAllianceTag('');
       setNewAllianceDesc('');
+      setCharterPurpose('');
+      setCharterRequirements('');
+      setCharterRules('');
+      setCharterAutoApprove(false);
       setCurrentView('overview');
       await loadGuilds();
     } catch (error) {
       console.error('Failed to create guild:', error);
+      ToastService.error('Failed to create alliance');
     } finally {
       setLoading(false);
     }
@@ -124,10 +195,26 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
   const handleJoinGuild = async (guildId: string) => {
     try {
       setLoading(true);
-      await GuildService.joinGuild(guildId, kingdom.id);
+
+      if (isDemoMode()) {
+        // Demo mode: use GuildService (mock)
+        await GuildService.joinGuild(guildId, kingdom.id);
+        ToastService.success('Joined alliance!');
+      } else {
+        // Auth mode: call the alliance-manager Lambda
+        await AmplifyFunctionService.callFunction('alliance-manager', {
+          kingdomId: kingdom.id,
+          action: 'join',
+          allianceId: guildId,
+        });
+        ToastService.success('Joined alliance!');
+      }
+
       setCurrentView('overview');
+      await loadGuilds();
     } catch (error) {
       console.error('Failed to join guild:', error);
+      ToastService.error('Failed to join alliance');
     } finally {
       setLoading(false);
     }
@@ -137,16 +224,154 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
     e.preventDefault();
     if (!newMessage.trim() || !kingdom.guildId) return;
 
+    const content = newMessage.trim();
+
+    // Optimistic update: add to local state immediately
+    const optimisticMsg: GuildMessage = {
+      id: `local-${Date.now()}`,
+      guildId: kingdom.guildId,
+      senderId: kingdom.id,
+      senderName: kingdom.name || 'Unknown',
+      content,
+      messageType: 'CHAT',
+      createdAt: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
+    setNewMessage('');
+
     try {
       await GuildService.sendGuildMessage({
         guildId: kingdom.guildId,
-        content: newMessage.trim(),
+        content,
+        senderId: kingdom.id,
+        senderName: kingdom.name || 'Unknown',
       });
-      setNewMessage('');
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error('[GuildManagement] Failed to send message:', error);
+      // Remove optimistic message on failure
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
     }
   };
+
+  const handleLeaveGuild = async () => {
+    if (!kingdom.guildId) return;
+    try {
+      setLoading(true);
+      if (isDemoMode()) {
+        await GuildService.leaveGuild(kingdom.id);
+        ToastService.success('Left alliance');
+      } else {
+        await AmplifyFunctionService.callFunction('alliance-manager', {
+          kingdomId: kingdom.id,
+          action: 'leave',
+          allianceId: kingdom.guildId,
+        });
+        ToastService.success('Left alliance');
+      }
+      setCurrentView('overview');
+      await loadGuilds();
+    } catch (error) {
+      console.error('Failed to leave guild:', error);
+      ToastService.error('Failed to leave alliance');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKickMember = async (targetKingdomId: string) => {
+    if (!kingdom.guildId) return;
+    try {
+      setLoading(true);
+      if (isDemoMode()) {
+        await GuildService.kickMember(kingdom.id, kingdom.guildId, targetKingdomId);
+        ToastService.success('Member kicked');
+      } else {
+        await AmplifyFunctionService.callFunction('alliance-manager', {
+          kingdomId: kingdom.id,
+          action: 'kick',
+          allianceId: kingdom.guildId,
+          targetKingdomId,
+        });
+        ToastService.success('Member kicked');
+      }
+      await loadGuilds();
+    } catch (error) {
+      console.error('Failed to kick member:', error);
+      ToastService.error('Failed to kick member');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInviteMember = async (targetKingdomId: string) => {
+    if (!kingdom.guildId) return;
+    try {
+      setLoading(true);
+      if (isDemoMode()) {
+        await GuildService.sendInvitation({
+          guildId: kingdom.guildId,
+          targetKingdomId,
+          targetKingdomName: targetKingdomId,
+          kingdomId: kingdom.id,
+        });
+        ToastService.success('Invitation sent');
+      } else {
+        await AmplifyFunctionService.callFunction('alliance-manager', {
+          kingdomId: kingdom.id,
+          action: 'invite',
+          allianceId: kingdom.guildId,
+          targetKingdomId,
+        });
+        ToastService.success('Invitation sent');
+      }
+    } catch (error) {
+      console.error('Failed to send invitation:', error);
+      ToastService.error('Failed to send invitation');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAcceptInvitation = async (allianceId: string) => {
+    try {
+      setLoading(true);
+      await AmplifyFunctionService.callFunction('alliance-manager', {
+        kingdomId: kingdom.id,
+        action: 'join',
+        allianceId,
+      });
+      ToastService.success('Joined alliance!');
+      await loadPendingInvitations();
+      await loadGuilds();
+    } catch (error) {
+      console.error('Failed to accept invitation:', error);
+      ToastService.error('Failed to accept invitation');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeclineInvitation = async (allianceId: string) => {
+    try {
+      setLoading(true);
+      await AmplifyFunctionService.callFunction('alliance-manager', {
+        kingdomId: kingdom.id,
+        action: 'decline',
+        allianceId,
+      });
+      ToastService.success('Invitation declined');
+      await loadPendingInvitations();
+    } catch (error) {
+      console.error('Failed to decline invitation:', error);
+      ToastService.error('Failed to decline invitation');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Expose kick/invite for future member list use (suppresses unused-var lint)
+  void handleKickMember;
+  void handleInviteMember;
 
   const currentGuild = guilds.find(a => a.id === kingdom.guildId);
   const pendingInvitations = invitations.filter(inv => inv.status === 'pending');
@@ -240,6 +465,67 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
       <main className="guild-content">
         {currentView === 'overview' && (
           <div className="guild-overview">
+            {pendingAllianceInvitations.length > 0 && (
+              <div className="pending-invitations" style={{
+                marginBottom: '1.5rem',
+                padding: '1rem',
+                background: 'rgba(78, 205, 196, 0.05)',
+                borderRadius: '8px',
+                border: '1px solid rgba(78, 205, 196, 0.3)',
+              }}>
+                <h3 style={{ marginTop: 0, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
+                  Pending Invitations
+                </h3>
+                {pendingAllianceInvitations.map(inv => (
+                  <div key={inv.id} className="invitation-card" style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem 1rem',
+                    background: 'var(--bg-card)',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-primary)',
+                    marginBottom: '0.5rem',
+                  }}>
+                    <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                      Invited to join alliance <strong style={{ color: 'var(--text-primary)' }}>{inv.guildId}</strong>
+                    </p>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                      <button
+                        onClick={() => handleAcceptInvitation(inv.guildId)}
+                        disabled={loading}
+                        style={{
+                          backgroundColor: 'var(--success, #22c55e)',
+                          color: 'white',
+                          border: 'none',
+                          padding: '0.375rem 0.75rem',
+                          borderRadius: '0.375rem',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                        }}
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => handleDeclineInvitation(inv.guildId)}
+                        disabled={loading}
+                        style={{
+                          backgroundColor: 'var(--danger, #ef4444)',
+                          color: 'white',
+                          border: 'none',
+                          padding: '0.375rem 0.75rem',
+                          borderRadius: '0.375rem',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                        }}
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             {currentGuild ? (
               <div className="current-guild">
                 <div className="guild-info">
@@ -252,11 +538,12 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
                   </div>
                 </div>
                 <div className="guild-actions">
-                  <button 
+                  <button
                     className="leave-btn"
-                    onClick={() => GuildService.leaveGuild(kingdom.id)}
+                    onClick={handleLeaveGuild}
+                    disabled={loading}
                   >
-                    Leave Alliance
+                    {loading ? 'Leaving...' : 'Leave Alliance'}
                   </button>
                 </div>
               </div>

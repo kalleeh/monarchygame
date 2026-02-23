@@ -1,6 +1,8 @@
 import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
+import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
+import { log } from '../logger';
 
 const TERRITORY_NAME_LIMITS = { min: 2, max: 50 } as const;
 const COORDINATE_LIMITS = { min: -10000, max: 10000 } as const;
@@ -31,17 +33,36 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
       return { success: false, error: `Coordinates must be between ${COORDINATE_LIMITS.min} and ${COORDINATE_LIMITS.max}`, errorCode: ErrorCode.INVALID_PARAM };
     }
 
+    // Verify caller identity
+    const identity = event.identity as { sub?: string; username?: string } | null;
+    if (!identity?.sub) {
+      return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
+    }
+
     // Verify the kingdom exists
     const kingdomResult = await client.models.Kingdom.get({ id: kingdomId });
     if (!kingdomResult.data) {
       return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
+    // Verify kingdom ownership
+    const ownerField = (kingdomResult.data as any).owner as string | null;
+    if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
+      return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
+    }
+
     // Check kingdom has enough gold
-    const resources = (kingdomResult.data.resources ?? {}) as { gold?: number; population?: number; mana?: number; land?: number };
+    const resources = (kingdomResult.data.resources ?? {}) as KingdomResources;
     const currentGold = resources.gold ?? 0;
     if (currentGold < 500) {
       return { success: false, error: `Insufficient gold: need 500, have ${currentGold}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
+    }
+
+    // Check and deduct turns
+    const currentTurns = resources.turns ?? 72;
+    const turnCost = 1;
+    if (currentTurns < turnCost) {
+      return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
     // Check for duplicate territory at same coordinates
@@ -50,18 +71,19 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
       filter: { kingdomId: { eq: kingdomId } }
     });
     const duplicate = existingTerritories.data?.find(
-      (t: any) => t.coordinates === coordStr
+      (t) => t.coordinates === coordStr
     );
     if (duplicate) {
       return { success: false, error: 'Territory already claimed at these coordinates', errorCode: ErrorCode.INVALID_PARAM };
     }
 
-    // Deduct gold cost
+    // Deduct gold cost and turns
     await client.models.Kingdom.update({
       id: kingdomId,
       resources: {
         ...resources,
-        gold: currentGold - 500
+        gold: currentGold - 500,
+        turns: Math.max(0, currentTurns - turnCost)
       }
     });
 
@@ -76,10 +98,10 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
       kingdomId
     });
 
+    log.info('territory-claimer', 'claimTerritory', { kingdomId, territoryName });
     return { success: true, territory: territoryName };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Territory claiming error:', { kingdomId, territoryName, error: message });
+    log.error('territory-claimer', error, { kingdomId, territoryName });
     return { success: false, error: 'Territory claim failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };

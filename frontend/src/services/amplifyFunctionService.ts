@@ -55,6 +55,17 @@ interface FunctionPayload {
   accepted?: boolean;
   treatyType?: string;
   terms?: unknown;
+  // Thievery / Faith / Bounty fields
+  targetId?: string;
+  alignment?: string;
+  abilityType?: string;
+  // Alliance treasury fields
+  allianceId?: string;
+  // Alliance manager fields
+  name?: string;
+  description?: string;
+  isPublic?: boolean;
+  targetKingdomId?: string;
 }
 
 type TerritoryPayload = FunctionPayload & BaseTerritoryPayload;
@@ -84,7 +95,7 @@ export class AmplifyFunctionService {
           case 'unit-trainer':
             return { success: true, units: '{}' };
           case 'resource-manager':
-            return { success: true, resources: '{}' };
+            return { success: true, newTurns: payload.amount ?? 1 };
           case 'combat-processor':
             return { success: true, result: 'victory', casualties: '{}' };
           case 'spell-processor':
@@ -99,6 +110,16 @@ export class AmplifyFunctionService {
             return { success: true, treaty: { id: `treaty-${Date.now()}`, status: 'proposed' } };
           case 'season-lifecycle':
             return { success: true, season: { id: 'demo-season', seasonNumber: 1, status: 'active', currentAge: 'early' } };
+          case 'thievery-processor':
+            return { success: true, result: JSON.stringify({ operation: payload.action || 'scout', succeeded: true, casualties: 5, goldStolen: payload.action === 'steal' ? 50000 : 0, intelligence: null }) };
+          case 'faith-processor':
+            return { success: true, result: JSON.stringify({ action: payload.action, alignment: payload.alignment, remainingFocusPoints: 50 }) };
+          case 'bounty-processor':
+            return { success: true, result: JSON.stringify({ action: payload.action ?? 'claim', goldReward: 500000, populationReward: 100 }) };
+          case 'alliance-treasury':
+            return { success: true, result: JSON.stringify({ contributed: payload.amount, newTreasuryBalance: 5000 }) };
+          case 'alliance-manager':
+            return { success: true, result: JSON.stringify({ action: payload.action, allianceId: `alliance-${Date.now()}` }) };
           default:
             return { success: true };
         }
@@ -117,7 +138,7 @@ export class AmplifyFunctionService {
         case 'resource-manager':
           return await client.mutations.updateResources({
             kingdomId: payload.kingdomId,
-            resources: payload.units || {}
+            turns: payload.amount ?? 1
           });
         case 'building-constructor':
           return await client.mutations.constructBuildings({
@@ -136,7 +157,8 @@ export class AmplifyFunctionService {
             attackerId: payload.attackerKingdomId || '',
             defenderId: payload.defenderKingdomId || '',
             attackType: payload.attackType || 'raid',
-            units: payload.units || {}
+            units: payload.units || {},
+            formationId: payload.formationId as string | undefined,
           });
         case 'season-manager':
           return await client.queries.getActiveSeason({});
@@ -198,6 +220,48 @@ export class AmplifyFunctionService {
           return await client.mutations.manageSeason({
             action: payload.action || 'check',
             seasonId: payload.seasonId
+          });
+        case 'thievery-processor':
+          return await client.mutations.executeThievery({
+            kingdomId: payload.kingdomId,
+            operation: (payload.action as string) || 'scout',
+            targetKingdomId: (payload.targetId as string) || ''
+          });
+        case 'faith-processor':
+          return await client.mutations.updateFaith({
+            kingdomId: payload.kingdomId,
+            action: (payload.action as string) || 'selectAlignment',
+            alignment: payload.alignment as string | undefined,
+            abilityType: payload.abilityType as string | undefined
+          });
+        case 'bounty-processor':
+          if (payload.action === 'complete') {
+            return await client.mutations.completeBounty({
+              kingdomId: payload.kingdomId,
+              targetId: (payload.targetId as string) || '',
+              landGained: (payload.amount as number) ?? 0
+            });
+          }
+          return await client.mutations.claimBounty({
+            kingdomId: payload.kingdomId,
+            targetId: (payload.targetId as string) || ''
+          });
+        case 'alliance-treasury':
+          return await client.mutations.manageAllianceTreasury({
+            allianceId: payload.allianceId || '',
+            kingdomId: payload.kingdomId,
+            action: payload.action || 'contribute',
+            amount: (payload.amount as number) ?? 0
+          });
+        case 'alliance-manager':
+          return await client.mutations.manageAlliance({
+            kingdomId: payload.kingdomId,
+            action: payload.action || 'create',
+            allianceId: payload.allianceId as string | undefined,
+            name: payload.name as string | undefined,
+            description: payload.description as string | undefined,
+            isPublic: payload.isPublic as boolean | undefined,
+            targetKingdomId: (payload.targetKingdomId ?? payload.targetId) as string | undefined,
           });
         default:
           throw new Error(`Unknown function: ${functionName}`);
@@ -358,6 +422,28 @@ export class AmplifyFunctionService {
       'foul_light': 8
     };
     return costs[spellId] || 1;
+  }
+
+  /**
+   * Refresh kingdom resources from the server and sync into kingdomStore.
+   * Call this after any Lambda that deducts turns server-side so the client
+   * stays consistent with the authoritative server state.
+   */
+  static async refreshKingdomResources(kingdomId: string): Promise<void> {
+    if (isDemoMode()) return;
+    try {
+      const { data } = await client.models.Kingdom.get({ id: kingdomId });
+      if (data?.resources) {
+        const resources = typeof data.resources === 'string'
+          ? JSON.parse(data.resources)
+          : data.resources;
+        // Lazy import to avoid circular dependency
+        const { useKingdomStore } = await import('../stores/kingdomStore');
+        useKingdomStore.getState().syncFromServer({ resources, units: [] });
+      }
+    } catch (e) {
+      console.error('[refreshKingdomResources] failed:', e);
+    }
   }
 
   /**

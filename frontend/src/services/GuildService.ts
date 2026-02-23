@@ -6,6 +6,7 @@
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { isDemoMode } from '../utils/authMode';
+import { AmplifyFunctionService } from './amplifyFunctionService';
 
 const client = generateClient<Schema>();
 
@@ -149,6 +150,7 @@ export class GuildService {
     tag: string;
     isPublic?: boolean;
     maxMembers?: number;
+    kingdomId?: string;
   }): Promise<GuildData> {
     if (isDemoMode()) {
       // Demo mode: simulate alliance creation
@@ -165,28 +167,34 @@ export class GuildService {
         totalPower: 1000,
         createdAt: new Date().toISOString()
       };
-      
+
       // Simulate delay
       await new Promise(resolve => setTimeout(resolve, 500));
       return newAlliance;
     }
 
     try {
-      const response = await client.models.Alliance.create({
+      const result = await AmplifyFunctionService.callFunction('alliance-manager', {
+        kingdomId: data.kingdomId || '',
+        action: 'create',
         name: data.name,
         description: data.description,
-        leaderId: 'current-user-id', // Will be replaced with actual user ID
-        memberIds: [],
+        isPublic: data.isPublic ?? true,
+      });
+      const parsed = JSON.parse((result as Record<string, string>).result || '{}');
+      return {
+        id: parsed.allianceId || `alliance-${Date.now()}`,
+        name: data.name,
+        description: data.description,
+        tag: data.tag.toUpperCase(),
+        leaderId: data.kingdomId || '',
+        leaderName: '',
         isPublic: data.isPublic ?? true,
         maxMembers: data.maxMembers ?? 20,
-        createdAt: new Date().toISOString(),
-      });
-
-      if (response.errors) {
-        throw new Error(`Failed to create guild: ${response.errors[0].message}`);
-      }
-
-      return response.data as unknown as GuildData;
+        memberCount: 1,
+        totalPower: 0,
+        createdAt: new Date().toISOString()
+      };
     } catch (error) {
       console.error('Error creating alliance:', error);
       throw error;
@@ -231,21 +239,10 @@ export class GuildService {
     }
 
     try {
-      // Update kingdom with alliance ID
-      const response = await client.models.Kingdom.update({
-        id: kingdomId,
-        guildId: guildId,
-      });
-
-      if (response.errors) {
-        throw new Error(`Failed to join guild: ${response.errors[0].message}`);
-      }
-
-      // Send system message to alliance
-      await this.sendGuildMessage({
-        guildId,
-        content: `A new kingdom has joined the alliance!`,
-        messageType: 'SYSTEM',
+      await AmplifyFunctionService.callFunction('alliance-manager', {
+        kingdomId,
+        action: 'join',
+        allianceId: guildId,
       });
     } catch (error) {
       console.error('Error joining alliance:', error);
@@ -256,7 +253,7 @@ export class GuildService {
   /**
    * Leave an alliance
    */
-  static async leaveGuild(kingdomId: string): Promise<void> {
+  static async leaveGuild(kingdomId: string, allianceId?: string): Promise<void> {
     if (isDemoMode()) {
       // Demo mode: simulate leaving
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -265,16 +262,36 @@ export class GuildService {
     }
 
     try {
-      const response = await client.models.Kingdom.update({
-        id: kingdomId,
-        guildId: null,
+      await AmplifyFunctionService.callFunction('alliance-manager', {
+        kingdomId,
+        action: 'leave',
+        allianceId,
       });
-
-      if (response.errors) {
-        throw new Error(`Failed to leave guild: ${response.errors[0].message}`);
-      }
     } catch (error) {
       console.error('Error leaving alliance:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Kick a member from the alliance
+   */
+  static async kickMember(kingdomId: string, allianceId: string, targetKingdomId: string): Promise<void> {
+    if (isDemoMode()) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('Demo mode: Kicked member', targetKingdomId);
+      return;
+    }
+
+    try {
+      await AmplifyFunctionService.callFunction('alliance-manager', {
+        kingdomId,
+        action: 'kick',
+        allianceId,
+        targetKingdomId,
+      });
+    } catch (error) {
+      console.error('Error kicking alliance member:', error);
       throw error;
     }
   }
@@ -286,6 +303,7 @@ export class GuildService {
     guildId: string;
     targetKingdomId: string;
     targetKingdomName: string;
+    kingdomId?: string;
     message?: string;
   }): Promise<GuildInvitation> {
     if (isDemoMode()) {
@@ -302,30 +320,31 @@ export class GuildService {
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         createdAt: new Date().toISOString()
       };
-      
+
       await new Promise(resolve => setTimeout(resolve, 500));
       return invitation;
     }
 
     try {
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
-
-      const response = await (client.models as unknown as Record<string, { create: (data: unknown) => Promise<unknown> }>).GuildInvitation.create({
-        guildId: data.guildId,
-        inviterId: 'current-user-id',
-        inviteeId: data.targetKingdomId,
-        status: 'pending',
-        message: data.message,
-        createdAt: new Date().toISOString(),
+      await AmplifyFunctionService.callFunction('alliance-manager', {
+        kingdomId: data.kingdomId || '',
+        action: 'invite',
+        allianceId: data.guildId,
+        targetKingdomId: data.targetKingdomId,
       });
 
-      const typedResponse = response as { errors?: Array<{ message: string }>; data?: unknown };
-      if (typedResponse.errors) {
-        throw new Error(`Failed to send invitation: ${typedResponse.errors[0].message}`);
-      }
-
-      return typedResponse.data as unknown as GuildInvitation;
+      return {
+        id: `invite-${Date.now()}`,
+        guildId: data.guildId,
+        targetKingdomId: data.targetKingdomId,
+        targetKingdomName: data.targetKingdomName,
+        invitedBy: data.kingdomId || '',
+        inviterName: '',
+        status: 'pending',
+        message: data.message,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date().toISOString()
+      };
     } catch (error) {
       console.error('Error sending invitation:', error);
       throw error;
@@ -372,6 +391,8 @@ export class GuildService {
   static async sendGuildMessage(data: {
     guildId: string;
     content: string;
+    senderId?: string;
+    senderName?: string;
     messageType?: 'CHAT' | 'ANNOUNCEMENT' | 'SYSTEM';
   }): Promise<GuildMessage> {
     if (isDemoMode()) {
@@ -379,22 +400,31 @@ export class GuildService {
       const message: GuildMessage = {
         id: `demo-msg-${Date.now()}`,
         guildId: data.guildId,
-        senderId: 'demo-player',
-        senderName: 'Demo Player',
+        senderId: data.senderId ?? 'demo-player',
+        senderName: data.senderName ?? 'Demo Player',
         content: data.content,
         messageType: data.messageType ?? 'CHAT',
         createdAt: new Date().toISOString()
       };
-      
+
       await new Promise(resolve => setTimeout(resolve, 300));
       return message;
     }
 
+    // Auth mode: persist to AllianceMessage in AppSync
     try {
-      const response = await (client.models as unknown as Record<string, { create: (data: unknown) => Promise<{ errors?: { message: string }[]; data?: unknown }> }>).GuildMessage.create({
+      const typeMap: Record<string, 'general' | 'announcement' | 'war' | 'diplomacy'> = {
+        CHAT: 'general',
+        ANNOUNCEMENT: 'announcement',
+        SYSTEM: 'general',
+      };
+      const appSyncType = typeMap[data.messageType ?? 'CHAT'] ?? 'general';
+
+      const response = await client.models.AllianceMessage.create({
         guildId: data.guildId,
-        senderId: 'current-user-id',
+        senderId: data.senderId ?? 'unknown',
         content: data.content,
+        type: appSyncType,
         createdAt: new Date().toISOString(),
       });
 
@@ -402,9 +432,18 @@ export class GuildService {
         throw new Error(`Failed to send message: ${response.errors[0].message}`);
       }
 
-      return response.data as unknown as GuildMessage;
+      const item = response.data;
+      return {
+        id: item?.id ?? `msg-${Date.now()}`,
+        guildId: item?.guildId ?? data.guildId,
+        senderId: item?.senderId ?? data.senderId ?? 'unknown',
+        senderName: data.senderName ?? item?.senderId ?? 'Unknown',
+        content: item?.content ?? data.content,
+        messageType: data.messageType ?? 'CHAT',
+        createdAt: item?.createdAt ?? new Date().toISOString(),
+      };
     } catch (error) {
-      console.error('Error sending alliance message:', error);
+      console.error('[GuildService] Error sending alliance message:', error);
       throw error;
     }
   }
@@ -419,8 +458,9 @@ export class GuildService {
       return DEMO_MESSAGES.filter(m => m.guildId === guildId);
     }
 
+    // Auth mode: fetch from AllianceMessage in AppSync
     try {
-      const response = await (client.models as unknown as Record<string, { list: (options: unknown) => Promise<{ errors?: { message: string }[]; data?: unknown }> }>).GuildMessage.list({
+      const response = await client.models.AllianceMessage.list({
         filter: { guildId: { eq: guildId } }
       });
 
@@ -428,9 +468,17 @@ export class GuildService {
         throw new Error(`Failed to fetch messages: ${response.errors[0].message}`);
       }
 
-      return response.data as unknown as GuildMessage[];
+      return (response.data ?? []).map(item => ({
+        id: item.id,
+        guildId: item.guildId,
+        senderId: item.senderId,
+        senderName: item.senderId, // AllianceMessage has no senderName; use senderId as fallback
+        content: item.content,
+        messageType: 'CHAT' as const,
+        createdAt: item.createdAt ?? new Date().toISOString(),
+      }));
     } catch (error) {
-      console.error('Error fetching alliance messages:', error);
+      console.error('[GuildService] Error fetching alliance messages:', error);
       throw error;
     }
   }
@@ -449,18 +497,29 @@ export class GuildService {
       };
     }
 
-    return (client.models as unknown as Record<string, { onCreate: (options: unknown) => { subscribe: (handlers: { next: (data: unknown) => void; error: (error: unknown) => void }) => { unsubscribe: () => void } } }>).GuildMessage.onCreate({
+    // Auth mode: subscribe via AllianceMessage.onCreate
+    const sub = client.models.AllianceMessage.onCreate({
       filter: { guildId: { eq: guildId } }
     }).subscribe({
-      next: (data: unknown) => {
-        if (data) {
-          onMessage(data as unknown as GuildMessage);
+      next: (item) => {
+        if (item) {
+          onMessage({
+            id: item.id,
+            guildId: item.guildId,
+            senderId: item.senderId,
+            senderName: item.senderId,
+            content: item.content,
+            messageType: 'CHAT',
+            createdAt: item.createdAt ?? new Date().toISOString(),
+          });
         }
       },
       error: (error: unknown) => {
-        console.error('Alliance message subscription error:', error);
+        console.error('[GuildService] Alliance message subscription error:', error);
       }
     });
+
+    return sub;
   }
 
   /**

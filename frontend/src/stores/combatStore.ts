@@ -15,6 +15,7 @@ import { RACES } from '../../__mocks__/@game-data/races';
 import { useSummonStore } from './useSummonStore';
 import { isDemoMode } from '../utils/authMode';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { achievementTriggers } from '../utils/achievementTriggers';
 
 interface Unit {
   id: string;
@@ -202,8 +203,17 @@ export const useCombatStore = create(
               resourcesGained: combatData.goldLooted ? { gold: combatData.goldLooted } : {}
             };
 
-            // Server already updated kingdom state, refresh from server
-            // For now, clear selected units and update battle history
+            // Server already updated kingdom state — refresh authoritative resources
+            void AmplifyFunctionService.refreshKingdomResources(kingdomId);
+
+            // Fire achievement triggers on confirmed server victory
+            if (battleReport.result === 'victory') {
+              achievementTriggers.onBattleWon();
+              if ((combatData.landGained || 0) > 0) {
+                achievementTriggers.onLandCaptured(combatData.landGained);
+              }
+            }
+
             set((state) => ({
               currentBattle: battleReport,
               battleHistory: [battleReport, ...state.battleHistory.slice(0, 49)],

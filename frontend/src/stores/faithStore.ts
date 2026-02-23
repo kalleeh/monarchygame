@@ -17,12 +17,17 @@ import {
   FAITH_ALIGNMENTS,
   FOCUS_MECHANICS,
 } from '../../../shared/mechanics/faith-focus-mechanics';
+import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { isDemoMode } from '../utils/authMode';
 
 type FaithAlignmentType = 'angelique' | 'neutral' | 'elemental' | null;
 
 export const useFaithStore = create(
   combine(
     {
+      // Kingdom identity
+      kingdomId: '' as string,
+
       // Faith alignment state
       alignment: null as FaithAlignmentType,
       faithLevel: 0,
@@ -50,7 +55,7 @@ export const useFaithStore = create(
        * Initialize faith system for a given race.
        * Checks available alignments and sets a default (neutral if compatible, else first compatible).
        */
-      initializeFaith: (race: string) => {
+      initializeFaith: (race: string, kingdomId?: string) => {
         // Determine which alignments this race can use
         const availableAlignments = Object.keys(FAITH_ALIGNMENTS).filter((alignmentId) =>
           canUseFaithAlignment(race, alignmentId)
@@ -68,6 +73,7 @@ export const useFaithStore = create(
         const regenRate = calculateFocusGeneration(race);
 
         set({
+          kingdomId: kingdomId ?? '',
           alignment: defaultAlignment,
           faithLevel: 0,
           faithPoints: 0,
@@ -97,6 +103,16 @@ export const useFaithStore = create(
         }
 
         set({ alignment, error: null });
+
+        // In auth mode, persist alignment selection to the backend
+        const { kingdomId } = get();
+        if (!isDemoMode() && kingdomId) {
+          AmplifyFunctionService.callFunction('faith-processor', {
+            kingdomId,
+            action: 'selectAlignment',
+            alignment,
+          }).catch(err => console.error('[faithStore] selectAlignment Lambda failed:', err));
+        }
       },
 
       /**
@@ -170,6 +186,16 @@ export const useFaithStore = create(
           ],
           error: null,
         }));
+
+        // In auth mode, persist focus ability usage to the backend
+        const { kingdomId } = get();
+        if (!isDemoMode() && kingdomId) {
+          AmplifyFunctionService.callFunction('faith-processor', {
+            kingdomId,
+            action: 'useFocusAbility',
+            abilityType,
+          }).catch(err => console.error('[faithStore] useFocusAbility Lambda failed:', err));
+        }
 
         return { success: true, effect };
       },

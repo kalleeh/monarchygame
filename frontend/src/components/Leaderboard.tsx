@@ -162,7 +162,22 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
               <div className="territory-header">
                 <span className="territory-icon">{isCurrentKingdom ? '⭐' : '👑'}</span>
                 <div className="territory-info">
-                  <h4>#{index + 1} {kingdom.name} {isCurrentKingdom ? '(You)' : ''}</h4>
+                  <h4>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: kingdom.isOnline ? '#22c55e' : '#64748b',
+                        boxShadow: kingdom.isOnline ? '0 0 4px #22c55e' : 'none',
+                        marginRight: '6px',
+                        verticalAlign: 'middle',
+                      }}
+                      title={kingdom.isOnline ? 'Online' : 'Offline'}
+                    />
+                    #{index + 1} {kingdom.name} {isCurrentKingdom ? '(You)' : ''}
+                  </h4>
                   <span className="territory-type">{kingdom.race}</span>
                 </div>
               </div>
@@ -182,6 +197,22 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
                   </span>
                 </div>
               </div>
+
+              {kingdom.stats.previousSeasonRank != null && (
+                <div className="territory-production">
+                  <div className="production-label">
+                    Last Season{kingdom.stats.previousSeasonNumber != null ? ` #${kingdom.stats.previousSeasonNumber}` : ''}
+                  </div>
+                  <div className="production-items">
+                    <span className="production-item">
+                      Rank #{kingdom.stats.previousSeasonRank}
+                      {kingdom.stats.previousSeasonNetworth != null && (
+                        <> &mdash; {(kingdom.stats.previousSeasonNetworth / 1000000).toFixed(2)}M NW</>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}

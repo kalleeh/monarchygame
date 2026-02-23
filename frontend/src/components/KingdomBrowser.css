@@ -87,6 +87,25 @@
   border-radius: 999px;
 }
 
+.presence-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.presence-dot--online {
+  background: #22c55e;
+  box-shadow: 0 0 4px #22c55e;
+}
+
+.presence-dot--offline {
+  background: #64748b;
+}
+
 .kingdom-stats-row {
   display: flex;
   gap: 1.5rem;

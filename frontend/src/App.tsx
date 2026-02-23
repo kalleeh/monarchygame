@@ -1,14 +1,11 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
 import { Amplify } from 'aws-amplify';
-import { Authenticator, ThemeProvider } from '@aws-amplify/ui-react';
 import { generateClient } from 'aws-amplify/data';
 import { Toaster } from 'react-hot-toast';
 import { fetchUserAttributes, fetchAuthSession } from 'aws-amplify/auth';
 import type { AuthUser } from 'aws-amplify/auth';
-import '@aws-amplify/ui-react/styles.css';
 import outputs from './amplify-config';
-import { monarchyAuthTheme, monarchyFormFields, monarchyAuthComponents } from './themes/authenticatorTheme';
 import { AppRouter } from './AppRouter';
 import { RACES } from './shared-races';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
@@ -29,6 +26,10 @@ import './styles/game-pages.css';
 import type { Schema } from '../../amplify/data/resource';
 import { TutorialOverlay } from './components/tutorial/TutorialOverlay';
 import { useInitializeAchievements } from './hooks/useInitializeAchievements';
+
+// @aws-amplify/ui-react (Authenticator + ThemeProvider + CSS) is lazy-loaded
+// so it doesn't ship in the initial bundle for the welcome / demo-mode pages.
+const AuthProvider = lazy(() => import('./AuthProvider'));
 
 Amplify.configure(outputs);
 const client = generateClient<Schema>();
@@ -403,18 +404,13 @@ function AppContent() {
   };
 
   return (
-    <ThemeProvider theme={monarchyAuthTheme}>
-      <Authenticator
-        formFields={monarchyFormFields}
-        components={monarchyAuthComponents}
-        signUpAttributes={['email', 'preferred_username']}
-        loginMechanisms={['email']}
-      >
+    <Suspense fallback={<div className="loading"><p>Loading...</p></div>}>
+      <AuthProvider>
         {({ signOut, user }) => (
           <AuthenticatedApp user={user} signOut={signOut} />
         )}
-      </Authenticator>
-    </ThemeProvider>
+      </AuthProvider>
+    </Suspense>
   );
 }
 

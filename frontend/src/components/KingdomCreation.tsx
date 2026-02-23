@@ -235,4 +235,5 @@ const KingdomCreation: React.FC<KingdomCreationProps> = ({ onKingdomCreated }) =
   );
 };
 
+export { KingdomCreation };
 export default KingdomCreation;

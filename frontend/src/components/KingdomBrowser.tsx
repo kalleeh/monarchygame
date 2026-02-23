@@ -111,7 +111,13 @@ const KingdomBrowser: React.FC<KingdomBrowserProps> = ({
         {filtered.map(kingdom => (
           <div key={kingdom.id} className="browser-kingdom-card">
             <div className="kingdom-main-info">
-              <h3>{kingdom.name}</h3>
+              <h3>
+                <span
+                  className={kingdom.isOnline ? 'presence-dot presence-dot--online' : 'presence-dot presence-dot--offline'}
+                  title={kingdom.isOnline ? 'Online' : 'Offline'}
+                />
+                {kingdom.name}
+              </h3>
               <span className="kingdom-race">{kingdom.race}</span>
               {kingdom.isOnline && <span className="online-badge">Online</span>}
             </div>

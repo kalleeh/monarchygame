@@ -116,8 +116,9 @@ export function initializeGameMechanics(): GameMechanics {
     calculateLandGained: (attackerOffense: number, defenderDefense: number, targetLand: number) => {
       const ratio = attackerOffense / Math.max(defenderDefense, 1);
       // Land gain range: 6.79%-7.35% matching combat-mechanics.ts LAND_ACQUISITION
-      if (ratio >= 2.0) return Math.floor(targetLand * (0.070 + Math.random() * 0.0035)); // With ease: 7.0%-7.35%
-      if (ratio >= 1.2) return Math.floor(targetLand * (0.0679 + Math.random() * 0.0021)); // Good fight: 6.79%-7.0%
+      // Uses midpoint of each range to ensure deterministic results for the same inputs
+      if (ratio >= 2.0) return Math.floor(targetLand * 0.07175); // With ease: midpoint of 7.0%-7.35%
+      if (ratio >= 1.2) return Math.floor(targetLand * 0.06895); // Good fight: midpoint of 6.79%-7.0%
       return 0; // Failed attack - no land gained
     },
     

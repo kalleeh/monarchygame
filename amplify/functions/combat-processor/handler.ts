@@ -3,11 +3,21 @@ import { generateClient } from 'aws-amplify/data';
 import { calculateCombatResult } from '../../../shared/combat/combatCache';
 import type { KingdomResources, CombatResultData } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
+import { log } from '../logger';
 
 const client = generateClient<Schema>();
 
+// Formation bonuses — applied as an offense multiplier
+const FORMATION_BONUSES: Record<string, number> = {
+  'aggressive': 1.15,    // +15% offense
+  'defensive': 0.9,      // -10% offense (tradeoff: less vulnerable)
+  'flanking': 1.10,      // +10% offense
+  'siege': 1.20,         // +20% offense vs fortified targets
+  'standard': 1.0,       // no bonus
+};
+
 export const handler: Schema["processCombat"]["functionHandler"] = async (event) => {
-  const { attackerId, defenderId, attackType, units } = event.arguments;
+  const { attackerId, defenderId, attackType, units, formationId } = event.arguments;
 
   try {
     if (!attackerId || !defenderId) {
@@ -22,6 +32,12 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       return { success: false, error: 'No units specified for attack', errorCode: ErrorCode.MISSING_PARAMS };
     }
 
+    // Verify caller identity
+    const identity = event.identity as { sub?: string; username?: string } | null;
+    if (!identity?.sub) {
+      return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
+    }
+
     const [attacker, defender] = await Promise.all([
       client.models.Kingdom.get({ id: attackerId }),
       client.models.Kingdom.get({ id: defenderId })
@@ -34,6 +50,12 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       return { success: false, error: 'Defender kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
+    // Verify kingdom ownership (attacker only)
+    const attackerOwnerField = (attacker.data as any).owner as string | null;
+    if (!attackerOwnerField || (!attackerOwnerField.includes(identity.sub) && !attackerOwnerField.includes(identity.username ?? ''))) {
+      return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
+    }
+
     const attackerUnits: Record<string, number> = typeof units === 'string' ? JSON.parse(units) : units;
     const ownedUnits = (attacker.data.totalUnits ?? {}) as Record<string, number>;
 
@@ -44,9 +66,17 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       }
     }
 
+    // Check and deduct turns
+    const attackerResources = (attacker.data.resources ?? {}) as KingdomResources;
+    const currentTurns = attackerResources.turns ?? 72;
+    const turnCost = 4;
+    if (currentTurns < turnCost) {
+      return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
+    }
+
     // Enforce war declaration requirement for repeated attacks
     // After 3 attacks against the same defender in a season, a formal WarDeclaration is required
-    const seasonId = (attacker.data as any)?.seasonId;
+    const seasonId = attacker.data?.seasonId;
 
     if (seasonId) {
       // Count recent battle reports between attacker and defender this season
@@ -86,8 +116,27 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     const defenderUnits = (defender.data.totalUnits ?? {}) as Record<string, number>;
     const defenderLand = defenderResources.land ?? 1000;
 
+    // Apply formation bonus by scaling effective attacker unit counts
+    const formationMultiplier = formationId ? (FORMATION_BONUSES[formationId] ?? 1.0) : 1.0;
+    let effectiveAttackerUnits: Record<string, number> = {};
+    for (const [unitType, count] of Object.entries(attackerUnits)) {
+      effectiveAttackerUnits[unitType] = count * formationMultiplier;
+    }
+
+    // Age combat bonus — more experienced kingdoms fight better in later ages
+    const AGE_COMBAT_BONUSES: Record<string, number> = {
+      'early': 1.0,
+      'middle': 1.05,   // 5% combat bonus
+      'late': 1.10,     // 10% combat bonus
+    };
+    const attackerAge = (attacker.data.currentAge as string) ?? 'early';
+    const ageCombatBonus = AGE_COMBAT_BONUSES[attackerAge] ?? 1.0;
+    effectiveAttackerUnits = Object.fromEntries(
+      Object.entries(effectiveAttackerUnits).map(([k, v]) => [k, Math.floor(v * ageCombatBonus)])
+    );
+
     const combatResult = calculateCombatResult(
-      attackerUnits,
+      effectiveAttackerUnits,
       defenderUnits,
       defenderLand
     ) as CombatResultData;
@@ -128,7 +177,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     }
 
     // Deduct casualties from both sides' units
-    const casualties = combatResult.casualties || {} as any;
+    const casualties: CombatResultData['casualties'] = combatResult.casualties || { attacker: {}, defender: {} };
     const attackerCasualties = casualties.attacker || {};
     const defenderCasualties = casualties.defender || {};
 
@@ -143,8 +192,6 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     }
 
     if (combatResult.success && combatResult.landGained > 0) {
-      const attackerResources = (attacker.data.resources ?? {}) as KingdomResources;
-
       await Promise.all([
         client.models.Kingdom.update({
           id: defenderId,
@@ -160,16 +207,21 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
           resources: {
             ...attackerResources,
             land: (attackerResources.land ?? 1000) + combatResult.landGained,
-            gold: (attackerResources.gold ?? 0) + combatResult.goldLooted
+            gold: (attackerResources.gold ?? 0) + combatResult.goldLooted,
+            turns: Math.max(0, currentTurns - turnCost)
           },
           totalUnits: updatedAttackerUnits
         })
       ]);
     } else {
-      // Even if combat was not successful, still deduct casualties
+      // Even if combat was not successful, still deduct casualties and turns
       await Promise.all([
         client.models.Kingdom.update({
           id: attackerId,
+          resources: {
+            ...attackerResources,
+            turns: Math.max(0, currentTurns - turnCost)
+          },
           totalUnits: updatedAttackerUnits
         }),
         client.models.Kingdom.update({
@@ -179,6 +231,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       ]);
     }
 
+    log.info('combat-processor', 'processCombat', { attackerId, defenderId, attackType, result: combatResult.result });
     return {
       success: true,
       result: JSON.stringify({
@@ -187,8 +240,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       })
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Combat processing error:', { attackerId, defenderId, error: message });
+    log.error('combat-processor', error, { attackerId, defenderId });
     return { success: false, error: 'Combat processing failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };

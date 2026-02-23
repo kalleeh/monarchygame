@@ -1,12 +1,55 @@
 import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { ErrorCode } from '../../../shared/types/kingdom';
+import { log } from '../logger';
 
 const client = generateClient<Schema>();
 
 const SEASON_DURATION_WEEKS = 6;
 const AGE_DURATION_WEEKS = 2;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Calculate networth for ranking: land * 1000 + gold */
+function calculateNetworth(resources: Record<string, number>): number {
+  return (resources.land ?? 0) * 1000 + (resources.gold ?? 0);
+}
+
+/**
+ * Rank all active kingdoms by networth and store the result in each kingdom's
+ * stats JSON as { previousSeasonRank, previousSeasonNetworth, previousSeasonNumber }.
+ * Called when any season transitions to "completed".
+ */
+async function recordSeasonRankings(seasonNumber: number): Promise<void> {
+  const { data: kingdoms } = await client.models.Kingdom.list({
+    filter: { isActive: { eq: true } }
+  });
+  if (!kingdoms || kingdoms.length === 0) return;
+
+  // Parse resources (stored as JSON string in DB) and compute networth
+  const ranked = kingdoms
+    .map(k => {
+      const resources = typeof k.resources === 'string'
+        ? (JSON.parse(k.resources) as Record<string, number>)
+        : ((k.resources ?? {}) as Record<string, number>);
+      return { id: k.id, networth: calculateNetworth(resources), stats: k.stats };
+    })
+    .sort((a, b) => b.networth - a.networth);
+
+  // Write rank back to each kingdom's stats JSON
+  for (let i = 0; i < ranked.length; i++) {
+    const { id, networth, stats } = ranked[i];
+    const existingStats = typeof stats === 'string'
+      ? (JSON.parse(stats) as Record<string, unknown>)
+      : ((stats ?? {}) as Record<string, unknown>);
+    const updatedStats = {
+      ...existingStats,
+      previousSeasonRank: i + 1,
+      previousSeasonNetworth: networth,
+      previousSeasonNumber: seasonNumber,
+    };
+    await client.models.Kingdom.update({ id, stats: updatedStats });
+  }
+}
 
 type GameAge = 'early' | 'middle' | 'late';
 
@@ -31,6 +74,12 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
   const args = event.arguments;
 
   try {
+    // Verify caller identity
+    const identity = event.identity as { sub?: string; username?: string } | null;
+    if (!identity?.sub) {
+      return JSON.stringify({ success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED });
+    }
+
     const action = args.action;
 
     switch (action) {
@@ -57,6 +106,7 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
           participantCount: 0
         });
 
+        log.info('season-lifecycle', 'createSeason', { seasonNumber: maxNumber + 1 });
         return JSON.stringify({
           success: true,
           season: {
@@ -84,6 +134,9 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
 
           // Check expiry
           if (isSeasonExpired(startDate)) {
+            // Record final rankings before closing the season
+            await recordSeasonRankings(season.seasonNumber);
+
             await client.models.GameSeason.update({
               id: season.id,
               status: 'completed',
@@ -129,6 +182,7 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
           }
         }
 
+        log.info('season-lifecycle', 'checkSeasons', { processedCount: results.length });
         return JSON.stringify({ success: true, processed: results });
       }
 
@@ -144,12 +198,16 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
           return JSON.stringify({ success: false, error: 'Season not found', errorCode: ErrorCode.NOT_FOUND });
         }
 
+        // Record final rankings before closing the season
+        await recordSeasonRankings(season.seasonNumber);
+
         await client.models.GameSeason.update({
           id: seasonId,
           status: 'completed',
           endDate: new Date().toISOString()
         });
 
+        log.info('season-lifecycle', 'endSeason', { seasonId });
         return JSON.stringify({ success: true, seasonId, action: 'force_ended' });
       }
 
@@ -157,8 +215,7 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
         return JSON.stringify({ success: false, error: `Unknown action: ${action}`, errorCode: ErrorCode.INVALID_PARAM });
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Season lifecycle error:', message);
+    log.error('season-lifecycle', error, { action: args.action });
     return JSON.stringify({ success: false, error: 'Season lifecycle operation failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }
 };

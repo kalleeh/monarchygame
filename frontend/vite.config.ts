@@ -24,6 +24,21 @@ export default defineConfig({
     },
     extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-router': ['react-router-dom'],
+          'vendor-aws-core': ['aws-amplify'],
+          'vendor-aws-ui': ['@aws-amplify/ui-react'],
+          'vendor-charts': ['recharts'],
+          'vendor-spring': ['@react-spring/web'],
+          'vendor-flow': ['@xyflow/react'],
+        }
+      }
+    }
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],

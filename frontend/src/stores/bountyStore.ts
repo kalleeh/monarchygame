@@ -9,6 +9,8 @@ import { calculateBountyValue, identifyOptimalBountyTargets, BOUNTY_MECHANICS } 
 import type { BountyTarget, BountyReward } from '../../../shared/mechanics/bounty-mechanics';
 import { useKingdomStore } from './kingdomStore';
 import type { AIKingdom } from './aiKingdomStore';
+import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { isDemoMode } from '../utils/authMode';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -215,6 +217,16 @@ export const useBountyStore = create<BountyState>((set, get) => ({
 
     saveBounties(updatedBounties);
     set({ availableBounties: updatedBounties, error: null });
+
+    // In auth mode, persist the claim to the backend
+    const kingdomId = useKingdomStore.getState().kingdomId;
+    if (!isDemoMode() && kingdomId) {
+      AmplifyFunctionService.callFunction('bounty-processor', {
+        kingdomId,
+        action: 'claim',
+        targetId: bounty.target.kingdomId,
+      }).catch(err => console.error('[bountyStore] claimBounty Lambda failed:', err));
+    }
   },
 
   // -----------------------------------------------------------------------
@@ -277,6 +289,17 @@ export const useBountyStore = create<BountyState>((set, get) => ({
       completedBounties: updatedCompleted,
       error: null,
     });
+
+    // In auth mode, persist the completion to the backend
+    const kingdomId = useKingdomStore.getState().kingdomId;
+    if (!isDemoMode() && kingdomId) {
+      AmplifyFunctionService.callFunction('bounty-processor', {
+        kingdomId,
+        action: 'complete',
+        targetId,
+        amount: landGained,
+      }).catch(err => console.error('[bountyStore] completeBounty Lambda failed:', err));
+    }
   },
 
   // -----------------------------------------------------------------------

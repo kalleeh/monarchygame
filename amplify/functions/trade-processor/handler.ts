@@ -2,21 +2,31 @@ import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import type { KingdomResources } from '../../../shared/types/kingdom';
+import { log } from '../logger';
 
 const client = generateClient<Schema>();
 
 const TRADE_OFFER_EXPIRY_HOURS = 48;
 
+type CallerIdentity = { sub: string; username?: string };
+
 export const handler: Schema["createTradeOffer"]["functionHandler"] = async (event) => {
   const args = event.arguments;
 
   try {
+    // Verify caller identity
+    const identity = event.identity as { sub?: string; username?: string } | null;
+    if (!identity?.sub) {
+      return JSON.stringify({ success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED });
+    }
+    const callerIdentity: CallerIdentity = { sub: identity.sub, username: identity.username };
+
     // Route based on arguments
     if ('offerId' in args && 'buyerId' in args) {
-      return await handleAcceptOffer(args as { offerId: string; buyerId: string });
+      return await handleAcceptOffer(args as { offerId: string; buyerId: string }, callerIdentity);
     }
     if ('offerId' in args && 'sellerId' in args) {
-      return await handleCancelOffer(args as { offerId: string; sellerId: string });
+      return await handleCancelOffer(args as { offerId: string; sellerId: string }, callerIdentity);
     }
 
     // createTradeOffer
@@ -40,6 +50,12 @@ export const handler: Schema["createTradeOffer"]["functionHandler"] = async (eve
     const { data: seller } = await client.models.Kingdom.get({ id: sellerId });
     if (!seller) {
       return JSON.stringify({ success: false, error: 'Seller kingdom not found', errorCode: ErrorCode.NOT_FOUND });
+    }
+
+    // Verify kingdom ownership (seller)
+    const sellerOwnerField = (seller as any).owner as string | null;
+    if (!sellerOwnerField || (!sellerOwnerField.includes(callerIdentity.sub) && !sellerOwnerField.includes(callerIdentity.username ?? ''))) {
+      return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
     }
 
     const sellerResources = (seller.resources ?? {}) as KingdomResources;
@@ -71,6 +87,7 @@ export const handler: Schema["createTradeOffer"]["functionHandler"] = async (eve
       expiresAt
     });
 
+    log.info('trade-processor', 'createTradeOffer', { sellerId, resourceType, quantity, pricePerUnit });
     return JSON.stringify({
       success: true,
       offer: {
@@ -85,13 +102,12 @@ export const handler: Schema["createTradeOffer"]["functionHandler"] = async (eve
       }
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Trade processor error:', message);
+    log.error('trade-processor', error);
     return JSON.stringify({ success: false, error: 'Trade operation failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }
 };
 
-async function handleAcceptOffer(args: { offerId: string; buyerId: string }): Promise<string> {
+async function handleAcceptOffer(args: { offerId: string; buyerId: string }, callerIdentity: CallerIdentity): Promise<string> {
   const { offerId, buyerId } = args;
 
   if (!offerId || !buyerId) {
@@ -131,6 +147,12 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }): Pr
   const { data: buyer } = await client.models.Kingdom.get({ id: buyerId });
   if (!buyer) {
     return JSON.stringify({ success: false, error: 'Buyer kingdom not found', errorCode: ErrorCode.NOT_FOUND });
+  }
+
+  // Verify kingdom ownership (buyer)
+  const buyerOwnerField = (buyer as any).owner as string | null;
+  if (!buyerOwnerField || (!buyerOwnerField.includes(callerIdentity.sub) && !buyerOwnerField.includes(callerIdentity.username ?? ''))) {
+    return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
   }
 
   const buyerResources = (buyer.resources ?? {}) as KingdomResources;
@@ -174,7 +196,7 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }): Pr
   });
 }
 
-async function handleCancelOffer(args: { offerId: string; sellerId: string }): Promise<string> {
+async function handleCancelOffer(args: { offerId: string; sellerId: string }, callerIdentity: CallerIdentity): Promise<string> {
   const { offerId, sellerId } = args;
 
   if (!offerId || !sellerId) {
@@ -197,6 +219,12 @@ async function handleCancelOffer(args: { offerId: string; sellerId: string }): P
   // Refund escrowed resources
   const { data: seller } = await client.models.Kingdom.get({ id: sellerId });
   if (seller) {
+    // Verify kingdom ownership (seller cancelling their own offer)
+    const sellerOwnerField = (seller as any).owner as string | null;
+    if (!sellerOwnerField || (!sellerOwnerField.includes(callerIdentity.sub) && !sellerOwnerField.includes(callerIdentity.username ?? ''))) {
+      return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
+    }
+
     const sellerResources = (seller.resources ?? {}) as Record<string, number>;
     sellerResources[offer.resourceType] = (sellerResources[offer.resourceType] ?? 0) + offer.quantity;
     await client.models.Kingdom.update({ id: sellerId, resources: sellerResources });

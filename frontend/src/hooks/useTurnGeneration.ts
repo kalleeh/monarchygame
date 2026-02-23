@@ -43,7 +43,9 @@ export const useTurnGeneration = ({
   });
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastGenerationRef = useRef<number>(Date.now());
+  const lastGenerationRef = useRef<number>(
+    parseInt(localStorage.getItem(`turnTimer-last-${kingdomId}`) || '') || Date.now()
+  );
 
   const overflowWarningShownRef = useRef(false);
 
@@ -78,15 +80,35 @@ export const useTurnGeneration = ({
     try {
       const result = await AmplifyFunctionService.updateResources({
         kingdomId,
-        resourceType: 'generate_turns',
-        operation: 'generate',
         amount: turnsAvailable
       });
 
       if ((result as { success: boolean }).success) {
         const newTurns = (result as { newTurns?: number }).newTurns || turnsAvailable;
         lastGenerationRef.current = Date.now();
-        
+        localStorage.setItem(`turnTimer-last-${kingdomId}`, String(Date.now()));
+
+        // Check if an encamp period has ended and apply bonus turns
+        let bonusFromEncamp = 0;
+        try {
+          const encampRaw = localStorage.getItem(`encamp-${kingdomId}`);
+          if (encampRaw) {
+            const encampData = JSON.parse(encampRaw) as { endTime: number; bonusTurns: number };
+            if (Date.now() >= encampData.endTime) {
+              bonusFromEncamp = encampData.bonusTurns;
+              localStorage.removeItem(`encamp-${kingdomId}`);
+              ToastService.success(
+                `Encamp bonus applied! +${bonusFromEncamp} bonus turns added.`
+              );
+            }
+          }
+        } catch {
+          // Malformed encamp data — ignore and clear it
+          localStorage.removeItem(`encamp-${kingdomId}`);
+        }
+
+        const totalTurns = newTurns + bonusFromEncamp;
+
         setState(prev => ({
           ...prev,
           isGenerating: false,
@@ -95,9 +117,9 @@ export const useTurnGeneration = ({
           nextTurnIn: TURN_INTERVAL / 1000
         }));
 
-        onTurnGenerated?.(newTurns);
-        
-        return { success: true, turns: newTurns };
+        onTurnGenerated?.(totalTurns);
+
+        return { success: true, turns: totalTurns };
       }
 
       setState(prev => ({ ...prev, isGenerating: false }));

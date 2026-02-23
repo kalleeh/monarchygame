@@ -1,5 +1,6 @@
 /* eslint-disable */
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import type { KingdomResources } from '../types/amplify';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
@@ -12,6 +13,7 @@ import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { useSummonStore } from '../stores/useSummonStore';
 import { AIActionService } from '../services/aiActionService';
 import { achievementTriggers } from '../utils/achievementTriggers';
+import { useAchievementStore } from '../stores/achievementStore';
 import { RACES } from '../../__mocks__/@game-data/races';
 import { Tutorial } from './ui/Tutorial';
 import { useTutorial } from '../hooks/useTutorial';
@@ -19,7 +21,7 @@ import { useTutorialStore } from '../stores/tutorialStore';
 import { KINGDOM_DASHBOARD_TUTORIAL } from '../data/tutorialSteps';
 import { TurnTimer } from './ui/TurnTimer';
 import { DemoTimeControl } from './ui/DemoTimeControl';
-import { calculateTimeTravel, calculateGoldIncome, type BuildingCounts } from '../utils/resourceCalculations';
+import { calculateTimeTravel, calculateGoldIncome, calculatePopulationGrowth, type BuildingCounts } from '../utils/resourceCalculations';
 import { calculateBRT, getBuildingName } from '../utils/buildingMechanics';
 import { RESOURCE_GENERATION } from '../constants/gameConfig';
 import { useNavigate } from 'react-router-dom';
@@ -27,6 +29,104 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 import { BalanceTestRunner } from './BalanceTestRunner';
 import { useRestorationStore } from '../stores/restorationStore';
 import { isDemoMode } from '../utils/authMode';
+import { subscriptionManager } from '../services/subscriptionManager';
+import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
+import { NotificationCenter } from './ui/NotificationCenter';
+
+// EncampPanel — shows active encamp countdown or the two encamp buttons
+const EncampPanel = memo(({
+  kingdomId,
+  onEncamp
+}: {
+  kingdomId: string;
+  onEncamp: (action: 'encamp', duration: 16 | 24) => void;
+}) => {
+  const [encampEndTime, setEncampEndTime] = useState<number | null>(null);
+  const [encampBonusTurns, setEncampBonusTurns] = useState<number>(0);
+  const [now, setNow] = useState(() => Date.now());
+
+  // Poll localStorage every second to update countdown
+  useEffect(() => {
+    const tick = () => {
+      try {
+        const raw = localStorage.getItem(`encamp-${kingdomId}`);
+        if (raw) {
+          const data = JSON.parse(raw) as { endTime: number; bonusTurns: number };
+          setEncampEndTime(data.endTime);
+          setEncampBonusTurns(data.bonusTurns);
+        } else {
+          setEncampEndTime(null);
+          setEncampBonusTurns(0);
+        }
+      } catch {
+        setEncampEndTime(null);
+        setEncampBonusTurns(0);
+      }
+      setNow(Date.now());
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [kingdomId]);
+
+  const isActive = encampEndTime !== null && now < encampEndTime;
+
+  const formatCountdown = (ms: number) => {
+    const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    return `${h}h ${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`;
+  };
+
+  return (
+    <div className="encamp-panel" style={{
+      marginTop: '1rem',
+      padding: '1rem',
+      background: 'rgba(78, 205, 196, 0.08)',
+      border: '1px solid rgba(78, 205, 196, 0.25)',
+      borderRadius: '8px'
+    }}>
+      <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem', color: 'var(--primary)' }}>
+        Encamp
+      </h4>
+      {isActive ? (
+        <div>
+          <p style={{ margin: '0 0 0.25rem', fontSize: '0.85rem', color: '#a0a0a0' }}>
+            Kingdom is resting — {formatCountdown(encampEndTime! - now)} remaining
+          </p>
+          <p style={{ margin: 0, fontSize: '0.85rem', color: '#4ecdc4' }}>
+            +{encampBonusTurns} bonus turns when you return
+          </p>
+        </div>
+      ) : (
+        <div>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#a0a0a0' }}>
+            Rest your troops to earn bonus turns when you return
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              className="resource-btn"
+              onClick={() => onEncamp('encamp', 16)}
+              style={{ flex: '1 1 auto' }}
+              title={`Encamp for 16 hours to receive +${TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_16_HOURS.bonusTurns} bonus turns`}
+            >
+              Encamp 16h (+{TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_16_HOURS.bonusTurns} turns)
+            </button>
+            <button
+              className="resource-btn"
+              onClick={() => onEncamp('encamp', 24)}
+              style={{ flex: '1 1 auto' }}
+              title={`Encamp for 24 hours to receive +${TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_24_HOURS.bonusTurns} bonus turns`}
+            >
+              Encamp 24h (+{TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_24_HOURS.bonusTurns} turns)
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
 
 interface KingdomDashboardProps {
   kingdom: Schema['Kingdom']['type'];
@@ -149,6 +249,7 @@ function KingdomDashboard({
   const setResources = useKingdomStore((state) => state.setResources);
   const addGold = useKingdomStore((state) => state.addGold);
   const addTurns = useKingdomStore((state) => state.addTurns);
+  const updateResources = useKingdomStore((state) => state.updateResources);
   
   // Territory store
   const ownedTerritories = useTerritoryStore((state) => state.ownedTerritories);
@@ -164,6 +265,11 @@ function KingdomDashboard({
   const prohibitedActions = useRestorationStore((state) => state.prohibitedActions);
   const getRemainingHours = useRestorationStore((state) => state.getRemainingHours);
   const updateRestoration = useRestorationStore((state) => state.updateRestoration);
+
+  // Helper: is a named action prohibited by restoration?
+  const isActionProhibited = useCallback((action: string) => {
+    return isInRestoration && prohibitedActions.includes(action);
+  }, [isInRestoration, prohibitedActions]);
 
   const [loading, setLoading] = useState(true);
   const [resourceLoading, setResourceLoading] = useState(false);
@@ -217,6 +323,12 @@ function KingdomDashboard({
     };
   }, [resources.land, kingdom.buildings]);
 
+  // Flush any pending DB sync before navigating away from the dashboard
+  const handleBack = useCallback(() => {
+    void useKingdomStore.getState().syncToDatabase();
+    onBack();
+  }, [onBack]);
+
   // Memoized event handlers for performance
   const handleShowBalanceTester = useCallback(() => {
     setShowBalanceTester(true);
@@ -269,11 +381,16 @@ function KingdomDashboard({
   // Initialize kingdom store ONCE on first mount only
   useEffect(() => {
     const currentKingdomId = useKingdomStore.getState().kingdomId;
-    
+
     // Only initialize if this is a new kingdom or first load
     if (currentKingdomId !== kingdom.id) {
       setKingdomId(kingdom.id);
       setResources(kingdom.resources as KingdomResources);
+
+      // Load achievements from server in auth mode
+      if (!isDemoMode()) {
+        void useAchievementStore.getState().loadFromDatabase(kingdom.id);
+      }
     }
   }, [kingdom.id]); // Only run when kingdom ID changes
   
@@ -305,13 +422,66 @@ function KingdomDashboard({
     updateRestoration();
   }, [updateRestoration]);
 
+  // Track online presence — mark online on mount, offline on unmount/tab close
+  useEffect(() => {
+    if (!kingdom?.id || isDemoMode()) return;
+
+    const presenceClient = generateClient<Schema>();
+    void presenceClient.models.Kingdom.update({ id: kingdom.id, isOnline: true });
+
+    const setOffline = () => {
+      void presenceClient.models.Kingdom.update({ id: kingdom.id, isOnline: false });
+    };
+
+    window.addEventListener('beforeunload', setOffline);
+    return () => {
+      window.removeEventListener('beforeunload', setOffline);
+      setOffline();
+    };
+  }, [kingdom?.id]);
+
+  // Real-time subscriptions: get live notifications when attacked, war declared, or trade offers appear
+  useEffect(() => {
+    if (!kingdom?.id || isDemoMode()) return;
+
+    subscriptionManager.startSubscriptions(kingdom.id, {
+      onAttackReceived: (_report) => {
+        // BattleReport toast is shown by subscriptionManager; future: refresh battle history here
+      },
+      onWarDeclared: (_war) => {
+        // WarDeclaration toast is shown by subscriptionManager; future: update war state here
+      },
+      onTradeOfferReceived: (_offers) => {
+        // TradeOffer toast is shown by subscriptionManager; future: update trade store here
+      },
+    });
+
+    return () => {
+      subscriptionManager.stopSubscriptions();
+    };
+  }, [kingdom?.id]);
+
   const handleGenerateResources = async (action: 'generate_turns' | 'generate_income' | 'encamp', encampDuration?: 16 | 24) => {
+    // Encamp is handled client-side: store the end time and bonus turns in localStorage
+    if (action === 'encamp') {
+      const duration = encampDuration ?? 24;
+      const bonusTurns = duration === 24 ? 10 : 7;
+      const endTime = Date.now() + duration * 60 * 60 * 1000;
+      localStorage.setItem(
+        `encamp-${kingdom.id}`,
+        JSON.stringify({ endTime, bonusTurns })
+      );
+      ToastService.success(
+        `Encamping for ${duration}h! You'll receive +${bonusTurns} bonus turns when you return.`
+      );
+      return;
+    }
+
     setResourceLoading(true);
-    
+
     const actionMessages = {
       generate_turns: { loading: 'Generating turns...', success: 'Turns generated successfully!' },
       generate_income: { loading: 'Generating income...', success: 'Income generated successfully!' },
-      encamp: { loading: `Setting up ${encampDuration}h encamp...`, success: `Encamp bonus activated for ${encampDuration} hours!` }
     };
 
     try {
@@ -320,7 +490,7 @@ function KingdomDashboard({
           kingdomId: kingdom.id,
           resourceType: action,
           operation: 'generate',
-          amount: encampDuration
+          amount: undefined
         }),
         {
           loading: actionMessages[action].loading,
@@ -392,6 +562,11 @@ function KingdomDashboard({
       achievementTriggers.onGoldChanged();
       achievementTriggers.onPopulationChanged();
       achievementTriggers.onLandChanged();
+
+      // In auth mode, persist the time-traveled state to the server
+      if (!isDemoMode()) {
+        void useKingdomStore.getState().syncToDatabase();
+      }
 
       // Update AI kingdoms with time progression AND actions
       const updateAIKingdom = useAIKingdomStore.getState().updateAIKingdom;
@@ -532,10 +707,11 @@ function KingdomDashboard({
         <TopNavigation
         title={kingdom.name}
         subtitle={`${kingdom.race} Kingdom`}
-        onBack={onBack}
+        onBack={handleBack}
         backLabel="← Back to Kingdoms"
         actions={
           <div className="kingdom-race">
+            <NotificationCenter kingdomId={kingdom.id} />
             <span className="race-badge">{kingdom.race}</span>
           </div>
         }
@@ -647,14 +823,9 @@ function KingdomDashboard({
             >
               Generate Income
             </LoadingButton>
-            <LoadingButton
-              onClick={() => handleGenerateResources('encamp', 24)}
-              loading={resourceLoading}
-              className="resource-btn"
-            >
-              Encamp (24h)
-            </LoadingButton>
           </div>
+
+          <EncampPanel kingdomId={kingdom.id} onEncamp={handleGenerateResources} />
         </div>
 
         <div className="race-stats-panel">
@@ -770,23 +941,29 @@ function KingdomDashboard({
           <TurnTimer
             kingdomId={kingdom.id}
             onTurnGenerated={(newTurns) => {
-              // Add generated turns to the kingdom store
               addTurns(newTurns);
 
-              // Calculate gold income from buildings per turn
-              // Base income: 100 gold per turn + building-based income
               const BASE_INCOME_PER_TURN = 100;
               const buildings: BuildingCounts = {
                 quarries: buildingStats.quarries,
                 hovels: buildingStats.hovels,
                 guildhalls: buildingStats.guildhalls,
+                temples: buildingStats.temples,
               };
               const buildingIncome = calculateGoldIncome(buildings);
-              const totalGoldPerTurn = BASE_INCOME_PER_TURN + buildingIncome;
-              const goldEarned = totalGoldPerTurn * newTurns;
+              const goldEarned = (BASE_INCOME_PER_TURN + buildingIncome) * newTurns;
+              const populationEarned = calculatePopulationGrowth(buildings) * newTurns;
+              const manaEarned = (buildingStats.temples || 0) * 3 * newTurns;
 
               addGold(goldEarned);
-              console.log(`Generated ${newTurns} turns, earned ${goldEarned} gold (${BASE_INCOME_PER_TURN} base + ${buildingIncome} from buildings per turn)`);
+              updateResources({
+                population: (resources.population || 0) + populationEarned,
+                ...({ mana: Math.min(((resources as any).mana || 0) + manaEarned, 50000) } as any)
+              });
+
+              // Fire achievement triggers after each turn generation
+              achievementTriggers.onGoldChanged();
+              achievementTriggers.onPopulationChanged();
             }}
           />
         </div>
@@ -825,63 +1002,73 @@ function KingdomDashboard({
         <div className="actions-panel">
           <h2>Kingdom Actions</h2>
           <div className="action-buttons">
-            <button 
+            <button
               className="action-btn primary"
               onClick={onManageTerritories}
             >
               <img src="/territories-icon.png" alt="Territories" className="action-icon" />
               Manage Territories
             </button>
-            <button 
+            <button
               className="action-btn primary"
               onClick={onViewWorldMap}
             >
               <img src="/world-map-icon.png" alt="World Map" className="action-icon" />
               World Map
             </button>
-            <button 
-              className="action-btn"
-              onClick={onManageCombat}
+            <button
+              className={`action-btn${isActionProhibited('combat_attacks') ? ' opacity-50 cursor-not-allowed' : ''}`}
+              onClick={isActionProhibited('combat_attacks') ? undefined : onManageCombat}
+              disabled={isActionProhibited('combat_attacks')}
+              title={isActionProhibited('combat_attacks') ? 'In restoration — combat prohibited' : undefined}
             >
               <img src="/combat-icon.png" alt="Combat" className="action-icon" />
               Combat Operations
             </button>
-            <button 
-              className="action-btn"
-              onClick={onManageAlliance}
+            <button
+              className={`action-btn${isActionProhibited('alliance_changes') ? ' opacity-50 cursor-not-allowed' : ''}`}
+              onClick={isActionProhibited('alliance_changes') ? undefined : onManageAlliance}
+              disabled={isActionProhibited('alliance_changes')}
+              title={isActionProhibited('alliance_changes') ? 'In restoration — alliance changes prohibited' : undefined}
             >
               <img src="/alliance-icon.png" alt="Alliance" className="action-icon" />
               Alliance Management
             </button>
-            <button 
-              className="action-btn"
-              onClick={onCastSpells}
+            <button
+              className={`action-btn${isActionProhibited('sorcery_casting') ? ' opacity-50 cursor-not-allowed' : ''}`}
+              onClick={isActionProhibited('sorcery_casting') ? undefined : onCastSpells}
+              disabled={isActionProhibited('sorcery_casting')}
+              title={isActionProhibited('sorcery_casting') ? 'In restoration — spellcasting prohibited' : undefined}
             >
               <img src="/magic-spells-icon.png" alt="Magic" className="action-icon" />
               Cast Spells
             </button>
-            <button 
+            <button
               className="action-btn"
               onClick={onSummonUnits}
             >
               <img src="/train-units-icon.png" alt="Summon Units" className="action-icon" />
               ⚔️ Summon Units
             </button>
-            <button 
-              className="action-btn trade-btn"
-              onClick={onManageTrade}
+            <button
+              className={`action-btn trade-btn${isActionProhibited('diplomatic_actions') ? ' opacity-50 cursor-not-allowed' : ''}`}
+              onClick={isActionProhibited('diplomatic_actions') ? undefined : onManageTrade}
+              disabled={isActionProhibited('diplomatic_actions')}
+              title={isActionProhibited('diplomatic_actions') ? 'In restoration — trade prohibited' : undefined}
             >
               <img src="/trade-economy-icon.png" alt="Trade" className="action-icon" />
               Trade
             </button>
-            <button 
-              className="action-btn"
-              onClick={onDiplomacy}
+            <button
+              className={`action-btn${isActionProhibited('diplomatic_actions') ? ' opacity-50 cursor-not-allowed' : ''}`}
+              onClick={isActionProhibited('diplomatic_actions') ? undefined : onDiplomacy}
+              disabled={isActionProhibited('diplomatic_actions')}
+              title={isActionProhibited('diplomatic_actions') ? 'In restoration — diplomacy prohibited' : undefined}
             >
               <img src="/diplomacy-icon.png" alt="Diplomacy" className="action-icon" />
               Diplomacy
             </button>
-            <button 
+            <button
               className="action-btn danger"
               onClick={onBattleReports}
             >
@@ -900,14 +1087,14 @@ function KingdomDashboard({
             >
               🏆 Kingdom Scrolls
             </button>
-            <button 
+            <button
               className="action-btn"
               onClick={() => useTutorialStore.getState().restartTutorial()}
               title="Restart tutorial"
             >
               📚 Tutorial
             </button>
-            <button 
+            <button
               className="action-btn"
               onClick={() => navigate(`/kingdom/${kingdom.id}/achievements`)}
               title="View achievements"
@@ -922,9 +1109,10 @@ function KingdomDashboard({
               🎮 Balance Tester
             </button>
             <button
-              className="action-btn"
-              onClick={() => navigate(`/kingdom/${kingdom.id}/espionage`)}
-              title="Espionage operations"
+              className={`action-btn${isActionProhibited('espionage_operations') ? ' opacity-50 cursor-not-allowed' : ''}`}
+              onClick={isActionProhibited('espionage_operations') ? undefined : () => navigate(`/kingdom/${kingdom.id}/espionage`)}
+              disabled={isActionProhibited('espionage_operations')}
+              title={isActionProhibited('espionage_operations') ? 'In restoration — espionage prohibited' : 'Espionage operations'}
             >
               🕵️ Espionage
             </button>
@@ -952,9 +1140,16 @@ function KingdomDashboard({
       )}
 
       {/* Demo Time Control - Only visible in demo mode */}
-      <DemoTimeControl 
-        onTimeTravel={handleTimeTravel}
-      />
+      {isDemoMode() && (
+        <DemoTimeControl
+          onTimeTravel={handleTimeTravel}
+        />
+      )}
+      {!isDemoMode() && (
+        <div style={{ padding: '8px', color: '#888', fontSize: '0.8rem' }}>
+          Time travel only available in demo mode
+        </div>
+      )}
       </ErrorBoundary>
     </div>
   );

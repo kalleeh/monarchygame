@@ -4,11 +4,13 @@
  * Implements code splitting with React.lazy and Suspense
  */
 
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
+import { generateClient } from 'aws-amplify/data';
 import { useKingdomStore } from './stores/kingdomStore';
 import type { Schema } from '../../amplify/data/resource';
 import { LoadingSkeleton } from './components/ui/loading/LoadingSkeleton';
+import { isDemoMode } from './utils/authMode';
 import './components/KingdomList.css';
 
 // Lazy-loaded components for code splitting
@@ -62,11 +64,40 @@ export function AppRouter({ kingdoms, onGetStarted, onKingdomCreated }: AppRoute
 }
 
 // Kingdom list component
-function KingdomList({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) {
+function KingdomList({ kingdoms: propKingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) {
   const navigate = useNavigate();
+  const [serverKingdoms, setServerKingdoms] = useState<Schema['Kingdom']['type'][] | null>(null);
 
-  const getKingdomResources = (kingdomId: string) => {
-    const stored = localStorage.getItem(`kingdom-${kingdomId}`);
+  // In auth mode, fetch the authoritative list of kingdoms from AppSync so that
+  // a player on a new device (or after clearing localStorage) sees the correct data.
+  useEffect(() => {
+    if (isDemoMode()) return;
+    const fetchKingdoms = async () => {
+      try {
+        const client = generateClient<Schema>();
+        const { data } = await client.models.Kingdom.list();
+        setServerKingdoms(data || []);
+      } catch (err) {
+        console.error('[KingdomList] Failed to fetch kingdoms:', err);
+      }
+    };
+    void fetchKingdoms();
+  }, []);
+
+  // Prefer the freshly-fetched server list in auth mode; fall back to prop.
+  const kingdoms = (!isDemoMode() && serverKingdoms !== null) ? serverKingdoms : propKingdoms;
+
+  const getKingdomResources = (kingdom: Schema['Kingdom']['type']) => {
+    // In auth mode prefer server-side resources stored on the kingdom record
+    if (!isDemoMode()) {
+      if (typeof kingdom.resources === 'string') {
+        try { return JSON.parse(kingdom.resources); } catch { /* fall through */ }
+      } else if (kingdom.resources && typeof kingdom.resources === 'object') {
+        return kingdom.resources as { gold: number; population: number; land: number; turns: number };
+      }
+    }
+    // Demo mode (or auth mode with no server resources): read from localStorage
+    const stored = localStorage.getItem(`kingdom-${kingdom.id}`);
     if (stored) {
       const data = JSON.parse(stored);
       return data.resources;
@@ -93,7 +124,7 @@ function KingdomList({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) {
       ) : (
         <div className="kingdoms-grid">
           {kingdoms.map((kingdom) => {
-            const resources = getKingdomResources(kingdom.id);
+            const resources = getKingdomResources(kingdom);
             return (
               <div key={kingdom.id} className="kingdom-card">
                 <h3>{kingdom.name}</h3>
@@ -298,47 +329,75 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
                 <button className="back-btn" onClick={handleBackToDashboard}>← Back to Kingdom</button>
                 <h1>🏆 Kingdom Scrolls</h1>
               </div>
-              <Leaderboard 
-                kingdoms={kingdoms.map(k => ({
-                  id: k.id,
-                  name: k.name || 'Unknown',
-                  race: k.race || 'Human',
-                  owner: k.owner || undefined,
-                  resources: {
-                    gold: k.resources?.gold || 0,
-                    population: k.resources?.population || 0,
-                    land: k.resources?.land || 0,
-                    turns: k.resources?.turns || 0
-                  },
-                  stats: k.stats || {
-                    warOffense: 0, warDefense: 0, sorcery: 0, scum: 0,
-                    forts: 0, tithe: 0, training: 0, siege: 0, economy: 0, building: 0
-                  },
-                  totalUnits: k.totalUnits || { peasants: 0, militia: 0, knights: 0, cavalry: 0 },
-                  isOnline: k.isOnline ?? false,
-                  lastActive: k.lastActive ? new Date(k.lastActive) : undefined,
-                  guildId: k.guildId || undefined
-                }))}
-                currentKingdom={{
-                  id: kingdom.id,
-                  name: kingdom.name || 'Unknown',
-                  race: kingdom.race || 'Human',
-                  owner: kingdom.owner || undefined,
-                  resources: {
-                    gold: kingdom.resources?.gold || 0,
-                    population: kingdom.resources?.population || 0,
-                    land: kingdom.resources?.land || 0,
-                    turns: kingdom.resources?.turns || 0
-                  },
-                  stats: kingdom.stats || {
-                    warOffense: 0, warDefense: 0, sorcery: 0, scum: 0,
-                    forts: 0, tithe: 0, training: 0, siege: 0, economy: 0, building: 0
-                  },
-                  totalUnits: kingdom.totalUnits || { peasants: 0, militia: 0, knights: 0, cavalry: 0 },
-                  isOnline: kingdom.isOnline ?? false,
-                  lastActive: kingdom.lastActive ? new Date(kingdom.lastActive) : undefined,
-                  guildId: kingdom.guildId || undefined
-                }}
+              <Leaderboard
+                kingdoms={kingdoms.map(k => {
+                  const rawStats = (k.stats ?? {}) as Record<string, unknown>;
+                  return {
+                    id: k.id,
+                    name: k.name || 'Unknown',
+                    race: k.race || 'Human',
+                    owner: k.owner || undefined,
+                    resources: {
+                      gold: (k.resources as Record<string, number> | null)?.gold || 0,
+                      population: (k.resources as Record<string, number> | null)?.population || 0,
+                      land: (k.resources as Record<string, number> | null)?.land || 0,
+                      turns: (k.resources as Record<string, number> | null)?.turns || 0
+                    },
+                    stats: {
+                      warOffense: Number(rawStats.warOffense ?? 0),
+                      warDefense: Number(rawStats.warDefense ?? 0),
+                      sorcery: Number(rawStats.sorcery ?? 0),
+                      scum: Number(rawStats.scum ?? 0),
+                      forts: Number(rawStats.forts ?? 0),
+                      tithe: Number(rawStats.tithe ?? 0),
+                      training: Number(rawStats.training ?? 0),
+                      siege: Number(rawStats.siege ?? 0),
+                      economy: Number(rawStats.economy ?? 0),
+                      building: Number(rawStats.building ?? 0),
+                      previousSeasonRank: rawStats.previousSeasonRank != null ? Number(rawStats.previousSeasonRank) : undefined,
+                      previousSeasonNetworth: rawStats.previousSeasonNetworth != null ? Number(rawStats.previousSeasonNetworth) : undefined,
+                      previousSeasonNumber: rawStats.previousSeasonNumber != null ? Number(rawStats.previousSeasonNumber) : undefined,
+                    },
+                    totalUnits: (k.totalUnits as Record<string, number> | null) || { peasants: 0, militia: 0, knights: 0, cavalry: 0 },
+                    isOnline: k.isOnline ?? false,
+                    lastActive: k.lastActive ? new Date(k.lastActive) : undefined,
+                    guildId: k.guildId || undefined
+                  };
+                })}
+                currentKingdom={(() => {
+                  const rawStats = (kingdom.stats ?? {}) as Record<string, unknown>;
+                  return {
+                    id: kingdom.id,
+                    name: kingdom.name || 'Unknown',
+                    race: kingdom.race || 'Human',
+                    owner: kingdom.owner || undefined,
+                    resources: {
+                      gold: (kingdom.resources as Record<string, number> | null)?.gold || 0,
+                      population: (kingdom.resources as Record<string, number> | null)?.population || 0,
+                      land: (kingdom.resources as Record<string, number> | null)?.land || 0,
+                      turns: (kingdom.resources as Record<string, number> | null)?.turns || 0
+                    },
+                    stats: {
+                      warOffense: Number(rawStats.warOffense ?? 0),
+                      warDefense: Number(rawStats.warDefense ?? 0),
+                      sorcery: Number(rawStats.sorcery ?? 0),
+                      scum: Number(rawStats.scum ?? 0),
+                      forts: Number(rawStats.forts ?? 0),
+                      tithe: Number(rawStats.tithe ?? 0),
+                      training: Number(rawStats.training ?? 0),
+                      siege: Number(rawStats.siege ?? 0),
+                      economy: Number(rawStats.economy ?? 0),
+                      building: Number(rawStats.building ?? 0),
+                      previousSeasonRank: rawStats.previousSeasonRank != null ? Number(rawStats.previousSeasonRank) : undefined,
+                      previousSeasonNetworth: rawStats.previousSeasonNetworth != null ? Number(rawStats.previousSeasonNetworth) : undefined,
+                      previousSeasonNumber: rawStats.previousSeasonNumber != null ? Number(rawStats.previousSeasonNumber) : undefined,
+                    },
+                    totalUnits: (kingdom.totalUnits as Record<string, number> | null) || { peasants: 0, militia: 0, knights: 0, cavalry: 0 },
+                    isOnline: kingdom.isOnline ?? false,
+                    lastActive: kingdom.lastActive ? new Date(kingdom.lastActive) : undefined,
+                    guildId: kingdom.guildId || undefined
+                  };
+                })()}
               />
             </div>
           </Suspense>

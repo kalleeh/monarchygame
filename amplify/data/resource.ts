@@ -10,6 +10,11 @@ import { warManager } from '../functions/war-manager/resource';
 import { tradeProcessor } from '../functions/trade-processor/resource';
 import { diplomacyProcessor } from '../functions/diplomacy-processor/resource';
 import { seasonLifecycle } from '../functions/season-lifecycle/resource';
+import { thieveryProcessor } from '../functions/thievery-processor/resource';
+import { faithProcessor } from '../functions/faith-processor/resource';
+import { bountyProcessor } from '../functions/bounty-processor/resource';
+import { allianceTreasury } from '../functions/alliance-treasury/resource';
+import { allianceManager } from '../functions/alliance-manager/resource';
 
 /**
  * Monarchy Game Data Schema - Enhanced with Field-Level Authorization & Input Validation
@@ -66,6 +71,7 @@ const schema = a.schema({
       createdAt: a.datetime(),
       lastActive: a.datetime(),
       ageStartTime: a.datetime(),
+      lastResourceTick: a.datetime(),
       // Private fields - owner only
       guildId: a.id()
         .authorization((allow) => [allow.owner().to(['read', 'update'])]),
@@ -286,7 +292,8 @@ const schema = a.schema({
       attackerId: a.string().required(),
       defenderId: a.string().required(),
       attackType: a.ref('AttackType').required(),
-      units: a.json().required()
+      units: a.json().required(),
+      formationId: a.string()
     })
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])
@@ -296,7 +303,7 @@ const schema = a.schema({
     .mutation()
     .arguments({
       kingdomId: a.string().required(),
-      resources: a.json().required()
+      turns: a.integer()
     })
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])
@@ -477,6 +484,82 @@ const schema = a.schema({
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(seasonLifecycle)),
+
+  // Thievery Processor
+  executeThievery: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
+      operation: a.string().required(),
+      targetKingdomId: a.string().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(thieveryProcessor)),
+
+  // Faith Processor
+  updateFaith: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
+      action: a.string().required(),
+      alignment: a.string(),
+      abilityType: a.string()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(faithProcessor)),
+
+  // Bounty Processor
+  claimBounty: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
+      targetId: a.string().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(bountyProcessor)),
+
+  completeBounty: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
+      targetId: a.string().required(),
+      landGained: a.integer().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(bountyProcessor)),
+
+  // Alliance Treasury
+  manageAllianceTreasury: a
+    .mutation()
+    .arguments({
+      allianceId: a.string().required(),
+      kingdomId: a.string().required(),
+      action: a.string().required(),
+      amount: a.integer().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(allianceTreasury)),
+
+  // Alliance Manager
+  manageAlliance: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
+      action: a.string().required(),
+      allianceId: a.string(),
+      name: a.string(),
+      description: a.string(),
+      isPublic: a.boolean(),
+      targetKingdomId: a.string()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(allianceManager)),
 });
 
 export type Schema = ClientSchema<typeof schema>;

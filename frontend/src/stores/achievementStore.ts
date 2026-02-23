@@ -1,5 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../../amplify/data/resource';
+import { isDemoMode } from '../utils/authMode';
 
 // Achievement categories
 export const AchievementCategory = {
@@ -54,9 +57,11 @@ interface AchievementStore {
   achievements: Achievement[];
   progress: Record<string, AchievementProgress>;
   updateProgress: (achievementId: string, progress: number) => void;
-  unlockAchievement: (achievementId: string) => void;
+  unlockAchievement: (achievementId: string, kingdomId?: string) => void;
   getProgress: (achievementId: string) => AchievementProgress | undefined;
   resetProgress: () => void;
+  persistToDatabase: (kingdomId: string) => Promise<void>;
+  loadFromDatabase: (kingdomId: string) => Promise<void>;
 }
 
 export const useAchievementStore = create<AchievementStore>()(
@@ -91,7 +96,7 @@ export const useAchievementStore = create<AchievementStore>()(
         }));
       },
 
-      unlockAchievement: (achievementId: string) => {
+      unlockAchievement: (achievementId: string, kingdomId?: string) => {
         const achievement = get().achievements.find((a) => a.id === achievementId);
         if (!achievement) return;
 
@@ -106,6 +111,11 @@ export const useAchievementStore = create<AchievementStore>()(
             },
           },
         }));
+
+        // Persist to database in auth mode
+        if (!isDemoMode() && kingdomId) {
+          void get().persistToDatabase(kingdomId);
+        }
       },
 
       getProgress: (achievementId: string) => {
@@ -114,6 +124,80 @@ export const useAchievementStore = create<AchievementStore>()(
 
       resetProgress: () => {
         set({ progress: {} });
+      },
+
+      persistToDatabase: async (kingdomId: string) => {
+        if (isDemoMode()) return;
+
+        const client = generateClient<Schema>();
+
+        // Collect all completed achievement IDs from store state
+        const unlockedIds = Object.values(get().progress)
+          .filter((p) => p.completed)
+          .map((p) => p.achievementId);
+
+        try {
+          const result = await client.models.Kingdom.get({ id: kingdomId });
+          if (!result.data) return;
+
+          const rawStats = result.data.stats;
+          const currentStats: Record<string, unknown> =
+            typeof rawStats === 'string'
+              ? (JSON.parse(rawStats) as Record<string, unknown>)
+              : ((rawStats ?? {}) as Record<string, unknown>);
+
+          await client.models.Kingdom.update({
+            id: kingdomId,
+            stats: JSON.stringify({ ...currentStats, unlockedAchievements: unlockedIds }),
+          });
+        } catch (err) {
+          console.error('[achievementStore] persistToDatabase failed:', err);
+        }
+      },
+
+      loadFromDatabase: async (kingdomId: string) => {
+        if (isDemoMode()) return;
+
+        const client = generateClient<Schema>();
+
+        try {
+          const result = await client.models.Kingdom.get({ id: kingdomId });
+          if (!result.data) return;
+
+          const rawStats = result.data.stats;
+          const stats: Record<string, unknown> =
+            typeof rawStats === 'string'
+              ? (JSON.parse(rawStats) as Record<string, unknown>)
+              : ((rawStats ?? {}) as Record<string, unknown>);
+
+          const serverIds = Array.isArray(stats.unlockedAchievements)
+            ? (stats.unlockedAchievements as string[])
+            : [];
+
+          if (serverIds.length === 0) return;
+
+          // Merge server achievements with localStorage achievements (union)
+          const achievements = get().achievements;
+          const currentProgress = get().progress;
+
+          const merged: Record<string, AchievementProgress> = { ...currentProgress };
+
+          for (const id of serverIds) {
+            if (!merged[id]?.completed) {
+              const achievement = achievements.find((a) => a.id === id);
+              merged[id] = {
+                achievementId: id,
+                progress: achievement ? achievement.criteria.target : 1,
+                completed: true,
+                unlockedAt: merged[id]?.unlockedAt ?? new Date().toISOString(),
+              };
+            }
+          }
+
+          set({ progress: merged });
+        } catch (err) {
+          console.error('[achievementStore] loadFromDatabase failed:', err);
+        }
       },
     }),
     {

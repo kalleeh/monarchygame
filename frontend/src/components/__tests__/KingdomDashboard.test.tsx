@@ -35,6 +35,14 @@ vi.mock('../ui/DemoTimeControl', () => ({
   DemoTimeControl: () => null
 }))
 
+// Mock subscription manager so it doesn't try to call AppSync in tests
+vi.mock('../../services/subscriptionManager', () => ({
+  subscriptionManager: {
+    startSubscriptions: vi.fn(),
+    stopSubscriptions: vi.fn(),
+  }
+}))
+
 // Mock services
 vi.mock('../../services/amplifyFunctionService', () => ({
   AmplifyFunctionService: {

@@ -2,6 +2,7 @@ import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
 import type { KingdomUnits, KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
+import { log } from '../logger';
 
 const VALID_UNIT_TYPES = ['infantry', 'archers', 'cavalry', 'siege', 'mages', 'scouts'] as const;
 type UnitType = typeof VALID_UNIT_TYPES[number];
@@ -26,10 +27,22 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
       return { success: false, error: `Quantity must be an integer between ${UNIT_QUANTITY.min} and ${UNIT_QUANTITY.max}`, errorCode: ErrorCode.INVALID_PARAM };
     }
 
+    // Verify caller identity
+    const identity = event.identity as { sub?: string; username?: string } | null;
+    if (!identity?.sub) {
+      return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
+    }
+
     const result = await client.models.Kingdom.get({ id: kingdomId });
 
     if (!result.data) {
       return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+    }
+
+    // Verify kingdom ownership
+    const ownerField = (result.data as any).owner as string | null;
+    if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
+      return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
     const resources = (result.data.resources ?? {}) as KingdomResources;
@@ -38,6 +51,13 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
 
     if (currentGold < goldCost) {
       return { success: false, error: `Insufficient gold: need ${goldCost}, have ${currentGold}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
+    }
+
+    // Check and deduct turns
+    const currentTurns = resources.turns ?? 72;
+    const turnCost = 1;
+    if (currentTurns < turnCost) {
+      return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
     const units = (result.data.totalUnits ?? {}) as KingdomUnits;
@@ -49,7 +69,8 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
 
     const updatedResources: KingdomResources = {
       ...resources,
-      gold: currentGold - goldCost
+      gold: currentGold - goldCost,
+      turns: Math.max(0, currentTurns - turnCost)
     };
 
     await client.models.Kingdom.update({
@@ -58,10 +79,10 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
       resources: updatedResources
     });
 
+    log.info('unit-trainer', 'trainUnits', { kingdomId, unitType, quantity });
     return { success: true, units: JSON.stringify(updatedUnits) };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Unit training error:', { kingdomId, unitType, quantity, error: message });
+    log.error('unit-trainer', error, { kingdomId, unitType, quantity });
     return { success: false, error: 'Training failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };

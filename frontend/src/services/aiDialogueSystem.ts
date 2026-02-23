@@ -152,8 +152,7 @@ export class AIDialogueSystem {
   /**
    * War declaration responses
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private getWarResponses(personality: AIPersonality, _context: DialogueContext): DialogueResponse[] {
+  private getWarResponses(personality: AIPersonality, context: DialogueContext): DialogueResponse[] {
     const responses: DialogueResponse[] = [];
     
     // Berserker personalities

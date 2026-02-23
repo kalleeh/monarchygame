@@ -1,8 +1,12 @@
 import { create } from 'zustand';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../../amplify/data/resource';
 import type { KingdomResources } from '../types/amplify';
 import { calculateCurrentAge } from '../../../shared/mechanics/age-mechanics';
 import type { AgeStatus } from '../../../shared/mechanics/age-mechanics';
 import { isDemoMode } from '../utils/authMode';
+
+const client = generateClient<Schema>();
 
 export interface KingdomUnit {
   id: string;
@@ -22,10 +26,10 @@ interface KingdomState {
   kingdomId: string | null;
   resources: KingdomResources;
   units: KingdomUnit[];
-  
+
   // Actions
-  setKingdomId: (id: string) => void;
-  loadKingdom: (id: string) => void;
+  setKingdomId: (id: string) => Promise<void>;
+  loadKingdom: (id: string) => Promise<void>;
   setResources: (resources: KingdomResources) => void;
   updateResources: (updates: Partial<KingdomResources>) => void;
   addGold: (amount: number) => void;
@@ -37,6 +41,7 @@ interface KingdomState {
   removeUnits: (unitId: string, count: number) => void;
   updateUnitCount: (unitId: string, newCount: number) => void;
   syncFromServer: (serverState: { resources: KingdomResources; units: KingdomUnit[]; kingdomId?: string }) => void;
+  syncToDatabase: () => Promise<void>;
   reset: () => void;
 }
 
@@ -56,145 +61,227 @@ const saveKingdomData = (kingdomId: string, data: KingdomData) => {
   localStorage.setItem(`kingdom-${kingdomId}`, JSON.stringify(data));
 };
 
-export const useKingdomStore = create<KingdomState>((set, get) => ({
-  kingdomId: null,
-  resources: initialResources,
-  units: [],
+export const useKingdomStore = create<KingdomState>((set, get) => {
+  let syncTimer: ReturnType<typeof setTimeout> | null = null;
 
-  setKingdomId: (id: string) => {
-    const data = getKingdomData(id);
-    set({ kingdomId: id, resources: data.resources, units: data.units });
-  },
+  const scheduleDatabaseSync = () => {
+    if (isDemoMode()) return;
+    if (syncTimer) clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => void get().syncToDatabase(), 3000);
+  };
 
-  loadKingdom: (id: string) => {
-    const data = getKingdomData(id);
-    set({ kingdomId: id, resources: data.resources, units: data.units });
-  },
+  return {
+    kingdomId: null,
+    resources: initialResources,
+    units: [],
 
-  setResources: (resources: KingdomResources) => {
-    set({ resources });
-    const { kingdomId } = get();
-    if (kingdomId) saveKingdomData(kingdomId, { resources, units: get().units });
-  },
+    setKingdomId: async (id: string) => {
+      const localData = getKingdomData(id);
+      set({ kingdomId: id, resources: localData.resources, units: localData.units });
 
-  updateResources: (updates: Partial<KingdomResources>) => {
-    const current = get().resources;
-    const merged = { ...current, ...updates };
-    // Clamp all numeric values to >= 0
-    const resources = Object.fromEntries(
-      Object.entries(merged).map(([k, v]) => [k, typeof v === 'number' ? Math.max(0, v) : v])
-    ) as KingdomResources;
-    set({ resources });
-    const { kingdomId, units } = get();
-    if (kingdomId) saveKingdomData(kingdomId, { resources, units });
-  },
+      if (!isDemoMode()) {
+        try {
+          const result = await client.models.Kingdom.get({ id });
+          if (result.data) {
+            const serverResources = typeof result.data.resources === 'string'
+              ? JSON.parse(result.data.resources)
+              : (result.data.resources ?? localData.resources);
+            const serverUnits = typeof result.data.totalUnits === 'string'
+              ? Object.entries(JSON.parse(result.data.totalUnits)).map(([type, count]) => ({
+                  id: `${type}-server`,
+                  type,
+                  count: count as number,
+                  attack: 1, defense: 1, health: 1
+                }))
+              : localData.units;
+            saveKingdomData(id, { resources: serverResources, units: serverUnits });
+            set({ resources: serverResources, units: serverUnits });
+          }
+        } catch (err) {
+          console.error('[kingdomStore] setKingdomId: Failed to load from server, using local data:', err);
+        }
+      }
+    },
 
-  addGold: (amount: number) => {
-    const resources = { ...get().resources, gold: (get().resources.gold || 0) + amount };
-    set({ resources });
-    const { kingdomId, units } = get();
-    if (kingdomId) saveKingdomData(kingdomId, { resources, units });
-  },
+    loadKingdom: async (id: string) => {
+      // Always load from localStorage first (instant, good for demo mode)
+      const localData = getKingdomData(id);
+      set({ kingdomId: id, resources: localData.resources, units: localData.units });
 
-  addTurns: (amount: number) => {
-    const resources = { ...get().resources, turns: (get().resources.turns || 0) + amount };
-    set({ resources });
-    const { kingdomId, units } = get();
-    if (kingdomId) saveKingdomData(kingdomId, { resources, units });
-  },
+      // In auth mode, fetch authoritative state from server
+      if (!isDemoMode()) {
+        try {
+          const result = await client.models.Kingdom.get({ id });
+          if (result.data) {
+            const serverResources = typeof result.data.resources === 'string'
+              ? JSON.parse(result.data.resources)
+              : (result.data.resources ?? localData.resources);
+            const serverUnits = typeof result.data.totalUnits === 'string'
+              ? Object.entries(JSON.parse(result.data.totalUnits)).map(([type, count]) => ({
+                  id: `${type}-server`,
+                  type,
+                  count: count as number,
+                  attack: 1, defense: 1, health: 1
+                }))
+              : localData.units;
+            // Sync server state to local store and localStorage
+            saveKingdomData(id, { resources: serverResources, units: serverUnits });
+            set({ resources: serverResources, units: serverUnits });
+          }
+        } catch (err) {
+          console.error('[kingdomStore] loadKingdom: Failed to load from server, using local data:', err);
+        }
+      }
+    },
 
-  spendGold: (amount: number) => {
-    if (typeof amount !== 'number' || amount <= 0 || !isFinite(amount)) return false;
-    const currentGold = get().resources.gold || 0;
-    if (currentGold >= amount) {
-      const resources = { ...get().resources, gold: currentGold - amount };
+    setResources: (resources: KingdomResources) => {
+      set({ resources });
+      const { kingdomId } = get();
+      if (kingdomId) saveKingdomData(kingdomId, { resources, units: get().units });
+      // Intentionally no scheduleDatabaseSync — called on initial server load
+    },
+
+    updateResources: (updates: Partial<KingdomResources>) => {
+      const current = get().resources;
+      const merged = { ...current, ...updates };
+      // Clamp all numeric values to >= 0
+      const resources = Object.fromEntries(
+        Object.entries(merged).map(([k, v]) => [k, typeof v === 'number' ? Math.max(0, v) : v])
+      ) as KingdomResources;
       set({ resources });
       const { kingdomId, units } = get();
       if (kingdomId) saveKingdomData(kingdomId, { resources, units });
-      return true;
-    }
-    return false;
-  },
+      scheduleDatabaseSync();
+    },
 
-  spendTurns: (amount: number) => {
-    if (typeof amount !== 'number' || amount <= 0 || !isFinite(amount)) return false;
-    const currentTurns = get().resources.turns || 0;
-    if (currentTurns >= amount) {
-      const resources = { ...get().resources, turns: currentTurns - amount };
+    addGold: (amount: number) => {
+      const resources = { ...get().resources, gold: (get().resources.gold || 0) + amount };
       set({ resources });
       const { kingdomId, units } = get();
       if (kingdomId) saveKingdomData(kingdomId, { resources, units });
-      return true;
-    }
-    return false;
-  },
+      scheduleDatabaseSync();
+    },
 
-  setUnits: (units: KingdomUnit[]) => {
-    set({ units });
-    const { kingdomId, resources } = get();
-    if (kingdomId) saveKingdomData(kingdomId, { resources, units });
-  },
+    addTurns: (amount: number) => {
+      const resources = { ...get().resources, turns: (get().resources.turns || 0) + amount };
+      set({ resources });
+      const { kingdomId, units } = get();
+      if (kingdomId) saveKingdomData(kingdomId, { resources, units });
+      scheduleDatabaseSync();
+    },
 
-  addUnits: (unitType: string, count: number, stats: { attack: number; defense: number; health: number }) => {
-    const existingUnit = get().units.find(u => u.type === unitType);
-    const units = existingUnit
-      ? get().units.map(u => u.type === unitType ? { ...u, count: u.count + count } : u)
-      : [...get().units, { id: `${unitType}-${Date.now()}`, type: unitType, count, ...stats }];
-    set({ units });
-    const { kingdomId, resources } = get();
-    if (kingdomId) saveKingdomData(kingdomId, { resources, units });
-  },
+    spendGold: (amount: number) => {
+      if (typeof amount !== 'number' || amount <= 0 || !isFinite(amount)) return false;
+      const currentGold = get().resources.gold || 0;
+      if (currentGold >= amount) {
+        const resources = { ...get().resources, gold: currentGold - amount };
+        set({ resources });
+        const { kingdomId, units } = get();
+        if (kingdomId) saveKingdomData(kingdomId, { resources, units });
+        scheduleDatabaseSync();
+        return true;
+      }
+      return false;
+    },
 
-  removeUnits: (unitId: string, count: number) => {
-    const units = get().units.map(u => u.id === unitId ? { ...u, count: Math.max(0, u.count - count) } : u).filter(u => u.count > 0);
-    set({ units });
-    const { kingdomId, resources } = get();
-    if (kingdomId) saveKingdomData(kingdomId, { resources, units });
-  },
+    spendTurns: (amount: number) => {
+      if (typeof amount !== 'number' || amount <= 0 || !isFinite(amount)) return false;
+      const currentTurns = get().resources.turns || 0;
+      if (currentTurns >= amount) {
+        const resources = { ...get().resources, turns: currentTurns - amount };
+        set({ resources });
+        const { kingdomId, units } = get();
+        if (kingdomId) saveKingdomData(kingdomId, { resources, units });
+        scheduleDatabaseSync();
+        return true;
+      }
+      return false;
+    },
 
-  updateUnitCount: (unitId: string, newCount: number) => {
-    const units = get().units.map(u => u.id === unitId ? { ...u, count: newCount } : u).filter(u => u.count > 0);
-    set({ units });
-    const { kingdomId, resources } = get();
-    if (kingdomId) saveKingdomData(kingdomId, { resources, units });
-  },
+    setUnits: (units: KingdomUnit[]) => {
+      set({ units });
+      const { kingdomId, resources } = get();
+      if (kingdomId) saveKingdomData(kingdomId, { resources, units });
+      scheduleDatabaseSync();
+    },
 
-  reset: () => set({ kingdomId: null, resources: initialResources, units: [] }),
+    addUnits: (unitType: string, count: number, stats: { attack: number; defense: number; health: number }) => {
+      const existingUnit = get().units.find(u => u.type === unitType);
+      const units = existingUnit
+        ? get().units.map(u => u.type === unitType ? { ...u, count: u.count + count } : u)
+        : [...get().units, { id: `${unitType}-${Date.now()}`, type: unitType, count, ...stats }];
+      set({ units });
+      const { kingdomId, resources } = get();
+      if (kingdomId) saveKingdomData(kingdomId, { resources, units });
+      scheduleDatabaseSync();
+    },
 
-  /**
-   * Apply authoritative server state to the store.
-   * Called after every Lambda response in auth mode.
-   */
-  syncFromServer: (serverState: { resources: KingdomResources; units: KingdomUnit[]; kingdomId?: string }) => {
-    const kingdomId = serverState.kingdomId || get().kingdomId;
-    const resources = serverState.resources;
-    const units = serverState.units || get().units;
+    removeUnits: (unitId: string, count: number) => {
+      const units = get().units.map(u => u.id === unitId ? { ...u, count: Math.max(0, u.count - count) } : u).filter(u => u.count > 0);
+      set({ units });
+      const { kingdomId, resources } = get();
+      if (kingdomId) saveKingdomData(kingdomId, { resources, units });
+      scheduleDatabaseSync();
+    },
 
-    set({ resources, units, kingdomId: kingdomId || get().kingdomId });
+    updateUnitCount: (unitId: string, newCount: number) => {
+      const units = get().units.map(u => u.id === unitId ? { ...u, count: newCount } : u).filter(u => u.count > 0);
+      set({ units });
+      const { kingdomId, resources } = get();
+      if (kingdomId) saveKingdomData(kingdomId, { resources, units });
+      scheduleDatabaseSync();
+    },
 
-    // In demo mode, also persist to localStorage for consistency
-    if (isDemoMode() && kingdomId) {
-      saveKingdomData(kingdomId, { resources, units });
-    }
-  },
+    reset: () => set({ kingdomId: null, resources: initialResources, units: [] }),
 
-  /**
-   * Sync kingdom state to the database when running in authenticated mode.
-   * Currently a stub — when multiplayer is implemented, this will call
-   * Amplify's GraphQL API to persist kingdom resources and units server-side.
-   */
-  syncToDatabase: () => {
-    if (isDemoMode()) {
-      return; // Demo mode: all data stays in localStorage only
-    }
+    /**
+     * Apply authoritative server state to the store.
+     * Called after every Lambda response in auth mode.
+     */
+    syncFromServer: (serverState: { resources: KingdomResources; units: KingdomUnit[]; kingdomId?: string }) => {
+      const kingdomId = serverState.kingdomId || get().kingdomId;
+      const resources = serverState.resources;
+      const units = serverState.units || get().units;
 
-    // Authenticated mode: database sync will be wired here when multiplayer is implemented
-    const { kingdomId, resources, units } = get();
-    if (kingdomId) {
-      console.log(`[kingdomStore] syncToDatabase: would persist kingdom ${kingdomId} to Amplify`, { resources, units });
-    }
-  },
-}));
+      set({ resources, units, kingdomId: kingdomId || get().kingdomId });
+
+      // In demo mode, also persist to localStorage for consistency
+      if (isDemoMode() && kingdomId) {
+        saveKingdomData(kingdomId, { resources, units });
+      }
+      // No scheduleDatabaseSync — server data is already in the DB
+    },
+
+    /**
+     * Persist kingdom resources and units to AppSync in authenticated mode.
+     * Called automatically via 3-second debounce after any state mutation.
+     * Converts the internal units array to the flat Record<type, count> the DB expects.
+     */
+    syncToDatabase: async () => {
+      if (isDemoMode()) return;
+
+      const { kingdomId, resources, units } = get();
+      if (!kingdomId) return;
+
+      // Convert KingdomUnit[] → Record<unitType, count> for the totalUnits JSON field
+      const totalUnitsRecord: Record<string, number> = {};
+      for (const unit of units) {
+        totalUnitsRecord[unit.type] = unit.count;
+      }
+
+      try {
+        await client.models.Kingdom.update({
+          id: kingdomId,
+          resources: JSON.stringify(resources),
+          totalUnits: JSON.stringify(totalUnitsRecord),
+          lastActive: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('[kingdomStore] syncToDatabase failed:', error);
+      }
+    },
+  };
+});
 
 /**
  * Calculate the current game age from an ageStartTime.

@@ -29,7 +29,7 @@ const MemoizedKingdomSearch = memo(KingdomSearch);
 const MemoizedArmySelector = memo(ArmySelector);
 const MemoizedAttackPreview = memo(AttackPreview);
 
-function AttackPlanner({
+export function AttackPlanner({
   currentKingdom,
   onAttack,
   isLoading

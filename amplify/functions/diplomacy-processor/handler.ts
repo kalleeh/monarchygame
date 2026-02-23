@@ -1,24 +1,34 @@
 import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { ErrorCode } from '../../../shared/types/kingdom';
+import { log } from '../logger';
 
 const client = generateClient<Schema>();
 
 const TREATY_DURATION_DAYS = 30;
 
+type CallerIdentity = { sub: string; username?: string };
+
 export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (event) => {
   const args = event.arguments;
 
   try {
+    // Verify caller identity
+    const identity = event.identity as { sub?: string; username?: string } | null;
+    if (!identity?.sub) {
+      return JSON.stringify({ success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED });
+    }
+    const callerIdentity: CallerIdentity = { sub: identity.sub, username: identity.username };
+
     // Route based on arguments
     if ('treatyId' in args && 'accepted' in args) {
       return await handleRespondToTreaty(args as { treatyId: string; accepted: boolean });
     }
     if ('kingdomId' in args && 'targetKingdomId' in args && 'seasonId' in args) {
-      return await handleDeclareDiplomaticWar(args as { kingdomId: string; targetKingdomId: string; seasonId: string });
+      return await handleDeclareDiplomaticWar(args as { kingdomId: string; targetKingdomId: string; seasonId: string }, callerIdentity);
     }
     if ('kingdomId' in args && 'targetKingdomId' in args && !('seasonId' in args)) {
-      return await handleMakePeace(args as { kingdomId: string; targetKingdomId: string });
+      return await handleMakePeace(args as { kingdomId: string; targetKingdomId: string }, callerIdentity);
     }
 
     // sendTreatyProposal
@@ -36,6 +46,16 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
 
     if (proposerId === recipientId) {
       return JSON.stringify({ success: false, error: 'Cannot propose treaty to yourself', errorCode: ErrorCode.INVALID_PARAM });
+    }
+
+    // Verify kingdom ownership (proposer)
+    const { data: proposerKingdom } = await client.models.Kingdom.get({ id: proposerId });
+    if (!proposerKingdom) {
+      return JSON.stringify({ success: false, error: 'Proposer kingdom not found', errorCode: ErrorCode.NOT_FOUND });
+    }
+    const proposerOwnerField = (proposerKingdom as any).owner as string | null;
+    if (!proposerOwnerField || (!proposerOwnerField.includes(callerIdentity.sub) && !proposerOwnerField.includes(callerIdentity.username ?? ''))) {
+      return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
     }
 
     // Check for conflicting treaties
@@ -64,6 +84,7 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
       expiresAt
     });
 
+    log.info('diplomacy-processor', 'sendTreatyProposal', { proposerId, recipientId, treatyType });
     return JSON.stringify({
       success: true,
       treaty: {
@@ -76,8 +97,7 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
       }
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Diplomacy processor error:', message);
+    log.error('diplomacy-processor', error);
     return JSON.stringify({ success: false, error: 'Diplomacy operation failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }
 };
@@ -138,11 +158,21 @@ async function handleRespondToTreaty(args: { treatyId: string; accepted: boolean
   });
 }
 
-async function handleDeclareDiplomaticWar(args: { kingdomId: string; targetKingdomId: string; seasonId: string }): Promise<string> {
+async function handleDeclareDiplomaticWar(args: { kingdomId: string; targetKingdomId: string; seasonId: string }, callerIdentity: CallerIdentity): Promise<string> {
   const { kingdomId, targetKingdomId, seasonId } = args;
 
   if (!kingdomId || !targetKingdomId || !seasonId) {
     return JSON.stringify({ success: false, error: 'Missing required parameters', errorCode: ErrorCode.MISSING_PARAMS });
+  }
+
+  // Verify kingdom ownership
+  const { data: kingdom } = await client.models.Kingdom.get({ id: kingdomId });
+  if (!kingdom) {
+    return JSON.stringify({ success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND });
+  }
+  const ownerField = (kingdom as any).owner as string | null;
+  if (!ownerField || (!ownerField.includes(callerIdentity.sub) && !ownerField.includes(callerIdentity.username ?? ''))) {
+    return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
   }
 
   // Break any active treaties
@@ -188,11 +218,21 @@ async function handleDeclareDiplomaticWar(args: { kingdomId: string; targetKingd
   return JSON.stringify({ success: true, kingdomId, targetKingdomId, status: 'war' });
 }
 
-async function handleMakePeace(args: { kingdomId: string; targetKingdomId: string }): Promise<string> {
+async function handleMakePeace(args: { kingdomId: string; targetKingdomId: string }, callerIdentity: CallerIdentity): Promise<string> {
   const { kingdomId, targetKingdomId } = args;
 
   if (!kingdomId || !targetKingdomId) {
     return JSON.stringify({ success: false, error: 'Missing required parameters', errorCode: ErrorCode.MISSING_PARAMS });
+  }
+
+  // Verify kingdom ownership
+  const { data: kingdom } = await client.models.Kingdom.get({ id: kingdomId });
+  if (!kingdom) {
+    return JSON.stringify({ success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND });
+  }
+  const ownerField = (kingdom as any).owner as string | null;
+  if (!ownerField || (!ownerField.includes(callerIdentity.sub) && !ownerField.includes(callerIdentity.username ?? ''))) {
+    return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
   }
 
   // Resolve any active wars

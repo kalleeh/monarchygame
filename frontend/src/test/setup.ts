@@ -2,9 +2,22 @@ import '@testing-library/jest-dom'
 import { afterEach, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 
+// Provide a working localStorage implementation for all tests
+const localStorageData: Record<string, string> = {};
+const localStorageMock: Storage = {
+  getItem: (key: string) => localStorageData[key] ?? null,
+  setItem: (key: string, value: string) => { localStorageData[key] = String(value); },
+  removeItem: (key: string) => { delete localStorageData[key]; },
+  clear: () => { Object.keys(localStorageData).forEach(k => delete localStorageData[k]); },
+  key: (index: number) => Object.keys(localStorageData)[index] ?? null,
+  get length() { return Object.keys(localStorageData).length; }
+};
+Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock, writable: true });
+
 // Cleanup after each test case
 afterEach(() => {
-  cleanup()
+  cleanup();
+  localStorageMock.clear();
 })
 
 // Mock AWS Amplify for tests

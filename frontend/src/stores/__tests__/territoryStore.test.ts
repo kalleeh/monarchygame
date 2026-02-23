@@ -5,10 +5,11 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Mock kingdomStore to provide resources
+// Mock kingdomStore to provide resources and a kingdomId
 vi.mock('../kingdomStore', () => ({
   useKingdomStore: {
     getState: vi.fn(() => ({
+      kingdomId: 'test-kingdom-1',
       resources: {
         gold: 100000,
         population: 10000,
@@ -24,6 +25,8 @@ import { useTerritoryStore } from '../territoryStore';
 
 describe('TerritoryStore', () => {
   beforeEach(() => {
+    // Enable demo mode so claimTerritory skips the auth/Lambda branch entirely
+    localStorage.setItem('demo-mode', 'true');
     useTerritoryStore.getState().resetTerritoryState();
   });
 
