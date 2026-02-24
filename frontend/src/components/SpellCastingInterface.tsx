@@ -8,6 +8,7 @@ import React, { useEffect, useCallback, useMemo } from 'react';
 import { useSpring, useTransition, animated, config } from '@react-spring/web';
 import { useSpellStore } from '../stores/spellStore';
 import { SPELLS, type Spell } from "../shared-spells";
+import { TopNavigation } from './TopNavigation';
 
 interface SpellCastingInterfaceProps {
   kingdomId: string;
@@ -129,19 +130,14 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
   }
 
   return (
+    <div style={{background:'var(--color-bg-deep,#0f1629)',minHeight:'100vh'}}>
     <div className="spell-casting-interface">
-      {/* Header with Back Navigation */}
-      <div className="spell-header">
-        {onBack && (
-          <button className="back-btn" onClick={onBack}>
-            ← Back to Kingdom
-          </button>
-        )}
-        <h1>
-          <img src="/magic-spells-icon.png" alt="Magic" style={{width:'32px',height:'32px',objectFit:'contain',verticalAlign:'middle',marginRight:'0.5rem'}} />
-          Spell Casting
-        </h1>
-      </div>
+      <TopNavigation
+        title={<><img src="/magic-spells-icon.png" style={{width:28,height:28,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Spell Casting</>}
+        onBack={onBack}
+        backLabel="← Back to Kingdom"
+        subtitle="Cast powerful spells to aid your kingdom"
+      />
 
       {/* Error Display */}
       {error && (
@@ -213,6 +209,7 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 };

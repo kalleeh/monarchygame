@@ -430,7 +430,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           attributionPosition="bottom-left"
           style={{ backgroundColor: 'var(--color-bg-deep, #0f1629)' }}
         >
-          <Background color="var(--border-primary)" />
+          <Background color="#1e2a45" style={{ backgroundColor: '#0f1629' }} />
           <Controls style={{ backgroundColor: 'var(--bg-card)' }} />
           <MiniMap
             nodeColor={(node) => {

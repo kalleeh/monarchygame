@@ -332,11 +332,13 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
         {/* Battle reports */}
         <Route path="reports" element={
           <Suspense fallback={<LoadingSkeleton type="list" className="m-8" />}>
-            <div className="battle-reports-container" style={{ background: 'var(--color-bg-deep, #0f1629)', minHeight: '100vh' }}>
-              <div className="battle-reports-header">
-                <button className="back-btn" onClick={handleBackToDashboard}>← Back to Kingdom</button>
-                <h1><img src="/battle-reports-icon.png" style={{width:32,height:32,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Battle Reports</h1>
-              </div>
+            <div style={{ background: 'var(--color-bg-deep, #0f1629)', minHeight: '100vh' }}>
+              <TopNavigation
+                title={<><img src="/battle-reports-icon.png" style={{width:28,height:28,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Battle Reports</>}
+                onBack={handleBackToDashboard}
+                backLabel="← Back to Kingdom"
+                subtitle="Combat history & statistics"
+              />
               <BattleReports battleHistory={[]} className="battle-reports-content" />
             </div>
           </Suspense>

@@ -7,6 +7,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useSpring, useTransition, animated, config } from '@react-spring/web';
 import type { Resource, TradeOffer, TrendData, PriceHistoryEntry } from '../types';
 import { useTradeStore } from '../stores/tradeStore';
+import { TopNavigation } from './TopNavigation';
 import {
   LineChart,
   Line,
@@ -119,16 +120,15 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
   };
 
   return (
+    <div style={{background:'var(--color-bg-deep,#0f1629)',minHeight:'100vh'}}>
     <div className="trade-system">
       {/* Header with Back Navigation */}
-      <div className="trade-header">
-        {onBack && (
-          <button className="back-btn" onClick={onBack}>
-            ← Back to Kingdom
-          </button>
-        )}
-        <h1>💰 Trade System</h1>
-      </div>
+      <TopNavigation
+        title={<><img src="/trade-economy-icon.png" style={{width:28,height:28,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Trade System</>}
+        onBack={onBack}
+        backLabel="← Back to Kingdom"
+        subtitle="Market & Resource Exchange"
+      />
 
       {/* Error Display */}
       {error && (
@@ -362,6 +362,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 };
