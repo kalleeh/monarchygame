@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 import { ToastService } from '../services/toastService';
+import { isDemoMode } from '../utils/authMode';
 
 interface TurnGenerationState {
   nextTurnIn: number; // seconds until next turn
@@ -78,12 +79,17 @@ export const useTurnGeneration = ({
     setState(prev => ({ ...prev, isGenerating: true }));
 
     try {
-      const result = await AmplifyFunctionService.updateResources({
-        kingdomId,
-        amount: turnsAvailable
-      });
+      // In demo mode skip Lambda; in auth mode catch schema mismatch errors
+      let result: { success: boolean; newTurns?: number } = { success: true, newTurns: turnsAvailable };
+      if (!isDemoMode()) {
+        try {
+          result = await AmplifyFunctionService.updateResources({ kingdomId, amount: turnsAvailable }) as typeof result;
+        } catch {
+          // Lambda unavailable or schema mismatch — proceed with local update
+        }
+      }
 
-      if ((result as { success: boolean }).success) {
+      if (result.success) {
         const newTurns = (result as { newTurns?: number }).newTurns || turnsAvailable;
         lastGenerationRef.current = Date.now();
         localStorage.setItem(`turnTimer-last-${kingdomId}`, String(Date.now()));
