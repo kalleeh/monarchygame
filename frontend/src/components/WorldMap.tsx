@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ReactFlow,
   useNodesState,
@@ -13,6 +13,8 @@ import '@xyflow/react/dist/style.css';
 import { ErrorBoundary } from './ErrorBoundary';
 import type { Schema } from '../../../amplify/data/resource';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { useTerritoryStore } from '../stores/territoryStore';
+import { useAIKingdomStore } from '../stores/aiKingdomStore';
 
 interface Node {
   id: string;
@@ -74,20 +76,49 @@ interface SelectedTerritoryInfo {
   isOwned: boolean;
 }
 
-// Map territory names to detail images
-const TERRITORY_IMAGES: Record<string, string> = {
-  'Capital City': '/territory-capital.png',
-  'Royal Capital': '/territory-capital.png',
-  'Trading Post': '/territory-trading-post.png',
-  'Iron Mines': '/territory-iron-mines.png',
-  'Forest Outpost': '/territory-forest-outpost.png',
-  'Ancient Ruins': '/territory-ancient-ruins.png',
+// Map territory type → detail image
+const TERRITORY_TYPE_IMAGES: Record<string, string> = {
+  capital:    '/territory-capital.png',
+  settlement: '/territory-trading-post.png',
+  outpost:    '/territory-forest-outpost.png',
+  fortress:   '/territory-iron-mines.png',
 };
+// Also accept legacy name-based lookups for backwards compat
+const TERRITORY_IMAGES: Record<string, string> = {
+  'Capital City':    '/territory-capital.png',
+  'Royal Capital':   '/territory-capital.png',
+  'Trading Post':    '/territory-trading-post.png',
+  'Iron Mines':      '/territory-iron-mines.png',
+  'Forest Outpost':  '/territory-forest-outpost.png',
+  'Ancient Ruins':   '/territory-ancient-ruins.png',
+};
+function getTerritoryImage(label: string, type: string): string {
+  return TERRITORY_IMAGES[label] ?? TERRITORY_TYPE_IMAGES[type] ?? '/territories-icon.png';
+}
+
+// Deterministic position hash for AI kingdoms
+function hashId(id: string): number {
+  let h = 5381;
+  for (let i = 0; i < id.length; i++) {
+    h = ((h << 5) + h) + id.charCodeAt(i);
+    h = h & h;
+  }
+  return Math.abs(h);
+}
+function aiKingdomMapPosition(id: string): { x: number; y: number } {
+  const h = hashId(id);
+  const angle = ((h % 1000) / 1000) * 2 * Math.PI;
+  const radius = 2200 + (h % 3500);
+  return {
+    x: Math.cos(angle) * radius * 1.78, // wider for 16:9
+    y: Math.sin(angle) * radius,
+  };
+}
 
 // Custom node that renders the world map image inside the React Flow viewport
 const MapBackgroundNode = () => (
   <img
-    src="/world-map-4k.jpg"
+    src="/world-map-world.jpg"
     style={{
       width: '100%',
       height: '100%',
@@ -139,19 +170,19 @@ function getLandCategory(land: number): string {
   return 'Massive Kingdom';
 }
 
-// The static background node — prepended to every nodes array so it renders behind all territory nodes
+// World-scale background — 16000×9000 units, centred at origin
 const MAP_BG_NODE: Node = {
   id: 'map-bg',
   type: 'mapBackground',
-  position: { x: -1500, y: -900 },
+  position: { x: -8000, y: -4500 },
   data: {},
   draggable: false,
   selectable: false,
   focusable: false,
   zIndex: -10,
   style: {
-    width: 3000,
-    height: 1800,
+    width: 16000,
+    height: 9000,
     pointerEvents: 'none',
     border: 'none',
     background: 'none',
@@ -159,189 +190,106 @@ const MAP_BG_NODE: Node = {
   },
 };
 
-// Demo territory data
-const generateDemoTerritories = (
-  playerKingdom: Schema['Kingdom']['type'],
-  currentGuildId: string | null | undefined,
-): TerritoryNode[] => {
-  // Parse the player's guildId from the Amplify Schema type
-  const playerGuildId = (playerKingdom as unknown as { guildId?: string }).guildId ?? null;
-
-  const territories: Array<{
-    id: string;
-    position: { x: number; y: number };
-    kingdomName: string;
-    race: string;
-    power: number;
-    isOwned: boolean;
-    label: string;
-    baseStyle: Record<string, unknown>;
-    guildId?: string;
-    land: number;
-    resources: { gold: number; population: number };
-  }> = [
-    {
-      id: 'territory-1',
-      position: { x: -350, y: 90 },
-      label: 'Capital City',
-      kingdomName: playerKingdom.name,
-      race: (playerKingdom.race as string) || 'Human',
-      power: 1500,
-      isOwned: true,
-      land: 3200,
-      resources: { gold: 1000, population: 500 },
-      guildId: playerGuildId ?? undefined,
-      baseStyle: {
-        background: '#4ade80',
-        border: '2px solid #16a34a',
-        borderRadius: '8px',
-        padding: '10px',
-      },
-    },
-    {
-      id: 'territory-2',
-      position: { x: -1050, y: -620 },
-      label: 'Iron Mines',
-      kingdomName: 'Neutral',
-      race: 'Neutral',
-      power: 800,
-      isOwned: false,
-      land: 900,
-      resources: { gold: 500, population: 200 },
-      baseStyle: {
-        background: '#94a3b8',
-        border: '2px solid #64748b',
-        borderRadius: '8px',
-        padding: '10px',
-      },
-    },
-    {
-      id: 'territory-3',
-      position: { x: 810, y: -430 },
-      label: 'Forest Outpost',
-      kingdomName: 'Elven Alliance',
-      race: 'Elven',
-      power: 1200,
-      isOwned: false,
-      land: 4200,
-      resources: { gold: 800, population: 300 },
-      // Same guild as the player (demo: use playerGuildId so alliance is shown full)
-      guildId: playerGuildId ?? undefined,
-      baseStyle: {
-        background: '#f87171',
-        border: '2px solid #dc2626',
-        borderRadius: '8px',
-        padding: '10px',
-      },
-    },
-    {
-      id: 'territory-4',
-      position: { x: -870, y: 480 },
-      label: 'Trading Post',
-      kingdomName: playerKingdom.name,
-      race: (playerKingdom.race as string) || 'Human',
-      power: 600,
-      isOwned: true,
-      land: 1800,
-      resources: { gold: 1200, population: 150 },
-      guildId: playerGuildId ?? undefined,
-      baseStyle: {
-        background: '#4ade80',
-        border: '2px solid #16a34a',
-        borderRadius: '8px',
-        padding: '10px',
-      },
-    },
-    {
-      id: 'territory-5',
-      position: { x: 1100, y: -50 },
-      label: 'Ancient Ruins',
-      kingdomName: 'Vampire Lords',
-      race: 'Vampire',
-      power: 2000,
-      isOwned: false,
-      land: 18500,
-      resources: { gold: 1500, population: 400 },
-      baseStyle: {
-        background: '#a855f7',
-        border: '2px solid #7c3aed',
-        borderRadius: '8px',
-        padding: '10px',
-      },
-    },
-  ];
-
-  return territories.map((t) => {
-    const visibility = getKingdomVisibility(t.guildId, t.isOwned, currentGuildId);
-
-    // Apply fog-of-war styling for partial visibility
-    const fogStyle: Record<string, unknown> =
-      visibility === 'partial'
-        ? {
-            opacity: 0.55,
-            filter: 'grayscale(60%)',
-            border: '2px dashed #6b7280',
-            background: '#374151',
-          }
-        : {};
-
-    return {
-      id: t.id,
-      position: t.position,
-      data: {
-        label: visibility === 'hidden' ? '???' : t.label,
-        kingdomName: visibility === 'hidden' ? 'Unknown' : t.kingdomName,
-        race: visibility === 'full' ? t.race : '???',
-        power: visibility === 'full' ? t.power : 0,
-        isOwned: t.isOwned,
-        visibility,
-        resources: visibility === 'full' ? t.resources : { gold: 0, population: 0 },
-        landCategory: visibility !== 'full' ? getLandCategory(t.land) : undefined,
-      },
-      style: {
-        ...t.baseStyle,
-        ...fogStyle,
-      },
-    } as TerritoryNode;
-  });
+// Node style by territory type
+const TERRITORY_TYPE_STYLE: Record<string, Record<string, unknown>> = {
+  capital:    { background: '#d4a017', border: '2px solid #f0c040', borderRadius: '8px', padding: '10px', color: '#000', fontWeight: 700 },
+  settlement: { background: '#4ade80', border: '2px solid #16a34a', borderRadius: '8px', padding: '10px' },
+  outpost:    { background: '#94a3b8', border: '2px solid #64748b', borderRadius: '8px', padding: '10px' },
+  fortress:   { background: '#f87171', border: '2px solid #dc2626', borderRadius: '8px', padding: '10px' },
+};
+// AI kingdom node style by difficulty
+const AI_KINGDOM_STYLE: Record<string, Record<string, unknown>> = {
+  easy:   { background: '#374151', border: '2px dashed #6b7280', borderRadius: '8px', padding: '10px', opacity: 0.7 },
+  medium: { background: '#7c3aed', border: '2px dashed #a78bfa', borderRadius: '8px', padding: '10px', opacity: 0.75 },
+  hard:   { background: '#dc2626', border: '2px dashed #f87171', borderRadius: '8px', padding: '10px', opacity: 0.8 },
 };
 
-const generateDemoConnections = (): Edge[] => [
-  {
-    id: 'e1-2',
-    source: 'territory-1',
-    target: 'territory-2',
-    animated: false,
-  },
-  {
-    id: 'e1-4',
-    source: 'territory-1',
-    target: 'territory-4',
-    animated: true,
-  },
-  {
-    id: 'e2-4',
-    source: 'territory-2',
-    target: 'territory-4',
-    animated: false,
-  },
-  {
-    id: 'e3-5',
-    source: 'territory-3',
-    target: 'territory-5',
-    animated: false,
-  },
-];
-
 const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
-  // Resolve the player's guildId from the Amplify Schema type (stored as JSON field)
-  const currentGuildId =
-    (kingdom as unknown as { guildId?: string }).guildId ?? null;
+  const currentGuildId = (kingdom as unknown as { guildId?: string }).guildId ?? null;
+
+  // Real data sources
+  const ownedTerritories = useTerritoryStore((s) => s.ownedTerritories);
+  const aiKingdoms = useAIKingdomStore((s) => s.aiKingdoms);
+
+  // Build world nodes from real data
+  const worldNodes = useMemo((): TerritoryNode[] => {
+    const result: TerritoryNode[] = [];
+
+    // Player's owned territories — clustered near centre
+    ownedTerritories.forEach((t, i) => {
+      const total = Math.max(ownedTerritories.length, 1);
+      const angle = (i / total) * 2 * Math.PI;
+      const r = total === 1 ? 0 : 350 + i * 80;
+      const pos = total === 1
+        ? { x: 0, y: 0 }
+        : { x: Math.cos(angle) * r * 1.78, y: Math.sin(angle) * r };
+
+      result.push({
+        id: `player-${t.id}`,
+        position: pos,
+        data: {
+          label: t.name,
+          kingdomName: kingdom.name || 'Your Kingdom',
+          race: (kingdom.race as string) || 'Human',
+          power: t.resources.land * 10,
+          isOwned: true,
+          visibility: 'full' as VisibilityLevel,
+          resources: { gold: t.resources.gold, population: t.resources.population },
+          landCategory: getLandCategory(t.resources.land),
+          territoryType: t.type,
+        },
+        style: TERRITORY_TYPE_STYLE[t.type] ?? TERRITORY_TYPE_STYLE.settlement,
+      } as TerritoryNode);
+    });
+
+    // AI kingdoms — spread deterministically around the world
+    aiKingdoms.forEach((k) => {
+      const pos = aiKingdomMapPosition(k.id);
+      result.push({
+        id: `ai-${k.id}`,
+        position: pos,
+        data: {
+          label: k.name,
+          kingdomName: k.name,
+          race: k.race,
+          power: k.networth,
+          isOwned: false,
+          visibility: 'partial' as VisibilityLevel,
+          resources: { gold: k.resources.gold, population: k.resources.population },
+          landCategory: getLandCategory(k.resources.land),
+          territoryType: 'settlement',
+        },
+        style: AI_KINGDOM_STYLE[k.difficulty] ?? AI_KINGDOM_STYLE.medium,
+      } as TerritoryNode);
+    });
+
+    return result;
+  }, [ownedTerritories, aiKingdoms, kingdom, currentGuildId]);
+
+  // Edges: connect each player territory back to the capital (first owned)
+  const worldEdges = useMemo((): Edge[] => {
+    if (ownedTerritories.length < 2) return [];
+    return ownedTerritories.slice(1).map((t, i) => ({
+      id: `e-cap-${i}`,
+      source: `player-${ownedTerritories[0].id}`,
+      target: `player-${t.id}`,
+      animated: true,
+    }));
+  }, [ownedTerritories]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<TerritoryNode>(
-    [MAP_BG_NODE as unknown as TerritoryNode, ...generateDemoTerritories(kingdom, currentGuildId)],
+    [MAP_BG_NODE as unknown as TerritoryNode, ...worldNodes],
   );
-  const [edges, setEdges, onEdgesChange] = useEdgesState(generateDemoConnections());
+  const [edges, setEdges, onEdgesChange] = useEdgesState(worldEdges);
+
+  // Keep nodes in sync when store data changes
+  useEffect(() => {
+    setNodes([MAP_BG_NODE as unknown as TerritoryNode, ...worldNodes]);
+  }, [worldNodes, setNodes]);
+
+  useEffect(() => {
+    setEdges(worldEdges);
+  }, [worldEdges, setEdges]);
 
   // Full TerritoryNode used for the existing territory-panel (fog of war details etc.)
   const [selectedTerritoryNode, setSelectedTerritoryNode] = useState<TerritoryNode | null>(null);
@@ -505,7 +453,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           onConnect={onConnect}
           onNodeClick={handleNodeClick}
           nodeTypes={nodeTypes}
-          defaultViewport={{ x: 550, y: 430, zoom: 0.65 }}
+          defaultViewport={{ x: 560, y: 420, zoom: 0.09 }}
           attributionPosition="bottom-left"
           style={{ backgroundColor: 'var(--color-bg-deep, #0f1629)' }}
         >
