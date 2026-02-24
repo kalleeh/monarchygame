@@ -332,7 +332,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
         <button className="back-btn" onClick={onBack} aria-label="Back to Kingdom">
           ← Back to Kingdom
         </button>
-        <h1>🤝 Diplomacy</h1>
+        <h1><img src="/diplomacy-icon.png" style={{width:32,height:32,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Diplomacy</h1>
       </div>
 
       <nav className="diplomacy-navigation" role="navigation">

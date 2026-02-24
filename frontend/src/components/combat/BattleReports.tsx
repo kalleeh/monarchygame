@@ -297,7 +297,7 @@ const BattleReports: React.FC<BattleReportsProps> = ({
     <div className={`battle-reports ${className}`}>
       <div className="reports-header">
         <h3>Battle Reports</h3>
-        <div className="battle-stats">
+        <div className="battle-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
           <div className="stat-item">
             <span className="stat-value">{battleStats.total}</span>
             <span className="stat-label">Total Battles</span>

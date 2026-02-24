@@ -383,7 +383,7 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
       minHeight: '100vh' 
     }}>
       <TopNavigation
-        title="🤝 Guild Management"
+        title={<><img src="/alliance-icon.png" style={{width:32,height:32,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Guild Management</>}
         subtitle={currentGuild ? `${currentGuild.name} [${currentGuild.tag}]` : 'Diplomatic Relations'}
         onBack={onBack}
         backLabel="← Back to Kingdom"

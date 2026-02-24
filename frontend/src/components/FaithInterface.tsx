@@ -158,7 +158,7 @@ const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, onBack }) =>
   return (
     <div className="faith-interface">
       <TopNavigation
-        title="Faith & Focus"
+        title={<><img src="/faith-icon.png" style={{width:28,height:28,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Faith & Focus</>}
         onBack={onBack}
         backLabel="← Back to Kingdom"
         subtitle={alignment ? `${ALIGNMENT_CONFIG[alignment]?.label || alignment} Alignment` : 'No Alignment'}

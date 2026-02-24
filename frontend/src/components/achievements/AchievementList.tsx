@@ -21,7 +21,7 @@ export const AchievementList = () => {
   return (
     <div className="achievement-list-container">
       <div className="achievement-header">
-        <h1>🏆 Achievements</h1>
+        <h1><img src="/achievements-icon.png" style={{width:28,height:28,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Achievements</h1>
         <div className="achievement-stats">
           <span>{stats.completed} / {stats.total} Unlocked</span>
           <span className="achievement-percentage">({stats.percentage}%)</span>

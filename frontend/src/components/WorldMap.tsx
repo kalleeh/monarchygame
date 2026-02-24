@@ -355,7 +355,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
     <div
       className="world-map"
       style={{
-        backgroundColor: 'var(--bg-primary)',
+        backgroundColor: 'var(--color-bg-deep, #0f1629)',
         color: 'var(--text-primary)',
         minHeight: '100vh',
       }}
@@ -363,7 +363,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
       <div
         className="world-map-header"
         style={{
-          backgroundColor: 'var(--bg-secondary)',
+          backgroundColor: 'var(--color-bg-deep, #0f1629)',
           padding: '1rem',
           borderBottom: '1px solid var(--border-primary)',
         }}
@@ -382,7 +382,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         >
           Back to Kingdom
         </button>
-        <h1 style={{ color: 'var(--text-primary)' }}>World Map</h1>
+        <h1 style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display, Cinzel, serif)' }}>World Map</h1>
         <div className="map-legend">
           <div className="legend-item">
             <div className="legend-color" style={{ background: '#4ade80' }}></div>
@@ -414,7 +414,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         className="map-container"
         style={{
           height: '80vh',
-          backgroundColor: 'var(--bg-primary)',
+          backgroundColor: 'var(--color-bg-deep, #0f1629)',
           border: '1px solid var(--border-primary)',
           borderRadius: '0.5rem',
         }}
@@ -428,7 +428,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           onNodeClick={onNodeClick}
           fitView
           attributionPosition="bottom-left"
-          style={{ backgroundColor: 'var(--bg-primary)' }}
+          style={{ backgroundColor: 'var(--color-bg-deep, #0f1629)' }}
         >
           <Background color="var(--border-primary)" />
           <Controls style={{ backgroundColor: 'var(--bg-card)' }} />
@@ -532,7 +532,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           align-items: center;
           justify-content: space-between;
           padding: 1rem;
-          background: #1f2937;
+          background: var(--color-bg-deep, #0f1629);
           color: white;
           border-bottom: 2px solid #374151;
         }

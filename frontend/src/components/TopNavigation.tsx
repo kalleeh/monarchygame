@@ -3,7 +3,7 @@ import { useKingdomStore } from '../stores/kingdomStore';
 import './TopNavigation.css';
 
 interface TopNavigationProps {
-  title: string;
+  title: React.ReactNode;
   onBack?: () => void;
   backLabel?: string;
   actions?: React.ReactNode;

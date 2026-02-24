@@ -10,6 +10,7 @@ import { generateClient } from 'aws-amplify/data';
 import { useKingdomStore } from './stores/kingdomStore';
 import type { Schema } from '../../amplify/data/resource';
 import { LoadingSkeleton } from './components/ui/loading/LoadingSkeleton';
+import { TopNavigation } from './components/TopNavigation';
 import { isDemoMode } from './utils/authMode';
 import './components/KingdomList.css';
 
@@ -331,10 +332,10 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
         {/* Battle reports */}
         <Route path="reports" element={
           <Suspense fallback={<LoadingSkeleton type="list" className="m-8" />}>
-            <div className="battle-reports-container">
+            <div className="battle-reports-container" style={{ background: 'var(--color-bg-deep, #0f1629)', minHeight: '100vh' }}>
               <div className="battle-reports-header">
                 <button className="back-btn" onClick={handleBackToDashboard}>← Back to Kingdom</button>
-                <h1>📊 Battle Reports</h1>
+                <h1><img src="/battle-reports-icon.png" style={{width:32,height:32,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Battle Reports</h1>
               </div>
               <BattleReports battleHistory={[]} className="battle-reports-content" />
             </div>
@@ -347,7 +348,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
             <div className="leaderboard-page">
               <div className="leaderboard-header">
                 <button className="back-btn" onClick={handleBackToDashboard}>← Back to Kingdom</button>
-                <h1>🏆 Kingdom Scrolls</h1>
+                <h1><img src="/overview-analytics-icon.png" style={{width:32,height:32,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Kingdom Scrolls</h1>
               </div>
               <Leaderboard
                 kingdoms={kingdoms.map(k => {
@@ -426,10 +427,12 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
         {/* Achievements */}
         <Route path="achievements" element={
           <Suspense fallback={<LoadingSkeleton type="list" className="m-8" />}>
-            <div className="achievements-page">
-              <div className="achievements-header">
-                <button className="back-btn" onClick={handleBackToDashboard}>← Back to Kingdom</button>
-              </div>
+            <div className="achievements-page" style={{ background: 'var(--color-bg-deep, #0f1629)', minHeight: '100vh' }}>
+              <TopNavigation
+                title={<><img src="/achievements-icon.png" style={{width:28,height:28,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Achievements</>}
+                onBack={handleBackToDashboard}
+                backLabel="← Back to Kingdom"
+              />
               <AchievementList />
             </div>
           </Suspense>

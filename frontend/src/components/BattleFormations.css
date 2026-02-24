@@ -2,7 +2,7 @@
 
 .battle-formations {
   padding: 1.5rem;
-  background-color: var(--bg-primary);
+  background-color: #0f1629;
   color: var(--text-primary);
   min-height: 100vh;
 }

@@ -21,7 +21,7 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   hard: '#ef4444',
 };
 
-const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId, onBack }) => {
+const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId: _kingdomId, onBack }) => {
   const {
     availableBounties,
     completedBounties,
@@ -56,7 +56,7 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId, onBack }) => {
   return (
     <div className="bounty-board">
       <TopNavigation
-        title="Bounty Board"
+        title={<><img src="/bounty-icon.png" style={{width:28,height:28,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Bounty Board</>}
         onBack={onBack}
         backLabel="← Back to Kingdom"
         subtitle="Hunt rival kingdoms for glory and rewards"
@@ -120,7 +120,7 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId, onBack }) => {
                   <div className="reward-items">
                     <span className="reward-item">
                       <span className="reward-icon">💰</span>
-                      {bounty.reward.goldGained.toLocaleString()} gold
+                      {bounty.reward.landGained.toLocaleString()} land reward
                     </span>
                     <span className="reward-item">
                       <span className="reward-icon">🏞️</span>
@@ -175,7 +175,7 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId, onBack }) => {
                   <div className="completed-rewards">
                     <span className="reward-item">
                       <span className="reward-icon">💰</span>
-                      {completed.reward.goldGained.toLocaleString()} gold
+                      {completed.reward.landGained.toLocaleString()} land reward
                     </span>
                     <span className="reward-item">
                       <span className="reward-icon">🏞️</span>

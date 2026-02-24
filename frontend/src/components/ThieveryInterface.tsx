@@ -156,7 +156,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, onBack
   return (
     <div className="thievery-interface">
       <TopNavigation
-        title="Espionage Operations"
+        title={<><img src="/espionage-icon.png" style={{width:28,height:28,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Espionage Operations</>}
         onBack={onBack}
         backLabel="← Back to Kingdom"
         subtitle={`${totalScum} Scum Available`}

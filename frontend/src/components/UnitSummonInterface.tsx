@@ -7,6 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSummonStore } from '../stores/useSummonStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { ErrorBoundary } from './ErrorBoundary';
+import { TopNavigation } from './TopNavigation';
 import { ToastService } from '../services/toastService';
 import './UnitSummonInterface.css';
 
@@ -259,41 +260,50 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
 
   if (error || storeError) {
     return (
-      <div className="summon-error" role="alert">
-        <h3>Summon Error</h3>
-        <p>{error || storeError}</p>
-        <button onClick={() => { setError(null); }}>Dismiss</button>
+      <div style={{ background: 'var(--color-bg-deep, #0f1629)', minHeight: '100vh' }}>
+        <div className="summon-error" role="alert">
+          <h3>Summon Error</h3>
+          <p>{error || storeError}</p>
+          <button onClick={() => { setError(null); }}>Dismiss</button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="unit-summon-interface">
-      <div className="summon-header">
-        <button className="back-btn" onClick={onBack} aria-label="Back to Kingdom">
-          ← Back to Kingdom
-        </button>
-        <h1>⚔️ Summon Units</h1>
+    <div style={{ background: 'var(--color-bg-deep, #0f1629)', minHeight: '100vh' }}>
+      <TopNavigation
+        title={
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+            <img src="/train-units-icon.png" alt="" style={{ width: '1.5rem', height: '1.5rem', objectFit: 'contain' }} />
+            Summon Units
+          </span>
+        }
+        onBack={onBack}
+        backLabel="← Back to Kingdom"
+        subtitle={`${race} Army`}
+      />
+
+      <div className="unit-summon-interface">
+        <nav className="summon-navigation" role="navigation">
+          <button
+            className={`nav-btn ${currentView === 'dashboard' ? 'active' : ''}`}
+            onClick={() => setCurrentView('dashboard')}
+          >
+            Army Overview
+          </button>
+          <button
+            className={`nav-btn ${currentView === 'summon' ? 'active' : ''}`}
+            onClick={() => setCurrentView('summon')}
+          >
+            Summon Units
+          </button>
+        </nav>
+
+        <main className="summon-content">
+          {renderContent()}
+        </main>
       </div>
-
-      <nav className="summon-navigation" role="navigation">
-        <button 
-          className={`nav-btn ${currentView === 'dashboard' ? 'active' : ''}`}
-          onClick={() => setCurrentView('dashboard')}
-        >
-          Army Overview
-        </button>
-        <button 
-          className={`nav-btn ${currentView === 'summon' ? 'active' : ''}`}
-          onClick={() => setCurrentView('summon')}
-        >
-          Summon Units
-        </button>
-      </nav>
-
-      <main className="summon-content">
-        {renderContent()}
-      </main>
     </div>
   );
 };

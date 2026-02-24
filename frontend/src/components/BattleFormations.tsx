@@ -13,6 +13,7 @@ import { useSpring, animated, config } from '@react-spring/web';
 import { useCombatStore } from '../stores/combatStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
+import { TopNavigation } from './TopNavigation';
 
 const FORMATION_DESCRIPTIONS: Record<string, string> = {
   'Defensive Wall': 'Minimizes casualties when defending',
@@ -248,16 +249,14 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
   }, [unitOrder, availableUnits]);
 
   return (
+    <div style={{ background: 'var(--color-bg-deep, #0f1629)', minHeight: '100vh' }}>
+      <TopNavigation
+        title="Battle Formations"
+        onBack={onBack}
+        backLabel="← Back to Kingdom"
+        subtitle="Manage units and execute attacks"
+      />
     <div className="battle-formations">
-      {/* Header with Back Navigation */}
-      <div className="battle-header">
-        {onBack && (
-          <button className="back-btn" onClick={onBack}>
-            ← Back to Kingdom
-          </button>
-        )}
-        <h1>⚔️ Battle Formations</h1>
-      </div>
 
       {/* Error Display */}
       {error && (
@@ -613,6 +612,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 };
