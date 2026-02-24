@@ -4,7 +4,6 @@ import {
   useNodesState,
   useEdgesState,
   addEdge,
-  Background,
   Controls,
   MiniMap,
   Panel,
@@ -21,6 +20,10 @@ interface Node {
   position: { x: number; y: number };
   data: unknown;
   style?: Record<string, unknown>;
+  draggable?: boolean;
+  selectable?: boolean;
+  focusable?: boolean;
+  zIndex?: number;
 }
 
 interface Edge {
@@ -63,6 +66,45 @@ interface WorldStateResult {
   fogOfWar?: Record<string, unknown>;
 }
 
+// Detail panel state shape
+interface SelectedTerritoryInfo {
+  id: string;
+  label: string;
+  type: string;
+  isOwned: boolean;
+}
+
+// Map territory names to detail images
+const TERRITORY_IMAGES: Record<string, string> = {
+  'Capital City': '/territory-capital.png',
+  'Royal Capital': '/territory-capital.png',
+  'Trading Post': '/territory-trading-post.png',
+  'Iron Mines': '/territory-iron-mines.png',
+  'Forest Outpost': '/territory-forest-outpost.png',
+  'Ancient Ruins': '/territory-ancient-ruins.png',
+};
+
+// Custom node that renders the world map image inside the React Flow viewport
+const MapBackgroundNode = () => (
+  <img
+    src="/world-map-4k.jpg"
+    style={{
+      width: '100%',
+      height: '100%',
+      display: 'block',
+      objectFit: 'cover',
+      pointerEvents: 'none',
+      userSelect: 'none',
+    }}
+    alt="World Map"
+    draggable={false}
+  />
+);
+
+const nodeTypes = {
+  mapBackground: MapBackgroundNode,
+};
+
 /**
  * Determine what level of visibility the current kingdom has over another.
  *
@@ -97,6 +139,26 @@ function getLandCategory(land: number): string {
   return 'Massive Kingdom';
 }
 
+// The static background node — prepended to every nodes array so it renders behind all territory nodes
+const MAP_BG_NODE: Node = {
+  id: 'map-bg',
+  type: 'mapBackground',
+  position: { x: -1500, y: -900 },
+  data: {},
+  draggable: false,
+  selectable: false,
+  focusable: false,
+  zIndex: -10,
+  style: {
+    width: 3000,
+    height: 1800,
+    pointerEvents: 'none',
+    border: 'none',
+    background: 'none',
+    borderRadius: 0,
+  },
+};
+
 // Demo territory data
 const generateDemoTerritories = (
   playerKingdom: Schema['Kingdom']['type'],
@@ -120,7 +182,7 @@ const generateDemoTerritories = (
   }> = [
     {
       id: 'territory-1',
-      position: { x: 250, y: 100 },
+      position: { x: -350, y: 90 },
       label: 'Capital City',
       kingdomName: playerKingdom.name,
       race: (playerKingdom.race as string) || 'Human',
@@ -138,7 +200,7 @@ const generateDemoTerritories = (
     },
     {
       id: 'territory-2',
-      position: { x: 100, y: 200 },
+      position: { x: -1050, y: -620 },
       label: 'Iron Mines',
       kingdomName: 'Neutral',
       race: 'Neutral',
@@ -155,7 +217,7 @@ const generateDemoTerritories = (
     },
     {
       id: 'territory-3',
-      position: { x: 400, y: 150 },
+      position: { x: 810, y: -430 },
       label: 'Forest Outpost',
       kingdomName: 'Elven Alliance',
       race: 'Elven',
@@ -174,7 +236,7 @@ const generateDemoTerritories = (
     },
     {
       id: 'territory-4',
-      position: { x: 200, y: 300 },
+      position: { x: -870, y: 480 },
       label: 'Trading Post',
       kingdomName: playerKingdom.name,
       race: (playerKingdom.race as string) || 'Human',
@@ -192,7 +254,7 @@ const generateDemoTerritories = (
     },
     {
       id: 'territory-5',
-      position: { x: 350, y: 280 },
+      position: { x: 1100, y: -50 },
       label: 'Ancient Ruins',
       kingdomName: 'Vampire Lords',
       race: 'Vampire',
@@ -277,10 +339,15 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
     (kingdom as unknown as { guildId?: string }).guildId ?? null;
 
   const [nodes, setNodes, onNodesChange] = useNodesState<TerritoryNode>(
-    generateDemoTerritories(kingdom, currentGuildId),
+    [MAP_BG_NODE as unknown as TerritoryNode, ...generateDemoTerritories(kingdom, currentGuildId)],
   );
   const [edges, setEdges, onEdgesChange] = useEdgesState(generateDemoConnections());
-  const [selectedTerritory, setSelectedTerritory] = useState<TerritoryNode | null>(null);
+
+  // Full TerritoryNode used for the existing territory-panel (fog of war details etc.)
+  const [selectedTerritoryNode, setSelectedTerritoryNode] = useState<TerritoryNode | null>(null);
+
+  // Slim shape used for the new slide-in detail panel
+  const [selectedTerritory, setSelectedTerritory] = useState<SelectedTerritoryInfo | null>(null);
 
   // WorldState from the backend (used in future to refine visibility)
   const [_worldState, setWorldState] = useState<WorldStateResult | null>(null);
@@ -317,16 +384,25 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
     [setEdges],
   );
 
-  const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
-    setSelectedTerritory(node as TerritoryNode);
+  const handleNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
+    if (node.id === 'map-bg') return;
+    const territory = node as TerritoryNode;
+    // Update both state slices
+    setSelectedTerritoryNode(territory);
+    setSelectedTerritory({
+      id: node.id,
+      label: territory.data?.label || node.id,
+      type: territory.data?.landCategory || 'settlement',
+      isOwned: territory.data?.isOwned || false,
+    });
   }, []);
 
   const handleClaimTerritory = useCallback(() => {
-    if (!selectedTerritory || selectedTerritory.data.isOwned) return;
+    if (!selectedTerritoryNode || selectedTerritoryNode.data.isOwned) return;
 
     setNodes((nds) =>
       nds.map((node) =>
-        node.id === selectedTerritory.id
+        node.id === selectedTerritoryNode.id
           ? {
               ...node,
               data: {
@@ -348,8 +424,9 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           : node,
       ),
     );
+    setSelectedTerritoryNode(null);
     setSelectedTerritory(null);
-  }, [selectedTerritory, kingdom, setNodes]);
+  }, [selectedTerritoryNode, kingdom, setNodes]);
 
   return (
     <div
@@ -417,6 +494,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           backgroundColor: 'var(--color-bg-deep, #0f1629)',
           border: '1px solid var(--border-primary)',
           borderRadius: '0.5rem',
+          position: 'relative',
         }}
       >
         <ReactFlow
@@ -425,15 +503,16 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          fitView
+          onNodeClick={handleNodeClick}
+          nodeTypes={nodeTypes}
+          defaultViewport={{ x: 550, y: 430, zoom: 0.65 }}
           attributionPosition="bottom-left"
           style={{ backgroundColor: 'var(--color-bg-deep, #0f1629)' }}
         >
-          <Background color="#1e2a45" style={{ backgroundColor: '#0f1629' }} />
           <Controls style={{ backgroundColor: 'var(--bg-card)' }} />
           <MiniMap
             nodeColor={(node) => {
+              if (node.id === 'map-bg') return 'transparent';
               const t = node as TerritoryNode;
               if (t.data.isOwned) return '#4ade80';
               if (t.data.visibility === 'partial') return '#4b5563';
@@ -448,52 +527,92 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           >
             <div className="map-stats">
               <h3>Kingdom Stats</h3>
-              <p>Territories: {nodes.filter((n) => n.data.isOwned).length}</p>
+              <p>Territories: {nodes.filter((n) => n.id !== 'map-bg' && n.data.isOwned).length}</p>
               <p>
                 Total Power:{' '}
                 {nodes
-                  .filter((n) => n.data.isOwned)
+                  .filter((n) => n.id !== 'map-bg' && n.data.isOwned)
                   .reduce((sum, n) => sum + n.data.power, 0)}
               </p>
             </div>
           </Panel>
         </ReactFlow>
+
+        {/* Slide-in territory detail panel */}
+        {selectedTerritory && (
+          <div style={{
+            position: 'absolute', top: 0, right: 0, width: 320, height: '100%',
+            background: 'rgba(15,22,41,0.97)', borderLeft: '1px solid rgba(255,255,255,0.12)',
+            display: 'flex', flexDirection: 'column', zIndex: 100,
+            fontFamily: 'var(--font-display, Cinzel, serif)',
+            animation: 'slideInRight 0.25s ease-out',
+          }}>
+            <img
+              src={TERRITORY_IMAGES[selectedTerritory.label] || '/territories-icon.png'}
+              style={{ width: '100%', height: 220, objectFit: 'cover' }}
+              alt={selectedTerritory.label}
+            />
+            <div style={{ padding: '1.25rem', flex: 1 }}>
+              <h2 style={{ color: '#d4a017', marginBottom: '0.5rem', fontSize: '1.1rem', letterSpacing: '0.05em' }}>
+                {selectedTerritory.label}
+              </h2>
+              <p style={{ color: selectedTerritory.isOwned ? '#14b8a6' : '#9ca3af', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                {selectedTerritory.isOwned ? '✓ Your Territory' : 'Unclaimed Territory'}
+              </p>
+              <p style={{ color: '#6b7280', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Type: {selectedTerritory.type}
+              </p>
+            </div>
+            <button
+              onClick={() => setSelectedTerritory(null)}
+              style={{
+                margin: '0 1.25rem 1.25rem', padding: '0.6rem',
+                background: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
+                color: '#9ca3af', cursor: 'pointer', borderRadius: 6,
+                fontFamily: 'var(--font-display, Cinzel, serif)', fontSize: '0.8rem'
+              }}
+            >
+              Close
+            </button>
+          </div>
+        )}
       </div>
 
-      {selectedTerritory && (
+      {/* Legacy territory detail panel (fog-of-war detail, claim/attack actions) */}
+      {selectedTerritoryNode && (
         <div className="territory-panel">
-          <h3>{selectedTerritory.data.label}</h3>
+          <h3>{selectedTerritoryNode.data.label}</h3>
 
           {/* Fog of War badge */}
-          {selectedTerritory.data.visibility === 'partial' && (
+          {selectedTerritoryNode.data.visibility === 'partial' && (
             <div className="fog-badge">Partial Visibility</div>
           )}
 
           <p>
-            <strong>Owner:</strong> {selectedTerritory.data.kingdomName}
+            <strong>Owner:</strong> {selectedTerritoryNode.data.kingdomName}
           </p>
 
-          {selectedTerritory.data.visibility === 'full' ? (
+          {selectedTerritoryNode.data.visibility === 'full' ? (
             <>
               <p>
-                <strong>Race:</strong> {selectedTerritory.data.race}
+                <strong>Race:</strong> {selectedTerritoryNode.data.race}
               </p>
               <p>
-                <strong>Power:</strong> {selectedTerritory.data.power}
+                <strong>Power:</strong> {selectedTerritoryNode.data.power}
               </p>
               <p>
-                <strong>Gold:</strong> {selectedTerritory.data.resources.gold}
+                <strong>Gold:</strong> {selectedTerritoryNode.data.resources.gold}
               </p>
               <p>
                 <strong>Population:</strong>{' '}
-                {selectedTerritory.data.resources.population}
+                {selectedTerritoryNode.data.resources.population}
               </p>
             </>
           ) : (
             <>
               <p>
                 <strong>Size:</strong>{' '}
-                {selectedTerritory.data.landCategory ?? 'Unknown'}
+                {selectedTerritoryNode.data.landCategory ?? 'Unknown'}
               </p>
               <p className="fog-info">
                 Exact details hidden by Fog of War. Scout this territory to reveal
@@ -502,7 +621,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
             </>
           )}
 
-          {!selectedTerritory.data.isOwned && (
+          {!selectedTerritoryNode.data.isOwned && (
             <div className="territory-actions">
               <button onClick={handleClaimTerritory} className="claim-button">
                 Claim Territory
@@ -512,7 +631,10 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           )}
 
           <button
-            onClick={() => setSelectedTerritory(null)}
+            onClick={() => {
+              setSelectedTerritoryNode(null);
+              setSelectedTerritory(null);
+            }}
             className="close-button"
           >
             Close
@@ -521,6 +643,11 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
       )}
 
       <style>{`
+        @keyframes slideInRight {
+          from { transform: translateX(100%); opacity: 0; }
+          to   { transform: translateX(0);    opacity: 1; }
+        }
+
         .world-map {
           height: 100vh;
           display: flex;
