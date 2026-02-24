@@ -227,6 +227,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
       result.push({
         id: `player-${t.id}`,
         position: pos,
+        draggable: false,
         data: {
           label: t.name,
           kingdomName: kingdom.name || 'Your Kingdom',
@@ -248,6 +249,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
       result.push({
         id: `ai-${k.id}`,
         position: pos,
+        draggable: false,
         data: {
           label: k.name,
           kingdomName: k.name,
@@ -669,24 +671,30 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         .territory-panel {
           position: absolute;
           top: 50%;
-          right: 1rem;
+          left: 1rem;
           transform: translateY(-50%);
-          background: white;
+          background: rgba(15, 22, 41, 0.97);
+          border: 1px solid rgba(255,255,255,0.12);
           padding: 1.5rem;
           border-radius: 0.5rem;
-          box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 10px 40px rgba(0,0,0,0.6);
           min-width: 250px;
           z-index: 1000;
+          color: #f0e6cc;
         }
 
         .territory-panel h3 {
           margin: 0 0 1rem 0;
-          color: #1f2937;
+          color: #d4a017;
+          font-family: var(--font-display, 'Cinzel', serif);
+          font-size: 1.1rem;
+          letter-spacing: 0.04em;
         }
 
         .territory-panel p {
           margin: 0.5rem 0;
-          color: #374151;
+          color: #d1d5db;
+          font-size: 0.9rem;
         }
 
         .fog-badge {
@@ -745,18 +753,22 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         }
 
         .close-button {
-          background: #6b7280;
-          color: white;
-          border: none;
+          background: transparent;
+          color: #9ca3af;
+          border: 1px solid rgba(255,255,255,0.15);
           padding: 0.5rem 1rem;
           border-radius: 0.375rem;
           cursor: pointer;
           margin-top: 1rem;
           width: 100%;
+          font-family: var(--font-display, 'Cinzel', serif);
+          font-size: 0.8rem;
+          letter-spacing: 0.05em;
         }
 
         .close-button:hover {
-          background: #4b5563;
+          background: rgba(255,255,255,0.08);
+          color: #f0e6cc;
         }
       `}</style>
     </div>
