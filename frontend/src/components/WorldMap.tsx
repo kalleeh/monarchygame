@@ -459,7 +459,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           attributionPosition="bottom-left"
           style={{ backgroundColor: 'var(--color-bg-deep, #0f1629)' }}
         >
-          <Controls style={{ backgroundColor: 'var(--bg-card)' }} />
+          <Controls style={{ backgroundColor: 'rgba(15,22,41,0.92)', border: '1px solid rgba(255,255,255,0.12)' }} />
           <MiniMap
             nodeColor={(node) => {
               if (node.id === 'map-bg') return 'transparent';
@@ -469,11 +469,11 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
               return '#94a3b8';
             }}
             position="top-right"
-            style={{ backgroundColor: 'var(--bg-card)' }}
+            style={{ backgroundColor: 'rgba(15,22,41,0.92)', border: '1px solid rgba(255,255,255,0.12)' }}
           />
           <Panel
             position="top-left"
-            style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}
+            style={{ background: 'transparent' }}
           >
             <div className="map-stats">
               <h3>Kingdom Stats</h3>
@@ -652,20 +652,26 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         }
 
         .map-stats {
-          background: rgba(255, 255, 255, 0.9);
+          background: rgba(15, 22, 41, 0.92);
+          border: 1px solid rgba(255,255,255,0.12);
           padding: 1rem;
           border-radius: 0.5rem;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         }
 
         .map-stats h3 {
           margin: 0 0 0.5rem 0;
-          color: #1f2937;
+          color: #d4a017;
+          font-family: var(--font-display, 'Cinzel', serif);
+          font-size: 0.85rem;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
         }
 
         .map-stats p {
           margin: 0.25rem 0;
-          color: #374151;
+          color: #d1d5db;
+          font-size: 0.85rem;
         }
 
         .territory-panel {
