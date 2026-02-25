@@ -94,76 +94,89 @@ interface WorldTerritory {
 }
 
 /**
- * 50 named territory slots spread across the full map extent
- * (-7000..+7000 x, -4000..+4000 y) with slight positional variation
- * so they don't look perfectly mechanical.
+ * 50 named territory slots mapped to the actual terrain features visible
+ * on world-map-world.jpg.
  *
- * Distribution: 5 fortresses, 10 capitals, 15 settlements, 20 outposts
+ * Key terrain zones:
+ *  WESTERN MAINLAND  x: -7500 → +700        (large green continent, mountains, forest)
+ *  CENTRAL BAY       x: +800  → +4400, y: -2000 → +1800  ← WATER — no territories here
+ *  EASTERN PENINSULA x: +4500 → +6500, y: -2000 → +1800
+ *  SMALL ISLAND      x: +5800 → +7000, y: +2500 → +4000
  */
 const WORLD_TERRITORIES: WorldTerritory[] = [
-  // ── ROW 0  (top, y ≈ -3800..−3200) ──────────────────────────────────────
-  { id: 'wt-01', name: 'Frostwall Keep',       position: { x: -6800, y: -3800 }, type: 'fortress'   },
-  { id: 'wt-02', name: 'Ashfen Marsh',          position: { x: -4200, y: -3600 }, type: 'outpost'    },
-  { id: 'wt-03', name: 'Crystalpeak',           position: { x: -1500, y: -3750 }, type: 'capital'    },
-  { id: 'wt-04', name: 'Thornwood',             position: { x:  1200, y: -3650 }, type: 'settlement' },
-  { id: 'wt-05', name: 'Duskwall Fortress',     position: { x:  3800, y: -3800 }, type: 'fortress'   },
-  { id: 'wt-06', name: 'Rimstone Outpost',      position: { x:  6400, y: -3500 }, type: 'outpost'    },
+  // ── WESTERN MAINLAND — far north, mountains (y ≈ -3500..−2800) ───────────
+  { id: 'wt-01', name: 'Frostwall Keep',    position: { x: -7000, y: -3700 }, type: 'fortress'   },
+  { id: 'wt-02', name: 'Ashfen Marsh',      position: { x: -5500, y: -3800 }, type: 'outpost'    },
+  { id: 'wt-03', name: 'Crystalpeak',       position: { x: -3800, y: -3700 }, type: 'capital'    },
+  { id: 'wt-04', name: 'Thornwood',         position: { x: -2000, y: -3600 }, type: 'settlement' },
+  { id: 'wt-05', name: 'Duskwall Fortress', position: { x:  -600, y: -3500 }, type: 'fortress'   },
 
-  // ── ROW 1  (y ≈ -2600..−2000) ────────────────────────────────────────────
-  { id: 'wt-07', name: 'Ironhold Keep',         position: { x: -6600, y: -2400 }, type: 'capital'    },
-  { id: 'wt-08', name: 'Embervale',             position: { x: -4800, y: -2600 }, type: 'settlement' },
-  { id: 'wt-09', name: 'Silvergate',            position: { x: -3000, y: -2100 }, type: 'capital'    },
-  { id: 'wt-10', name: 'Coldbrook Pass',        position: { x: -1100, y: -2500 }, type: 'outpost'    },
-  { id: 'wt-11', name: 'Stormhaven',            position: { x:   500, y: -2200 }, type: 'settlement' },
-  { id: 'wt-12', name: 'Galewatch Tower',       position: { x:  2400, y: -2700 }, type: 'outpost'    },
-  { id: 'wt-13', name: 'Redstone Crossing',     position: { x:  4500, y: -2300 }, type: 'settlement' },
-  { id: 'wt-14', name: 'Veilcliff',             position: { x:  6300, y: -2600 }, type: 'outpost'    },
+  // ── WESTERN MAINLAND — upper band (y ≈ -2600..−2000) ─────────────────────
+  { id: 'wt-06', name: 'Rimstone Outpost',  position: { x: -6800, y: -2700 }, type: 'outpost'    },
+  { id: 'wt-07', name: 'Ironhold Keep',     position: { x: -5200, y: -2500 }, type: 'capital'    },
+  { id: 'wt-08', name: 'Embervale',         position: { x: -3500, y: -2600 }, type: 'settlement' },
+  { id: 'wt-09', name: 'Silvergate',        position: { x: -2200, y: -2400 }, type: 'capital'    },
+  { id: 'wt-10', name: 'Coldbrook Pass',    position: { x:  -800, y: -2500 }, type: 'outpost'    },
 
-  // ── ROW 2  (y ≈ -1200..−400) ─────────────────────────────────────────────
-  { id: 'wt-15', name: 'Highreach Citadel',     position: { x: -6900, y: -1100 }, type: 'fortress'   },
-  { id: 'wt-16', name: 'Mosswick',              position: { x: -5500, y:  -800 }, type: 'outpost'    },
-  { id: 'wt-17', name: 'Dunmere',               position: { x: -3900, y: -1300 }, type: 'settlement' },
-  { id: 'wt-18', name: 'Amberveil',             position: { x: -2200, y:  -600 }, type: 'capital'    },
-  { id: 'wt-19', name: 'Greywater Ford',        position: { x:  -400, y: -1100 }, type: 'outpost'    },
-  { id: 'wt-20', name: 'Ashwood Grove',         position: { x:  1300, y:  -700 }, type: 'settlement' },
-  { id: 'wt-21', name: 'Kindlegate',            position: { x:  2900, y: -1200 }, type: 'capital'    },
-  { id: 'wt-22', name: 'Brackenmoor',           position: { x:  4700, y:  -900 }, type: 'outpost'    },
-  { id: 'wt-23', name: 'Stonemarsh Hold',       position: { x:  6500, y: -1300 }, type: 'settlement' },
+  // ── EASTERN PENINSULA — northern tip (y ≈ -2000..−1200) ──────────────────
+  { id: 'wt-11', name: 'Stormhaven',        position: { x:  4800, y: -1800 }, type: 'settlement' },
+  { id: 'wt-12', name: 'Galewatch Tower',   position: { x:  6000, y: -1600 }, type: 'outpost'    },
 
-  // ── ROW 3  (centre, y ≈ 0..+600) ─────────────────────────────────────────
-  { id: 'wt-24', name: 'Ravenspire',            position: { x: -6700, y:   200 }, type: 'outpost'    },
-  { id: 'wt-25', name: 'Thornwall',             position: { x: -5000, y:   400 }, type: 'capital'    },
-  { id: 'wt-26', name: 'Ironvale',              position: { x: -3200, y:   100 }, type: 'settlement' },
-  { id: 'wt-27', name: 'Goldenfield',           position: { x: -1600, y:   500 }, type: 'outpost'    },
-  { id: 'wt-28', name: 'Crownsreach',           position: { x:     0, y:     0 }, type: 'capital'    },
-  { id: 'wt-29', name: 'Dusthaven',             position: { x:  1700, y:   300 }, type: 'outpost'    },
-  { id: 'wt-30', name: 'Clearwater',            position: { x:  3400, y:   -50 }, type: 'settlement' },
-  { id: 'wt-31', name: 'Emberthorn',            position: { x:  5100, y:   450 }, type: 'capital'    },
-  { id: 'wt-32', name: 'Nightfall Bastion',     position: { x:  6800, y:   150 }, type: 'fortress'   },
+  // ── WESTERN MAINLAND — middle band (y ≈ -1400..−600) ─────────────────────
+  { id: 'wt-13', name: 'Highreach Citadel', position: { x: -7200, y: -1400 }, type: 'fortress'   },
+  { id: 'wt-14', name: 'Mosswick',          position: { x: -6000, y: -1100 }, type: 'outpost'    },
+  { id: 'wt-15', name: 'Dunmere',           position: { x: -4500, y: -1400 }, type: 'settlement' },
+  { id: 'wt-16', name: 'Amberveil',         position: { x: -3000, y: -1000 }, type: 'capital'    },
+  { id: 'wt-17', name: 'Greywater Ford',    position: { x: -1500, y: -1300 }, type: 'outpost'    },
+  { id: 'wt-18', name: 'Ashwood Grove',     position: { x:  -400, y:  -900 }, type: 'settlement' },
 
-  // ── ROW 4  (y ≈ +1000..+1800) ────────────────────────────────────────────
-  { id: 'wt-33', name: 'Fernveil',              position: { x: -6400, y:  1200 }, type: 'outpost'    },
-  { id: 'wt-34', name: 'Oldstone March',        position: { x: -4600, y:  1500 }, type: 'settlement' },
-  { id: 'wt-35', name: 'Cinderport',            position: { x: -2800, y:  1100 }, type: 'capital'    },
-  { id: 'wt-36', name: 'Mudbrook',              position: { x: -1000, y:  1700 }, type: 'outpost'    },
-  { id: 'wt-37', name: 'Silvershard',           position: { x:   800, y:  1300 }, type: 'settlement' },
-  { id: 'wt-38', name: 'Dawnpost',              position: { x:  2600, y:  1600 }, type: 'outpost'    },
-  { id: 'wt-39', name: 'Irongate',              position: { x:  4300, y:  1200 }, type: 'settlement' },
-  { id: 'wt-40', name: 'Wintermere',            position: { x:  6200, y:  1500 }, type: 'outpost'    },
+  // ── EASTERN PENINSULA — mid (y ≈ -900..0) ────────────────────────────────
+  { id: 'wt-19', name: 'Redstone Crossing', position: { x:  4600, y:  -800 }, type: 'settlement' },
+  { id: 'wt-20', name: 'Kindlegate',        position: { x:  5900, y:  -600 }, type: 'capital'    },
 
-  // ── ROW 5  (y ≈ +2400..+3200) ────────────────────────────────────────────
-  { id: 'wt-41', name: 'Shadowfen',             position: { x: -6600, y:  2600 }, type: 'outpost'    },
-  { id: 'wt-42', name: 'Bouldercrag',           position: { x: -4900, y:  2900 }, type: 'settlement' },
-  { id: 'wt-43', name: 'Saltmere',              position: { x: -3100, y:  2400 }, type: 'outpost'    },
-  { id: 'wt-44', name: 'Gildenmoor',            position: { x: -1300, y:  3100 }, type: 'capital'    },
-  { id: 'wt-45', name: 'Stonebreach',           position: { x:   600, y:  2700 }, type: 'settlement' },
-  { id: 'wt-46', name: 'Mistveil',              position: { x:  2200, y:  3000 }, type: 'outpost'    },
-  { id: 'wt-47', name: 'Flamehearth',           position: { x:  4000, y:  2500 }, type: 'settlement' },
-  { id: 'wt-48', name: 'Stormveil Hold',        position: { x:  5800, y:  3000 }, type: 'capital'    },
+  // ── WESTERN MAINLAND — centre (y ≈ -300..+700) ───────────────────────────
+  { id: 'wt-21', name: 'Ravenspire',        position: { x: -7000, y:  -300 }, type: 'outpost'    },
+  { id: 'wt-22', name: 'Thornwall',         position: { x: -5500, y:  -500 }, type: 'capital'    },
+  { id: 'wt-23', name: 'Ironvale',          position: { x: -4000, y:  -200 }, type: 'settlement' },
+  { id: 'wt-24', name: 'Goldenfield',       position: { x: -2500, y:  -500 }, type: 'outpost'    },
+  { id: 'wt-25', name: 'Crownsreach',       position: { x: -1200, y:  -200 }, type: 'capital'    },
+  { id: 'wt-26', name: 'Brackenmoor',       position: { x:  -300, y:  -600 }, type: 'outpost'    },
 
-  // ── ROW 6  (bottom, y ≈ +3500..+4000) ───────────────────────────────────
-  { id: 'wt-49', name: 'Deepwatch',             position: { x: -5800, y:  3800 }, type: 'outpost'    },
-  { id: 'wt-50', name: 'Cinderfall Fortress',   position: { x:   200, y:  3900 }, type: 'fortress'   },
+  // ── EASTERN PENINSULA — centre (y ≈ +200..+800) ──────────────────────────
+  { id: 'wt-27', name: 'Emberthorn',        position: { x:  4800, y:   400 }, type: 'capital'    },
+  { id: 'wt-28', name: 'Stonemarsh Hold',   position: { x:  6000, y:   700 }, type: 'settlement' },
+
+  // ── WESTERN MAINLAND — lower-centre (y ≈ +600..+1800) ────────────────────
+  { id: 'wt-29', name: 'Fernveil',          position: { x: -7000, y:   700 }, type: 'outpost'    },
+  { id: 'wt-30', name: 'Cinderport',        position: { x: -5500, y:   500 }, type: 'capital'    },
+  { id: 'wt-31', name: 'Oldstone March',    position: { x: -4000, y:   800 }, type: 'settlement' },
+  { id: 'wt-32', name: 'Dusthaven',         position: { x: -2600, y:   600 }, type: 'outpost'    },
+  { id: 'wt-33', name: 'Mudbrook',          position: { x: -1200, y:   900 }, type: 'outpost'    },
+  { id: 'wt-34', name: 'Silvershard',       position: { x:  -300, y:   600 }, type: 'settlement' },
+
+  // ── EASTERN PENINSULA — south (y ≈ +1000..+1800) ─────────────────────────
+  { id: 'wt-35', name: 'Dawnpost',          position: { x:  4600, y:  1500 }, type: 'outpost'    },
+  { id: 'wt-36', name: 'Wintermere',        position: { x:  5800, y:  1500 }, type: 'settlement' },
+
+  // ── WESTERN MAINLAND — south (y ≈ +1800..+2800) ──────────────────────────
+  { id: 'wt-37', name: 'Shadowfen',         position: { x: -6600, y:  1900 }, type: 'outpost'    },
+  { id: 'wt-38', name: 'Bouldercrag',       position: { x: -5200, y:  2100 }, type: 'settlement' },
+  { id: 'wt-39', name: 'Saltmere',          position: { x: -3800, y:  1900 }, type: 'outpost'    },
+  { id: 'wt-40', name: 'Nightfall Bastion', position: { x: -2400, y:  2200 }, type: 'fortress'   },
+  { id: 'wt-41', name: 'Gildenmoor',        position: { x: -1100, y:  2000 }, type: 'capital'    },
+  { id: 'wt-42', name: 'Clearwater',        position: { x:  -300, y:  2400 }, type: 'settlement' },
+
+  // ── WESTERN MAINLAND — far south (y ≈ +2800..+4000) ──────────────────────
+  { id: 'wt-43', name: 'Stonebreach',       position: { x: -6500, y:  3000 }, type: 'settlement' },
+  { id: 'wt-44', name: 'Mistveil',          position: { x: -5000, y:  3200 }, type: 'outpost'    },
+  { id: 'wt-45', name: 'Flamehearth',       position: { x: -3500, y:  3000 }, type: 'settlement' },
+  { id: 'wt-46', name: 'Deepwatch',         position: { x: -2000, y:  3500 }, type: 'outpost'    },
+  { id: 'wt-47', name: 'Irongate',          position: { x:  -500, y:  3200 }, type: 'settlement' },
+  { id: 'wt-48', name: 'Cinderfall Fortress',position:{ x: -1000, y:  3900 }, type: 'fortress'   },
+
+  // ── SMALL ISLAND — bottom right ───────────────────────────────────────────
+  { id: 'wt-49', name: 'Stormveil Hold',    position: { x:  6000, y:  2900 }, type: 'capital'    },
+  { id: 'wt-50', name: 'Rimfire Outpost',   position: { x:  6500, y:  3700 }, type: 'outpost'    },
 ];
 
 // ─── Fog-of-war helper ───────────────────────────────────────────────────────
