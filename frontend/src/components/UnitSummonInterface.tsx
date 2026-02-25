@@ -53,9 +53,10 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
   const totalUpkeep = getTotalUpkeep();
   const TROOP_CAP_GOLD = 10_000_000;
 
+  // Reload summon data whenever units change so Army Value / Recruit Capacity stays fresh
   useEffect(() => {
     loadSummonData(kingdomId, race);
-  }, [kingdomId, race, loadSummonData]);
+  }, [kingdomId, race, loadSummonData, currentUnits.length]);
 
   const handleSummonUnit = useCallback(async (unitType: string, quantity: number) => {
     try {
@@ -84,14 +85,14 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
           <span className="stat-value">{currentUnits.reduce((sum, u) => sum + u.count, 0)}</span>
         </div>
         <div className="stat-card">
-          <h4>Gold Spent on Troops</h4>
+          <h4>Army Value</h4>
           <span className="stat-value">{accumulatedGoldSpent.toLocaleString()}g</span>
-          <small>of {TROOP_CAP_GOLD.toLocaleString()}g cap</small>
+          <small>of {(TROOP_CAP_GOLD / 1_000_000).toFixed(0)}M cap — gold invested in troops</small>
         </div>
         <div className="stat-card">
-          <h4>Remaining Capacity</h4>
+          <h4>Recruit Capacity</h4>
           <span className="stat-value">{remainingCapacity.toLocaleString()}g</span>
-          <small>{Math.round((remainingCapacity / TROOP_CAP_GOLD) * 100)}% available</small>
+          <small>{Math.round((remainingCapacity / TROOP_CAP_GOLD) * 100)}% remaining</small>
         </div>
         <div className="stat-card">
           <h4>Total Upkeep</h4>

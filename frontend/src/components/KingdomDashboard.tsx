@@ -157,8 +157,9 @@ function KingdomDashboard({
   onBattleReports, 
   onViewLeaderboard 
 }: KingdomDashboardProps) {
-  // Use centralized kingdom store for resources
+  // Use centralized kingdom store for resources AND live units
   const resources = useKingdomStore((state) => state.resources);
+  const liveUnits = useKingdomStore((state) => state.units);
   const setKingdomId = useKingdomStore((state) => state.setKingdomId);
   const setResources = useKingdomStore((state) => state.setResources);
   const addGold = useKingdomStore((state) => state.addGold);
@@ -755,7 +756,22 @@ function KingdomDashboard({
               KINGDOM NETWORTH (SCORE)
             </div>
             <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)' }}>
-              {((resources?.land || 0) * 1000 + (resources?.gold || 0) + (kingdom.totalUnits ? Object.values(kingdom.totalUnits).reduce((sum, count) => sum + count * 100, 0) : 0)).toLocaleString()}
+              {(() => {
+                const land = Number(resources?.land) || 0;
+                const gold = Number(resources?.gold) || 0;
+                // Use live units from store (updated on summon) — fall back to kingdom.totalUnits prop
+                const unitValue = liveUnits.length > 0
+                  ? liveUnits.reduce((sum, u) => sum + (Number.isFinite(u.count) ? u.count : 0) * 100, 0)
+                  : (() => {
+                      try {
+                        const tu = typeof kingdom.totalUnits === 'string'
+                          ? JSON.parse(kingdom.totalUnits as unknown as string)
+                          : kingdom.totalUnits;
+                        return tu ? Object.values(tu).reduce((s: number, v) => s + (Number.isFinite(v as number) ? (v as number) : 0) * 100, 0) : 0;
+                      } catch { return 0; }
+                    })();
+                return (land * 1000 + gold + unitValue).toLocaleString();
+              })()}
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
               Land × 1,000 + Gold + Units × 100
