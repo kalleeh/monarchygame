@@ -27,7 +27,10 @@ vi.mock('../kingdomStore', () => ({
       units: [
         { id: 'knight-1', type: 'knight', count: 10, attack: 5, defense: 5, health: 50 }
       ],
-      removeUnits: vi.fn()
+      resources: { land: 1000, gold: 50000, population: 0, turns: 0 },
+      removeUnits: vi.fn(),
+      updateResources: vi.fn(),
+      setUnits: vi.fn()
     }))
   }
 }));

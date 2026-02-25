@@ -506,7 +506,7 @@ export const useCombatStore = create(
 
           // Apply land gain to the player's kingdom resources
           useKingdomStore.getState().updateResources({
-            land: (useKingdomStore.getState().resources.land ?? 0) + landGained
+            land: (useKingdomStore.getState().resources?.land ?? 0) + landGained
           });
 
           set((storeState) => ({
