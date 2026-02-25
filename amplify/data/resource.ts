@@ -37,6 +37,7 @@ const DiplomaticStatus = a.enum(['neutral', 'friendly', 'allied', 'hostile', 'wa
 const TreatyType = a.enum(['non_aggression', 'trade_agreement', 'military_alliance', 'ceasefire']);
 const TreatyStatus = a.enum(['proposed', 'active', 'expired', 'broken']);
 const RestorationType = a.enum(['none', 'damage_based', 'death_based']);
+const GuildWarStatus = a.enum(['ACTIVE', 'ENDED']);
 
 const schema = a.schema({
   // Shared enum definitions
@@ -55,6 +56,7 @@ const schema = a.schema({
   TreatyType,
   TreatyStatus,
   RestorationType,
+  GuildWarStatus,
 
   Kingdom: a
     .model({
@@ -285,6 +287,25 @@ const schema = a.schema({
       lastUpdated: a.datetime().required(),
     })
     .authorization((allow) => [
+      allow.owner()
+    ]),
+
+  GuildWar: a
+    .model({
+      attackingGuildId: a.string().required(),
+      defendingGuildId: a.string().required(),
+      attackingGuildName: a.string().required(),
+      defendingGuildName: a.string().required(),
+      status: a.ref('GuildWarStatus').required(),
+      declaredAt: a.datetime().required(),
+      endsAt: a.datetime().required(),
+      attackingScore: a.integer().default(0),
+      defendingScore: a.integer().default(0),
+      contributions: a.json(),
+      winnerId: a.string(),
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
       allow.owner()
     ]),
 

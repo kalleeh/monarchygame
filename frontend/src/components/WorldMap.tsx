@@ -18,6 +18,7 @@ import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { ToastService } from '../services/toastService';
 import { achievementTriggers } from '../utils/achievementTriggers';
+import { TERRAINS } from '../data/terrains';
 
 interface Node {
   id: string;
@@ -67,6 +68,8 @@ interface TerritoryNode extends Node {
     territoryType?: string;
     ownership?: 'player' | 'enemy' | 'neutral';
     inFog?: boolean;
+    // Terrain type for this territory (used for combat modifier display)
+    terrainType?: string;
   };
 }
 
@@ -85,6 +88,7 @@ interface SelectedTerritoryInfo {
   ownership: 'player' | 'enemy' | 'neutral';
   kingdomName?: string;
   inFog?: boolean;
+  terrainType?: string;
 }
 
 // ─── World Region Grid ───────────────────────────────────────────────────────
@@ -290,6 +294,54 @@ function hashId(id: string): number {
     h = h & h;
   }
   return Math.abs(h);
+}
+
+// ─── Terrain assignment & display helpers ────────────────────────────────────
+
+// Terrain types ordered for deterministic assignment by region id hash
+const TERRAIN_POOL = ['plains', 'forest', 'mountains', 'swamp', 'desert', 'coastal'] as const;
+
+/**
+ * Assign a stable terrain type to a region based on its id hash.
+ * If the AI kingdom carrying a terrainType is available, prefer that.
+ */
+function getRegionTerrain(regionId: string, aiTerrainOverride?: string): string {
+  if (aiTerrainOverride) return aiTerrainOverride.toLowerCase();
+  const h = hashId(regionId);
+  return TERRAIN_POOL[h % TERRAIN_POOL.length];
+}
+
+/**
+ * Returns the display emoji for a terrain type.
+ */
+function terrainEmoji(terrain: string): string {
+  switch (terrain.toLowerCase()) {
+    case 'plains':    return '🌾';
+    case 'forest':    return '🌲';
+    case 'mountains': return '⛰';
+    case 'swamp':     return '🌿';
+    case 'desert':    return '🏜';
+    case 'coastal':   return '🌊';
+    default:          return '🌾';
+  }
+}
+
+/**
+ * Returns a short human-readable summary of terrain combat modifiers.
+ * E.g. "Forest: +20% def, -10% cavalry"
+ */
+function terrainModSummary(terrain: string): string {
+  const terrainDef = TERRAINS.find(t => t.type.toLowerCase() === terrain.toLowerCase());
+  if (!terrainDef) return terrain.charAt(0).toUpperCase() + terrain.slice(1) + ': no modifiers';
+  const parts: string[] = [];
+  const m = terrainDef.modifiers;
+  if (m.defense  != null && m.defense  !== 0) parts.push(`${m.defense  > 0 ? '+' : ''}${Math.round(m.defense  * 100)}% def`);
+  if (m.offense  != null && m.offense  !== 0) parts.push(`${m.offense  > 0 ? '+' : ''}${Math.round(m.offense  * 100)}% offense`);
+  if (m.cavalry  != null && m.cavalry  !== 0) parts.push(`${m.cavalry  > 0 ? '+' : ''}${Math.round(m.cavalry  * 100)}% cavalry`);
+  if (m.infantry != null && m.infantry !== 0) parts.push(`${m.infantry > 0 ? '+' : ''}${Math.round(m.infantry * 100)}% infantry`);
+  if (m.siege    != null && m.siege    !== 0) parts.push(`${m.siege    > 0 ? '+' : ''}${Math.round(m.siege    * 100)}% siege`);
+  if (parts.length === 0) return terrainDef.name + ': no modifiers';
+  return terrainDef.name + ': ' + parts.join(', ');
 }
 
 // ─── Custom map background node ─────────────────────────────────────────────
@@ -580,6 +632,16 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         label = wt.name;
       }
 
+      // Terrain: prefer AI kingdom terrainType if available, else derive from region id hash
+      const aiTerrainRaw =
+        (aiKingdom as (typeof aiKingdom) & { terrain?: string; terrainType?: string } | undefined)?.terrain ??
+        (aiKingdom as (typeof aiKingdom) & { terrain?: string; terrainType?: string } | undefined)?.terrainType;
+      const terrain = getRegionTerrain(wt.id, aiTerrainRaw);
+
+      // Append terrain emoji to label when not in fog
+      const isFogNode = inFog && ownership === 'neutral';
+      const labelWithTerrain = isFogNode ? label : `${label} ${terrainEmoji(terrain)}`;
+
       const style = buildNodeStyle(
         wt.type,
         ownership,
@@ -595,7 +657,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         position: wt.position,
         draggable: false,
         data: {
-          label,
+          label: labelWithTerrain,
           kingdomName:
             ownership === 'player'
               ? (kingdom.name || 'Your Kingdom')
@@ -621,7 +683,8 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           worldTerritoryId: wt.id,
           territoryType: wt.type,
           ownership,
-          inFog: inFog && ownership === 'neutral',
+          inFog: isFogNode,
+          terrainType: terrain,
         },
         style,
       } as TerritoryNode;
@@ -711,6 +774,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
       ownership,
       kingdomName: territory.data?.kingdomName,
       inFog: false,
+      terrainType: territory.data?.terrainType,
     });
   }, []);
 
@@ -1021,6 +1085,26 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
               }}>
                 {selectedTerritory.type}
               </p>
+
+              {/* Terrain badge with combat modifier summary */}
+              {selectedTerritory.terrainType && (
+                <div style={{
+                  marginTop: '0.5rem',
+                  marginBottom: '0.75rem',
+                  padding: '0.5rem 0.75rem',
+                  background: '#111827',
+                  border: '1px solid #374151',
+                  borderRadius: 6,
+                  fontSize: '0.78rem',
+                }}>
+                  <span style={{ fontSize: '1rem', marginRight: '0.4rem' }}>
+                    {terrainEmoji(selectedTerritory.terrainType)}
+                  </span>
+                  <span style={{ color: '#d1d5db', fontWeight: 600 }}>
+                    {terrainModSummary(selectedTerritory.terrainType)}
+                  </span>
+                </div>
+              )}
 
               {/* Kingdom name for enemy territories */}
               {selectedTerritory.ownership === 'enemy' && selectedTerritory.kingdomName && (

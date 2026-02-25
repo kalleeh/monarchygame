@@ -38,6 +38,21 @@ import { handler } from './handler';
 // Helpers
 // ---------------------------------------------------------------------------
 
+interface HandlerResult {
+  success: boolean;
+  result?: string | null;
+  error?: string | null;
+  errorCode?: string | null;
+}
+
+// Cast handler to a simple single-argument callable so tests are not burdened
+// by the Amplify Gen2 / AWS Lambda 3-argument (event, context, callback)
+// signature that Schema["processCombat"]["functionHandler"] enforces, and so
+// that the return type is narrowed to HandlerResult rather than the loose
+// JSON union (string | number | boolean | {} | any[] | null) produced by
+// .returns(a.json()).
+const callHandler = handler as unknown as (event: unknown) => Promise<HandlerResult>;
+
 function makeEvent(args: Record<string, unknown>) {
   return { arguments: args, identity: { sub: 'test-sub-123', username: 'test-user' } } as any;
 }
@@ -87,7 +102,7 @@ describe('combat-processor handler', () => {
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({
           attackerId: 'attacker-1',
           defenderId: 'defender-1',
@@ -119,7 +134,7 @@ describe('combat-processor handler', () => {
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({
           attackerId: 'attacker-1',
           defenderId: 'defender-1',
@@ -148,7 +163,7 @@ describe('combat-processor handler', () => {
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({
           attackerId: 'attacker-1',
           defenderId: 'defender-1',
@@ -176,7 +191,7 @@ describe('combat-processor handler', () => {
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({
           attackerId: 'attacker-1',
           defenderId: 'defender-1',
@@ -204,7 +219,7 @@ describe('combat-processor handler', () => {
         .mockResolvedValueOnce(weakAttacker)
         .mockResolvedValueOnce(strongDefender);
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({
           attackerId: 'attacker-1',
           defenderId: 'defender-1',
@@ -226,7 +241,7 @@ describe('combat-processor handler', () => {
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({
           attackerId: 'attacker-1',
           defenderId: 'defender-1',
@@ -241,7 +256,7 @@ describe('combat-processor handler', () => {
 
   describe('validation failures', () => {
     it('returns MISSING_PARAMS when attackerId is absent', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ defenderId: 'defender-1', units: { infantry: 10 } })
       );
 
@@ -250,7 +265,7 @@ describe('combat-processor handler', () => {
     });
 
     it('returns MISSING_PARAMS when defenderId is absent', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ attackerId: 'attacker-1', units: { infantry: 10 } })
       );
 
@@ -259,7 +274,7 @@ describe('combat-processor handler', () => {
     });
 
     it('returns MISSING_PARAMS when units is absent', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ attackerId: 'attacker-1', defenderId: 'defender-1' })
       );
 
@@ -268,7 +283,7 @@ describe('combat-processor handler', () => {
     });
 
     it('returns INVALID_PARAM when attacker and defender are the same', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ attackerId: 'kingdom-1', defenderId: 'kingdom-1', units: { infantry: 10 } })
       );
 
@@ -286,7 +301,7 @@ describe('combat-processor handler', () => {
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({
           attackerId: 'attacker-1',
           defenderId: 'defender-1',
@@ -305,7 +320,7 @@ describe('combat-processor handler', () => {
         .mockResolvedValueOnce({ data: null, errors: null })
         .mockResolvedValueOnce(mockKingdom('defender-1'));
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ attackerId: 'missing-attacker', defenderId: 'defender-1', units: { infantry: 10 } })
       );
 
@@ -318,7 +333,7 @@ describe('combat-processor handler', () => {
         .mockResolvedValueOnce(mockKingdom('attacker-1'))
         .mockResolvedValueOnce({ data: null, errors: null });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ attackerId: 'attacker-1', defenderId: 'missing-defender', units: { infantry: 10 } })
       );
 
@@ -342,7 +357,7 @@ describe('combat-processor handler', () => {
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({
           attackerId: 'attacker-1',
           defenderId: 'defender-1',
@@ -374,7 +389,7 @@ describe('combat-processor handler', () => {
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({
           attackerId: 'attacker-1',
           defenderId: 'defender-1',
@@ -404,7 +419,7 @@ describe('combat-processor handler', () => {
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({
           attackerId: 'attacker-1',
           defenderId: 'defender-1',
@@ -438,7 +453,7 @@ describe('combat-processor handler', () => {
       // No active war declaration
       mockClient.models.WarDeclaration.list.mockResolvedValue({ data: [], errors: null });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({
           attackerId: 'attacker-1',
           defenderId: 'defender-1',

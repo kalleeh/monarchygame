@@ -4,14 +4,57 @@
   letter-spacing: 0.03em;
 }
 
-/* ── Section heading ──────────────────────────────────────────────────── */
+/* ── Section heading row (heading + live badge) ────────────────────────── */
+.lb-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
 .lb-section-heading {
-  margin: 0 0 1rem 0;
+  margin: 0;
   font-family: var(--font-display, inherit);
   font-size: 1.25rem;
   color: var(--text-accent, #e2e8f0);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+/* ── Live / Demo status badge ─────────────────────────────────────────── */
+.lb-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  user-select: none;
+  /* Prevent game-pages button styles bleeding in */
+  cursor: default;
+}
+
+.lb-status-badge--live {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: #4ade80;
+  /* subtle pulse on the dot character */
+  animation: lb-live-pulse 2.5s ease-in-out infinite;
+}
+
+.lb-status-badge--demo {
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #64748b;
+}
+
+@keyframes lb-live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+  50%       { box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15); }
 }
 
 /* ── Tab bar ──────────────────────────────────────────────────────────── */

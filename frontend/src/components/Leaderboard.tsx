@@ -1,9 +1,54 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../../amplify/data/resource';
 import type { Kingdom } from '../types/kingdom';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { GuildService } from '../services/GuildService';
+import { isDemoMode } from '../utils/authMode';
 import '../components/TerritoryExpansion.css';
 import '../components/Leaderboard.css';
+
+// Module-level Amplify client — only instantiated once, avoids re-creation on
+// every render. This is the same pattern used by useRealtimeNotifications.ts.
+const amplifyClient = generateClient<Schema>();
+
+// Transform a raw Amplify Kingdom record into the local Kingdom shape.
+function transformSchemaKingdom(k: Schema['Kingdom']['type']): Kingdom {
+  const rawStats = (k.stats ?? {}) as Record<string, unknown>;
+  return {
+    id: k.id,
+    name: k.name || 'Unknown',
+    race: k.race || 'Human',
+    owner: k.owner || undefined,
+    resources: {
+      gold:       (k.resources as Record<string, number> | null)?.gold       ?? 0,
+      population: (k.resources as Record<string, number> | null)?.population ?? 0,
+      land:       (k.resources as Record<string, number> | null)?.land       ?? 0,
+      turns:      (k.resources as Record<string, number> | null)?.turns      ?? 0,
+    },
+    stats: {
+      warOffense:  Number(rawStats.warOffense  ?? 0),
+      warDefense:  Number(rawStats.warDefense  ?? 0),
+      sorcery:     Number(rawStats.sorcery     ?? 0),
+      scum:        Number(rawStats.scum        ?? 0),
+      forts:       Number(rawStats.forts       ?? 0),
+      tithe:       Number(rawStats.tithe       ?? 0),
+      training:    Number(rawStats.training    ?? 0),
+      siege:       Number(rawStats.siege       ?? 0),
+      economy:     Number(rawStats.economy     ?? 0),
+      building:    Number(rawStats.building    ?? 0),
+      previousSeasonRank:      rawStats.previousSeasonRank      != null ? Number(rawStats.previousSeasonRank)      : undefined,
+      previousSeasonNetworth:  rawStats.previousSeasonNetworth  != null ? Number(rawStats.previousSeasonNetworth)  : undefined,
+      previousSeasonNumber:    rawStats.previousSeasonNumber    != null ? Number(rawStats.previousSeasonNumber)    : undefined,
+    },
+    totalUnits: ((k.totalUnits as Record<string, number> | null) || { peasants: 0, militia: 0, knights: 0, cavalry: 0 }) as {
+      peasants: number; militia: number; knights: number; cavalry: number;
+    },
+    isOnline:   k.isOnline  ?? false,
+    lastActive: k.lastActive ? new Date(k.lastActive) : undefined,
+    guildId:    k.guildId   || undefined,
+  };
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -65,6 +110,54 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
       showOnlyYourFaith: false
     };
   });
+
+  // ── Live kingdom data (auth mode) / demo refresh indicator ───────────────
+  // liveKingdoms overrides the kingdoms prop when auth-mode subscription is active.
+  const [liveKingdoms, setLiveKingdoms] = useState<Kingdom[] | null>(null);
+  const [isLive, setIsLive] = useState(false);
+  // Ref for the 30-second demo-mode refresh interval so we can clear it cleanly.
+  const demoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Auth-mode: subscribe to all Kingdom changes via observeQuery.
+  useEffect(() => {
+    if (isDemoMode()) return; // no Amplify queries in demo mode
+
+    const sub = amplifyClient.models.Kingdom.observeQuery().subscribe({
+      next: ({ items }) => {
+        setLiveKingdoms(items.map(transformSchemaKingdom));
+        setIsLive(true);
+      },
+      error: (err: unknown) => {
+        console.error('[Leaderboard] Kingdom subscription error:', err);
+        // On error fall back to the prop-supplied snapshot; keep isLive false
+        setIsLive(false);
+      },
+    });
+
+    return () => {
+      sub.unsubscribe();
+      setIsLive(false);
+    };
+  }, []); // mount-once — subscription covers all changes
+
+  // Demo-mode: every 30 s re-read AI kingdoms from the Zustand store so the
+  // leaderboard doesn't go fully stale during a long session.  We accomplish
+  // this via a lightweight interval that bumps a counter; the aiKingdoms
+  // selector already returns current state on each render, so we just force a
+  // re-render to pick up the latest snapshot.
+  const [demoRefreshTick, setDemoRefreshTick] = useState(0);
+  useEffect(() => {
+    if (!isDemoMode()) return;
+    demoRefreshRef.current = setInterval(() => {
+      setDemoRefreshTick(t => t + 1);
+    }, 30_000);
+    return () => {
+      if (demoRefreshRef.current !== null) {
+        clearInterval(demoRefreshRef.current);
+        demoRefreshRef.current = null;
+      }
+    };
+  }, []);
 
   // ── Guild name lookup map ─────────────────────────────────────────────────
   // Populated from kingdoms' own guildName fields (if present) plus a
@@ -137,7 +230,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
     [aiKingdoms]
   );
 
-  const allKingdoms = useMemo(() => [...kingdoms, ...aiAsKingdoms], [kingdoms, aiAsKingdoms]);
+  // Use live subscription data in auth mode; fall back to the prop snapshot in
+  // demo mode (or before the first subscription event arrives).
+  // The demoRefreshTick dependency ensures we pick up fresh aiKingdoms every 30s.
+  const baseKingdoms = liveKingdoms ?? kingdoms;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const allKingdoms = useMemo(() => [...baseKingdoms, ...aiAsKingdoms], [baseKingdoms, aiAsKingdoms, demoRefreshTick]);
 
   // ── Persist filters ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -266,8 +364,14 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
         </button>
       </div>
 
-      {/* ── Section heading ─────────────────────────────────────────────── */}
-      <h2 className="lb-section-heading">{tabLabel}</h2>
+      {/* ── Section heading + live badge ────────────────────────────────── */}
+      <div className="lb-heading-row">
+        <h2 className="lb-section-heading">{tabLabel}</h2>
+        {isLive
+          ? <span className="lb-status-badge lb-status-badge--live" title="Real-time updates active">&#9679; LIVE</span>
+          : <span className="lb-status-badge lb-status-badge--demo" title="Demo mode — AI opponents only">Demo</span>
+        }
+      </div>
 
       {/* ── Filters (hidden on guilds tab) ──────────────────────────────── */}
       {activeTab !== 'guilds' && (

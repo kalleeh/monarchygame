@@ -19,6 +19,7 @@ import { achievementTriggers } from '../utils/achievementTriggers';
 import { GuildService } from '../services/GuildService';
 import { useCombatReplayStore } from './combatReplayStore';
 import { TerrainType, FormationType } from '../types/combat';
+import { TERRAIN_MODIFIERS, FORMATION_MODIFIERS, applyTerrainToUnitPower } from '../../../shared/combat/combatCache';
 
 /**
  * Fire-and-forget: check if attacker and defender are in an active guild war
@@ -359,11 +360,19 @@ export const useCombatStore = create(
             return null;
           }
 
+          // Resolve terrain from the AI kingdom if available; default to 'plains'
+          const defenderTerrain: string =
+            (defenderKingdom as any)?.terrain ??
+            (defenderKingdom as any)?.terrainType ??
+            'plains';
+
           // Battle calculation with real defender data
           const battleResult = await simulateBattle(
             state.selectedUnits,
             defenderKingdom,
-            state.activeFormation ? (state.formations.find(f => f.id === state.activeFormation) || null) : null
+            state.activeFormation ? (state.formations.find(f => f.id === state.activeFormation) || null) : null,
+            state.activeFormation ?? undefined,
+            defenderTerrain,
           );
 
           const battleReport: BattleReport = {
@@ -691,7 +700,9 @@ function calculateFormationBonuses(units: Unit[]): { attack: number; defense: nu
 async function simulateBattle(
   attackerUnits: Unit[],
   defenderKingdom: AIKingdom,
-  formation: Formation | null
+  formation: Formation | null,
+  activeFormationId?: string,
+  defenderTerrainId?: string,
 ): Promise<{
   result: 'victory' | 'defeat' | 'draw';
   casualties: { attacker: Record<string, number>; defender: Record<string, number> };
@@ -760,14 +771,54 @@ async function simulateBattle(
   // Elemental fort destruction: 25% bonus to structures destroyed on successful attacks
   const isElementalAttacker = attackerRace.toLowerCase() === 'elemental';
 
-  // Calculate total power
-  const attackerPower = scaledAttackerUnits.reduce((sum, u) => sum + (u.attack * u.count), 0);
-  const defenderPower = defenderUnits.reduce((sum, u) => sum + (u.defense * u.count), 0);
+  // ── Terrain & formation modifiers (parity with Lambda handler) ─────────────
+  // Look up the shared FORMATION_MODIFIERS by the active formation ID (id field,
+  // not the Formation object's bonuses which use a different scale).
+  const formMods = activeFormationId ? (FORMATION_MODIFIERS[activeFormationId] ?? null) : null;
 
-  // Apply formation bonuses (percentage-based)
-  const formationAttackBonus = formation ? (formation.bonuses.attack / 100) : 0;
-  const formationDefenseBonus = formation ? (formation.bonuses.defense / 100) : 0;
-  const totalAttackerPower = attackerPower * (1 + formationAttackBonus);
+  // Formation offense multiplier applied to attacker power.
+  // Falls back gracefully to the Formation.bonuses.attack percentage when the
+  // formation ID is not in FORMATION_MODIFIERS.
+  const formationOffenseBonus = formMods
+    ? formMods.offense
+    : (formation ? (formation.bonuses.attack / 100) : 0);
+  const formationDefenseBonus = formMods
+    ? formMods.defense
+    : (formation ? (formation.bonuses.defense / 100) : 0);
+
+  // Terrain modifiers for the defender's territory (default to plains = no mods)
+  const normalizedTerrain = (defenderTerrainId ?? 'plains').toLowerCase();
+  const terrainMods = TERRAIN_MODIFIERS[normalizedTerrain] ?? TERRAIN_MODIFIERS['plains'] ?? {};
+
+  // Build attacker unit map (type → count) for terrain unit-class penalty calc
+  const attackerUnitMap: Record<string, number> = {};
+  scaledAttackerUnits.forEach(u => {
+    attackerUnitMap[u.type] = (attackerUnitMap[u.type] ?? 0) + u.count;
+  });
+
+  // Raw power sums from race-scaled units
+  const rawAttackerPower = scaledAttackerUnits.reduce((sum, u) => sum + (u.attack * u.count), 0);
+  const rawDefenderPower = defenderUnits.reduce((sum, u) => sum + (u.defense * u.count), 0);
+
+  // Compute the terrain modifier ratio for attacker offense:
+  // applyTerrainToUnitPower uses shared UNIT_STATS internally. We derive a
+  // class-weighted ratio (terrain-adjusted / un-adjusted) from those stats,
+  // then apply that same ratio to the race-scaled power so the relative
+  // unit-class penalties are preserved while absolute race scaling is kept.
+  const terrainAttackerNoMod = applyTerrainToUnitPower(attackerUnitMap, 'attack', {});
+  const terrainAttackerWithMod = applyTerrainToUnitPower(attackerUnitMap, 'attack', terrainMods);
+  const terrainAttackerRatio = terrainAttackerNoMod > 0
+    ? terrainAttackerWithMod / terrainAttackerNoMod
+    : 1;
+
+  // Terrain defense bonus: scale defender power by (1 + defense mod).
+  // Unit-class modifiers in terrainMods (cavalry/infantry/siege) penalise the
+  // attacker only, so only the top-level defense modifier applies to the defender.
+  const terrainDefenseFactor = 1 + (terrainMods.defense ?? 0);
+
+  // Final power values with terrain and formation applied (matches Lambda logic)
+  const totalAttackerPower = rawAttackerPower * terrainAttackerRatio * (1 + formationOffenseBonus);
+  const defenderPower = rawDefenderPower * terrainDefenseFactor;
 
   // Guard against division by zero when defender has no units
   const offenseRatio = defenderPower === 0 ? 999 : totalAttackerPower / defenderPower;
