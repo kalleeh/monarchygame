@@ -59,6 +59,11 @@ interface TerritoryNode extends Node {
     };
     // Populated for partial visibility
     landCategory?: string;
+    // World territory slot data
+    worldTerritoryId?: string;
+    territoryType?: string;
+    ownership?: 'player' | 'enemy' | 'neutral';
+    inFog?: boolean;
   };
 }
 
@@ -74,16 +79,116 @@ interface SelectedTerritoryInfo {
   label: string;
   type: string;
   isOwned: boolean;
+  ownership: 'player' | 'enemy' | 'neutral';
+  kingdomName?: string;
+  inFog?: boolean;
 }
 
-// Map territory type → detail image
+// ─── World Territory Grid ────────────────────────────────────────────────────
+
+interface WorldTerritory {
+  id: string;
+  name: string;
+  position: { x: number; y: number };
+  type: 'capital' | 'settlement' | 'outpost' | 'fortress';
+}
+
+/**
+ * 50 named territory slots spread across the full map extent
+ * (-7000..+7000 x, -4000..+4000 y) with slight positional variation
+ * so they don't look perfectly mechanical.
+ *
+ * Distribution: 5 fortresses, 10 capitals, 15 settlements, 20 outposts
+ */
+const WORLD_TERRITORIES: WorldTerritory[] = [
+  // ── ROW 0  (top, y ≈ -3800..−3200) ──────────────────────────────────────
+  { id: 'wt-01', name: 'Frostwall Keep',       position: { x: -6800, y: -3800 }, type: 'fortress'   },
+  { id: 'wt-02', name: 'Ashfen Marsh',          position: { x: -4200, y: -3600 }, type: 'outpost'    },
+  { id: 'wt-03', name: 'Crystalpeak',           position: { x: -1500, y: -3750 }, type: 'capital'    },
+  { id: 'wt-04', name: 'Thornwood',             position: { x:  1200, y: -3650 }, type: 'settlement' },
+  { id: 'wt-05', name: 'Duskwall Fortress',     position: { x:  3800, y: -3800 }, type: 'fortress'   },
+  { id: 'wt-06', name: 'Rimstone Outpost',      position: { x:  6400, y: -3500 }, type: 'outpost'    },
+
+  // ── ROW 1  (y ≈ -2600..−2000) ────────────────────────────────────────────
+  { id: 'wt-07', name: 'Ironhold Keep',         position: { x: -6600, y: -2400 }, type: 'capital'    },
+  { id: 'wt-08', name: 'Embervale',             position: { x: -4800, y: -2600 }, type: 'settlement' },
+  { id: 'wt-09', name: 'Silvergate',            position: { x: -3000, y: -2100 }, type: 'capital'    },
+  { id: 'wt-10', name: 'Coldbrook Pass',        position: { x: -1100, y: -2500 }, type: 'outpost'    },
+  { id: 'wt-11', name: 'Stormhaven',            position: { x:   500, y: -2200 }, type: 'settlement' },
+  { id: 'wt-12', name: 'Galewatch Tower',       position: { x:  2400, y: -2700 }, type: 'outpost'    },
+  { id: 'wt-13', name: 'Redstone Crossing',     position: { x:  4500, y: -2300 }, type: 'settlement' },
+  { id: 'wt-14', name: 'Veilcliff',             position: { x:  6300, y: -2600 }, type: 'outpost'    },
+
+  // ── ROW 2  (y ≈ -1200..−400) ─────────────────────────────────────────────
+  { id: 'wt-15', name: 'Highreach Citadel',     position: { x: -6900, y: -1100 }, type: 'fortress'   },
+  { id: 'wt-16', name: 'Mosswick',              position: { x: -5500, y:  -800 }, type: 'outpost'    },
+  { id: 'wt-17', name: 'Dunmere',               position: { x: -3900, y: -1300 }, type: 'settlement' },
+  { id: 'wt-18', name: 'Amberveil',             position: { x: -2200, y:  -600 }, type: 'capital'    },
+  { id: 'wt-19', name: 'Greywater Ford',        position: { x:  -400, y: -1100 }, type: 'outpost'    },
+  { id: 'wt-20', name: 'Ashwood Grove',         position: { x:  1300, y:  -700 }, type: 'settlement' },
+  { id: 'wt-21', name: 'Kindlegate',            position: { x:  2900, y: -1200 }, type: 'capital'    },
+  { id: 'wt-22', name: 'Brackenmoor',           position: { x:  4700, y:  -900 }, type: 'outpost'    },
+  { id: 'wt-23', name: 'Stonemarsh Hold',       position: { x:  6500, y: -1300 }, type: 'settlement' },
+
+  // ── ROW 3  (centre, y ≈ 0..+600) ─────────────────────────────────────────
+  { id: 'wt-24', name: 'Ravenspire',            position: { x: -6700, y:   200 }, type: 'outpost'    },
+  { id: 'wt-25', name: 'Thornwall',             position: { x: -5000, y:   400 }, type: 'capital'    },
+  { id: 'wt-26', name: 'Ironvale',              position: { x: -3200, y:   100 }, type: 'settlement' },
+  { id: 'wt-27', name: 'Goldenfield',           position: { x: -1600, y:   500 }, type: 'outpost'    },
+  { id: 'wt-28', name: 'Crownsreach',           position: { x:     0, y:     0 }, type: 'capital'    },
+  { id: 'wt-29', name: 'Dusthaven',             position: { x:  1700, y:   300 }, type: 'outpost'    },
+  { id: 'wt-30', name: 'Clearwater',            position: { x:  3400, y:   -50 }, type: 'settlement' },
+  { id: 'wt-31', name: 'Emberthorn',            position: { x:  5100, y:   450 }, type: 'capital'    },
+  { id: 'wt-32', name: 'Nightfall Bastion',     position: { x:  6800, y:   150 }, type: 'fortress'   },
+
+  // ── ROW 4  (y ≈ +1000..+1800) ────────────────────────────────────────────
+  { id: 'wt-33', name: 'Fernveil',              position: { x: -6400, y:  1200 }, type: 'outpost'    },
+  { id: 'wt-34', name: 'Oldstone March',        position: { x: -4600, y:  1500 }, type: 'settlement' },
+  { id: 'wt-35', name: 'Cinderport',            position: { x: -2800, y:  1100 }, type: 'capital'    },
+  { id: 'wt-36', name: 'Mudbrook',              position: { x: -1000, y:  1700 }, type: 'outpost'    },
+  { id: 'wt-37', name: 'Silvershard',           position: { x:   800, y:  1300 }, type: 'settlement' },
+  { id: 'wt-38', name: 'Dawnpost',              position: { x:  2600, y:  1600 }, type: 'outpost'    },
+  { id: 'wt-39', name: 'Irongate',              position: { x:  4300, y:  1200 }, type: 'settlement' },
+  { id: 'wt-40', name: 'Wintermere',            position: { x:  6200, y:  1500 }, type: 'outpost'    },
+
+  // ── ROW 5  (y ≈ +2400..+3200) ────────────────────────────────────────────
+  { id: 'wt-41', name: 'Shadowfen',             position: { x: -6600, y:  2600 }, type: 'outpost'    },
+  { id: 'wt-42', name: 'Bouldercrag',           position: { x: -4900, y:  2900 }, type: 'settlement' },
+  { id: 'wt-43', name: 'Saltmere',              position: { x: -3100, y:  2400 }, type: 'outpost'    },
+  { id: 'wt-44', name: 'Gildenmoor',            position: { x: -1300, y:  3100 }, type: 'capital'    },
+  { id: 'wt-45', name: 'Stonebreach',           position: { x:   600, y:  2700 }, type: 'settlement' },
+  { id: 'wt-46', name: 'Mistveil',              position: { x:  2200, y:  3000 }, type: 'outpost'    },
+  { id: 'wt-47', name: 'Flamehearth',           position: { x:  4000, y:  2500 }, type: 'settlement' },
+  { id: 'wt-48', name: 'Stormveil Hold',        position: { x:  5800, y:  3000 }, type: 'capital'    },
+
+  // ── ROW 6  (bottom, y ≈ +3500..+4000) ───────────────────────────────────
+  { id: 'wt-49', name: 'Deepwatch',             position: { x: -5800, y:  3800 }, type: 'outpost'    },
+  { id: 'wt-50', name: 'Cinderfall Fortress',   position: { x:   200, y:  3900 }, type: 'fortress'   },
+];
+
+// ─── Fog-of-war helper ───────────────────────────────────────────────────────
+
+const FOG_RADIUS = 5000;
+
+function isInFogOfWar(
+  pos: { x: number; y: number },
+  playerPositions: { x: number; y: number }[],
+): boolean {
+  if (playerPositions.length === 0) return false;
+  return !playerPositions.some(
+    (pp) =>
+      Math.sqrt((pos.x - pp.x) ** 2 + (pos.y - pp.y) ** 2) < FOG_RADIUS,
+  );
+}
+
+// ─── Map territory type → detail image ──────────────────────────────────────
+
 const TERRITORY_TYPE_IMAGES: Record<string, string> = {
   capital:    '/territory-capital.png',
   settlement: '/territory-trading-post.png',
   outpost:    '/territory-forest-outpost.png',
   fortress:   '/territory-iron-mines.png',
 };
-// Also accept legacy name-based lookups for backwards compat
 const TERRITORY_IMAGES: Record<string, string> = {
   'Capital City':    '/territory-capital.png',
   'Royal Capital':   '/territory-capital.png',
@@ -96,7 +201,8 @@ function getTerritoryImage(label: string, type: string): string {
   return TERRITORY_IMAGES[label] ?? TERRITORY_TYPE_IMAGES[type] ?? '/territories-icon.png';
 }
 
-// Deterministic position hash for AI kingdoms
+// ─── Deterministic hash helper ───────────────────────────────────────────────
+
 function hashId(id: string): number {
   let h = 5381;
   for (let i = 0; i < id.length; i++) {
@@ -105,17 +211,9 @@ function hashId(id: string): number {
   }
   return Math.abs(h);
 }
-function aiKingdomMapPosition(id: string): { x: number; y: number } {
-  const h = hashId(id);
-  const angle = ((h % 1000) / 1000) * 2 * Math.PI;
-  const radius = 2200 + (h % 3500);
-  return {
-    x: Math.cos(angle) * radius * 1.78, // wider for 16:9
-    y: Math.sin(angle) * radius,
-  };
-}
 
-// Custom node that renders the world map image inside the React Flow viewport
+// ─── Custom map background node ─────────────────────────────────────────────
+
 const MapBackgroundNode = () => (
   <img
     src="/world-map-world.jpg"
@@ -136,41 +234,7 @@ const nodeTypes = {
   mapBackground: MapBackgroundNode,
 };
 
-/**
- * Determine what level of visibility the current kingdom has over another.
- *
- * Rules (in priority order):
- *   full    — own kingdom, or alliance member (same guildId)
- *   partial — everyone else (all other kingdoms are partially visible for now;
- *             hidden is reserved for future scouting mechanics)
- */
-function getKingdomVisibility(
-  kingdomGuildId: string | null | undefined,
-  isOwned: boolean,
-  currentKingdomGuildId: string | null | undefined,
-): VisibilityLevel {
-  if (isOwned) return 'full';
-  if (
-    currentKingdomGuildId &&
-    kingdomGuildId &&
-    kingdomGuildId === currentKingdomGuildId
-  ) {
-    return 'full'; // Same alliance
-  }
-  return 'partial';
-}
-
-/**
- * Convert a land amount to a human-readable category shown under fog of war.
- */
-function getLandCategory(land: number): string {
-  if (land < 2000) return 'Small Kingdom';
-  if (land < 5000) return 'Medium Kingdom';
-  if (land < 15000) return 'Large Kingdom';
-  return 'Massive Kingdom';
-}
-
-// World-scale background — 16000×9000 units, centred at origin
+// World-scale background node — 16000×9000 units, centred at origin
 const MAP_BG_NODE: Node = {
   id: 'map-bg',
   type: 'mapBackground',
@@ -190,94 +254,256 @@ const MAP_BG_NODE: Node = {
   },
 };
 
-// Node style by territory type
-const TERRITORY_TYPE_STYLE: Record<string, Record<string, unknown>> = {
-  capital:    { background: '#d4a017', border: '2px solid #f0c040', borderRadius: '8px', padding: '10px', color: '#000', fontWeight: 700 },
-  settlement: { background: '#4ade80', border: '2px solid #16a34a', borderRadius: '8px', padding: '10px' },
-  outpost:    { background: '#94a3b8', border: '2px solid #64748b', borderRadius: '8px', padding: '10px' },
-  fortress:   { background: '#f87171', border: '2px solid #dc2626', borderRadius: '8px', padding: '10px' },
-};
-// AI kingdom node style by difficulty
-const AI_KINGDOM_STYLE: Record<string, Record<string, unknown>> = {
-  easy:   { background: '#374151', border: '2px dashed #6b7280', borderRadius: '8px', padding: '10px', opacity: 0.7 },
-  medium: { background: '#7c3aed', border: '2px dashed #a78bfa', borderRadius: '8px', padding: '10px', opacity: 0.75 },
-  hard:   { background: '#dc2626', border: '2px dashed #f87171', borderRadius: '8px', padding: '10px', opacity: 0.8 },
-};
+// ─── Legacy helpers (retained for the existing territory-panel) ───────────────
+
+
+function getLandCategory(land: number): string {
+  if (land < 2000) return 'Small Kingdom';
+  if (land < 5000) return 'Medium Kingdom';
+  if (land < 15000) return 'Large Kingdom';
+  return 'Massive Kingdom';
+}
+
+// ─── Node style builders ─────────────────────────────────────────────────────
+
+function buildNodeStyle(
+  wtType: 'capital' | 'settlement' | 'outpost' | 'fortress',
+  ownership: 'player' | 'enemy' | 'neutral',
+  difficulty: 'easy' | 'medium' | 'hard' | undefined,
+  inFog: boolean,
+): Record<string, unknown> {
+  const base: Record<string, unknown> = {
+    borderRadius: '8px',
+    padding: '10px',
+    fontSize: '11px',
+    minWidth: 100,
+    textAlign: 'center',
+    cursor: 'pointer',
+  };
+
+  if (inFog) {
+    return {
+      ...base,
+      background: '#000',
+      border: '1px dashed #374151',
+      color: '#374151',
+      opacity: 0.25,
+      filter: 'blur(1px)',
+    };
+  }
+
+  if (ownership === 'player') {
+    if (wtType === 'capital') {
+      return {
+        ...base,
+        background: '#d4a017',
+        border: '2px solid #f0c040',
+        color: '#000',
+        fontWeight: 700,
+        padding: '12px',
+      };
+    }
+    return {
+      ...base,
+      background: '#4ade80',
+      border: '2px solid #16a34a',
+      color: '#000',
+    };
+  }
+
+  if (ownership === 'enemy') {
+    const diffMap: Record<string, { bg: string; border: string }> = {
+      hard:   { bg: '#dc2626', border: '2px dashed #dc2626' },
+      medium: { bg: '#7c3aed', border: '2px dashed #7c3aed' },
+      easy:   { bg: '#475569', border: '2px dashed #6b7280' },
+    };
+    const colours = diffMap[difficulty ?? 'medium'] ?? diffMap.medium;
+    return {
+      ...base,
+      background: colours.bg,
+      border: colours.border,
+      color: '#fff',
+      opacity: 0.85,
+    };
+  }
+
+  // neutral
+  return {
+    ...base,
+    background: '#1f2937',
+    border: '1px dashed #4b5563',
+    color: '#9ca3af',
+    opacity: 0.75,
+  };
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
-  const currentGuildId = (kingdom as unknown as { guildId?: string }).guildId ?? null;
-
-  // Real data sources
   const ownedTerritories = useTerritoryStore((s) => s.ownedTerritories);
   const aiKingdoms = useAIKingdomStore((s) => s.aiKingdoms);
 
-  // Build world nodes from real data
-  const worldNodes = useMemo((): TerritoryNode[] => {
-    const result: TerritoryNode[] = [];
+  // ── Build ownership map ──────────────────────────────────────────────────
 
-    // Player's owned territories — clustered near centre
-    ownedTerritories.forEach((t, i) => {
-      const total = Math.max(ownedTerritories.length, 1);
-      const angle = (i / total) * 2 * Math.PI;
-      const r = total === 1 ? 0 : 350 + i * 80;
-      const pos = total === 1
-        ? { x: 0, y: 0 }
-        : { x: Math.cos(angle) * r * 1.78, y: Math.sin(angle) * r };
+  /**
+   * Assign world-territory slots to owners:
+   *  - Player owns the first N slots (matching by name, then by index).
+   *  - Each AI kingdom claims 1-3 consecutive slots starting at a hash offset.
+   *  - Everything else is neutral.
+   */
+  const territoryOwnership = useMemo((): Record<string, 'player' | 'enemy' | 'neutral'> => {
+    const ownership: Record<string, 'player' | 'enemy' | 'neutral'> = {};
 
-      result.push({
-        id: `player-${t.id}`,
-        position: pos,
-        draggable: false,
-        data: {
-          label: t.name,
-          kingdomName: kingdom.name || 'Your Kingdom',
-          race: (kingdom.race as string) || 'Human',
-          power: t.resources.land * 10,
-          isOwned: true,
-          visibility: 'full' as VisibilityLevel,
-          resources: { gold: t.resources.gold, population: t.resources.population },
-          landCategory: getLandCategory(t.resources.land),
-          territoryType: t.type,
-        },
-        style: TERRITORY_TYPE_STYLE[t.type] ?? TERRITORY_TYPE_STYLE.settlement,
-      } as TerritoryNode);
+    // Default everything to neutral
+    WORLD_TERRITORIES.forEach((wt) => {
+      ownership[wt.id] = 'neutral';
     });
 
-    // AI kingdoms — spread deterministically around the world
+    // Player territories — try name match first, then fall back to first-N index assignment
+    const playerSlotIds = new Set<string>();
+    ownedTerritories.forEach((ot, i) => {
+      const byName = WORLD_TERRITORIES.find(
+        (wt) => wt.name.toLowerCase() === ot.name.toLowerCase(),
+      );
+      if (byName && !playerSlotIds.has(byName.id)) {
+        ownership[byName.id] = 'player';
+        playerSlotIds.add(byName.id);
+      } else {
+        // fall back to index-based assignment (skip slots already taken)
+        let assigned = 0;
+        for (const wt of WORLD_TERRITORIES) {
+          if (playerSlotIds.has(wt.id)) continue;
+          if (assigned === i) {
+            ownership[wt.id] = 'player';
+            playerSlotIds.add(wt.id);
+            break;
+          }
+          assigned++;
+        }
+      }
+    });
+
+    // AI kingdoms — each gets 1-3 slots deterministically
     aiKingdoms.forEach((k) => {
-      const pos = aiKingdomMapPosition(k.id);
-      result.push({
-        id: `ai-${k.id}`,
-        position: pos,
-        draggable: false,
-        data: {
-          label: k.name,
-          kingdomName: k.name,
-          race: k.race,
-          power: k.networth,
-          isOwned: false,
-          visibility: 'partial' as VisibilityLevel,
-          resources: { gold: k.resources.gold, population: k.resources.population },
-          landCategory: getLandCategory(k.resources.land),
-          territoryType: 'settlement',
-        },
-        style: AI_KINGDOM_STYLE[k.difficulty] ?? AI_KINGDOM_STYLE.medium,
-      } as TerritoryNode);
+      const h = hashId(k.id);
+      const slotCount = 1 + (h % 3); // 1, 2, or 3
+      const startIdx = h % WORLD_TERRITORIES.length;
+      let claimed = 0;
+      for (let offset = 0; offset < WORLD_TERRITORIES.length && claimed < slotCount; offset++) {
+        const idx = (startIdx + offset) % WORLD_TERRITORIES.length;
+        const wt = WORLD_TERRITORIES[idx];
+        if (ownership[wt.id] === 'neutral') {
+          ownership[wt.id] = 'enemy';
+          claimed++;
+        }
+      }
     });
 
-    return result;
-  }, [ownedTerritories, aiKingdoms, kingdom, currentGuildId]);
+    return ownership;
+  }, [ownedTerritories, aiKingdoms]);
 
-  // Edges: connect each player territory back to the capital (first owned)
-  const worldEdges = useMemo((): Edge[] => {
-    if (ownedTerritories.length < 2) return [];
-    return ownedTerritories.slice(1).map((t, i) => ({
-      id: `e-cap-${i}`,
-      source: `player-${ownedTerritories[0].id}`,
-      target: `player-${t.id}`,
-      animated: true,
-    }));
-  }, [ownedTerritories]);
+  /**
+   * Reverse map: which AI kingdom owns which world-territory slot?
+   */
+  const aiOwnerMap = useMemo((): Record<string, string> => {
+    const map: Record<string, string> = {};
+    aiKingdoms.forEach((k) => {
+      const h = hashId(k.id);
+      const slotCount = 1 + (h % 3);
+      const startIdx = h % WORLD_TERRITORIES.length;
+      // Re-simulate the same logic to build the reverse map
+      const tempNeutral = { ...territoryOwnership };
+      let claimed = 0;
+      for (let offset = 0; offset < WORLD_TERRITORIES.length && claimed < slotCount; offset++) {
+        const idx = (startIdx + offset) % WORLD_TERRITORIES.length;
+        const wt = WORLD_TERRITORIES[idx];
+        if (tempNeutral[wt.id] === 'enemy' && !map[wt.id]) {
+          map[wt.id] = k.id;
+          claimed++;
+        }
+      }
+    });
+    return map;
+  }, [aiKingdoms, territoryOwnership]);
+
+  // Player positions for fog-of-war calculations
+  const playerPositions = useMemo((): { x: number; y: number }[] => {
+    return WORLD_TERRITORIES
+      .filter((wt) => territoryOwnership[wt.id] === 'player')
+      .map((wt) => wt.position);
+  }, [territoryOwnership]);
+
+  // ── Build React Flow nodes from WORLD_TERRITORIES ────────────────────────
+
+  const worldNodes = useMemo((): TerritoryNode[] => {
+    return WORLD_TERRITORIES.map((wt) => {
+      const ownership = territoryOwnership[wt.id] ?? 'neutral';
+      const inFog = isInFogOfWar(wt.position, playerPositions);
+
+      // Determine the node label
+      let label: string;
+      let aiKingdom: (typeof aiKingdoms)[number] | undefined;
+
+      if (inFog && ownership === 'neutral') {
+        label = '???';
+      } else if (ownership === 'enemy') {
+        const ownerId = aiOwnerMap[wt.id];
+        aiKingdom = aiKingdoms.find((k) => k.id === ownerId);
+        label = aiKingdom ? aiKingdom.name : wt.name;
+      } else if (ownership === 'player') {
+        // Prefix capitals with a crown character
+        label = wt.type === 'capital' ? `\u265a ${wt.name}` : wt.name;
+      } else {
+        label = wt.name;
+      }
+
+      const style = buildNodeStyle(
+        wt.type,
+        ownership,
+        aiKingdom?.difficulty,
+        inFog && ownership === 'neutral',
+      );
+
+      return {
+        id: wt.id,
+        position: wt.position,
+        draggable: false,
+        data: {
+          label,
+          kingdomName:
+            ownership === 'player'
+              ? (kingdom.name || 'Your Kingdom')
+              : ownership === 'enemy'
+              ? (aiKingdom?.name ?? wt.name)
+              : wt.name,
+          race:
+            ownership === 'player'
+              ? ((kingdom.race as string) || 'Human')
+              : (aiKingdom?.race ?? 'Unknown'),
+          power:
+            ownership === 'player'
+              ? (ownedTerritories.find((t) =>
+                  t.name.toLowerCase() === wt.name.toLowerCase(),
+                )?.resources.land ?? 0) * 10
+              : (aiKingdom?.networth ?? 0),
+          isOwned: ownership === 'player',
+          visibility: (ownership === 'player' ? 'full' : 'partial') as VisibilityLevel,
+          resources: { gold: 0, population: 0 },
+          landCategory: aiKingdom
+            ? getLandCategory(aiKingdom.resources.land)
+            : undefined,
+          worldTerritoryId: wt.id,
+          territoryType: wt.type,
+          ownership,
+          inFog: inFog && ownership === 'neutral',
+        },
+        style,
+      } as TerritoryNode;
+    });
+  }, [territoryOwnership, playerPositions, aiKingdoms, aiOwnerMap, ownedTerritories, kingdom]);
+
+  // No edges needed — territory slots are independent
+  const worldEdges: Edge[] = [];
 
   const [nodes, setNodes, onNodesChange] = useNodesState<TerritoryNode>(
     [MAP_BG_NODE as unknown as TerritoryNode, ...worldNodes],
@@ -291,18 +517,17 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
 
   useEffect(() => {
     setEdges(worldEdges);
-  }, [worldEdges, setEdges]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setEdges]);
 
-  // Full TerritoryNode used for the existing territory-panel (fog of war details etc.)
+  // ── Selection state ───────────────────────────────────────────────────────
+
   const [selectedTerritoryNode, setSelectedTerritoryNode] = useState<TerritoryNode | null>(null);
-
-  // Slim shape used for the new slide-in detail panel
   const [selectedTerritory, setSelectedTerritory] = useState<SelectedTerritoryInfo | null>(null);
 
-  // WorldState from the backend (used in future to refine visibility)
+  // WorldState from the backend (non-critical, fog-of-war future use)
   const [_worldState, setWorldState] = useState<WorldStateResult | null>(null);
 
-  // Fetch WorldState on mount so visibility can be driven by server data
   useEffect(() => {
     const fetchWorldState = async () => {
       try {
@@ -321,7 +546,6 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           setWorldState(parsed as WorldStateResult);
         }
       } catch (err) {
-        // Non-fatal: fog of war falls back to client-side rules
         console.warn('WorldState fetch failed (using client-side visibility):', err);
       }
     };
@@ -334,49 +558,125 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
     [setEdges],
   );
 
+  // ── Node click handler ────────────────────────────────────────────────────
+
   const handleNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     if (node.id === 'map-bg') return;
+
     const territory = node as TerritoryNode;
-    // Update both state slices
+    const inFog = territory.data?.inFog ?? false;
+
+    // Fog-of-war: no panel for hidden neutral territories
+    if (inFog) {
+      setSelectedTerritoryNode(null);
+      setSelectedTerritory(null);
+      return;
+    }
+
+    const ownership: 'player' | 'enemy' | 'neutral' =
+      territory.data?.ownership ?? (territory.data?.isOwned ? 'player' : 'neutral');
+
     setSelectedTerritoryNode(territory);
     setSelectedTerritory({
       id: node.id,
       label: territory.data?.label || node.id,
-      type: territory.data?.landCategory || 'settlement',
+      type: territory.data?.territoryType || territory.data?.landCategory || 'settlement',
       isOwned: territory.data?.isOwned || false,
+      ownership,
+      kingdomName: territory.data?.kingdomName,
+      inFog: false,
     });
   }, []);
 
+  // ── Claim handler ─────────────────────────────────────────────────────────
+
   const handleClaimTerritory = useCallback(() => {
-    if (!selectedTerritoryNode || selectedTerritoryNode.data.isOwned) return;
+    if (!selectedTerritoryNode) return;
+    if (selectedTerritory?.ownership !== 'neutral') return;
 
     setNodes((nds) =>
-      nds.map((node) =>
-        node.id === selectedTerritoryNode.id
+      nds.map((n) =>
+        n.id === selectedTerritoryNode.id
           ? {
-              ...node,
+              ...n,
               data: {
-                ...node.data,
+                ...n.data,
                 isOwned: true,
                 kingdomName: kingdom.name,
                 race: (kingdom.race as string) || 'Human',
                 visibility: 'full' as VisibilityLevel,
+                ownership: 'player' as const,
+                inFog: false,
                 landCategory: undefined,
               },
               style: {
-                ...node.style,
+                ...n.style,
                 background: '#4ade80',
                 border: '2px solid #16a34a',
                 opacity: 1,
                 filter: 'none',
+                color: '#000',
               },
             }
-          : node,
+          : n,
       ),
     );
     setSelectedTerritoryNode(null);
     setSelectedTerritory(null);
-  }, [selectedTerritoryNode, kingdom, setNodes]);
+  }, [selectedTerritoryNode, selectedTerritory, kingdom, setNodes]);
+
+  // ── Ownership badge helper ────────────────────────────────────────────────
+
+  function ownershipBadge(ownership: 'player' | 'enemy' | 'neutral') {
+    if (ownership === 'player') {
+      return (
+        <span style={{
+          display: 'inline-block',
+          background: '#0f766e',
+          color: '#99f6e4',
+          fontSize: '0.75rem',
+          fontWeight: 600,
+          padding: '0.2rem 0.6rem',
+          borderRadius: 9999,
+          marginBottom: '0.75rem',
+        }}>
+          ✓ Your Territory
+        </span>
+      );
+    }
+    if (ownership === 'enemy') {
+      return (
+        <span style={{
+          display: 'inline-block',
+          background: '#7f1d1d',
+          color: '#fca5a5',
+          fontSize: '0.75rem',
+          fontWeight: 600,
+          padding: '0.2rem 0.6rem',
+          borderRadius: 9999,
+          marginBottom: '0.75rem',
+        }}>
+          ⚔ Enemy Territory
+        </span>
+      );
+    }
+    return (
+      <span style={{
+        display: 'inline-block',
+        background: '#374151',
+        color: '#9ca3af',
+        fontSize: '0.75rem',
+        fontWeight: 600,
+        padding: '0.2rem 0.6rem',
+        borderRadius: 9999,
+        marginBottom: '0.75rem',
+      }}>
+        ○ Unclaimed
+      </span>
+    );
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div
@@ -416,20 +716,20 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
             <span>Your Territory</span>
           </div>
           <div className="legend-item">
-            <div className="legend-color" style={{ background: '#94a3b8' }}></div>
+            <div className="legend-color" style={{ background: '#1f2937', border: '1px dashed #4b5563' }}></div>
             <span>Neutral</span>
           </div>
           <div className="legend-item">
-            <div className="legend-color" style={{ background: '#f87171' }}></div>
+            <div className="legend-color" style={{ background: '#dc2626' }}></div>
             <span>Enemy</span>
           </div>
           <div className="legend-item">
             <div
               className="legend-color fog-legend"
               style={{
-                background: '#374151',
-                border: '2px dashed #6b7280',
-                opacity: 0.7,
+                background: '#000',
+                border: '1px dashed #374151',
+                opacity: 0.4,
               }}
             ></div>
             <span>Fog of War</span>
@@ -464,9 +764,10 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
             nodeColor={(node) => {
               if (node.id === 'map-bg') return 'transparent';
               const t = node as TerritoryNode;
-              if (t.data.isOwned) return '#4ade80';
-              if (t.data.visibility === 'partial') return '#4b5563';
-              return '#94a3b8';
+              if (t.data.inFog) return '#111';
+              if (t.data.ownership === 'player') return '#4ade80';
+              if (t.data.ownership === 'enemy') return '#dc2626';
+              return '#374151';
             }}
             position="top-right"
             style={{ backgroundColor: 'rgba(15,22,41,0.92)', border: '1px solid rgba(255,255,255,0.12)' }}
@@ -477,12 +778,12 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           >
             <div className="map-stats">
               <h3>Kingdom Stats</h3>
-              <p>Territories: {nodes.filter((n) => n.id !== 'map-bg' && n.data.isOwned).length}</p>
+              <p>Territories: {nodes.filter((n) => n.id !== 'map-bg' && (n as TerritoryNode).data.ownership === 'player').length}</p>
               <p>
                 Total Power:{' '}
                 {nodes
-                  .filter((n) => n.id !== 'map-bg' && n.data.isOwned)
-                  .reduce((sum, n) => sum + n.data.power, 0)}
+                  .filter((n) => n.id !== 'map-bg' && (n as TerritoryNode).data.isOwned)
+                  .reduce((sum, n) => sum + ((n as TerritoryNode).data.power || 0), 0)}
               </p>
             </div>
           </Panel>
@@ -498,20 +799,85 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
             animation: 'slideInRight 0.25s ease-out',
           }}>
             <img
-              src={TERRITORY_IMAGES[selectedTerritory.label] || '/territories-icon.png'}
+              src={getTerritoryImage(selectedTerritory.label, selectedTerritory.type)}
               style={{ width: '100%', height: 220, objectFit: 'cover' }}
               alt={selectedTerritory.label}
             />
             <div style={{ padding: '1.25rem', flex: 1 }}>
               <h2 style={{ color: '#d4a017', marginBottom: '0.5rem', fontSize: '1.1rem', letterSpacing: '0.05em' }}>
-                {selectedTerritory.label}
+                {/* Strip crown prefix from display if present */}
+                {selectedTerritory.label.replace(/^\u265a\s*/, '')}
               </h2>
-              <p style={{ color: selectedTerritory.isOwned ? '#14b8a6' : '#9ca3af', fontSize: '0.85rem', marginBottom: '1rem' }}>
-                {selectedTerritory.isOwned ? '✓ Your Territory' : 'Unclaimed Territory'}
+
+              {/* Ownership badge */}
+              {ownershipBadge(selectedTerritory.ownership)}
+
+              {/* Type badge */}
+              <p style={{
+                display: 'inline-block',
+                background: '#1f2937',
+                color: '#6b7280',
+                fontSize: '0.75rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                padding: '0.2rem 0.6rem',
+                borderRadius: 9999,
+                marginLeft: '0.4rem',
+                marginBottom: '0.75rem',
+              }}>
+                {selectedTerritory.type}
               </p>
-              <p style={{ color: '#6b7280', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Type: {selectedTerritory.type}
-              </p>
+
+              {/* Kingdom name for enemy territories */}
+              {selectedTerritory.ownership === 'enemy' && selectedTerritory.kingdomName && (
+                <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                  Ruled by: <strong style={{ color: '#f87171' }}>{selectedTerritory.kingdomName}</strong>
+                </p>
+              )}
+
+              {/* Claim button — only for neutral territories */}
+              {selectedTerritory.ownership === 'neutral' && (
+                <button
+                  onClick={handleClaimTerritory}
+                  style={{
+                    marginTop: '1rem',
+                    width: '100%',
+                    padding: '0.6rem',
+                    background: '#16a34a',
+                    border: 'none',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    borderRadius: 6,
+                    fontFamily: 'var(--font-display, Cinzel, serif)',
+                    fontSize: '0.85rem',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  Claim Territory
+                </button>
+              )}
+
+              {/* Greyed-out Claim button for enemy territories */}
+              {selectedTerritory.ownership === 'enemy' && (
+                <button
+                  disabled
+                  style={{
+                    marginTop: '1rem',
+                    width: '100%',
+                    padding: '0.6rem',
+                    background: '#374151',
+                    border: '1px solid #4b5563',
+                    color: '#6b7280',
+                    cursor: 'not-allowed',
+                    borderRadius: 6,
+                    fontFamily: 'var(--font-display, Cinzel, serif)',
+                    fontSize: '0.85rem',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  Claim Territory
+                </button>
+              )}
             </div>
             <button
               onClick={() => setSelectedTerritory(null)}
@@ -528,12 +894,11 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         )}
       </div>
 
-      {/* Legacy territory detail panel (fog-of-war detail, claim/attack actions) */}
+      {/* Legacy territory detail panel — retained for fog-of-war detail, actions */}
       {selectedTerritoryNode && (
         <div className="territory-panel">
           <h3>{selectedTerritoryNode.data.label}</h3>
 
-          {/* Fog of War badge */}
           {selectedTerritoryNode.data.visibility === 'partial' && (
             <div className="fog-badge">Partial Visibility</div>
           )}
@@ -573,7 +938,16 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
 
           {!selectedTerritoryNode.data.isOwned && (
             <div className="territory-actions">
-              <button onClick={handleClaimTerritory} className="claim-button">
+              <button
+                onClick={handleClaimTerritory}
+                className="claim-button"
+                disabled={selectedTerritoryNode.data.ownership === 'enemy'}
+                style={
+                  selectedTerritoryNode.data.ownership === 'enemy'
+                    ? { opacity: 0.4, cursor: 'not-allowed' }
+                    : undefined
+                }
+              >
                 Claim Territory
               </button>
               <button className="attack-button">Attack</button>
@@ -740,7 +1114,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           transition: background-color 0.2s;
         }
 
-        .claim-button:hover {
+        .claim-button:hover:not(:disabled) {
           background: #15803d;
         }
 
