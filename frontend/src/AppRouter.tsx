@@ -8,6 +8,7 @@ import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { generateClient } from 'aws-amplify/data';
 import { useKingdomStore } from './stores/kingdomStore';
+import { useCombatReplayStore } from './stores/combatReplayStore';
 import type { Schema } from '../../amplify/data/resource';
 import { LoadingSkeleton } from './components/ui/loading/LoadingSkeleton';
 import { TopNavigation } from './components/TopNavigation';
@@ -29,6 +30,7 @@ const AchievementList = lazy(() => import('./components/achievements/Achievement
 const GuildManagement = lazy(() => import('./components/GuildManagement'));
 const WorldMap = lazy(() => import('./components/WorldMap'));
 const BattleReports = lazy(() => import('./components/combat/BattleReports'));
+const CombatReplayViewer = lazy(() => import('./components/combat/CombatReplayViewer').then(m => ({ default: m.CombatReplayViewer })));
 const ThieveryInterface = lazy(() => import('./components/ThieveryInterface'));
 const BountyBoard = lazy(() => import('./components/BountyBoard'));
 const FaithInterface = lazy(() => import('./components/FaithInterface'));
@@ -465,7 +467,100 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
             />
           </Suspense>
         } />
+
+        {/* Battle Replays list */}
+        <Route path="replays" element={
+          <Suspense fallback={<LoadingSkeleton type="list" className="m-8" />}>
+            <div style={{ background: 'var(--color-bg-deep, #0f1629)', minHeight: '100vh' }}>
+              <TopNavigation
+                title="Battle Replays"
+                onBack={handleBackToDashboard}
+                backLabel="← Back to Kingdom"
+                subtitle="Review your recent battles"
+              />
+              <ReplaysListRoute
+                onNavigate={(replayId) => navigate(`/kingdom/${kingdomId}/replay/${replayId}`)}
+              />
+            </div>
+          </Suspense>
+        } />
+
+        {/* Combat Replay */}
+        <Route path="replay/:replayId" element={
+          <Suspense fallback={<LoadingSkeleton type="card" className="m-8" />}>
+            <ReplayRoute onBack={handleBackToDashboard} />
+          </Suspense>
+        } />
       </Routes>
     </Suspense>
   );
+}
+
+// Lists recent replays stored in the replay store
+function ReplaysListRoute({ onNavigate }: { onNavigate: (replayId: string) => void }) {
+  const getRecentReplays = useCombatReplayStore((state) => state.getRecentReplays);
+  const replays = getRecentReplays(20);
+
+  if (replays.length === 0) {
+    return (
+      <div style={{ padding: '2rem', color: '#9ca3af', textAlign: 'center' }}>
+        <p>No replays available yet. Fight a battle to record one.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '1rem 2rem' }}>
+      {replays.map((replay) => (
+        <div
+          key={replay.battleId}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.75rem 1rem',
+            marginBottom: '0.5rem',
+            background: 'rgba(255,255,255,0.04)',
+            borderRadius: '6px',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          <div>
+            <span style={{ color: replay.result === 'victory' ? '#22c55e' : '#ef4444', marginRight: '0.5rem' }}>
+              {replay.result === 'victory' ? 'Victory' : 'Defeat'}
+            </span>
+            <span style={{ color: '#d1d5db' }}>vs {replay.defenderName}</span>
+            <span style={{ color: '#6b7280', fontSize: '0.8rem', marginLeft: '0.75rem' }}>
+              {new Date(replay.timestamp).toLocaleDateString()}
+            </span>
+          </div>
+          <button
+            className="action-btn"
+            style={{ fontSize: '0.8rem', padding: '0.25rem 0.75rem' }}
+            onClick={() => onNavigate(replay.battleId)}
+          >
+            View Replay
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Wrapper component that looks up the replay from the store by replayId param
+function ReplayRoute({ onBack }: { onBack: () => void }) {
+  const { replayId } = useParams<{ replayId: string }>();
+  const getReplay = useCombatReplayStore((state) => state.getReplay);
+  const replay = replayId ? getReplay(replayId) : undefined;
+
+  if (!replay) {
+    return (
+      <div style={{ padding: '2rem', color: '#9ca3af', textAlign: 'center' }}>
+        <p>Replay not found.</p>
+        <button className="back-btn" onClick={onBack}>← Back to Kingdom</button>
+      </div>
+    );
+  }
+
+  return <CombatReplayViewer replay={replay} onClose={onBack} />;
 }

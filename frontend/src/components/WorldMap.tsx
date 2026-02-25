@@ -17,6 +17,7 @@ import { useTerritoryStore } from '../stores/territoryStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { ToastService } from '../services/toastService';
+import { achievementTriggers } from '../utils/achievementTriggers';
 
 interface Node {
   id: string;
@@ -764,6 +765,8 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         goldRefund: Math.floor(cost.gold * 0.5),
         startedAtTurns: resources.turns ?? 0,
       });
+
+      achievementTriggers.onTerritoryExplored(region.id);
 
       ToastService.success(`Settlers dispatched to ${region.name}! Arrives in ${cost.settlingTurns} turns.`);
     } catch (err) {

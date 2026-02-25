@@ -40,6 +40,7 @@ export interface Kingdom {
   isOnline?: boolean;
   lastActive?: Date;
   guildId?: string;
+  guildName?: string;
 }
 
 export interface Territory {

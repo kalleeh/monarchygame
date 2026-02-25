@@ -9,6 +9,7 @@ import { useSpring, useTransition, animated, config } from '@react-spring/web';
 import { useSpellStore } from '../stores/spellStore';
 import { SPELLS, type Spell } from "../shared-spells";
 import { TopNavigation } from './TopNavigation';
+import { achievementTriggers } from '../utils/achievementTriggers';
 
 interface SpellCastingInterfaceProps {
   kingdomId: string;
@@ -91,7 +92,10 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
     }
 
     try {
-      await castSpell(kingdomId, spellId, selectedTarget || undefined);
+      const result = await castSpell(kingdomId, spellId, selectedTarget || undefined);
+      if (result.success) {
+        achievementTriggers.onSpellCast();
+      }
     } catch (error) {
       console.error('Spell casting failed:', error);
     }

@@ -3,27 +3,146 @@
  * Moved from frontend/src/utils/combatCache.ts to shared location.
  */
 
+// ---------------------------------------------------------------------------
+// Terrain modifier table — shared between Lambda and frontend
+// Keyed by the lowercase terrain type string used in the schema enum.
+// Each entry carries fractional modifiers (e.g. 0.2 = +20%).
+// Modifier keys used in combat:
+//   defense  — scales defender's effective unit power
+//   offense  — scales both sides' offensive power (swamp)
+//   cavalry  — scales units whose type includes "cavalry"
+//   infantry — scales units whose type includes "infantry" / foot units
+//   siege    — scales units whose type includes "siege"
+// ---------------------------------------------------------------------------
+export interface TerrainModifiers {
+  defense?: number;
+  offense?: number;
+  cavalry?: number;
+  infantry?: number;
+  siege?: number;
+}
+
+export const TERRAIN_MODIFIERS: Record<string, TerrainModifiers> = {
+  plains:    {},                                                 // no modifier
+  forest:    { defense: 0.2, cavalry: -0.1 },                  // +20% def, -10% cav
+  mountains: { defense: 0.3, siege: -0.2 },                    // +30% def, -20% siege
+  swamp:     { defense: -0.15, offense: -0.15, cavalry: -0.15, infantry: -0.15 },
+  desert:    { cavalry: 0.15, infantry: -0.1 },                 // +15% cav, -10% inf
+  coastal:   {},                                                 // no modifier (treat as plains)
+  // TerrainType enum uppercased variants (from frontend TerrainType const)
+  PLAINS:    {},
+  FOREST:    { defense: 0.2, cavalry: -0.1 },
+  MOUNTAINS: { defense: 0.3, siege: -0.2 },
+  SWAMP:     { defense: -0.15, offense: -0.15, cavalry: -0.15, infantry: -0.15 },
+  DESERT:    { cavalry: 0.15, infantry: -0.1 },
+};
+
+// ---------------------------------------------------------------------------
+// Formation modifier table — shared between Lambda and frontend
+// Keyed by the formation ID strings used in combatStore / BattleFormations.
+// offense modifier scales attacker's power, defense modifier scales the
+// attacker's effective defence (reducing their casualty exposure).
+// ---------------------------------------------------------------------------
+export interface FormationModifiers {
+  offense: number;  // multiplier delta, e.g. 0.3 = +30%
+  defense: number;  // multiplier delta, e.g. 0.25 = +25%
+}
+
+export const FORMATION_MODIFIERS: Record<string, FormationModifiers> = {
+  // IDs from initializeCombatData and FORMATIONS data file
+  'defensive-wall':       { offense: -0.1,  defense: 0.25 },
+  'cavalry-charge':       { offense: 0.3,   defense: -0.15 },
+  'balanced':             { offense: 0.1,   defense: 0.1 },
+  // FormationType enum values (uppercase)
+  'DEFENSIVE_WALL':       { offense: -0.1,  defense: 0.25 },
+  'CAVALRY_CHARGE':       { offense: 0.3,   defense: -0.15 },
+  'BALANCED':             { offense: 0.1,   defense: 0.1 },
+  // Legacy keys that were used by the old FORMATION_BONUSES table in handler.ts
+  'aggressive':           { offense: 0.15,  defense: 0.0 },
+  'defensive':            { offense: -0.1,  defense: 0.25 },
+  'flanking':             { offense: 0.1,   defense: 0.0 },
+  'siege':                { offense: 0.2,   defense: 0.0 },
+  'standard':             { offense: 0.0,   defense: 0.0 },
+  // Name-based keys (from saved formation .name field)
+  'Defensive Wall':       { offense: -0.1,  defense: 0.25 },
+  'Cavalry Charge':       { offense: 0.3,   defense: -0.15 },
+  'Balanced Formation':   { offense: 0.1,   defense: 0.1 },
+};
+
+// ---------------------------------------------------------------------------
+// Unit stats table — used by power calculations in this module and by
+// applyTerrainToUnitPower below. Declared early so all functions can access it.
+// ---------------------------------------------------------------------------
+const UNIT_STATS = {
+  peasant:  { attack: 1, defense: 1 },
+  infantry: { attack: 3, defense: 2 },
+  cavalry:  { attack: 5, defense: 3 },
+  archer:   { attack: 4, defense: 2 },
+  knight:   { attack: 6, defense: 4 },
+  mage:     { attack: 3, defense: 1 },
+  scout:    { attack: 2, defense: 1 },
+  militia:  { attack: 2, defense: 3 },
+  tier1:    { attack: 1, defense: 1 },
+  tier2:    { attack: 3, defense: 2 },
+  tier3:    { attack: 5, defense: 3 },
+  tier4:    { attack: 7, defense: 4 },
+} as const;
+
+// ---------------------------------------------------------------------------
+// Helper: compute a terrain-adjusted unit power sum.
+// units   — e.g. { cavalry: 100, infantry: 200, siege: 50 }
+// type    — 'attack' or 'defense' (which stat to read from UNIT_STATS)
+// mods    — TerrainModifiers for the relevant side's terrain
+// ---------------------------------------------------------------------------
+export function applyTerrainToUnitPower(
+  units: Record<string, number>,
+  type: 'attack' | 'defense',
+  mods: TerrainModifiers
+): number {
+  const globalOffenseMod = mods.offense ?? 0;   // swamp penalises both sides
+  let totalPower = 0;
+
+  for (const [unitType, count] of Object.entries(units)) {
+    const unitStats = UNIT_STATS[unitType as keyof typeof UNIT_STATS];
+    // Fall back to generic foot-soldier stats for unknown unit types
+    const stats = unitStats ?? { attack: 2, defense: 2 };
+    const basePower = (type === 'attack' ? stats.attack : stats.defense) * count;
+
+    // Determine which per-unit-class modifier applies
+    const lowerType = unitType.toLowerCase();
+    let classMod = 0;
+
+    if (lowerType.includes('cavalry') || lowerType === 'tier4') {
+      classMod = mods.cavalry ?? 0;
+    } else if (lowerType.includes('siege') || lowerType === 'catapult' || lowerType === 'ballista') {
+      classMod = mods.siege ?? 0;
+    } else if (
+      lowerType.includes('infantry') ||
+      lowerType.includes('soldier') ||
+      lowerType === 'militia' ||
+      lowerType === 'knight' ||
+      lowerType === 'tier1' ||
+      lowerType === 'tier2' ||
+      lowerType === 'tier3'
+    ) {
+      classMod = mods.infantry ?? 0;
+    }
+
+    // Stack class modifier on top of global offense modifier
+    const totalMod = globalOffenseMod + classMod;
+    totalPower += basePower * (1 + totalMod);
+  }
+
+  return totalPower;
+}
+
 // Disable caching for now to fix build issues
 const combatCache = {
-  wrap: <T extends (...args: unknown[]) => unknown>(fn: T, _options?: unknown): T => fn,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  wrap: <T extends (...args: any[]) => any>(fn: T, _options?: unknown): T => fn,
   clear: () => {},
   size: 0
 };
-
-// Basic unit stats for combat calculations
-const UNIT_STATS = {
-  peasant: { attack: 1, defense: 1 },
-  infantry: { attack: 3, defense: 2 },
-  cavalry: { attack: 5, defense: 3 },
-  archer: { attack: 4, defense: 2 },
-  knight: { attack: 6, defense: 4 },
-  mage: { attack: 3, defense: 1 },
-  scout: { attack: 2, defense: 1 },
-  tier1: { attack: 1, defense: 1 },
-  tier2: { attack: 3, defense: 2 },
-  tier3: { attack: 5, defense: 3 },
-  tier4: { attack: 7, defense: 4 }
-} as const;
 
 export const calculateUnitPower = combatCache.wrap(
   (units: Record<string, number>, type: 'attack' | 'defense') => {

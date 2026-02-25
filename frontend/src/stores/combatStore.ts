@@ -16,6 +16,71 @@ import { useSummonStore } from './useSummonStore';
 import { isDemoMode } from '../utils/authMode';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 import { achievementTriggers } from '../utils/achievementTriggers';
+import { GuildService } from '../services/GuildService';
+import { useCombatReplayStore } from './combatReplayStore';
+import { TerrainType, FormationType } from '../types/combat';
+
+/**
+ * Fire-and-forget: check if attacker and defender are in an active guild war
+ * and record the contribution. Points = 1 per 10 acres of enemy land taken.
+ * This never blocks the combat result — any errors are swallowed silently.
+ *
+ * When attackerGuildId is null, it will be resolved by fetching the attacker
+ * kingdom record from Amplify (same as defender lookup).
+ */
+async function maybeRecordGuildWarScore(params: {
+  attackerKingdomId: string;
+  attackerGuildId: string | null | undefined;
+  attackerName: string;
+  defenderKingdomId: string;
+  landGained: number;
+}): Promise<void> {
+  try {
+    const { attackerKingdomId, defenderKingdomId, landGained } = params;
+    let { attackerGuildId, attackerName } = params;
+    if (landGained <= 0) return;
+
+    // Fetch both kingdoms from Amplify to resolve guildIds
+    const { generateClient } = await import('aws-amplify/data');
+    type SchemaType = import('../../../amplify/data/resource').Schema;
+    const client = generateClient<SchemaType>();
+
+    // Resolve attacker guildId if not supplied
+    if (!attackerGuildId) {
+      const { data: atkKingdom } = await client.models.Kingdom.get({ id: attackerKingdomId });
+      attackerGuildId = (atkKingdom as { guildId?: string | null; name?: string | null } | null)?.guildId ?? null;
+      if (!attackerName || attackerName === attackerKingdomId) {
+        attackerName = (atkKingdom as { name?: string | null } | null)?.name ?? attackerKingdomId;
+      }
+    }
+    if (!attackerGuildId) return;
+
+    // Resolve defender guildId
+    const { data: defKingdom } = await client.models.Kingdom.get({ id: defenderKingdomId });
+    const defenderGuildId = (defKingdom as { guildId?: string | null } | null)?.guildId ?? null;
+    if (!defenderGuildId) return;
+
+    // Find active guild war between these two guilds
+    const activeWar = GuildService.findActiveWarBetween(attackerGuildId, defenderGuildId);
+    if (!activeWar) return;
+
+    // Points: 1 per 10 acres gained (minimum 1)
+    const points = Math.max(1, Math.floor(landGained / 10));
+
+    GuildService.recordGuildWarContribution({
+      warId: activeWar.id,
+      kingdomId: attackerKingdomId,
+      kingdomName: attackerName,
+      guildId: attackerGuildId,
+      points,
+    });
+
+    // Wire achievement: track guild war contribution
+    achievementTriggers.onGuildWarContribution(points);
+  } catch {
+    // Fire-and-forget: swallow all errors silently
+  }
+}
 
 interface Unit {
   id: string;
@@ -173,12 +238,24 @@ export const useCombatStore = create(
               unitPayload[unit.type] = (unitPayload[unit.type] || 0) + unit.count;
             });
 
+            // Resolve the active formation ID and terrain from the selected AI kingdom
+            const activeFormationId = state.activeFormation ?? undefined;
+            // Defender terrain: look up the target kingdom's terrain if available
+            const aiKingdomsForTerrain = useAIKingdomStore.getState().aiKingdoms;
+            const targetKingdomForTerrain = aiKingdomsForTerrain.find(k => k.id === targetId);
+            const terrainId: string | undefined =
+              (targetKingdomForTerrain as any)?.terrain ??
+              (targetKingdomForTerrain as any)?.terrainType ??
+              undefined;
+
             const result = await AmplifyFunctionService.callFunction('combat-processor', {
               kingdomId,
               attackerKingdomId: kingdomId,
               defenderKingdomId: targetId,
               attackType: 'standard',
-              units: unitPayload
+              units: unitPayload,
+              formationId: activeFormationId,
+              terrainId,
             }) as any;
 
             const parsed = typeof result === 'string' ? JSON.parse(result) : result;
@@ -212,6 +289,17 @@ export const useCombatStore = create(
               if ((combatData.landGained || 0) > 0) {
                 achievementTriggers.onLandCaptured(combatData.landGained);
               }
+
+              // Guild war contribution — fire-and-forget, never blocks the result.
+              // attackerGuildId is passed as null here; the async helper will
+              // look it up from the Amplify Kingdom model for both sides.
+              void maybeRecordGuildWarScore({
+                attackerKingdomId: kingdomId,
+                attackerGuildId: null,
+                attackerName: kingdomId,
+                defenderKingdomId: targetId,
+                landGained: combatData.landGained || 0,
+              });
             }
 
             set((state) => ({
@@ -220,6 +308,31 @@ export const useCombatStore = create(
               selectedUnits: [],
               loading: false
             }));
+
+            // Capture replay for auth-mode battle
+            useCombatReplayStore.getState().addReplay({
+              id: `replay-${battleReport.id}`,
+              battleId: battleReport.id,
+              attackerId: kingdomId,
+              attackerName: kingdomId,
+              defenderId: targetId,
+              defenderName: targetId,
+              terrain: (terrainId as import('../types/combat').TerrainType) || TerrainType.PLAINS,
+              attackerFormation: (activeFormationId as import('../types/combat').FormationType) || FormationType.BALANCED,
+              defenderFormation: FormationType.BALANCED,
+              rounds: [
+                {
+                  roundNumber: 1,
+                  attackerCasualties: Object.values(battleReport.casualties.attacker).reduce((s, v) => s + v, 0),
+                  defenderCasualties: Object.values(battleReport.casualties.defender).reduce((s, v) => s + v, 0),
+                  attackerUnitsRemaining: battleReport.attackerUnits.reduce((s, u) => s + u.count, 0),
+                  defenderUnitsRemaining: 0,
+                },
+              ],
+              result: battleReport.result === 'victory' ? 'victory' : 'defeat',
+              landGained: battleReport.landGained ?? 0,
+              timestamp: new Date(battleReport.timestamp).toISOString(),
+            });
 
             return battleReport;
           }
@@ -284,6 +397,38 @@ export const useCombatStore = create(
             loading: false
           }));
 
+          // Capture replay for demo-mode battle
+          const demoActiveFormationId = state.activeFormation ?? undefined;
+          const aiKingdomsForReplay = useAIKingdomStore.getState().aiKingdoms;
+          const defenderKingdomForReplay = aiKingdomsForReplay.find(k => k.id === targetId);
+          const demoTerrainId: string | undefined =
+            (defenderKingdomForReplay as any)?.terrain ??
+            (defenderKingdomForReplay as any)?.terrainType ??
+            undefined;
+          useCombatReplayStore.getState().addReplay({
+            id: `replay-${battleReport.id}`,
+            battleId: battleReport.id,
+            attackerId: 'current-player',
+            attackerName: 'You',
+            defenderId: targetId,
+            defenderName: defenderKingdom.name,
+            terrain: (demoTerrainId as import('../types/combat').TerrainType) || TerrainType.PLAINS,
+            attackerFormation: (demoActiveFormationId as import('../types/combat').FormationType) || FormationType.BALANCED,
+            defenderFormation: FormationType.BALANCED,
+            rounds: [
+              {
+                roundNumber: 1,
+                attackerCasualties: Object.values(battleReport.casualties.attacker).reduce((s, v) => s + v, 0),
+                defenderCasualties: Object.values(battleReport.casualties.defender).reduce((s, v) => s + v, 0),
+                attackerUnitsRemaining: battleReport.attackerUnits.reduce((s, u) => s + u.count, 0),
+                defenderUnitsRemaining: battleReport.defenderUnits.reduce((s, u) => s + u.count, 0),
+              },
+            ],
+            result: battleReport.result === 'victory' ? 'victory' : 'defeat',
+            landGained: battleReport.landGained ?? 0,
+            timestamp: new Date(battleReport.timestamp).toISOString(),
+          });
+
           return battleReport;
         } catch (error) {
           set({ 
@@ -304,8 +449,14 @@ export const useCombatStore = create(
 
       // Siege warfare
       startSiege: async (territoryId: string, units: Unit[]) => {
+        // Use crypto.randomUUID when available; fall back to timestamp-based id
+        const newSiegeId =
+          typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `siege-${Date.now()}`;
+
         const siege: SiegeOperation = {
-          id: `siege-${Date.now()}`,
+          id: newSiegeId,
           targetTerritoryId: territoryId,
           attackerUnits: units,
           defenderUnits: [],
@@ -330,18 +481,54 @@ export const useCombatStore = create(
       },
 
       completeSiege: (siegeId: string, success: boolean) => {
-        const state = get();
-        const siege = state.activeSieges.find(s => s.id === siegeId);
-        
-        if (siege) {
-          set((state) => ({
-            activeSieges: state.activeSieges.filter(s => s.id !== siegeId),
-            siegeHistory: [{
-              id: siegeId,
-              timestamp: Date.now(),
-              success,
-              duration: 5 - siege.turnsRemaining
-            }, ...state.siegeHistory.slice(0, 19)]
+        const currentState = get();
+        const siege = currentState.activeSieges.find(s => s.id === siegeId);
+
+        if (!siege) return;
+
+        const duration = 5 - siege.turnsRemaining;
+
+        if (success) {
+          // Fortified-position land grant: 3–5% of a standard 1 000-acre base.
+          // Sieges target fortified positions, so gains are smaller than open battle.
+          const BASE_LAND = 1000;
+          const landGainRate = 0.03 + Math.random() * 0.02; // 3–5 %
+          const landGained = Math.floor(BASE_LAND * landGainRate);
+
+          // Apply land gain to the player's kingdom resources
+          useKingdomStore.getState().updateResources({
+            land: (useKingdomStore.getState().resources.land ?? 0) + landGained
+          });
+
+          set((storeState) => ({
+            activeSieges: storeState.activeSieges.filter(s => s.id !== siegeId),
+            siegeHistory: [
+              { id: siegeId, timestamp: Date.now(), success: true, duration },
+              ...storeState.siegeHistory.slice(0, 19)
+            ]
+          }));
+        } else {
+          // Failed siege: besieging units take 15 % casualties
+          const FAILURE_CASUALTY_RATE = 0.15;
+          const kingdomUnits = useKingdomStore.getState().units;
+          const siegeUnitIds = new Set(siege.attackerUnits.map(u => u.id));
+          const updatedUnits = kingdomUnits
+            .map(u => {
+              if (siegeUnitIds.has(u.id)) {
+                const lost = Math.floor(u.count * FAILURE_CASUALTY_RATE);
+                return { ...u, count: Math.max(0, u.count - lost) };
+              }
+              return u;
+            })
+            .filter(u => u.count > 0);
+          useKingdomStore.getState().setUnits(updatedUnits);
+
+          set((storeState) => ({
+            activeSieges: storeState.activeSieges.filter(s => s.id !== siegeId),
+            siegeHistory: [
+              { id: siegeId, timestamp: Date.now(), success: false, duration },
+              ...storeState.siegeHistory.slice(0, 19)
+            ]
           }));
         }
       },

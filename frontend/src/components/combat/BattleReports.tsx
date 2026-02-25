@@ -4,7 +4,9 @@
  */
 
 import React, { useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { BattleHistory, Army } from '../../types/combat';
+import { useCombatReplayStore } from '../../stores/combatReplayStore';
 import '../TerritoryExpansion.css';
 
 interface BattleReportsProps {
@@ -19,8 +21,11 @@ type FilterType = 'all' | 'victories' | 'defeats' | 'attacks' | 'defenses';
 
 const BattleReports: React.FC<BattleReportsProps> = ({
   battleHistory,
-  className = ''
+  className = '',
+  currentKingdomId
 }) => {
+  const navigate = useNavigate();
+  const getReplay = useCombatReplayStore((state) => state.getReplay);
   const [selectedReport, setSelectedReport] = useState<BattleHistory | null>(null);
   const [sortField, setSortField] = useState<SortField>('timestamp');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -446,6 +451,20 @@ const BattleReports: React.FC<BattleReportsProps> = ({
                       </div>
                     )}
                   </div>
+                  {currentKingdomId && getReplay(battle.id) && (
+                    <div className="cell" style={{ display: 'flex', alignItems: 'center' }}>
+                      <button
+                        className="action-btn"
+                        style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/kingdom/${currentKingdomId}/replay/${battle.id}`);
+                        }}
+                      >
+                        View Replay
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })

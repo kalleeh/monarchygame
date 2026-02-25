@@ -32,6 +32,7 @@ import { isDemoMode } from '../utils/authMode';
 import { subscriptionManager } from '../services/subscriptionManager';
 import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
 import { NotificationCenter } from './ui/NotificationCenter';
+import { AchievementWidget } from './achievements/AchievementWidget';
 
 // EncampPanel — shows active encamp countdown or the two encamp buttons
 const EncampPanel = memo(({
@@ -978,6 +979,8 @@ function KingdomDashboard({
           />
         </div>
 
+        <AchievementWidget kingdomId={kingdom.id} />
+
         <div className="territories-panel">
           <h2>Territories ({ownedTerritories.length})</h2>
           {loading ? (
@@ -1048,6 +1051,12 @@ function KingdomDashboard({
                     >
                       <img src="/battle-reports-icon.png" alt="Battle Reports" className="action-icon" />
                       Battle Reports
+                    </button>
+                    <button
+                      className="action-btn"
+                      onClick={() => navigate(`/kingdom/${kingdom.id}/replays`)}
+                    >
+                      Battle Replays
                     </button>
                   </div>
                 </div>
@@ -1139,13 +1148,6 @@ function KingdomDashboard({
                     >
                       <img src="/magic-spells-icon.png" alt="Magic" className="action-icon" />
                       Cast Spells
-                    </button>
-                    <button
-                      className="action-btn"
-                      onClick={() => navigate(`/kingdom/${kingdom.id}/achievements`)}
-                      title="View achievements"
-                    >
-                      🏆 Achievements
                     </button>
                     <button
                       className="action-btn primary"

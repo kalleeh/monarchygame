@@ -295,7 +295,8 @@ const schema = a.schema({
       defenderId: a.string().required(),
       attackType: a.ref('AttackType').required(),
       units: a.json().required(),
-      formationId: a.string()
+      formationId: a.string(),
+      terrainId: a.string()
     })
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])

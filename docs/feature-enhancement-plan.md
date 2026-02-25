@@ -1,703 +1,231 @@
 # Feature Enhancement Plan - Option D
 
-**Project**: Monarchy Game Modernization  
-**Plan Created**: October 3, 2025  
-**Timeline**: 6-8 weeks  
+**Project**: Monarchy Game Modernization
+**Plan Created**: October 3, 2025
+**Last Audited**: February 2026 (post-implementation sprint)
 **Methodology**: Phased implementation with IQC validation
 
 ---
 
 ## 🎯 **Overview**
 
-This plan outlines the implementation of five major feature enhancements to increase player engagement, retention, and competitive depth.
+Five major feature enhancements to increase player engagement, retention, and competitive depth.
+This document reflects **actual implementation status** after the February 2026 implementation sprint.
 
-### **Features Prioritized**
-1. ✅ Tutorial/Onboarding Flow (HIGH PRIORITY)
-2. ✅ Player Rankings/Leaderboards (HIGH PRIORITY)
-3. ✅ Achievement System (MEDIUM PRIORITY)
-4. ✅ Advanced Combat Mechanics (MEDIUM PRIORITY)
-5. ✅ Guild Warfare System (LOWER PRIORITY)
+### **Feature Status Summary**
 
----
-
-## 📊 **Priority Analysis**
-
-### **HIGH PRIORITY - Must Have**
-
-#### **1. Tutorial/Onboarding Flow**
-**Why First**: Critical for new user retention (70%+ completion target)
-
-**Impact**: 
-- Reduces bounce rate for new players
-- Increases time to first meaningful action
-- Provides context for complex game mechanics
-
-**Complexity**: Low-Medium (3-4 days)
-
-#### **2. Player Rankings/Leaderboards**
-**Why Second**: Drives competitive engagement
-
-**Impact**:
-- Creates competitive motivation
-- Provides clear progression goals
-- Increases daily active users (40%+ target)
-
-**Complexity**: Low-Medium (3-4 days)
-
-### **MEDIUM PRIORITY - Should Have**
-
-#### **3. Achievement System**
-**Why Third**: Long-term retention and gamification
-
-**Impact**:
-- Provides milestone goals
-- Increases session length
-- Creates collection motivation (5+ achievements per player target)
-
-**Complexity**: Medium (5-7 days)
-
-#### **4. Advanced Combat Mechanics**
-**Why Fourth**: Adds strategic depth for experienced players
-
-**Impact**:
-- Increases combat engagement
-- Provides mastery path
-- Differentiates from competitors (30%+ usage target)
-
-**Complexity**: Medium-High (7-10 days)
-
-### **LOWER PRIORITY - Nice to Have**
-
-#### **5. Guild Warfare System**
-**Why Last**: Requires critical mass of players
-
-**Impact**:
-- Enhances social gameplay
-- Creates guild loyalty
-- Scales with player base (60%+ participation target)
-
-**Complexity**: High (7-10 days)
+| Feature | Priority | Post-Sprint Status |
+|---------|----------|--------------------|
+| Tutorial/Onboarding | HIGH | ✅ 100% Complete |
+| Player Rankings/Leaderboards | HIGH | ✅ 90% Complete |
+| Achievement System | MEDIUM | ✅ 98% Complete |
+| Advanced Combat Mechanics | MEDIUM | 🟡 75% Complete |
+| Guild Warfare System | LOWER | 🟡 70% Complete |
 
 ---
 
-## 🗓️ **Implementation Timeline**
+## ✅ **Fully Completed**
 
-### **Phase 1: Foundation (Weeks 1-2)**
+### **1. Tutorial/Onboarding — 100%**
 
-#### **Week 1: Tutorial System**
-**Days 1-2: Design & Planning**
-- Create tutorial flow diagram
-- Define 5-7 tutorial steps
-- Design overlay UI components
-- Write tutorial copy
-
-**Days 3-4: Implementation**
-- `TutorialOverlay` component
-- `TutorialStep` component with highlighting
-- `ProgressIndicator` component
-- Tutorial state management (Zustand + localStorage)
-- Skip/restart functionality
-
-**Deliverables:**
-- Interactive tutorial covering:
-  - Kingdom creation
-  - Resource management
-  - First territory claim
-  - First combat action
-  - Alliance formation
-- Tutorial completion achievement
-- Progress persistence
-
-#### **Week 2: Leaderboards**
-**Days 1-2: Backend**
-- GraphQL schema updates:
-  ```graphql
-  type LeaderboardEntry {
-    id: ID!
-    playerId: ID!
-    playerName: String!
-    race: String!
-    networth: Int!
-    rank: Int!
-    rankChange: Int
-    lastUpdated: AWSDateTime!
-  }
-  ```
-- Lambda function: `calculateLeaderboards` (scheduled hourly)
-- DynamoDB table: `Leaderboards`
-
-**Days 3-4: Frontend**
-- `Leaderboard` component
-- `RankingCard` component
-- Filter controls (global/race/guild)
-- Real-time updates via GraphQL subscriptions
-- Player position highlighting
-
-**Deliverables:**
-- Global top 100 leaderboard
-- Race-specific leaderboards (10 races)
-- Guild rankings
-- Real-time rank updates
-- Player search functionality
+- `TutorialOverlay`, `TutorialStep`, `ProgressIndicator`, `Tutorial.tsx` (React Spring)
+- `tutorialStore.ts` — Zustand + localStorage, skip/restart, step count fixed (10 steps)
+- 5 tutorial sequences: kingdom, combat, spell casting, territory, alliance
+- Spotlight highlighting, keyboard nav (Arrow/Enter/Escape), mobile responsive
+- Playwright test suites: `tutorial-functionality.spec.ts`, `tutorial-interactive.spec.ts`
 
 ---
 
-### **Phase 2: Engagement (Weeks 3-4)**
+### **3. Achievement System — 98%**
 
-#### **Achievement System**
-
-**Week 3: Backend & Definitions**
-**Days 1-3: Achievement Framework**
-- GraphQL schema:
-  ```graphql
-  type Achievement {
-    id: ID!
-    name: String!
-    description: String!
-    category: AchievementCategory!
-    tier: AchievementTier!
-    criteria: AWSJSON!
-    reward: AWSJSON
-    icon: String!
-  }
-  
-  type AchievementProgress {
-    id: ID!
-    playerId: ID!
-    achievementId: ID!
-    progress: Int!
-    completed: Boolean!
-    unlockedAt: AWSDateTime
-  }
-  
-  enum AchievementCategory {
-    COMBAT
-    ECONOMY
-    TERRITORY
-    SOCIAL
-    MAGIC
-    EXPLORATION
-  }
-  
-  enum AchievementTier {
-    COMMON
-    RARE
-    EPIC
-    LEGENDARY
-  }
-  ```
-
-- Lambda function: `checkAchievements` (triggered on game actions)
-- Achievement definitions (20+ achievements):
-  - **Combat**: First Victory, 10 Wins, 100 Wins, Flawless Victory
-  - **Economy**: Millionaire, Resource Hoarder, Trade Master
-  - **Territory**: Land Baron, Empire Builder, Fortress Master
-  - **Social**: Alliance Formed, Guild Member, Diplomat
-  - **Magic**: Spell Caster, Archmage, Sorcery Master
-  - **Exploration**: World Traveler, Cartographer
-
-**Days 4-5: Progress Tracking**
-- Achievement trigger system
-- Progress calculation logic
-- Unlock notification queue
-
-**Week 4: Frontend**
-**Days 1-3: UI Components**
-- `AchievementList` component
-- `AchievementCard` component with progress bars
-- `UnlockNotification` toast component
-- Achievement showcase page
-- Category filters
-
-**Days 4-5: Integration & Testing**
-- Connect achievement triggers to game actions
-- Test unlock conditions
-- Balance achievement difficulty
-- Add achievement icons
-
-**Deliverables:**
-- 20+ achievements across 6 categories
-- 4 rarity tiers
-- Progress tracking system
-- Unlock notifications
-- Achievement showcase page
-- First achievement rewards
+- 22 achievements across 6 categories (Combat, Economy, Territory, Social, Magic, Exploration), 4 tiers
+- `achievementStore.ts` — Zustand + localStorage + DB persistence
+- `achievementTriggers.ts` — all triggers wired:
+  - Combat: `onBattleWon`, `onFlawlessVictory`, `onLandCaptured` → `combatStore.ts`
+  - Economy: `onGoldChanged`, `onLandChanged`, `onPopulationChanged`, `onTradeCompleted` → `KingdomDashboard.tsx`, `useSummonStore.ts`
+  - Magic: `onSpellCast` → `SpellCastingInterface.tsx` (on successful cast)
+  - Social: `onAllianceFormed`, `onGuildJoined`, `onMessageSent` → `GuildManagement.tsx` create/join/accept/send
+  - Exploration: `onTerritoryExplored(regionId)` → `WorldMap.tsx` after `startSettlement()` success (tracks unique regions for Cartographer)
+  - Guild Warfare: `onGuildWarDeclared`, `onGuildWarContribution` → `GuildManagement.tsx`, `combatStore.ts`
+- Reward application: gold + turns granted on unlock, double-grant guarded via `'achievement-rewards-granted'` localStorage key
+- ID bug fixed: `'guild-formed'` → `'alliance-formed'`
+- Route at `/kingdom/:id/achievements`, lazy-loaded, toast notifications on unlock
+- **Remaining (2%)**: Achievement dashboard widget (see below)
 
 ---
 
-### **Phase 3: Depth (Weeks 5-6)**
+### **2. Player Rankings/Leaderboards — 90%**
 
-#### **Advanced Combat Mechanics**
-
-**Week 5: Terrain & Formation Systems**
-**Days 1-2: Terrain System**
-- Terrain types:
-  - Plains (balanced)
-  - Forest (defensive bonus, cavalry penalty)
-  - Mountains (defensive bonus, siege penalty)
-  - Swamp (all units penalty)
-  - Desert (cavalry bonus, infantry penalty)
-- Terrain effect calculations
-- GraphQL schema updates
-
-**Days 3-5: Formation Enhancements**
-- Formation templates (Defensive Wall, Cavalry Charge, Balanced)
-- Unit positioning system
-- Formation bonuses/penalties
-- `FormationBuilder` component with drag-and-drop
-- Formation save/load functionality
-
-**Week 6: Combat Replay & Polish**
-**Days 1-3: Replay System**
-- Combat data capture
-- `CombatReplay` model in GraphQL
-- Replay viewer component
-- Playback controls (play/pause/speed)
-- Battle statistics overlay
-
-**Days 4-5: Balance & Testing**
-- Combat calculations with terrain
-- Formation effectiveness testing
-- Balance adjustments
-- Performance optimization
-- Add terrain-based achievements
-
-**Deliverables:**
-- 5 terrain types with unique effects
-- Enhanced formation system
-- 3+ formation templates
-- Combat replay viewer
-- Battle statistics dashboard
-- Terrain mastery achievements
+- Live networth-based ranking with difficulty indicators (easy/fair/hard)
+- Season-end Lambda ranking + `previousSeasonRank` persistence
+- **Race-specific tabs**: 10 race tabs (All + Human/Elven/Goblin/Droben/Vampire/Elemental/Centaur/Sidhe/Dwarven/Fae), re-numbered within each
+- **Rank delta indicators**: ▲/▼ vs previous season, "NEW" for first-season kingdoms
+- **Guild aggregate tab**: groups by `guildId`, sums networth, sorted ranking
+- **Player search**: live client-side filter
+- **Remaining (10%)**: Guild names show as `Guild [id.slice(0,8)]` because `Kingdom` type has no `guildName` field — needs name resolution pass
 
 ---
 
-### **Phase 4: Social (Weeks 7-8)**
+### **4. Advanced Combat Mechanics — 75%**
 
-#### **Guild Warfare System**
-
-**Week 7: War Declaration & Coordination**
-**Days 1-2: Backend**
-- GraphQL schema:
-  ```graphql
-  type GuildWar {
-    id: ID!
-    attackingGuildId: ID!
-    defendingGuildId: ID!
-    status: WarStatus!
-    startedAt: AWSDateTime!
-    endsAt: AWSDateTime
-    attackingScore: Int!
-    defendingScore: Int!
-    participants: [WarParticipant!]!
-  }
-  
-  type WarParticipant {
-    playerId: ID!
-    guildId: ID!
-    contribution: Int!
-    actions: [WarAction!]!
-  }
-  
-  enum WarStatus {
-    DECLARED
-    ACTIVE
-    ENDED
-  }
-  ```
-
-- Lambda function: `processGuildWarAction`
-- War declaration validation
-- Coordinated attack system
-
-**Days 3-5: War Interface**
-- `GuildWarInterface` component
-- `WarDeclaration` modal
-- Coordinated attack scheduler
-- War status dashboard
-- Participant list with contributions
-
-**Week 8: Statistics & Polish**
-**Days 1-3: War History**
-- `WarHistory` component
-- War statistics (wins/losses/contributions)
-- Guild war leaderboard
-- Victory/defeat notifications
-
-**Days 4-5: Testing & Balance**
-- Multi-guild war testing
-- Contribution calculation balance
-- War duration tuning
-- Add guild warfare achievements
-- Performance testing
-
-**Deliverables:**
-- Guild vs guild war declarations
-- Coordinated attack system
-- War contribution tracking
-- War history and statistics
-- Guild war leaderboard
-- Victory ceremonies
-- Guild warfare achievements
+- `shared/combat/combatCache.ts`: `TERRAIN_MODIFIERS`, `FORMATION_MODIFIERS`, `applyTerrainToUnitPower` exported for both frontend and Lambda
+- `combat-processor/handler.ts` Lambda now applies:
+  - Formation offense multiplier (attacker's chosen formation)
+  - Terrain modifiers: defense bonus for defender, unit-class penalties (cavalry/infantry/siege) for attacker
+  - Terrain resolved from `Territory.terrainType` on defender's territory records
+- `amplify/data/resource.ts`: `terrainType` added as optional field to `processCombat` mutation
+- `BattleFormations.tsx` (633 lines): drag-and-drop UI for formation selection
+- `TerrainSelector.tsx`: terrain selection UI
+- Siege mechanics: `startSiege`, `updateSiege`, `completeSiege` fully implemented in `combatStore.ts`
+- **Remaining (25%)**: Combat replay viewer not integrated into game flow (store exists, component exists, route missing, not wired to battles)
 
 ---
 
-## 🏗️ **Technical Architecture**
+### **5. Guild Warfare System — 70%**
 
-### **Database Schema Updates**
+- Full guild org layer: create, join, leave, kick, invite, accept, chat, treasury
+- Individual kingdom war declaration via `war-manager` Lambda (existing)
+- `GuildService.ts` extended: `declareGuildWar`, `resolveGuildWar`, `concedeGuildWar`, `recordGuildWarContribution`, `loadGuildWars`, `findActiveWarBetween` (localStorage-backed prototype)
+- `combatStore.ts`: `maybeRecordGuildWarScore` fires after every auth-mode victory — scores 1pt/10 acres
+- Wars tab fully replaced in `GuildManagement.tsx`:
+  - Active war card: vs enemy, live score, time remaining countdown, member contribution table
+  - Concede/Resolve buttons (leader-gated)
+  - War history (past 10 wars with Won/Lost/Tied badge)
+- **Remaining (30%)**: Declare war modal uses manual Guild ID + name input — needs a guild browser/search picker from existing Browse Alliances data
 
-```typescript
-// New DynamoDB Tables
-- TutorialProgress
-- LeaderboardCache
-- Achievements
-- AchievementProgress
-- CombatReplays
-- GuildWars
-- WarParticipants
-```
+---
 
-### **GraphQL Schema Extensions**
+## 🔧 **Remaining Implementation: 3 Focused Streams**
 
-```graphql
-# Tutorial
-type TutorialProgress {
-  id: ID!
-  playerId: ID!
-  currentStep: Int!
-  completed: Boolean!
-  skipped: Boolean!
-}
+### **Stream E: Combat Replay Integration**
 
-# Leaderboards (defined above)
+The replay store (`combatReplayStore.ts`) and viewer component (`CombatReplayViewer.tsx`) exist but are
+not wired to the game. Players have no way to access replays.
 
-# Achievements (defined above)
+**Tasks:**
 
-# Combat
-type CombatReplay {
-  id: ID!
-  battleId: ID!
-  attackerId: ID!
-  defenderId: ID!
-  terrain: TerrainType!
-  formations: AWSJSON!
-  rounds: [CombatRound!]!
-  result: CombatResult!
-}
+1. **Wire replay capture** — In `combatStore.ts`, after `executeBattle` resolves (both auth and demo
+   modes), build a replay record and call `useCombatReplayStore.getState().addReplay(replayData)`.
+   The replay data should include: attacker/defender info, units, formation used, terrain, result,
+   land gained, casualties, timestamp.
 
-# Guild Wars (defined above)
-```
+2. **Add replay route** — In `AppRouter.tsx`, add route `/kingdom/:kingdomId/replay/:replayId`
+   rendering `CombatReplayViewer`. Also add a "Replays" nav option from KingdomDashboard.
 
-### **Lambda Functions**
+3. **View Replay button** — In the battle history display (wherever `battleHistory` is rendered in
+   the dashboard), add a "View Replay" button/link for each past battle that navigates to the replay.
 
-```typescript
-// New Functions
-1. calculateLeaderboards (EventBridge scheduled, hourly)
-2. checkAchievements (triggered by game actions)
-3. processCombatReplay (stores combat data)
-4. processGuildWarAction (handles guild warfare)
-5. updateTutorialProgress (tracks tutorial completion)
-```
+**Files to touch:** `combatStore.ts`, `AppRouter.tsx`, `KingdomDashboard.tsx` (or wherever battle
+history is displayed), `combatReplayStore.ts` (check store interface first).
 
-### **State Management (Zustand)**
+---
 
-```typescript
-// New Stores
-- useTutorialStore (tutorial state + localStorage)
-- useLeaderboardStore (cached rankings + real-time)
-- useAchievementStore (progress tracking)
-- useCombatReplayStore (replay viewer state)
-- useGuildWarStore (war status + participants)
-```
+### **Stream F: Guild Browser for War Declaration**
 
-### **Component Structure**
+The declare war modal in `GuildManagement.tsx` requires players to manually type a Guild ID and name,
+which breaks the UX. `GuildService.ts` already has guild listing via `browseGuilds()` or similar.
+
+**Tasks:**
+
+1. **Replace manual input with guild picker** — In the declare war modal (around line 1080 of
+   `GuildManagement.tsx`), replace the two text inputs (Guild ID + Guild Name) with a searchable
+   guild list. Fetch available guilds using `GuildService.browseGuilds()` (or whatever the browse
+   method is — read `GuildService.ts` to find it). Show guild name + member count + power. Clicking
+   selects that guild for war declaration.
+
+2. **Leaderboard guild names** — In `AppRouter.tsx`, when building the kingdoms array passed to
+   `Leaderboard`, make a pass to resolve guild names. Either:
+   - Add `guildName?: string` to the `Kingdom` type in `types/kingdom.ts`
+   - And populate it in the AppRouter kingdoms transform from whatever guild data is available
+   - OR: in `Leaderboard.tsx` Guilds tab, use guild names from a `GuildService.loadMyGuildInfo()`
+     call if that's easier. The simplest approach: if `GuildService` has a list of known guilds in
+     localStorage, use those names.
+
+**Files to touch:** `GuildManagement.tsx` (declare war modal), `GuildService.ts` (verify browse
+method), `frontend/src/types/kingdom.ts` (add `guildName`), `AppRouter.tsx` or `Leaderboard.tsx`.
+
+---
+
+### **Stream G: Achievement Dashboard Widget**
+
+Achievements are only accessible via a separate route. Players who don't explicitly navigate there
+never see their achievement progress. A dashboard panel drives discovery and engagement.
+
+**Tasks:**
+
+1. **Build `AchievementWidget` component** — Create
+   `/frontend/src/components/achievements/AchievementWidget.tsx`:
+   - Shows count: "X / 22 achievements unlocked"
+   - Shows the most recently unlocked achievement (name + icon + tier badge)
+   - Shows the single achievement closest to completion (progress bar, e.g. "Warrior: 7/10 victories")
+   - "View All" link → `/kingdom/:kingdomId/achievements`
+   - Design: compact panel matching the dark fantasy style of other dashboard panels
+
+2. **Integrate into KingdomDashboard** — Add `<AchievementWidget kingdomId={kingdomId} />` in a
+   visible section of `KingdomDashboard.tsx`. Read the dashboard layout first to find the right spot
+   (not buried at the bottom — somewhere players see early in the session).
+
+**Files to touch:** Create new `AchievementWidget.tsx`, `KingdomDashboard.tsx`.
+
+---
+
+## 🧩 **Holistic Gameflow — Final State**
+
+With these three streams complete, the full engagement loop is closed:
 
 ```
-src/components/
-├── tutorial/
-│   ├── TutorialOverlay.tsx
-│   ├── TutorialStep.tsx
-│   ├── ProgressIndicator.tsx
-│   └── TutorialHighlight.tsx
-├── leaderboard/
-│   ├── Leaderboard.tsx
-│   ├── RankingCard.tsx
-│   ├── FilterControls.tsx
-│   └── PlayerSearch.tsx
-├── achievements/
-│   ├── AchievementList.tsx
-│   ├── AchievementCard.tsx
-│   ├── UnlockNotification.tsx
-│   └── AchievementShowcase.tsx
-├── combat/
-│   ├── FormationBuilder.tsx
-│   ├── TerrainSelector.tsx
-│   ├── CombatReplay.tsx
-│   └── BattleStatistics.tsx
-└── guild-war/
-    ├── GuildWarInterface.tsx
-    ├── WarDeclaration.tsx
-    ├── WarHistory.tsx
-    └── ContributionTracker.tsx
+New Player
+    ↓
+[Tutorial] — teaches all 5 major systems in sequence
+    ↓
+[Kingdom Dashboard]
+    ├── AchievementWidget (Stream G) — shows nearest achievements → drives action
+    ├── Battle History + "View Replay" (Stream E) → review strategy → improve play
+    └── Guild Wars panel → active war status visible at a glance
+    ↓
+[Leaderboard]
+    ├── Race tabs → motivate racial strategy mastery
+    ├── Guild tab with real names (Stream F) → alliance competition
+    └── Rank delta → urgency + competitive motivation
+    ↓
+[Guild Management → Wars tab]
+    └── Declare War with guild picker (Stream F) → coordinated alliance warfare
+    ↓
+[Combat]
+    ├── Formation + terrain choices → meaningful strategy
+    ├── Siege mechanics → fortified territory gameplay
+    └── Post-battle replay (Stream E) → learning loop
+    ↓
+[Achievements]
+    ├── Dashboard widget (Stream G) → continuous visibility
+    └── Rewards (gold/turns) applied on unlock → tangible progression
 ```
 
 ---
 
-## 🎨 **UX/UI Design Principles**
+## 📈 **Success Metrics** (unchanged)
 
-### **Visual Consistency**
-- Maintain dark theme with purple gradients
-- Fantasy aesthetic with modern touches
-- Consistent button styles and interactions
-- Smooth animations and transitions
-
-### **Accessibility**
-- WCAG 2.1 AA compliance
-- Keyboard navigation support
-- Screen reader compatibility
-- High contrast mode support
-
-### **Mobile Responsive**
-- Touch-friendly controls
-- Responsive layouts
-- Optimized for 375px+ screens
-- Progressive enhancement
-
-### **Performance**
-- Lazy loading for heavy components
-- Optimistic UI updates
-- Efficient re-renders
-- Bundle size monitoring
+| System | Metric | Target |
+|--------|--------|--------|
+| Tutorial | Completion rate | 70%+ |
+| Leaderboards | Daily engagement | 40%+ active players |
+| Achievements | Unlocked per player | 5+ average |
+| Advanced Combat | Formation usage | 30%+ battles |
+| Guild Warfare | Guild participation | 60%+ members |
 
 ---
 
-## 📈 **Success Metrics**
+## ⚠️ **Known Limitations**
 
-### **Tutorial System**
-- **Completion Rate**: 70%+ (target)
-- **Time to Complete**: <5 minutes (average)
-- **Skip Rate**: <20%
-- **Drop-off Points**: Track and optimize
-
-### **Leaderboards**
-- **Daily Engagement**: 40%+ of active players
-- **Time on Page**: 2+ minutes (average)
-- **Rank Check Frequency**: 3+ times per day
-- **Competitive Actions**: 20%+ increase in gameplay
-
-### **Achievement System**
-- **Unlock Rate**: 5+ achievements per player (average)
-- **Completion Rate**: 30%+ for common achievements
-- **Engagement Boost**: 15%+ increase in session length
-- **Collection Motivation**: 60%+ players actively pursuing
-
-### **Advanced Combat**
-- **Formation Usage**: 30%+ of battles
-- **Terrain Strategy**: 40%+ consider terrain
-- **Replay Views**: 50%+ of battles reviewed
-- **Mastery Path**: 20%+ players optimize formations
-
-### **Guild Warfare**
-- **Participation Rate**: 60%+ of guild members
-- **War Frequency**: 2+ wars per week per guild
-- **Contribution**: 80%+ members contribute
-- **Guild Retention**: 25%+ increase
+| Item | Notes |
+|------|-------|
+| Guild warfare persistence | localStorage-backed prototype; production would need Amplify `GuildWar` model |
+| Terrain in demo mode | Lambda not called in demo mode; terrain/formation only apply in auth mode combat |
+| Combat replay viewer | Component exists (`CombatReplayViewer.tsx`) but not routed; Stream E completes this |
+| Lambda test failures | `handler.test.ts` had pre-existing type errors before this sprint; not introduced by sprint work |
 
 ---
 
-## 🧪 **Testing Strategy**
-
-### **Unit Tests**
-- All Lambda functions (100% coverage)
-- Achievement trigger logic
-- Combat calculations with terrain
-- Leaderboard ranking algorithms
-
-### **Integration Tests**
-- Tutorial flow end-to-end
-- Achievement unlock pipeline
-- Combat replay data flow
-- Guild war coordination
-
-### **E2E Tests (Playwright)**
-- Complete tutorial walkthrough
-- Leaderboard interactions
-- Achievement showcase navigation
-- Formation builder drag-and-drop
-- Guild war declaration flow
-
-### **Performance Tests**
-- Leaderboard calculation at scale (10k+ players)
-- Achievement checking overhead
-- Combat replay storage efficiency
-- Guild war concurrent actions
-
-### **User Acceptance Testing**
-- Beta group (20-50 players)
-- Feedback collection
-- Balance adjustments
-- Bug reporting
-
----
-
-## 🚀 **Deployment Strategy**
-
-### **Feature Flags**
-```typescript
-const FEATURE_FLAGS = {
-  TUTORIAL_ENABLED: true,
-  LEADERBOARDS_ENABLED: true,
-  ACHIEVEMENTS_ENABLED: false, // Gradual rollout
-  ADVANCED_COMBAT_ENABLED: false,
-  GUILD_WARFARE_ENABLED: false
-};
-```
-
-### **Rollout Plan**
-1. **Phase 1**: Deploy to staging, internal testing
-2. **Phase 2**: Beta release to 10% of users
-3. **Phase 3**: Expand to 50% if metrics positive
-4. **Phase 4**: Full release to 100%
-
-### **Rollback Plan**
-- Feature flags for instant disable
-- Database migration rollback scripts
-- Previous version deployment ready
-- User data preservation
-
----
-
-## 📋 **Immediate Next Steps**
-
-### **This Week (Week 0)**
-- [ ] Review and approve this plan
-- [ ] Create feature specification documents
-- [ ] Design database schema updates
-- [ ] Create wireframes/mockups for new UI
-- [ ] Set up feature branches in Git
-- [ ] Update project roadmap
-- [ ] Schedule kickoff meeting
-
-### **Week 1 Day 1**
-- [ ] Begin tutorial flow design
-- [ ] Create tutorial copy
-- [ ] Set up TutorialOverlay component
-- [ ] Initialize tutorial state management
-
----
-
-## 💰 **Resource Requirements**
-
-### **Development Time**
-- **Total**: 6-8 weeks (single developer)
-- **Phase 1**: 2 weeks
-- **Phase 2**: 2 weeks
-- **Phase 3**: 2 weeks
-- **Phase 4**: 2 weeks
-
-### **AWS Costs (Estimated)**
-- **Lambda**: +$10-20/month (additional functions)
-- **DynamoDB**: +$15-30/month (new tables)
-- **CloudWatch**: +$5-10/month (additional logging)
-- **Total Increase**: ~$30-60/month
-
-### **Testing Resources**
-- Beta testing group (20-50 players)
-- Staging environment
-- Performance testing tools
-
----
-
-## ⚠️ **Risks & Mitigation**
-
-### **Technical Risks**
-| Risk | Impact | Probability | Mitigation |
-|------|--------|-------------|------------|
-| Performance degradation | High | Medium | Load testing, optimization |
-| Achievement spam | Medium | Low | Rate limiting, validation |
-| Leaderboard cheating | High | Medium | Server-side validation |
-| Combat balance issues | Medium | High | Extensive testing, tuning |
-| Guild war exploits | High | Medium | Security review, monitoring |
-
-### **User Experience Risks**
-| Risk | Impact | Probability | Mitigation |
-|------|--------|-------------|------------|
-| Tutorial too long | High | Medium | User testing, skip option |
-| Achievement fatigue | Medium | Low | Balanced difficulty curve |
-| Combat complexity | Medium | Medium | Progressive disclosure |
-| Guild war confusion | Medium | High | Clear documentation, help |
-
----
-
-## 🎯 **Success Criteria**
-
-### **Phase 1 Success**
-- ✅ Tutorial completion rate >70%
-- ✅ Leaderboard engagement >40%
-- ✅ Zero critical bugs
-- ✅ Performance maintained
-
-### **Phase 2 Success**
-- ✅ Average 5+ achievements unlocked per player
-- ✅ Achievement engagement >60%
-- ✅ Positive user feedback
-- ✅ No achievement exploits
-
-### **Phase 3 Success**
-- ✅ Formation usage >30%
-- ✅ Terrain consideration >40%
-- ✅ Replay views >50%
-- ✅ Combat balance maintained
-
-### **Phase 4 Success**
-- ✅ Guild war participation >60%
-- ✅ War frequency 2+ per week
-- ✅ Guild retention +25%
-- ✅ No major exploits
-
----
-
-## 📚 **Documentation Requirements**
-
-### **User Documentation**
-- Tutorial system guide
-- Achievement list and requirements
-- Formation strategy guide
-- Terrain effects reference
-- Guild warfare rules
-
-### **Developer Documentation**
-- API documentation for new endpoints
-- Database schema documentation
-- Achievement trigger system
-- Combat calculation formulas
-- Guild war mechanics
-
-### **Operations Documentation**
-- Deployment procedures
-- Rollback procedures
-- Monitoring and alerts
-- Performance tuning guide
-
----
-
-## 🔄 **Maintenance Plan**
-
-### **Ongoing Tasks**
-- Weekly achievement balance review
-- Monthly leaderboard algorithm tuning
-- Quarterly combat balance updates
-- Continuous bug fixes and optimizations
-
-### **Content Updates**
-- New achievements every month
-- Seasonal leaderboard resets
-- New terrain types quarterly
-- Guild war events
-
----
-
-**Plan Status**: Ready for Implementation  
-**Next Review**: After Phase 1 completion  
-**Owner**: Development Team  
-**Stakeholders**: Product, Design, QA
+**Plan Status**: Implementation sprint complete. Streams E/F/G remaining.
+**Last Updated**: February 2026
+**Owner**: Development Team

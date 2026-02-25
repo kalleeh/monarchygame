@@ -1,8 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { Kingdom } from '../types/kingdom';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
+import { GuildService } from '../services/GuildService';
 import '../components/TerritoryExpansion.css';
 import '../components/Leaderboard.css';
+
+// ── Types ──────────────────────────────────────────────────────────────────
 
 interface LeaderboardFilters {
   showOnlyFairTargets: boolean;
@@ -17,6 +20,16 @@ interface TargetIndicator {
   emoji: string;
 }
 
+// All 10 playable races (must stay in sync with RaceType in types/amplify.ts)
+const ALL_RACES = [
+  'Human', 'Elven', 'Goblin', 'Droben',
+  'Vampire', 'Elemental', 'Centaur', 'Sidhe', 'Dwarven', 'Fae',
+] as const;
+
+type TabId = 'all' | typeof ALL_RACES[number] | 'guilds';
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
 // Simple networth calculation (land + gold + units value)
 const calculateNetworth = (kingdom: Kingdom): number => {
   const landValue = kingdom.resources.land * 1000;
@@ -27,11 +40,12 @@ const calculateNetworth = (kingdom: Kingdom): number => {
 
 const getTargetIndicator = (yourNW: number, theirNW: number): TargetIndicator => {
   const ratio = theirNW / yourNW;
-  
-  if (ratio < 0.5) return { indicator: 'easy', turnCostModifier: 1.5, color: 'text-yellow-400', emoji: '🟡' };
-  if (ratio >= 0.5 && ratio <= 1.5) return { indicator: 'fair', turnCostModifier: 1.0, color: 'text-green-400', emoji: '🟢' };
+  if (ratio < 0.5)                    return { indicator: 'easy', turnCostModifier: 1.5, color: 'text-yellow-400', emoji: '🟡' };
+  if (ratio >= 0.5 && ratio <= 1.5)  return { indicator: 'fair', turnCostModifier: 1.0, color: 'text-green-400', emoji: '🟢' };
   return { indicator: 'hard', turnCostModifier: 2.0, color: 'text-red-400', emoji: '🔴' };
 };
+
+// ── Component ──────────────────────────────────────────────────────────────
 
 interface LeaderboardProps {
   kingdoms: Kingdom[];
@@ -39,6 +53,10 @@ interface LeaderboardProps {
 }
 
 const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) => {
+  // ── State ────────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<TabId>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
   const [filters, setFilters] = useState<LeaderboardFilters>(() => {
     const saved = localStorage.getItem('leaderboard-filters');
     return saved ? JSON.parse(saved) : {
@@ -47,12 +65,47 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
       showOnlyYourFaith: false
     };
   });
-  
-  // Get AI kingdoms
+
+  // ── Guild name lookup map ─────────────────────────────────────────────────
+  // Populated from kingdoms' own guildName fields (if present) plus a
+  // one-shot fetch from GuildService so we can show real names in the Guilds tab.
+  const [guildNamesMap, setGuildNamesMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    // Seed from kingdoms that already carry a guildName field
+    const seed: Record<string, string> = {};
+    for (const k of kingdoms) {
+      if (k.guildId && k.guildName) {
+        seed[k.guildId] = k.guildName;
+      }
+    }
+
+    // Extend with data from GuildService (async, best-effort)
+    const fetchNames = async () => {
+      try {
+        const guilds = await GuildService.getPublicGuilds();
+        const merged: Record<string, string> = { ...seed };
+        for (const g of guilds) {
+          merged[g.id] = g.name;
+        }
+        setGuildNamesMap(merged);
+      } catch {
+        // GuildService failed — use whatever we seeded from kingdom data
+        if (Object.keys(seed).length > 0) {
+          setGuildNamesMap(seed);
+        }
+      }
+    };
+
+    void fetchNames();
+  // Only re-run when the kingdoms array reference changes (i.e. a new load)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kingdoms]);
+
+  // ── AI kingdoms ──────────────────────────────────────────────────────────
   const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
-  
-  // Convert AI kingdoms to Kingdom format
-  const aiAsKingdoms: Kingdom[] = useMemo(() => 
+
+  const aiAsKingdoms: Kingdom[] = useMemo(() =>
     aiKingdoms.map((ai): Kingdom => ({
       id: ai.id,
       name: `${ai.name} 🤖`,
@@ -83,18 +136,20 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
     })),
     [aiKingdoms]
   );
-  
-  // Combine player kingdoms and AI kingdoms
+
   const allKingdoms = useMemo(() => [...kingdoms, ...aiAsKingdoms], [kingdoms, aiAsKingdoms]);
 
+  // ── Persist filters ──────────────────────────────────────────────────────
   useEffect(() => {
     localStorage.setItem('leaderboard-filters', JSON.stringify(filters));
   }, [filters]);
 
+  // ── Derived values ───────────────────────────────────────────────────────
   const currentNetworth = useMemo(() => calculateNetworth(currentKingdom), [currentKingdom]);
 
-  const filteredKingdoms = useMemo(() => {
-    let result = allKingdoms; // Include current kingdom
+  // Base filter pipeline (shared by "all" and race tabs)
+  const baseFilteredKingdoms = useMemo(() => {
+    let result = allKingdoms;
 
     if (filters.showOnlyFairTargets) {
       result = result.filter(k => {
@@ -102,142 +157,301 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
         return ratio >= 0.5 && ratio <= 1.5;
       });
     }
-
     if (filters.hideNPPKingdoms) {
-      result = result.filter(k => k.resources.turns > 100); // Assume NPP if < 100 turns
+      result = result.filter(k => k.resources.turns > 100);
     }
-
     if (filters.showOnlyYourFaith) {
-      result = result.filter(k => k.race === currentKingdom.race); // Simplified: same race = same faith
+      result = result.filter(k => k.race === currentKingdom.race);
     }
 
     return result.sort((a, b) => calculateNetworth(b) - calculateNetworth(a));
   }, [allKingdoms, currentKingdom, filters, currentNetworth]);
 
+  // Tab-specific list (before search)
+  const tabFilteredKingdoms = useMemo(() => {
+    if (activeTab === 'all' || activeTab === 'guilds') return baseFilteredKingdoms;
+    return baseFilteredKingdoms.filter(k => k.race === activeTab);
+  }, [baseFilteredKingdoms, activeTab]);
+
+  // Search filter (applied on top of tab filter, kingdoms view only)
+  const visibleKingdoms = useMemo(() => {
+    if (activeTab === 'guilds') return tabFilteredKingdoms;
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return tabFilteredKingdoms;
+    return tabFilteredKingdoms.filter(k => k.name.toLowerCase().includes(q));
+  }, [tabFilteredKingdoms, searchQuery, activeTab]);
+
+  // Guild aggregation for Guilds tab
+  const guildRows = useMemo(() => {
+    if (activeTab !== 'guilds') return [];
+
+    const map = new Map<string, { guildId: string; label: string; members: number; totalNW: number }>();
+    for (const k of allKingdoms) {
+      if (!k.guildId) continue;
+      const nw = calculateNetworth(k);
+      if (map.has(k.guildId)) {
+        const entry = map.get(k.guildId)!;
+        entry.members += 1;
+        entry.totalNW += nw;
+      } else {
+        // Prefer: guildName on kingdom > guildNamesMap lookup > truncated-ID fallback
+        const resolvedName =
+          k.guildName ||
+          guildNamesMap[k.guildId] ||
+          `Guild ${k.guildId.slice(0, 8)}`;
+        map.set(k.guildId, {
+          guildId: k.guildId,
+          label: resolvedName,
+          members: 1,
+          totalNW: nw,
+        });
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.totalNW - a.totalNW);
+  }, [activeTab, allKingdoms, guildNamesMap]);
+
+  // ── Rank-delta helper ────────────────────────────────────────────────────
+  const getRankDelta = (kingdom: Kingdom, currentRank: number) => {
+    const prev = kingdom.stats.previousSeasonRank;
+    if (prev == null) {
+      return <span className="lb-rank-new">NEW</span>;
+    }
+    const delta = prev - currentRank; // positive = improved
+    if (delta === 0) return null;
+    if (delta > 0) return <span className="lb-rank-up">▲{delta}</span>;
+    return <span className="lb-rank-down">▼{Math.abs(delta)}</span>;
+  };
+
+  // ── Header label ─────────────────────────────────────────────────────────
+  const tabLabel =
+    activeTab === 'all'    ? 'All Kingdoms'   :
+    activeTab === 'guilds' ? 'Guild Rankings' :
+    `${activeTab} Rankings`;
+
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="leaderboard-container">
-      {/* Filters */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', marginBottom: '1rem' }}>
-        {([
-          { key: 'showOnlyFairTargets', label: 'Show fair targets only', checked: filters.showOnlyFairTargets },
-          { key: 'hideNPPKingdoms',     label: 'Hide protected players', checked: filters.hideNPPKingdoms },
-          { key: 'showOnlyYourFaith',   label: 'Show guild-eligible',    checked: filters.showOnlyYourFaith },
-        ] as const).map(({ key, label, checked }) => (
-          <label
-            key={key}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', userSelect: 'none', color: '#d1d5db' }}
+
+      {/* ── Tab bar ─────────────────────────────────────────────────────── */}
+      <div className="lb-tab-bar" role="tablist" aria-label="Leaderboard categories">
+        <button
+          role="tab"
+          aria-selected={activeTab === 'all'}
+          className={`lb-tab ${activeTab === 'all' ? 'lb-tab--active' : ''}`}
+          onClick={() => setActiveTab('all')}
+        >
+          All
+        </button>
+
+        {ALL_RACES.map(race => (
+          <button
+            key={race}
+            role="tab"
+            aria-selected={activeTab === race}
+            className={`lb-tab ${activeTab === race ? 'lb-tab--active' : ''}`}
+            onClick={() => setActiveTab(race)}
           >
-            {/* Hidden native checkbox keeps accessibility / keyboard support */}
-            <input
-              type="checkbox"
-              checked={checked}
-              onChange={(e) => setFilters({ ...filters, [key]: e.target.checked })}
-              style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
-            />
-            {/* Pill-shaped toggle track */}
-            <span
-              aria-hidden="true"
-              style={{
-                display: 'inline-block',
-                position: 'relative',
-                width: '40px',
-                height: '22px',
-                borderRadius: '11px',
-                background: checked ? '#14b8a6' : '#374151',
-                transition: 'background 0.2s ease',
-                flexShrink: 0,
-                boxShadow: checked ? '0 0 6px rgba(20,184,166,0.5)' : 'none',
-              }}
-            >
-              {/* Thumb */}
-              <span
-                style={{
-                  position: 'absolute',
-                  top: '3px',
-                  left: checked ? '21px' : '3px',
-                  width: '16px',
-                  height: '16px',
-                  borderRadius: '50%',
-                  background: '#fff',
-                  transition: 'left 0.2s ease',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
-                }}
-              />
-            </span>
-            {label}
-          </label>
+            {race}
+          </button>
         ))}
+
+        <button
+          role="tab"
+          aria-selected={activeTab === 'guilds'}
+          className={`lb-tab lb-tab--guilds ${activeTab === 'guilds' ? 'lb-tab--active' : ''}`}
+          onClick={() => setActiveTab('guilds')}
+        >
+          Guilds
+        </button>
       </div>
 
-      {/* Leaderboard Grid */}
-      <div className="territory-grid">
-        {filteredKingdoms.map((kingdom, index) => {
-          const networth = calculateNetworth(kingdom);
-          const indicator = getTargetIndicator(currentNetworth, networth);
-          const baseTurnCost = 4;
-          const totalTurnCost = Math.round(baseTurnCost * indicator.turnCostModifier);
-          const isCurrentKingdom = kingdom.id === currentKingdom.id;
+      {/* ── Section heading ─────────────────────────────────────────────── */}
+      <h2 className="lb-section-heading">{tabLabel}</h2>
 
-          return (
-            <div key={kingdom.id} className={`kingdom-card ${isCurrentKingdom ? 'owned' : ''}`}>
-              <div className="territory-header">
-                <span className="territory-icon">{isCurrentKingdom ? '⭐' : '👑'}</span>
-                <div className="territory-info">
-                  <h4>
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        background: kingdom.isOnline ? '#22c55e' : '#64748b',
-                        boxShadow: kingdom.isOnline ? '0 0 4px #22c55e' : 'none',
-                        marginRight: '6px',
-                        verticalAlign: 'middle',
-                      }}
-                      title={kingdom.isOnline ? 'Online' : 'Offline'}
-                    />
-                    #{index + 1} {kingdom.name} {isCurrentKingdom ? '(You)' : ''}
-                  </h4>
-                  <span className="territory-type">{kingdom.race}</span>
-                </div>
-              </div>
-              
-              <div className="territory-production">
-                <div className="production-label">Networth</div>
-                <div className="production-items">
-                  <span className="production-item">{(networth / 1000000).toFixed(2)}M</span>
-                </div>
-              </div>
+      {/* ── Filters (hidden on guilds tab) ──────────────────────────────── */}
+      {activeTab !== 'guilds' && (
+        <>
+          {/* Search input */}
+          <div className="lb-search-wrapper">
+            <input
+              type="search"
+              placeholder="Search kingdoms…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="lb-search-input"
+              aria-label="Search kingdoms by name"
+            />
+          </div>
 
-              <div className="territory-production">
-                <div className="production-label">Target Difficulty</div>
-                <div className="production-items">
-                  <span className="production-item">
-                    {indicator.emoji} {indicator.indicator.charAt(0).toUpperCase() + indicator.indicator.slice(1)} ({totalTurnCost} turns)
-                  </span>
-                </div>
-              </div>
+          {/* Toggle filters */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', marginBottom: '1rem' }}>
+            {([
+              { key: 'showOnlyFairTargets', label: 'Show fair targets only', checked: filters.showOnlyFairTargets },
+              { key: 'hideNPPKingdoms',     label: 'Hide protected players', checked: filters.hideNPPKingdoms },
+              { key: 'showOnlyYourFaith',   label: 'Show guild-eligible',    checked: filters.showOnlyYourFaith },
+            ] as const).map(({ key, label, checked }) => (
+              <label
+                key={key}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', userSelect: 'none', color: '#d1d5db' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => setFilters({ ...filters, [key]: e.target.checked })}
+                  style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                />
+                {/* Toggle track */}
+                <span
+                  aria-hidden="true"
+                  style={{
+                    display: 'inline-block',
+                    position: 'relative',
+                    width: '40px',
+                    height: '22px',
+                    borderRadius: '11px',
+                    background: checked ? '#14b8a6' : '#374151',
+                    transition: 'background 0.2s ease',
+                    flexShrink: 0,
+                    boxShadow: checked ? '0 0 6px rgba(20,184,166,0.5)' : 'none',
+                  }}
+                >
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '3px',
+                      left: checked ? '21px' : '3px',
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      background: '#fff',
+                      transition: 'left 0.2s ease',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                    }}
+                  />
+                </span>
+                {label}
+              </label>
+            ))}
+          </div>
+        </>
+      )}
 
-              {kingdom.stats.previousSeasonRank != null && (
-                <div className="territory-production">
-                  <div className="production-label">
-                    Last Season{kingdom.stats.previousSeasonNumber != null ? ` #${kingdom.stats.previousSeasonNumber}` : ''}
+      {/* ── Guilds tab content ───────────────────────────────────────────── */}
+      {activeTab === 'guilds' && (
+        <div className="lb-guilds-table-wrapper">
+          {guildRows.length === 0 ? (
+            <p className="lb-empty-state">No guilds found. Kingdoms must have a guild affiliation to appear here.</p>
+          ) : (
+            <table className="lb-guilds-table" aria-label="Guild rankings">
+              <thead>
+                <tr>
+                  <th className="lb-guilds-th lb-guilds-th--rank">Rank</th>
+                  <th className="lb-guilds-th">Guild</th>
+                  <th className="lb-guilds-th lb-guilds-th--center">Members</th>
+                  <th className="lb-guilds-th lb-guilds-th--right">Combined Networth</th>
+                </tr>
+              </thead>
+              <tbody>
+                {guildRows.map((row, idx) => (
+                  <tr key={row.guildId} className={`lb-guilds-row ${idx % 2 === 0 ? 'lb-guilds-row--even' : ''}`}>
+                    <td className="lb-guilds-td lb-guilds-td--rank">#{idx + 1}</td>
+                    <td className="lb-guilds-td lb-guilds-td--name">{row.label}</td>
+                    <td className="lb-guilds-td lb-guilds-td--center">{row.members}</td>
+                    <td className="lb-guilds-td lb-guilds-td--right">{(row.totalNW / 1_000_000).toFixed(2)}M</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* ── Kingdom grid (all / race tabs) ─────────────────────────────── */}
+      {activeTab !== 'guilds' && (
+        <>
+          {visibleKingdoms.length === 0 && (
+            <p className="lb-empty-state">No kingdoms match the current filters.</p>
+          )}
+
+          <div className="territory-grid">
+            {visibleKingdoms.map((kingdom, index) => {
+              const networth = calculateNetworth(kingdom);
+              const indicator = getTargetIndicator(currentNetworth, networth);
+              const baseTurnCost = 4;
+              const totalTurnCost = Math.round(baseTurnCost * indicator.turnCostModifier);
+              const isCurrentKingdom = kingdom.id === currentKingdom.id;
+              const rankNumber = index + 1;
+
+              return (
+                <div key={kingdom.id} className={`kingdom-card ${isCurrentKingdom ? 'owned' : ''}`}>
+                  <div className="territory-header">
+                    <span className="territory-icon">{isCurrentKingdom ? '⭐' : '👑'}</span>
+                    <div className="territory-info">
+                      <h4>
+                        {/* Online presence dot */}
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            background: kingdom.isOnline ? '#22c55e' : '#64748b',
+                            boxShadow: kingdom.isOnline ? '0 0 4px #22c55e' : 'none',
+                            marginRight: '6px',
+                            verticalAlign: 'middle',
+                          }}
+                          title={kingdom.isOnline ? 'Online' : 'Offline'}
+                        />
+
+                        {/* Rank with delta */}
+                        <span className="lb-rank-badge">
+                          #{rankNumber}
+                          {getRankDelta(kingdom, rankNumber)}
+                        </span>
+                        {' '}{kingdom.name}{isCurrentKingdom ? ' (You)' : ''}
+                      </h4>
+                      <span className="territory-type">{kingdom.race}</span>
+                    </div>
                   </div>
-                  <div className="production-items">
-                    <span className="production-item">
-                      Rank #{kingdom.stats.previousSeasonRank}
-                      {kingdom.stats.previousSeasonNetworth != null && (
-                        <> &mdash; {(kingdom.stats.previousSeasonNetworth / 1000000).toFixed(2)}M NW</>
-                      )}
-                    </span>
+
+                  <div className="territory-production">
+                    <div className="production-label">Networth</div>
+                    <div className="production-items">
+                      <span className="production-item">{(networth / 1_000_000).toFixed(2)}M</span>
+                    </div>
                   </div>
+
+                  <div className="territory-production">
+                    <div className="production-label">Target Difficulty</div>
+                    <div className="production-items">
+                      <span className="production-item">
+                        {indicator.emoji} {indicator.indicator.charAt(0).toUpperCase() + indicator.indicator.slice(1)} ({totalTurnCost} turns)
+                      </span>
+                    </div>
+                  </div>
+
+                  {kingdom.stats.previousSeasonRank != null && (
+                    <div className="territory-production">
+                      <div className="production-label">
+                        Last Season{kingdom.stats.previousSeasonNumber != null ? ` #${kingdom.stats.previousSeasonNumber}` : ''}
+                      </div>
+                      <div className="production-items">
+                        <span className="production-item">
+                          Rank #{kingdom.stats.previousSeasonRank}
+                          {kingdom.stats.previousSeasonNetworth != null && (
+                            <> &mdash; {(kingdom.stats.previousSeasonNetworth / 1_000_000).toFixed(2)}M NW</>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 };

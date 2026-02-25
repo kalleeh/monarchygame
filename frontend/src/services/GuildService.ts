@@ -56,14 +56,51 @@ export interface GuildApplication {
   createdAt: string;
 }
 
+export interface GuildWarContribution {
+  kingdomId: string;
+  kingdomName: string;
+  guildId: string;
+  score: number;
+  attackCount: number;
+}
+
 export interface GuildWar {
   id: string;
   attackingGuildId: string;
   defendingGuildId: string;
   attackingGuildName: string;
   defendingGuildName: string;
+  status: 'ACTIVE' | 'ENDED';
   declaredAt: string;
+  endsAt: string;
+  attackingScore: number;
+  defendingScore: number;
+  contributions: GuildWarContribution[];
+  winnerId?: string;
+  /** @deprecated Use status === 'ACTIVE' instead */
   isActive: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Guild War storage key helpers
+// NOTE: There is no GuildWar model in the Amplify schema. Guild wars are
+// stored in localStorage as a prototype/demo fallback. In a production
+// environment these should be persisted to a dedicated backend model.
+// ---------------------------------------------------------------------------
+const GUILD_WARS_STORAGE_KEY = 'monarchygame_guild_wars';
+
+function loadAllGuildWars(): GuildWar[] {
+  try {
+    const raw = localStorage.getItem(GUILD_WARS_STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as GuildWar[];
+  } catch {
+    return [];
+  }
+}
+
+function saveAllGuildWars(wars: GuildWar[]): void {
+  localStorage.setItem(GUILD_WARS_STORAGE_KEY, JSON.stringify(wars));
 }
 
 export interface GuildInvitation {
@@ -520,6 +557,223 @@ export class GuildService {
     });
 
     return sub;
+  }
+
+  // =========================================================================
+  // Guild War operations
+  // NOTE: Stored in localStorage (no GuildWar Amplify model). In a
+  // production build this should be backed by a dedicated backend model.
+  // =========================================================================
+
+  /**
+   * Declare a guild war.
+   * Input: attackingGuildId, defendingGuildId, declaringKingdomId,
+   *        attackingGuildName, defendingGuildName
+   */
+  static async declareGuildWar(data: {
+    attackingGuildId: string;
+    defendingGuildId: string;
+    declaringKingdomId: string;
+    attackingGuildName: string;
+    defendingGuildName: string;
+  }): Promise<GuildWar> {
+    const { attackingGuildId, defendingGuildId, attackingGuildName, defendingGuildName } = data;
+
+    if (attackingGuildId === defendingGuildId) {
+      throw new Error('Cannot declare war on your own guild');
+    }
+
+    const existing = loadAllGuildWars();
+
+    // Check if already in active guild war between these two guilds
+    const alreadyAtWar = existing.some(
+      w =>
+        w.status === 'ACTIVE' &&
+        ((w.attackingGuildId === attackingGuildId && w.defendingGuildId === defendingGuildId) ||
+          (w.attackingGuildId === defendingGuildId && w.defendingGuildId === attackingGuildId))
+    );
+    if (alreadyAtWar) {
+      throw new Error('Already in an active war between these guilds');
+    }
+
+    const now = new Date();
+    const endsAt = new Date(now.getTime() + 72 * 60 * 60 * 1000); // 72 hours
+
+    const war: GuildWar = {
+      id: `guildwar-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      attackingGuildId,
+      defendingGuildId,
+      attackingGuildName,
+      defendingGuildName,
+      status: 'ACTIVE',
+      declaredAt: now.toISOString(),
+      endsAt: endsAt.toISOString(),
+      attackingScore: 0,
+      defendingScore: 0,
+      contributions: [],
+      isActive: true,
+    };
+
+    saveAllGuildWars([...existing, war]);
+    return war;
+  }
+
+  /**
+   * Resolve a guild war — set status to ENDED, determine winner.
+   */
+  static async resolveGuildWar(warId: string): Promise<GuildWar> {
+    const wars = loadAllGuildWars();
+    const idx = wars.findIndex(w => w.id === warId);
+    if (idx === -1) throw new Error('Guild war not found');
+
+    const war = wars[idx];
+    let winnerId: string | undefined;
+    if (war.attackingScore > war.defendingScore) {
+      winnerId = war.attackingGuildId;
+    } else if (war.defendingScore > war.attackingScore) {
+      winnerId = war.defendingGuildId;
+    }
+    // tie → no winner (winnerId stays undefined)
+
+    const updated: GuildWar = { ...war, status: 'ENDED', isActive: false, winnerId };
+    wars[idx] = updated;
+    saveAllGuildWars(wars);
+    return updated;
+  }
+
+  /**
+   * Record a guild war contribution after a successful attack.
+   * Adds points to the appropriate guild's score and upserts the
+   * contributor record. Does NOT throw — safe for fire-and-forget use.
+   */
+  static recordGuildWarContribution(params: {
+    warId: string;
+    kingdomId: string;
+    kingdomName: string;
+    guildId: string;
+    points: number;
+  }): void {
+    try {
+      const { warId, kingdomId, kingdomName, guildId, points } = params;
+      if (points <= 0) return;
+
+      const wars = loadAllGuildWars();
+      const idx = wars.findIndex(w => w.id === warId);
+      if (idx === -1) return;
+
+      const war = { ...wars[idx] };
+      if (war.status !== 'ACTIVE') return;
+
+      // Add to score
+      if (guildId === war.attackingGuildId) {
+        war.attackingScore = (war.attackingScore || 0) + points;
+      } else if (guildId === war.defendingGuildId) {
+        war.defendingScore = (war.defendingScore || 0) + points;
+      } else {
+        return; // kingdom not in this war
+      }
+
+      // Upsert contributor
+      const contributions = [...(war.contributions || [])];
+      const contribIdx = contributions.findIndex(
+        c => c.kingdomId === kingdomId && c.guildId === guildId
+      );
+      if (contribIdx === -1) {
+        contributions.push({ kingdomId, kingdomName, guildId, score: points, attackCount: 1 });
+      } else {
+        contributions[contribIdx] = {
+          ...contributions[contribIdx],
+          score: contributions[contribIdx].score + points,
+          attackCount: contributions[contribIdx].attackCount + 1,
+        };
+      }
+      war.contributions = contributions;
+
+      wars[idx] = war;
+      saveAllGuildWars(wars);
+    } catch (e) {
+      // Fire-and-forget: never let this crash the caller
+      console.warn('[GuildService] recordGuildWarContribution failed silently:', e);
+    }
+  }
+
+  /**
+   * Concede an active guild war (sets status to ENDED with the other guild as winner).
+   * Only callable by the conceding guild.
+   */
+  static async concedeGuildWar(warId: string, concedingGuildId: string): Promise<GuildWar> {
+    const wars = loadAllGuildWars();
+    const idx = wars.findIndex(w => w.id === warId);
+    if (idx === -1) throw new Error('Guild war not found');
+
+    const war = wars[idx];
+    if (war.status !== 'ACTIVE') throw new Error('War is not active');
+
+    const winnerId =
+      concedingGuildId === war.attackingGuildId
+        ? war.defendingGuildId
+        : war.attackingGuildId;
+
+    const updated: GuildWar = { ...war, status: 'ENDED', isActive: false, winnerId };
+    wars[idx] = updated;
+    saveAllGuildWars(wars);
+    return updated;
+  }
+
+  /**
+   * Load guild wars for a given guild (active + recent ended).
+   * Returns wars sorted newest first.
+   */
+  static async loadGuildWars(guildId: string): Promise<{ active: GuildWar[]; history: GuildWar[] }> {
+    // Simulate async I/O
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // Auto-expire any wars past their endsAt timestamp
+    const now = new Date();
+    let wars = loadAllGuildWars();
+    let dirty = false;
+    wars = wars.map(w => {
+      if (w.status === 'ACTIVE' && new Date(w.endsAt) < now) {
+        dirty = true;
+        let winnerId: string | undefined;
+        if (w.attackingScore > w.defendingScore) winnerId = w.attackingGuildId;
+        else if (w.defendingScore > w.attackingScore) winnerId = w.defendingGuildId;
+        return { ...w, status: 'ENDED' as const, isActive: false, winnerId };
+      }
+      return w;
+    });
+    if (dirty) saveAllGuildWars(wars);
+
+    const relevant = wars.filter(
+      w => w.attackingGuildId === guildId || w.defendingGuildId === guildId
+    );
+
+    const active = relevant
+      .filter(w => w.status === 'ACTIVE')
+      .sort((a, b) => new Date(b.declaredAt).getTime() - new Date(a.declaredAt).getTime());
+
+    const history = relevant
+      .filter(w => w.status === 'ENDED')
+      .sort((a, b) => new Date(b.declaredAt).getTime() - new Date(a.declaredAt).getTime())
+      .slice(0, 10); // Keep last 10
+
+    return { active, history };
+  }
+
+  /**
+   * Find an active guild war where both guildA and guildB are participants.
+   * Returns null if none found. Used by the combat hook for war scoring.
+   */
+  static findActiveWarBetween(guildIdA: string, guildIdB: string): GuildWar | null {
+    const wars = loadAllGuildWars();
+    return (
+      wars.find(
+        w =>
+          w.status === 'ACTIVE' &&
+          ((w.attackingGuildId === guildIdA && w.defendingGuildId === guildIdB) ||
+            (w.attackingGuildId === guildIdB && w.defendingGuildId === guildIdA))
+      ) ?? null
+    );
   }
 
   /**

@@ -1,20 +1,17 @@
 import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
-import { calculateCombatResult } from '../../../shared/combat/combatCache';
+import {
+  calculateCombatResult,
+  TERRAIN_MODIFIERS,
+  FORMATION_MODIFIERS,
+  applyTerrainToUnitPower,
+  type TerrainModifiers
+} from '../../../shared/combat/combatCache';
 import type { KingdomResources, CombatResultData } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 
 const client = generateClient<Schema>();
-
-// Formation bonuses — applied as an offense multiplier
-const FORMATION_BONUSES: Record<string, number> = {
-  'aggressive': 1.15,    // +15% offense
-  'defensive': 0.9,      // -10% offense (tradeoff: less vulnerable)
-  'flanking': 1.10,      // +10% offense
-  'siege': 1.20,         // +20% offense vs fortified targets
-  'standard': 1.0,       // no bonus
-};
 
 // Race offensive combat bonuses (based on warOffense stat 1-5)
 const RACE_OFFENSE_BONUSES: Record<string, number> = {
@@ -45,7 +42,7 @@ const RACE_DEFENSE_BONUSES: Record<string, number> = {
 };
 
 export const handler: Schema["processCombat"]["functionHandler"] = async (event) => {
-  const { attackerId, defenderId, attackType, units, formationId } = event.arguments;
+  const { attackerId, defenderId, attackType, units, formationId, terrainId } = event.arguments;
 
   try {
     if (!attackerId || !defenderId) {
@@ -144,14 +141,25 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     const defenderUnits = (defender.data.totalUnits ?? {}) as Record<string, number>;
     const defenderLand = defenderResources.land ?? 1000;
 
-    // Apply formation bonus by scaling effective attacker unit counts
-    const formationMultiplier = formationId ? (FORMATION_BONUSES[formationId] ?? 1.0) : 1.0;
+    // -------------------------------------------------------------------------
+    // Step 1: Resolve the formation modifiers for the attacker.
+    // formationId may be the id string ('defensive-wall'), the enum value
+    // ('DEFENSIVE_WALL'), or a legacy key ('aggressive', 'standard', etc.).
+    // -------------------------------------------------------------------------
+    const formationMods = formationId
+      ? (FORMATION_MODIFIERS[formationId] ?? FORMATION_MODIFIERS['standard'])
+      : FORMATION_MODIFIERS['standard'];
+
+    // Apply formation offense modifier to attacker unit counts
     let effectiveAttackerUnits: Record<string, number> = {};
+    const formationOffenseFactor = 1 + formationMods.offense;
     for (const [unitType, count] of Object.entries(attackerUnits)) {
-      effectiveAttackerUnits[unitType] = count * formationMultiplier;
+      effectiveAttackerUnits[unitType] = count * formationOffenseFactor;
     }
 
-    // Age combat bonus — more experienced kingdoms fight better in later ages
+    // -------------------------------------------------------------------------
+    // Step 2: Age combat bonus — more experienced kingdoms fight better in later ages
+    // -------------------------------------------------------------------------
     const AGE_COMBAT_BONUSES: Record<string, number> = {
       'early': 1.0,
       'middle': 1.05,   // 5% combat bonus
@@ -163,25 +171,134 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       Object.entries(effectiveAttackerUnits).map(([k, v]) => [k, Math.floor(v * ageCombatBonus)])
     );
 
-    // Race offense bonus — applied multiplicatively after age bonus
+    // -------------------------------------------------------------------------
+    // Step 3: Race offense bonus — applied multiplicatively after age bonus
+    // -------------------------------------------------------------------------
     const attackerRace = attacker.data.race as string ?? 'Human';
     const raceOffenseBonus = RACE_OFFENSE_BONUSES[attackerRace] ?? 1.0;
     effectiveAttackerUnits = Object.fromEntries(
       Object.entries(effectiveAttackerUnits).map(([k, v]) => [k, Math.floor(v * raceOffenseBonus)])
     );
 
-    // Race defense bonus — scale defender unit counts before combat resolution
+    // -------------------------------------------------------------------------
+    // Step 4: Race defense bonus — scale defender unit counts before combat
+    // -------------------------------------------------------------------------
     const defenderRace = defender.data.race as string ?? 'Human';
     const raceDefenseBonus = RACE_DEFENSE_BONUSES[defenderRace] ?? 1.0;
-    const effectiveDefenderUnits = Object.fromEntries(
+    let effectiveDefenderUnits = Object.fromEntries(
       Object.entries(defenderUnits).map(([k, v]) => [k, Math.floor((v as number) * raceDefenseBonus)])
     );
 
+    // -------------------------------------------------------------------------
+    // Step 5: Terrain modifiers.
+    // The defender always fights on their home terrain.  We resolve the terrain
+    // in order of precedence:
+    //   a) terrainId passed explicitly in the request (caller can derive this
+    //      from the target territory's stored terrainType)
+    //   b) The terrainType on the defender's capital/first territory (fetched below)
+    //   c) Default to 'plains' (no modifier)
+    //
+    // The attacker fights on that same terrain (they are the invader).
+    // Terrain modifiers therefore affect both sides symmetrically via the same
+    // terrain table, except the 'defense' key — which only boosts the defender's
+    // effective units (home-field defensive advantage).
+    // -------------------------------------------------------------------------
+    let resolvedTerrainId: string = (terrainId as string | undefined | null) ?? '';
+
+    if (!resolvedTerrainId) {
+      // Attempt to read terrain from the defender's first non-capital territory
+      try {
+        const defTerritories = await client.models.Territory.list({
+          filter: { kingdomId: { eq: defenderId } }
+        });
+        const territories = defTerritories.data ?? [];
+        const capital = territories.find((t: any) => t.type === 'capital') ?? territories[0];
+        if (capital) {
+          resolvedTerrainId = (capital as any).terrainType ?? '';
+        }
+      } catch {
+        // Non-fatal — terrain lookup is a best-effort enhancement
+      }
+    }
+
+    const terrainMods: TerrainModifiers =
+      TERRAIN_MODIFIERS[resolvedTerrainId] ??
+      TERRAIN_MODIFIERS[resolvedTerrainId.toLowerCase()] ??
+      {}; // plains / no modifier
+
+    // --- Apply terrain to DEFENDER (home-field advantage) ---
+    // The 'defense' modifier boosts defender effective unit counts.
+    // The 'cavalry' / 'infantry' / 'siege' modifiers apply per unit class.
+    // The 'offense' modifier (swamp) also penalises the attacker below.
+    const defenseTerrainBonus = 1 + (terrainMods.defense ?? 0);
+    if (defenseTerrainBonus !== 1) {
+      // Simple approach: scale all defender units by the defense terrain bonus.
+      // Per-class modifiers (cavalry, infantry, siege) are applied via
+      // applyTerrainToUnitPower when computing power ratios.
+      effectiveDefenderUnits = Object.fromEntries(
+        Object.entries(effectiveDefenderUnits).map(([k, v]) => [
+          k,
+          Math.floor(v * defenseTerrainBonus)
+        ])
+      );
+    }
+
+    // --- Apply terrain offense/unit-class penalty to ATTACKER ---
+    // Swamp gives offense: -0.15 globally; desert gives cavalry +0.15 / infantry -0.1.
+    // We use applyTerrainToUnitPower to compute the true effective attacker power,
+    // then derive a scalar to rescale effectiveAttackerUnits proportionally.
+    const rawAttackerPower = Object.entries(effectiveAttackerUnits).reduce((sum, [type, cnt]) => {
+      // Use UNIT_STATS-based power (attack value) — mirrors combatCache logic
+      const UNIT_STATS_LOCAL: Record<string, { attack: number; defense: number }> = {
+        peasant: { attack: 1, defense: 1 },
+        infantry: { attack: 3, defense: 2 },
+        cavalry: { attack: 5, defense: 3 },
+        archer: { attack: 4, defense: 2 },
+        knight: { attack: 6, defense: 4 },
+        mage: { attack: 3, defense: 1 },
+        scout: { attack: 2, defense: 1 },
+        tier1: { attack: 1, defense: 1 },
+        tier2: { attack: 3, defense: 2 },
+        tier3: { attack: 5, defense: 3 },
+        tier4: { attack: 7, defense: 4 },
+        militia: { attack: 2, defense: 3 },
+      };
+      const stats = UNIT_STATS_LOCAL[type] ?? { attack: 2, defense: 2 };
+      return sum + stats.attack * cnt;
+    }, 0);
+
+    const terrainAdjustedAttackerPower = applyTerrainToUnitPower(
+      effectiveAttackerUnits,
+      'attack',
+      { ...terrainMods, defense: 0 } // strip defense key — only applies to defender
+    );
+
+    // Scale attacker units proportionally by the terrain power adjustment ratio
+    if (rawAttackerPower > 0 && terrainAdjustedAttackerPower !== rawAttackerPower) {
+      const terrainAttackerRatio = terrainAdjustedAttackerPower / rawAttackerPower;
+      effectiveAttackerUnits = Object.fromEntries(
+        Object.entries(effectiveAttackerUnits).map(([k, v]) => [
+          k,
+          Math.floor(v * terrainAttackerRatio)
+        ])
+      );
+    }
+
+    // -------------------------------------------------------------------------
+    // Step 6: Resolve combat using terrain-and-formation-adjusted unit counts
+    // -------------------------------------------------------------------------
     const combatResult = calculateCombatResult(
       effectiveAttackerUnits,
       effectiveDefenderUnits,
       defenderLand
     ) as CombatResultData;
+
+    log.info('combat-processor', 'modifiers-applied', {
+      terrainId: resolvedTerrainId || 'plains',
+      formationId: formationId || 'none',
+      formationOffenseFactor,
+      defenseTerrainBonus,
+    });
 
     await client.models.BattleReport.create({
       attackerId,

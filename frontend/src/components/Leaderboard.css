@@ -3,3 +3,218 @@
   font-family: var(--font-display);
   letter-spacing: 0.03em;
 }
+
+/* ── Section heading ──────────────────────────────────────────────────── */
+.lb-section-heading {
+  margin: 0 0 1rem 0;
+  font-family: var(--font-display, inherit);
+  font-size: 1.25rem;
+  color: var(--text-accent, #e2e8f0);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ── Tab bar ──────────────────────────────────────────────────────────── */
+.lb-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lb-tab {
+  padding: 0.35rem 0.8rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;    /* pill shape */
+  color: #94a3b8;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+  /* Override game-pages.css button rule that forces primary color */
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+.lb-tab:hover:not(.lb-tab--active) {
+  background: rgba(78, 205, 196, 0.1) !important;
+  border-color: rgba(78, 205, 196, 0.35);
+  color: #e2e8f0;
+  transform: none; /* suppress game-pages translateY */
+}
+
+.lb-tab--active {
+  background: rgba(78, 205, 196, 0.18) !important;
+  border-color: #4ecdc4;
+  color: #4ecdc4;
+  box-shadow: 0 0 6px rgba(78, 205, 196, 0.3);
+}
+
+.lb-tab--guilds {
+  /* Slightly distinct accent for the Guilds tab */
+  color: #c084fc; /* soft purple */
+  border-color: rgba(192, 132, 252, 0.3);
+}
+
+.lb-tab--guilds:hover:not(.lb-tab--active) {
+  background: rgba(192, 132, 252, 0.08) !important;
+  border-color: rgba(192, 132, 252, 0.5);
+  color: #e2e8f0;
+}
+
+.lb-tab--guilds.lb-tab--active {
+  background: rgba(192, 132, 252, 0.18) !important;
+  border-color: #c084fc;
+  color: #c084fc;
+  box-shadow: 0 0 6px rgba(192, 132, 252, 0.3);
+}
+
+/* ── Search input ─────────────────────────────────────────────────────── */
+.lb-search-wrapper {
+  margin-bottom: 1rem;
+}
+
+.lb-search-input {
+  width: 100%;
+  max-width: 360px;
+  padding: 0.5rem 0.875rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.5rem;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.lb-search-input::placeholder {
+  color: #64748b;
+}
+
+.lb-search-input:focus {
+  border-color: #4ecdc4;
+  box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.2);
+}
+
+/* Remove browser-default search clear button on WebKit */
+.lb-search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+/* ── Rank badge & delta indicators ────────────────────────────────────── */
+.lb-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.lb-rank-up {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #4ade80;       /* green-400 */
+  letter-spacing: 0;
+}
+
+.lb-rank-down {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f87171;       /* red-400 */
+  letter-spacing: 0;
+}
+
+.lb-rank-new {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #94a3b8;       /* slate-400 muted */
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ── Guilds table ─────────────────────────────────────────────────────── */
+.lb-guilds-table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 2rem;
+}
+
+.lb-guilds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.lb-guilds-th {
+  padding: 0.6rem 1rem;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-secondary, #94a3b8);
+  border-bottom: 2px solid rgba(78, 205, 196, 0.25);
+  white-space: nowrap;
+}
+
+.lb-guilds-th--rank  { width: 4rem; }
+.lb-guilds-th--center { text-align: center; }
+.lb-guilds-th--right  { text-align: right; }
+
+.lb-guilds-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.12s ease;
+}
+
+.lb-guilds-row--even {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.lb-guilds-row:hover {
+  background: rgba(78, 205, 196, 0.07);
+}
+
+.lb-guilds-td {
+  padding: 0.7rem 1rem;
+  color: var(--text-primary, #e2e8f0);
+}
+
+.lb-guilds-td--rank {
+  color: #4ecdc4;
+  font-weight: 700;
+}
+
+.lb-guilds-td--name {
+  font-weight: 600;
+}
+
+.lb-guilds-td--center { text-align: center; color: var(--text-secondary, #94a3b8); }
+.lb-guilds-td--right  { text-align: right;  font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ── Empty state ─────────────────────────────────────────────────────── */
+.lb-empty-state {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--text-secondary, #64748b);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .lb-tab {
+    font-size: 0.72rem;
+    padding: 0.3rem 0.6rem;
+  }
+
+  .lb-search-input {
+    max-width: 100%;
+  }
+
+  .lb-guilds-td,
+  .lb-guilds-th {
+    padding: 0.5rem 0.6rem;
+  }
+}

@@ -40,6 +40,7 @@ interface FunctionPayload {
   attackType?: string;
   units?: Record<string, unknown>;
   formationId?: string;
+  terrainId?: string;
   attackerId?: string;
   resourceType?: string;
   goldCost?: number;
@@ -156,9 +157,10 @@ export class AmplifyFunctionService {
           return await client.mutations.processCombat({
             attackerId: payload.attackerKingdomId || '',
             defenderId: payload.defenderKingdomId || '',
-            attackType: payload.attackType || 'raid',
+            attackType: (payload.attackType || 'raid') as 'standard' | 'raid' | 'siege' | 'pillage',
             units: payload.units || {},
             formationId: payload.formationId as string | undefined,
+            terrainId: payload.terrainId as string | undefined,
           });
         case 'season-manager':
           return await client.queries.getActiveSeason({});
@@ -362,7 +364,7 @@ export class AmplifyFunctionService {
         kingdomId: territoryData.kingdomId,
         territoryName: territoryData.name,
         territoryType: (territoryData as any).territoryType || 'settlement',
-        terrainType: territoryData.terrainType || 'plains',
+        terrainType: (territoryData.terrainType || 'plains') as 'plains' | 'forest' | 'mountains' | 'desert' | 'swamp' | 'coastal',
         coordinates: territoryData.coordinates || { x: 0, y: 0 }
       });
 
