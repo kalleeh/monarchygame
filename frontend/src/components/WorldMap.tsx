@@ -190,13 +190,34 @@ const FOG_RADIUS = 5000;
 
 // ─── Claim costs & adjacency ─────────────────────────────────────────────────
 
-/** Gold + turns required to claim a Region, by archetype */
-const CLAIM_COST: Record<string, { gold: number; turns: number }> = {
-  capital:    { gold: 1000, turns: 5 },
-  settlement: { gold: 500,  turns: 3 },
-  outpost:    { gold: 300,  turns: 2 },
-  fortress:   { gold: 800,  turns: 4 },
-};
+/** Base gold costs per region archetype */
+const BASE_GOLD: Record<string, number>  = { capital: 1000, settlement: 500, outpost: 300, fortress: 800 };
+/** Base turn costs per region archetype */
+const BASE_TURNS: Record<string, number> = { capital: 5,    settlement: 3,   outpost: 2,   fortress: 4   };
+
+/** Euclidean distance between two map positions */
+function dist(a: {x:number;y:number}, b: {x:number;y:number}): number {
+  return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+}
+
+/**
+ * Distance-scaled claim cost for a region.
+ * Gold and turns scale up with distance from the nearest player-owned region.
+ * settlingTurns is the travel time for the settler party (2–8 turns).
+ */
+function claimCost(
+  region: RegionSlot,
+  playerPositions: {x:number;y:number}[],
+): { gold: number; turns: number; settlingTurns: number } {
+  const nearest = playerPositions.length === 0 ? 0
+    : Math.min(...playerPositions.map(p => dist(region.position, p)));
+  const distFactor = 1 + nearest / 3000;
+  return {
+    gold:          Math.round(BASE_GOLD[region.type]  * distFactor / 50) * 50, // round to 50g
+    turns:         Math.ceil(BASE_TURNS[region.type]  * distFactor),
+    settlingTurns: Math.max(2, Math.round(2 + nearest / 1500)),                 // 2–8 turns
+  };
+}
 
 /** Max distance (world units) from an owned region to allow claiming a neighbour */
 const CLAIM_ADJACENCY_RADIUS = 3500;
@@ -210,6 +231,22 @@ function isAdjacentToPlayer(
   return playerPositions.some(
     (p) => Math.sqrt((target.x - p.x) ** 2 + (target.y - p.y) ** 2) <= CLAIM_ADJACENCY_RADIUS,
   );
+}
+
+/**
+ * Returns true if a neutral region is contested — i.e. it neighbours BOTH a
+ * player-owned AND an enemy-owned region within CLAIM_ADJACENCY_RADIUS.
+ */
+function isContested(
+  region: RegionSlot,
+  ownership: Record<string, 'player'|'enemy'|'neutral'>,
+): boolean {
+  const neighbours = WORLD_REGIONS.filter(
+    r => r.id !== region.id && dist(r.position, region.position) <= CLAIM_ADJACENCY_RADIUS
+  );
+  const hasPlayer = neighbours.some(r => ownership[r.id] === 'player');
+  const hasEnemy  = neighbours.some(r => ownership[r.id] === 'enemy');
+  return hasPlayer && hasEnemy;
 }
 
 function isInFogOfWar(
@@ -313,6 +350,9 @@ function buildNodeStyle(
   ownership: 'player' | 'enemy' | 'neutral',
   difficulty: 'easy' | 'medium' | 'hard' | undefined,
   inFog: boolean,
+  settling: boolean,
+  enemySettling: boolean,
+  contested: boolean,
 ): Record<string, unknown> {
   const base: Record<string, unknown> = {
     borderRadius: '8px',
@@ -369,7 +409,38 @@ function buildNodeStyle(
     };
   }
 
-  // neutral
+  // neutral — check special states
+  if (settling) {
+    return {
+      ...base,
+      background: '#b45309',
+      border: '2px dashed #fcd34d',
+      color: '#fcd34d',
+      opacity: 0.9,
+    };
+  }
+
+  if (enemySettling) {
+    return {
+      ...base,
+      background: '#c2410c',
+      border: '2px dashed #fb923c',
+      color: '#fed7aa',
+      opacity: 0.9,
+    };
+  }
+
+  if (contested) {
+    return {
+      ...base,
+      background: '#7f1d1d',
+      border: '2px dashed #dc2626',
+      color: '#fca5a5',
+      opacity: 0.9,
+    };
+  }
+
+  // plain neutral
   return {
     ...base,
     background: '#1f2937',
@@ -383,6 +454,7 @@ function buildNodeStyle(
 
 const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
   const ownedTerritories = useTerritoryStore((s) => s.ownedTerritories);
+  const pendingSettlements = useTerritoryStore((s) => s.pendingSettlements);
   const aiKingdoms = useAIKingdomStore((s) => s.aiKingdoms);
   const resources = useKingdomStore((s) => s.resources);
   const addGold = useKingdomStore((s) => s.addGold);
@@ -479,6 +551,11 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
       const ownership = territoryOwnership[wt.id] ?? 'neutral';
       const inFog = isInFogOfWar(wt.position, playerPositions);
 
+      // Pending settlement states for this region
+      const settling = pendingSettlements.find(ps => ps.regionId === wt.id && ps.kingdomId === 'current-player');
+      const enemySettling = pendingSettlements.find(ps => ps.regionId === wt.id && ps.kingdomId !== 'current-player');
+      const contested = ownership === 'neutral' && isContested(wt, territoryOwnership);
+
       // Determine the node label
       let label: string;
       let aiKingdom: (typeof aiKingdoms)[number] | undefined;
@@ -492,6 +569,12 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
       } else if (ownership === 'player') {
         // Prefix capitals with a crown character
         label = wt.type === 'capital' ? `\u265a ${wt.name}` : wt.name;
+      } else if (settling) {
+        label = `\u2691 ${wt.name} (${settling.turnsRemaining}t)`;
+      } else if (enemySettling) {
+        label = `\u2694 ${wt.name}`;
+      } else if (contested) {
+        label = `\u2694 ${wt.name}`;
       } else {
         label = wt.name;
       }
@@ -501,6 +584,9 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         ownership,
         aiKingdom?.difficulty,
         inFog && ownership === 'neutral',
+        !!settling,
+        !!enemySettling,
+        contested,
       );
 
       return {
@@ -539,7 +625,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         style,
       } as TerritoryNode;
     });
-  }, [territoryOwnership, playerPositions, aiKingdoms, aiOwnerMap, ownedTerritories, kingdom]);
+  }, [territoryOwnership, playerPositions, aiKingdoms, aiOwnerMap, ownedTerritories, kingdom, pendingSettlements]);
 
   // No edges needed — territory slots are independent
   const worldEdges: Edge[] = [];
@@ -627,7 +713,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
     });
   }, []);
 
-  // ── Claim handler ─────────────────────────────────────────────────────────
+  // ── Claim handler (settler dispatch) ──────────────────────────────────────
 
   const handleClaimTerritory = useCallback(async () => {
     if (!selectedTerritoryNode) return;
@@ -637,15 +723,21 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
     const region = WORLD_REGIONS.find(r => r.id === wtId);
     if (!region) return;
 
-    const cost = CLAIM_COST[region.type] ?? CLAIM_COST.settlement;
-    const currentGold = resources.gold ?? 0;
-    const currentTurns = resources.turns ?? 0;
+    // ── Contested check ────────────────────────────────────────────────────
+    if (isContested(region, territoryOwnership)) {
+      ToastService.error('This region is contested — take it by combat');
+      return;
+    }
 
     // ── Adjacency check ───────────────────────────────────────────────────
     if (!isAdjacentToPlayer(region.position, playerPositions)) {
       ToastService.error('Too far away! You can only claim regions adjacent to your existing territories.');
       return;
     }
+
+    const cost = claimCost(region, playerPositions);
+    const currentGold = resources.gold ?? 0;
+    const currentTurns = resources.turns ?? 0;
 
     // ── Resource checks ───────────────────────────────────────────────────
     if (currentGold < cost.gold) {
@@ -661,52 +753,52 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
     addGold(-cost.gold);
     addTurns(-cost.turns);
 
-    const ARCHETYPE_CATEGORY: Record<string, string> = {
-      capital: 'farmland', settlement: 'farmland', outpost: 'forest', fortress: 'mine',
-    };
-    const category = ARCHETYPE_CATEGORY[region.type] ?? 'farmland';
-
-    const storeState = useTerritoryStore.getState();
+    // ── Dispatch settlers (does NOT immediately add to ownedTerritories) ──
     try {
-      const baseTerritory: Parameters<typeof storeState.addTerritory>[0] = {
-        id: region.id,
-        name: region.name,
-        type: region.type as 'capital' | 'settlement' | 'outpost' | 'fortress',
-        position: region.position,
-        ownerId: 'current-player',
-        resources: { gold: 0, population: 0, land: 0 },
-        buildings: {},
-        defenseLevel: 1,
-        adjacentTerritories: [],
-      };
-      const newTerritory = Object.assign(baseTerritory, { regionId: region.id, category });
-      storeState.addTerritory(newTerritory);
-      useTerritoryStore.setState((s) => ({
-        ownedTerritories: [...s.ownedTerritories, newTerritory],
-      }));
+      useTerritoryStore.getState().startSettlement({
+        regionId: region.id,
+        regionName: region.name,
+        kingdomId: 'current-player',
+        turnsRemaining: cost.settlingTurns,
+        totalTurns: cost.settlingTurns,
+        goldRefund: Math.floor(cost.gold * 0.5),
+        startedAtTurns: resources.turns ?? 0,
+      });
 
-      setNodes((nds) =>
-        nds.map((n) =>
-          n.id === selectedTerritoryNode.id
-            ? {
-                ...n,
-                data: { ...n.data, isOwned: true, kingdomName: kingdom.name, ownership: 'player' as const, inFog: false },
-                style: { ...n.style, background: '#4ade80', border: '2px solid #16a34a', opacity: 1, filter: 'none', color: '#000' },
-              }
-            : n,
-        ),
-      );
-      ToastService.success(`${region.name} claimed! (-${cost.gold.toLocaleString()}g, -${cost.turns} turns)`);
+      ToastService.success(`Settlers dispatched to ${region.name}! Arrives in ${cost.settlingTurns} turns.`);
     } catch (err) {
       // Refund on failure
       addGold(cost.gold);
       addTurns(cost.turns);
-      console.error('Failed to claim territory:', err);
+      console.error('Failed to dispatch settlers:', err);
     }
 
     setSelectedTerritoryNode(null);
     setSelectedTerritory(null);
-  }, [selectedTerritoryNode, selectedTerritory, kingdom, setNodes]);
+  }, [selectedTerritoryNode, selectedTerritory, resources, addGold, addTurns, playerPositions, territoryOwnership]);
+
+  // ── Raid settlers handler ─────────────────────────────────────────────────
+
+  const handleRaidSettlers = useCallback(() => {
+    const currentTurns = resources.turns ?? 0;
+    if (currentTurns < 2) {
+      ToastService.error('Not enough turns to raid! Need 2 turns.');
+      return;
+    }
+    const wtId = selectedTerritoryNode?.data?.worldTerritoryId ?? selectedTerritoryNode?.id;
+    if (!wtId) return;
+
+    addTurns(-2);
+    const result = useTerritoryStore.getState().raidSettlement(wtId);
+    if (result) {
+      ToastService.success(`Enemy settlers routed! The region remains unclaimed.`);
+    } else {
+      addTurns(2); // refund if no settlers found
+      ToastService.error('No enemy settlers found in this region.');
+    }
+    setSelectedTerritoryNode(null);
+    setSelectedTerritory(null);
+  }, [selectedTerritoryNode, resources.turns, addTurns]);
 
   // ── Ownership badge helper ────────────────────────────────────────────────
 
@@ -848,6 +940,10 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
               if (node.id === 'map-bg') return 'transparent';
               const t = node as TerritoryNode;
               if (t.data.inFog) return '#111';
+              // Settling states
+              const settling = pendingSettlements.find(ps => ps.regionId === t.id);
+              if (settling?.kingdomId === 'current-player') return '#b45309'; // amber — player settlers en route
+              if (settling) return '#c2410c'; // red-orange — enemy settling
               if (t.data.ownership === 'player') return '#4ade80';
               if (t.data.ownership === 'enemy') return '#dc2626';
               return '#374151';
@@ -888,8 +984,8 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
             />
             <div style={{ padding: '1.25rem', flex: 1 }}>
               <h2 style={{ color: '#d4a017', marginBottom: '0.5rem', fontSize: '1.1rem', letterSpacing: '0.05em' }}>
-                {/* Strip crown prefix from display if present */}
-                {selectedTerritory.label.replace(/^\u265a\s*/, '')}
+                {/* Strip crown/flag/swords prefix from display if present */}
+                {selectedTerritory.label.replace(/^[\u265a\u2691\u2694]\s*/, '')}
               </h2>
 
               {/* Ownership badge */}
@@ -930,26 +1026,69 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
                 </p>
               )}
 
-              {/* Claim button — only for neutral territories, shows cost + affordability */}
+              {/* Neutral territory — richer claim / state panel */}
               {selectedTerritory.ownership === 'neutral' && (() => {
                 const region = WORLD_REGIONS.find(r => r.id === selectedTerritory.id);
-                const cost = CLAIM_COST[region?.type ?? 'settlement'] ?? CLAIM_COST.settlement;
-                const canAfford = (resources.gold ?? 0) >= cost.gold && (resources.turns ?? 0) >= cost.turns;
-                const adjacent = isAdjacentToPlayer(
-                  region?.position ?? { x: 0, y: 0 },
-                  playerPositions,
+                if (!region) return null;
+
+                const contested = isContested(region, territoryOwnership);
+                const settling = pendingSettlements.find(
+                  ps => ps.regionId === region.id && ps.kingdomId === 'current-player'
                 );
+                const enemySettling = pendingSettlements.find(
+                  ps => ps.regionId === region.id && ps.kingdomId !== 'current-player'
+                );
+
+                // ── Contested ──────────────────────────────────────────────
+                if (contested) {
+                  return (
+                    <div style={{marginTop:'1rem', padding:'0.75rem', background:'#450a0a', borderRadius:6, border:'1px solid #7f1d1d'}}>
+                      <p style={{color:'#fca5a5', fontSize:'0.8rem', margin:0}}>⚔ Contested Region</p>
+                      <p style={{color:'#9ca3af', fontSize:'0.75rem', margin:'0.25rem 0 0'}}>This region lies between kingdoms. It can only be taken through combat.</p>
+                    </div>
+                  );
+                }
+
+                // ── Player settlers en route ───────────────────────────────
+                if (settling) {
+                  return (
+                    <div style={{marginTop:'1rem', padding:'0.75rem', background:'#1c1917', borderRadius:6, border:'1px solid #b45309'}}>
+                      <p style={{color:'#fcd34d', fontSize:'0.8rem', margin:0}}>⚑ Settlers En Route</p>
+                      <p style={{color:'#9ca3af', fontSize:'0.75rem', margin:'0.25rem 0 0'}}>Arrives in {settling.turnsRemaining} turns. Enemies can raid to cancel.</p>
+                    </div>
+                  );
+                }
+
+                // ── Enemy settling — show raid button ─────────────────────
+                if (enemySettling) {
+                  return (
+                    <button onClick={handleRaidSettlers} style={{marginTop:'1rem', width:'100%', padding:'0.6rem', background:'#7f1d1d', border:'1px solid #dc2626', color:'#fca5a5', cursor:'pointer', borderRadius:6, fontFamily:'var(--font-display,Cinzel,serif)', fontSize:'0.85rem'}}>
+                      ⚔ Raid Settlers (costs 2 turns)
+                    </button>
+                  );
+                }
+
+                // ── Plain neutral — show cost and dispatch button ──────────
+                const cost = claimCost(region, playerPositions);
+                const canAffordGold  = (resources.gold ?? 0) >= cost.gold;
+                const canAffordTurns = (resources.turns ?? 0) >= cost.turns;
+                const canAfford = canAffordGold && canAffordTurns;
+                const adjacent = isAdjacentToPlayer(region.position, playerPositions);
                 const blocked = !adjacent || !canAfford;
+
                 return (
                   <div style={{ marginTop: '1rem' }}>
                     <p style={{ color: '#9ca3af', fontSize: '0.75rem', marginBottom: '0.4rem', textAlign: 'center' }}>
-                      Cost: <strong style={{ color: canAfford ? '#d4a017' : '#f87171' }}>
+                      Cost:{' '}
+                      <strong style={{ color: canAffordGold ? '#d4a017' : '#f87171' }}>
                         {cost.gold.toLocaleString()}g
                       </strong>
                       {' · '}
-                      <strong style={{ color: (resources.turns ?? 0) >= cost.turns ? '#d4a017' : '#f87171' }}>
+                      <strong style={{ color: canAffordTurns ? '#d4a017' : '#f87171' }}>
                         {cost.turns} turns
                       </strong>
+                      {'  |  Settles in: '}
+                      <strong style={{ color: '#d4a017' }}>{cost.settlingTurns} turns</strong>
                       {!adjacent && <span style={{ color: '#f87171', display: 'block', marginTop: '0.2rem' }}>⚠ Too far from your territory</span>}
                     </p>
                     <button
@@ -969,7 +1108,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
                         opacity: blocked ? 0.7 : 1,
                       }}
                     >
-                      {blocked ? 'Cannot Claim' : 'Claim Territory'}
+                      {blocked ? 'Cannot Claim' : 'Dispatch Settlers'}
                     </button>
                   </div>
                 );

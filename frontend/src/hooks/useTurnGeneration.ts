@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 import { ToastService } from '../services/toastService';
 import { isDemoMode } from '../utils/authMode';
+import { useTerritoryStore } from '../stores/territoryStore';
 
 interface TurnGenerationState {
   nextTurnIn: number; // seconds until next turn
@@ -124,6 +125,28 @@ export const useTurnGeneration = ({
         }));
 
         onTurnGenerated?.(totalTurns);
+
+        // Tick pending settlements and complete any that finished
+        const { tickSettlements, addTerritory } = useTerritoryStore.getState();
+        const completed = tickSettlements(totalTurns);
+        for (const settlement of completed) {
+          // Convert the completed settlement into an owned territory
+          addTerritory({
+            id: settlement.regionId,
+            name: settlement.regionName,
+            type: 'settlement' as const, // default type
+            position: { x: 0, y: 0 },
+            ownerId: 'current-player',
+            resources: { gold: 0, population: 0, land: 0 },
+            buildings: {},
+            defenseLevel: 1,
+            adjacentTerritories: [],
+            regionId: settlement.regionId,
+            category: 'farmland',
+          });
+          // Show a success toast
+          ToastService.success(`${settlement.regionName} has been settled! Your settlers have arrived.`);
+        }
 
         return { success: true, turns: totalTurns };
       }

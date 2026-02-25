@@ -30,6 +30,16 @@ interface Territory {
 
 export type { Territory };
 
+export interface PendingSettlement {
+  regionId: string;         // which WORLD_REGIONS slot
+  regionName: string;       // display name
+  kingdomId: string;        // 'current-player' in demo mode
+  turnsRemaining: number;   // countdown to completion
+  totalTurns: number;       // original settling duration
+  goldRefund: number;       // 50% of gold paid, returned if raided
+  startedAtTurns: number;   // kingdom turns count when started
+}
+
 interface TerritoryExpansion {
   territoryId: string;
   cost: {
@@ -55,6 +65,7 @@ export const useTerritoryStore = create(
       territories: [] as Territory[],
       ownedTerritories: [] as Territory[],
       selectedTerritory: null as string | null,
+      pendingSettlements: [] as PendingSettlement[],
       
       // Expansion state
       availableExpansions: [] as TerritoryExpansion[],
@@ -83,6 +94,50 @@ export const useTerritoryStore = create(
             ? [...state.ownedTerritories, territory]
             : state.ownedTerritories,
         }));
+      },
+
+      // Settler mechanic actions
+      startSettlement: (settlement: PendingSettlement): void => {
+        set((state) => {
+          const updated = [...state.pendingSettlements, settlement];
+          localStorage.setItem('pendingSettlements', JSON.stringify(updated));
+          return { pendingSettlements: updated };
+        });
+      },
+
+      raidSettlement: (regionId: string): { refundGold: number } | null => {
+        const state = get();
+        const target = state.pendingSettlements.find(
+          (ps) => ps.kingdomId !== 'current-player' && ps.regionId === regionId
+        );
+        if (!target) return null;
+        const remaining = state.pendingSettlements.filter((ps) => ps !== target);
+        localStorage.setItem('pendingSettlements', JSON.stringify(remaining));
+        set({ pendingSettlements: remaining });
+        return { refundGold: target.goldRefund };
+      },
+
+      tickSettlements: (turnsAdded: number): PendingSettlement[] => {
+        const state = get();
+        const completed: PendingSettlement[] = [];
+        const remaining: PendingSettlement[] = [];
+
+        for (const ps of state.pendingSettlements) {
+          if (ps.kingdomId !== 'current-player') {
+            remaining.push(ps); // AI/other players' settlements don't tick (demo mode)
+            continue;
+          }
+          const newTurns = ps.turnsRemaining - turnsAdded;
+          if (newTurns <= 0) {
+            completed.push(ps);
+          } else {
+            remaining.push({ ...ps, turnsRemaining: newTurns });
+          }
+        }
+
+        localStorage.setItem('pendingSettlements', JSON.stringify(remaining));
+        set({ pendingSettlements: remaining });
+        return completed;
       },
 
       updateTerritory: (territoryId: string, updates: Partial<Territory>) => {
@@ -386,10 +441,19 @@ export const useTerritoryStore = create(
       // Initialize with mock data (only once)
       initializeTerritories: () => {
         const state = get();
-        
+
         // Guard: Only initialize if not already initialized
         if (state.initialized) {
           return;
+        }
+
+        // Load any saved pending settlements from localStorage
+        const savedSettlements = localStorage.getItem('pendingSettlements');
+        if (savedSettlements) {
+          try {
+            const parsed = JSON.parse(savedSettlements) as PendingSettlement[];
+            set({ pendingSettlements: parsed });
+          } catch { /* ignore malformed data */ }
         }
         
         const mockTerritories: Territory[] = [
@@ -463,6 +527,7 @@ export const useTerritoryStore = create(
           territories: [],
           ownedTerritories: [] as Territory[],
           selectedTerritory: null,
+          pendingSettlements: [] as PendingSettlement[],
           availableExpansions: [],
           pendingExpansions: [],
           expansionHistory: [],
