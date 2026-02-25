@@ -10,7 +10,7 @@ const COORDINATE_LIMITS = { min: -10000, max: 10000 } as const;
 const client = generateClient<Schema>();
 
 export const handler: Schema["claimTerritory"]["functionHandler"] = async (event) => {
-  const { kingdomId, territoryName, territoryType, terrainType, coordinates } = event.arguments;
+  const { kingdomId, territoryName, territoryType, terrainType, coordinates, regionId, category } = event.arguments;
 
   try {
     if (!kingdomId || !territoryName) {
@@ -77,6 +77,16 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
       return { success: false, error: 'Territory already claimed at these coordinates', errorCode: ErrorCode.INVALID_PARAM };
     }
 
+    // Slot-count validation: cap at 5 territories per region
+    if (regionId) {
+      const regionTerritories = await client.models.Territory.list({
+        filter: { regionId: { eq: regionId }, kingdomId: { eq: kingdomId } }
+      });
+      if ((regionTerritories.data?.length ?? 0) >= 5) {
+        return { success: false, error: 'Region is full', errorCode: 'REGION_FULL' };
+      }
+    }
+
     // Deduct gold cost and turns
     await client.models.Kingdom.update({
       id: kingdomId,
@@ -95,11 +105,13 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
       resources: JSON.stringify({ gold: 0, land: 100 }),
       buildings: JSON.stringify({}),
       defenseLevel: 0,
-      kingdomId
+      kingdomId,
+      ...(regionId ? { regionId } : {}),
+      ...(category ? { category: category as 'farmland' | 'mine' | 'forest' | 'port' | 'stronghold' | 'ruins' } : {})
     });
 
-    log.info('territory-claimer', 'claimTerritory', { kingdomId, territoryName });
-    return { success: true, territory: territoryName };
+    log.info('territory-claimer', 'claimTerritory', { kingdomId, territoryName, regionId, category });
+    return { success: true, territory: territoryName, regionId: regionId ?? null, category: category ?? null };
   } catch (error) {
     log.error('territory-claimer', error, { kingdomId, territoryName });
     return { success: false, error: 'Territory claim failed', errorCode: ErrorCode.INTERNAL_ERROR };

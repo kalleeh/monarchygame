@@ -84,9 +84,9 @@ interface SelectedTerritoryInfo {
   inFog?: boolean;
 }
 
-// ─── World Territory Grid ────────────────────────────────────────────────────
+// ─── World Region Grid ───────────────────────────────────────────────────────
 
-interface WorldTerritory {
+interface RegionSlot {
   id: string;
   name: string;
   position: { x: number; y: number };
@@ -94,8 +94,11 @@ interface WorldTerritory {
 }
 
 /**
- * 50 named territory slots mapped to the actual terrain features visible
- * on world-map-world.jpg.
+ * WORLD_REGIONS — 50 named Region slots mapped to the actual terrain features
+ * visible on world-map-world.jpg. Each entry is a strategic Region that can
+ * contain multiple Territory slots (see TERRITORY_DESIGN.md for slot counts
+ * per archetype). Regions are not persisted — control is computed from
+ * Territory records whose regionId matches the Region id.
  *
  * Key terrain zones:
  *  WESTERN MAINLAND  x: -7500 → +700        (large green continent, mountains, forest)
@@ -103,7 +106,7 @@ interface WorldTerritory {
  *  EASTERN PENINSULA x: +4500 → +6500, y: -2000 → +1800
  *  SMALL ISLAND      x: +5800 → +7000, y: +2500 → +4000
  */
-const WORLD_TERRITORIES: WorldTerritory[] = [
+const WORLD_REGIONS: RegionSlot[] = [
   // ── WESTERN MAINLAND — far north, mountains (y ≈ -3500..−2800) ───────────
   { id: 'wt-01', name: 'Frostwall Keep',    position: { x: -7000, y: -3700 }, type: 'fortress'   },
   { id: 'wt-02', name: 'Ashfen Marsh',      position: { x: -5500, y: -3800 }, type: 'outpost'    },
@@ -359,54 +362,48 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
   // ── Build ownership map ──────────────────────────────────────────────────
 
   /**
-   * Assign world-territory slots to owners:
-   *  - Player owns the first N slots (matching by name, then by index).
+   * Assign Region slots to owners using regionId for accurate player detection:
+   *  - Player owns slots where a Territory record has a matching regionId.
+   *  - Fallback: demo territories without regionId are assigned to capital slots
+   *    by index for backwards compatibility.
    *  - Each AI kingdom claims 1-3 consecutive slots starting at a hash offset.
    *  - Everything else is neutral.
    */
   const territoryOwnership = useMemo((): Record<string, 'player' | 'enemy' | 'neutral'> => {
     const ownership: Record<string, 'player' | 'enemy' | 'neutral'> = {};
+    WORLD_REGIONS.forEach((r) => { ownership[r.id] = 'neutral'; });
 
-    // Default everything to neutral
-    WORLD_TERRITORIES.forEach((wt) => {
-      ownership[wt.id] = 'neutral';
-    });
-
-    // Player territories — try name match first, then fall back to first-N index assignment
-    const playerSlotIds = new Set<string>();
-    ownedTerritories.forEach((ot, i) => {
-      const byName = WORLD_TERRITORIES.find(
-        (wt) => wt.name.toLowerCase() === ot.name.toLowerCase(),
-      );
-      if (byName && !playerSlotIds.has(byName.id)) {
-        ownership[byName.id] = 'player';
-        playerSlotIds.add(byName.id);
+    // Also claim the first N regions by index for demo territories without regionId
+    // (Royal Capital → first capital slot, etc.)
+    ownedTerritories.forEach((t, i) => {
+      const byRegionId = (t as unknown as { regionId?: string }).regionId;
+      if (byRegionId && WORLD_REGIONS.find(r => r.id === byRegionId)) {
+        ownership[byRegionId] = 'player';
       } else {
-        // fall back to index-based assignment (skip slots already taken)
+        // Fallback: assign to first unclaimed capital slot for demo compatibility
         let assigned = 0;
-        for (const wt of WORLD_TERRITORIES) {
-          if (playerSlotIds.has(wt.id)) continue;
-          if (assigned === i) {
-            ownership[wt.id] = 'player';
-            playerSlotIds.add(wt.id);
+        for (const r of WORLD_REGIONS) {
+          if (ownership[r.id] !== 'neutral') continue;
+          if (r.type === 'capital' && assigned === i) {
+            ownership[r.id] = 'player';
             break;
           }
-          assigned++;
+          if (r.type === 'capital') assigned++;
         }
       }
     });
 
-    // AI kingdoms — each gets 1-3 slots deterministically
+    // AI kingdoms claim their slots
     aiKingdoms.forEach((k) => {
       const h = hashId(k.id);
-      const slotCount = 1 + (h % 3); // 1, 2, or 3
-      const startIdx = h % WORLD_TERRITORIES.length;
+      const slotCount = 1 + (h % 3);
+      const startIdx = h % WORLD_REGIONS.length;
       let claimed = 0;
-      for (let offset = 0; offset < WORLD_TERRITORIES.length && claimed < slotCount; offset++) {
-        const idx = (startIdx + offset) % WORLD_TERRITORIES.length;
-        const wt = WORLD_TERRITORIES[idx];
-        if (ownership[wt.id] === 'neutral') {
-          ownership[wt.id] = 'enemy';
+      for (let offset = 0; offset < WORLD_REGIONS.length && claimed < slotCount; offset++) {
+        const idx = (startIdx + offset) % WORLD_REGIONS.length;
+        const r = WORLD_REGIONS[idx];
+        if (ownership[r.id] === 'neutral') {
+          ownership[r.id] = 'enemy';
           claimed++;
         }
       }
@@ -423,13 +420,13 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
     aiKingdoms.forEach((k) => {
       const h = hashId(k.id);
       const slotCount = 1 + (h % 3);
-      const startIdx = h % WORLD_TERRITORIES.length;
+      const startIdx = h % WORLD_REGIONS.length;
       // Re-simulate the same logic to build the reverse map
       const tempNeutral = { ...territoryOwnership };
       let claimed = 0;
-      for (let offset = 0; offset < WORLD_TERRITORIES.length && claimed < slotCount; offset++) {
-        const idx = (startIdx + offset) % WORLD_TERRITORIES.length;
-        const wt = WORLD_TERRITORIES[idx];
+      for (let offset = 0; offset < WORLD_REGIONS.length && claimed < slotCount; offset++) {
+        const idx = (startIdx + offset) % WORLD_REGIONS.length;
+        const wt = WORLD_REGIONS[idx];
         if (tempNeutral[wt.id] === 'enemy' && !map[wt.id]) {
           map[wt.id] = k.id;
           claimed++;
@@ -441,15 +438,15 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
 
   // Player positions for fog-of-war calculations
   const playerPositions = useMemo((): { x: number; y: number }[] => {
-    return WORLD_TERRITORIES
+    return WORLD_REGIONS
       .filter((wt) => territoryOwnership[wt.id] === 'player')
       .map((wt) => wt.position);
   }, [territoryOwnership]);
 
-  // ── Build React Flow nodes from WORLD_TERRITORIES ────────────────────────
+  // ── Build React Flow nodes from WORLD_REGIONS ────────────────────────
 
   const worldNodes = useMemo((): TerritoryNode[] => {
-    return WORLD_TERRITORIES.map((wt) => {
+    return WORLD_REGIONS.map((wt) => {
       const ownership = territoryOwnership[wt.id] ?? 'neutral';
       const inFog = isInFogOfWar(wt.position, playerPositions);
 
@@ -603,37 +600,66 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
 
   // ── Claim handler ─────────────────────────────────────────────────────────
 
-  const handleClaimTerritory = useCallback(() => {
+  const handleClaimTerritory = useCallback(async () => {
     if (!selectedTerritoryNode) return;
     if (selectedTerritory?.ownership !== 'neutral') return;
 
-    setNodes((nds) =>
-      nds.map((n) =>
-        n.id === selectedTerritoryNode.id
-          ? {
-              ...n,
-              data: {
-                ...n.data,
-                isOwned: true,
-                kingdomName: kingdom.name,
-                race: (kingdom.race as string) || 'Human',
-                visibility: 'full' as VisibilityLevel,
-                ownership: 'player' as const,
-                inFog: false,
-                landCategory: undefined,
-              },
-              style: {
-                ...n.style,
-                background: '#4ade80',
-                border: '2px solid #16a34a',
-                opacity: 1,
-                filter: 'none',
-                color: '#000',
-              },
-            }
-          : n,
-      ),
-    );
+    const wtId = selectedTerritoryNode.data?.worldTerritoryId ?? selectedTerritoryNode.id;
+    const region = WORLD_REGIONS.find(r => r.id === wtId);
+    if (!region) return;
+
+    // Determine category from region archetype
+    const ARCHETYPE_CATEGORY: Record<string, string> = {
+      capital: 'farmland',
+      settlement: 'farmland',
+      outpost: 'forest',
+      fortress: 'mine',
+    };
+    const category = ARCHETYPE_CATEGORY[region.type] ?? 'farmland';
+
+    // The store's claimTerritory requires a pre-existing availableExpansion entry.
+    // Since world-map regions bypass that flow, we push directly into ownedTerritories
+    // via the store's internal state to ensure the ownership memo re-computes correctly.
+    const storeState = useTerritoryStore.getState();
+    try {
+      // Build base Territory shape then attach regionId/category for Phase 2 matching
+      const baseTerritory: Parameters<typeof storeState.addTerritory>[0] = {
+        id: region.id,
+        name: region.name,
+        type: region.type as 'capital' | 'settlement' | 'outpost' | 'fortress',
+        position: region.position,
+        ownerId: 'current-player',
+        resources: { gold: 0, population: 0, land: 0 },
+        buildings: {},
+        defenseLevel: 1,
+        adjacentTerritories: [],
+      };
+      const newTerritory = Object.assign(baseTerritory, { regionId: region.id, category });
+      storeState.addTerritory(newTerritory);
+      // Also push into ownedTerritories directly
+      useTerritoryStore.setState((s) => ({
+        ownedTerritories: [
+          ...s.ownedTerritories,
+          newTerritory,
+        ],
+      }));
+
+      // Update local node appearance immediately
+      setNodes((nds) =>
+        nds.map((n) =>
+          n.id === selectedTerritoryNode.id
+            ? {
+                ...n,
+                data: { ...n.data, isOwned: true, kingdomName: kingdom.name, ownership: 'player' as const, inFog: false },
+                style: { ...n.style, background: '#4ade80', border: '2px solid #16a34a', opacity: 1, filter: 'none', color: '#000' },
+              }
+            : n,
+        ),
+      );
+    } catch (err) {
+      console.error('Failed to claim territory:', err);
+    }
+
     setSelectedTerritoryNode(null);
     setSelectedTerritory(null);
   }, [selectedTerritoryNode, selectedTerritory, kingdom, setNodes]);
@@ -824,6 +850,18 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
 
               {/* Ownership badge */}
               {ownershipBadge(selectedTerritory.ownership)}
+
+              {/* Region info */}
+              {(() => {
+                const region = WORLD_REGIONS.find(r => r.id === selectedTerritory.id);
+                return (
+                  <p style={{ color: '#6b7280', fontSize: '0.8rem', marginBottom: '0.5rem' }}>
+                    {region?.type === 'capital' ? '5 slots' : region?.type === 'fortress' ? '4 slots' : region?.type === 'settlement' ? '3 slots' : '2 slots'}
+                    {' · '}
+                    {selectedTerritory.type} region
+                  </p>
+                );
+              })()}
 
               {/* Type badge */}
               <p style={{

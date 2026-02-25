@@ -74,10 +74,50 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     // Apply age multiplier to all gold income (base + tithe)
     const totalGoldPerTurn = Math.floor((baseGoldPerTurn + tithePerTurn) * ageMultiplier);
 
+    // Territory-based income (Tier 2 production)
+    const CATEGORY_PRODUCTION: Record<string, { gold: number; population: number; land: number }> = {
+      farmland:   { gold: 20,  population: 30, land: 50 },
+      mine:       { gold: 60,  population: 5,  land: 10 },
+      forest:     { gold: 10,  population: 10, land: 30 },
+      port:       { gold: 80,  population: 20, land: 5  },
+      stronghold: { gold: 5,   population: 0,  land: 0  },
+      ruins:      { gold: 0,   population: 0,  land: 0  },
+    };
+
+    const TERRAIN_MULTIPLIERS: Record<string, Partial<Record<string, number>>> = {
+      mountains: { mine: 1.5 },
+      coastal:   { port: 1.5 },
+      forest:    { forest: 1.5 },
+      plains:    {},
+    };
+
+    let territoryGold = 0;
+    let territoryPop = 0;
+    let territoryLand = 0;
+
+    try {
+      const territories = await client.models.Territory.list({
+        filter: { kingdomId: { eq: kingdomId } }
+      });
+
+      for (const t of (territories.data ?? []) as Array<Record<string, unknown>>) {
+        const cat = (t.category as string | undefined) ?? 'farmland';
+        const terrain = (t.terrainType as string | undefined) ?? 'plains';
+        const base = CATEGORY_PRODUCTION[cat] ?? CATEGORY_PRODUCTION.farmland;
+        const mult = TERRAIN_MULTIPLIERS[terrain]?.[cat] ?? 1.0;
+        territoryGold += Math.floor(base.gold * mult);
+        territoryPop  += Math.floor(base.population * mult);
+        territoryLand += Math.floor(base.land * mult);
+      }
+    } catch (err) {
+      log.warn('resource-manager', 'territory-income-failed', { err });
+      // Non-fatal — proceed without territory income
+    }
+
     const updated: KingdomResources = {
-      gold: Math.min(currentGold + totalGoldPerTurn * turns, RESOURCE_LIMITS.gold.max),
-      land: Math.max(currentLand, RESOURCE_LIMITS.land.min),
-      population: Math.min(currentPop + populationPerTurn * turns, RESOURCE_LIMITS.population.max),
+      gold: Math.min(currentGold + (totalGoldPerTurn + territoryGold) * turns, RESOURCE_LIMITS.gold.max),
+      land: Math.max(currentLand + territoryLand * turns, RESOURCE_LIMITS.land.min),
+      population: Math.min(currentPop + (populationPerTurn + territoryPop) * turns, RESOURCE_LIMITS.population.max),
       mana: Math.min(currentMana + manaPerTurn * turns, RESOURCE_LIMITS.mana.max)
     };
 

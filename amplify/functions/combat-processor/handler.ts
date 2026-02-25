@@ -255,6 +255,38 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
           totalUnits: updatedAttackerUnits
         })
       ]);
+
+      // Transfer territory: find defender's least important territory and reassign to attacker
+      try {
+        const defenderTerritories = await client.models.Territory.list({
+          filter: { kingdomId: { eq: defenderId } }
+        });
+
+        // Sort by defense level ascending (take least developed first), never take the capital
+        type TerritoryRecord = { id: string; type?: string; defenseLevel?: number };
+        const allTerritories = (defenderTerritories.data ?? []) as unknown as TerritoryRecord[];
+        const sorted = allTerritories
+          .filter((t: TerritoryRecord) => t.type !== 'capital')
+          .sort((a: TerritoryRecord, b: TerritoryRecord) =>
+            (a.defenseLevel ?? 0) - (b.defenseLevel ?? 0)
+          );
+
+        if (sorted.length > 0) {
+          const toTransfer = sorted[0];
+          await client.models.Territory.update({
+            id: toTransfer.id,
+            kingdomId: attackerId,
+          });
+          log.info('combat-processor', 'territory-transferred', {
+            territoryId: toTransfer.id,
+            from: defenderId,
+            to: attackerId
+          });
+        }
+      } catch (err) {
+        log.warn('combat-processor', 'territory-transfer-failed', { err });
+        // Non-fatal
+      }
     } else {
       // Even if combat was not successful, still deduct casualties and turns
       await Promise.all([

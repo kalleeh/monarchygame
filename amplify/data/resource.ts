@@ -92,6 +92,8 @@ const schema = a.schema({
       buildings: a.json().required(),
       defenseLevel: a.integer().required(),
       kingdomId: a.id().required(),
+      regionId: a.string(),
+      category: a.enum(['farmland', 'mine', 'forest', 'port', 'stronghold', 'ruins']),
       createdAt: a.datetime(),
       updatedAt: a.datetime()
     })
@@ -349,7 +351,9 @@ const schema = a.schema({
       territoryName: a.string().required(),
       territoryType: a.ref('TerritoryType').required(),
       terrainType: a.ref('TerrainType').required(),
-      coordinates: a.json().required()
+      coordinates: a.json().required(),
+      regionId: a.string(),
+      category: a.string()
     })
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])

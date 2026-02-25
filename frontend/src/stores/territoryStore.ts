@@ -24,6 +24,8 @@ interface Territory {
   buildings: Record<string, number>;
   defenseLevel: number;
   adjacentTerritories: string[];
+  regionId?: string;
+  category?: 'farmland' | 'mine' | 'forest' | 'port' | 'stronghold' | 'ruins';
 }
 
 export type { Territory };
@@ -76,7 +78,10 @@ export const useTerritoryStore = create(
       // Territory management
       addTerritory: (territory: Territory) => {
         set((state) => ({
-          territories: [...state.territories, territory]
+          territories: [...state.territories, territory],
+          ownedTerritories: territory.ownerId === 'current-player'
+            ? [...state.ownedTerritories, territory]
+            : state.ownedTerritories,
         }));
       },
 
@@ -397,7 +402,9 @@ export const useTerritoryStore = create(
             resources: { gold: 1000, population: 500, land: 100 },
             buildings: { castle: 1, barracks: 2 },
             defenseLevel: 3,
-            adjacentTerritories: ['settlement-1', 'settlement-2']
+            adjacentTerritories: ['settlement-1', 'settlement-2'],
+            regionId: 'wt-03',
+            category: 'farmland'
           },
           {
             id: 'settlement-1',
@@ -408,7 +415,9 @@ export const useTerritoryStore = create(
             resources: { gold: 200, population: 100, land: 50 },
             buildings: {},
             defenseLevel: 1,
-            adjacentTerritories: ['capital-1', 'fortress-1']
+            adjacentTerritories: ['capital-1', 'fortress-1'],
+            regionId: 'wt-02',
+            category: 'forest'
           },
           {
             id: 'settlement-2',
@@ -419,7 +428,9 @@ export const useTerritoryStore = create(
             resources: { gold: 150, population: 80, land: 40 },
             buildings: {},
             defenseLevel: 1,
-            adjacentTerritories: ['capital-1', 'outpost-1']
+            adjacentTerritories: ['capital-1', 'outpost-1'],
+            regionId: 'wt-04',
+            category: 'farmland'
           }
         ];
 

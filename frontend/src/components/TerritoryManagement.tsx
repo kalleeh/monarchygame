@@ -1,3 +1,4 @@
+// Legacy: use TerritoryExpansion instead
 import { useState, useEffect, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';

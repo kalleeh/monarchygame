@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useSpring, useTransition, animated, config } from '@react-spring/web';
 import { useTerritoryStore, type Territory } from '../stores/territoryStore';
 import { useKingdomStore } from '../stores/kingdomStore';
@@ -13,12 +14,59 @@ interface TerritoryExpansionProps {
   onBack?: () => void;
 }
 
+// Region metadata — maps wt-XX IDs from WorldMap to display names and archetypes
+const REGION_NAMES: Record<string, { name: string; type: 'capital' | 'settlement' | 'outpost' | 'fortress' }> = {
+  'wt-01': { name: 'Frostwall Keep', type: 'fortress' },
+  'wt-02': { name: 'Ashfen Marsh', type: 'outpost' },
+  'wt-03': { name: 'Crystalpeak', type: 'capital' },
+  'wt-04': { name: 'Thornwood', type: 'settlement' },
+  'wt-05': { name: 'Duskwall Fortress', type: 'fortress' },
+  'wt-06': { name: 'Rimstone Outpost', type: 'outpost' },
+  'wt-07': { name: 'Ironhold Keep', type: 'capital' },
+  'wt-08': { name: 'Embervale', type: 'settlement' },
+  'wt-09': { name: 'Silvergate', type: 'capital' },
+  'wt-10': { name: 'Coldbrook Pass', type: 'outpost' },
+};
+
+// Maximum territory slots per region archetype
+const REGION_SLOT_COUNTS: Record<string, number> = {
+  capital: 5,
+  settlement: 3,
+  outpost: 2,
+  fortress: 4,
+};
+
+// Per-tick resource production by territory category
+const CATEGORY_PRODUCTION: Record<string, { gold: number; pop: number; land: number }> = {
+  farmland:   { gold: 20, pop: 30, land: 50 },
+  mine:       { gold: 60, pop: 5,  land: 10 },
+  forest:     { gold: 10, pop: 10, land: 30 },
+  port:       { gold: 80, pop: 20, land: 5  },
+  stronghold: { gold: 5,  pop: 0,  land: 0  },
+  ruins:      { gold: 0,  pop: 0,  land: 0  },
+};
+
+/** Returns the production stats for a territory based on its category */
+function getTerritoryProduction(territory: Territory): { gold: number; pop: number; land: number } {
+  if (territory.category && CATEGORY_PRODUCTION[territory.category]) {
+    return CATEGORY_PRODUCTION[territory.category];
+  }
+  // Fallback: use legacy defenseLevel-based production
+  return {
+    gold: 10 * territory.defenseLevel,
+    pop: 5 * territory.defenseLevel,
+    land: 2 * territory.defenseLevel,
+  };
+}
+
 const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
   const [showInfo, setShowInfo] = React.useState(false);
-  
+  const navigate = useNavigate();
+  const { kingdomId } = useParams<{ kingdomId: string }>();
+
   // Get resources from centralized kingdom store
   const kingdomResources = useKingdomStore((state) => state.resources);
-  
+
   const {
     territories,
     ownedTerritories,
@@ -52,14 +100,6 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
     config: config.gentle
   });
 
-  // Territory card transitions
-  const territoryTransitions = useTransition(territories, {
-    from: { opacity: 0, scale: 0.8, y: 20 },
-    enter: { opacity: 1, scale: 1, y: 0 },
-    leave: { opacity: 0, scale: 0.8, y: -20 },
-    config: config.wobbly
-  });
-
   // Expansion history transitions
   const historyTransitions = useTransition(expansionHistory.slice(0, 5), {
     from: { opacity: 0, x: -50 },
@@ -69,6 +109,34 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
   });
 
   const ownedTerritoriesData = useMemo(() => getOwnedTerritories(), [getOwnedTerritories]);
+
+  // Group owned territories by regionId for the management view
+  const territoriesByRegion = useMemo(() => {
+    const groups: Record<string, Territory[]> = {};
+    for (const t of ownedTerritoriesData) {
+      const key = t.regionId || 'unassigned';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(t);
+    }
+    return groups;
+  }, [ownedTerritoriesData]);
+
+  // Sum total production across all owned territories
+  const totalProduction = useMemo(() => {
+    return ownedTerritoriesData.reduce(
+      (acc, t) => {
+        const prod = getTerritoryProduction(t);
+        return { gold: acc.gold + prod.gold, pop: acc.pop + prod.pop, land: acc.land + prod.land };
+      },
+      { gold: 0, pop: 0, land: 0 }
+    );
+  }, [ownedTerritoriesData]);
+
+  // Territories available to claim (in availableExpansions but not yet owned)
+  const claimableTerritories = useMemo(
+    () => territories.filter(t => availableExpansions.some(e => e.territoryId === t.id)),
+    [territories, availableExpansions]
+  );
 
   const handleClaimTerritory = async (territoryId: string) => {
     if (canClaimTerritory(territoryId)) {
@@ -80,6 +148,12 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
     await upgradeTerritory(territoryId);
   };
 
+  const handleNavigateToWorldMap = () => {
+    if (kingdomId) {
+      navigate(`/kingdom/${kingdomId}/worldmap`);
+    }
+  };
+
   return (
     <div className="territory-expansion">
       {/* Header with Back Navigation */}
@@ -89,81 +163,56 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
             ← Back to Kingdom
           </button>
         )}
-        <h1>🏰 Territory Expansion</h1>
-        <button 
+        <h1>Territory Management</h1>
+        <button
           className="info-btn"
           onClick={() => setShowInfo(!showInfo)}
           aria-label="Toggle territory information"
         >
-          ℹ️ {showInfo ? 'Hide' : 'What are territories?'}
+          {showInfo ? 'Hide Info' : 'What are territories?'}
         </button>
       </div>
 
       {/* Info Panel */}
       {showInfo && (
         <div className="info-panel">
-          <h3>📚 About Territories</h3>
+          <h3>About Territories</h3>
           <div className="info-content">
             <div className="info-section">
-              <h4>🏰 What are Territories?</h4>
+              <h4>What are Territories?</h4>
               <p>
-                Territories are the foundation of your kingdom's power. Each territory you control 
-                generates resources every turn and contributes to your overall strength.
+                Territories are individual holdings within a Region. Each territory you control
+                generates resources every turn based on its category (farmland, mine, forest, etc.).
               </p>
             </div>
-            
+
             <div className="info-section">
-              <h4>💰 Resource Generation</h4>
+              <h4>Regions and Region Bonus</h4>
               <p>
-                Each territory produces <strong>Gold</strong>, <strong>Population</strong>, and <strong>Land</strong> 
-                based on its defense level. Higher level territories generate more resources per turn.
-              </p>
-              <ul>
-                <li><strong>Gold:</strong> 10 × Defense Level per turn</li>
-                <li><strong>Population:</strong> 5 × Defense Level per turn</li>
-                <li><strong>Land:</strong> 2 × Defense Level per turn</li>
-              </ul>
-            </div>
-            
-            <div className="info-section">
-              <h4>⬆️ Upgrading Territories</h4>
-              <p>
-                Upgrade your territories to increase their defense level and resource generation. 
-                Upgrades cost <strong>Gold only</strong> (for construction, fortifications, and workers).
-              </p>
-              <ul>
-                <li>+1 Defense Level per upgrade</li>
-                <li>Increased production per turn</li>
-                <li>Cost scales with level (higher levels more expensive)</li>
-              </ul>
-            </div>
-            
-            <div className="info-section">
-              <h4>🗺️ Claiming New Territories</h4>
-              <p>
-                Expand your kingdom by sending settlers to claim adjacent territories. 
-                Claiming costs:
-              </p>
-              <ul>
-                <li><strong>Gold:</strong> Infrastructure, supplies, and roads</li>
-                <li><strong>Population:</strong> Settlers who relocate to the new territory</li>
-              </ul>
-              <p>
-                Your kingdom's population temporarily decreases as settlers move, but the 
-                new territory gains those settlers. Both will grow over time through natural 
-                population generation.
+                Each region (e.g. Crystalpeak, Ironhold Keep) contains a fixed number of territory
+                slots. Control all slots in a region to earn a 20% production bonus on that region's
+                territories.
               </p>
             </div>
-            
+
             <div className="info-section">
-              <h4>📈 Expansion Benefits</h4>
-              <p>More territories mean:</p>
+              <h4>Production by Category</h4>
               <ul>
-                <li>Greater resource income per turn</li>
-                <li>Stronger defensive position</li>
-                <li>More strategic options</li>
-                <li>Higher kingdom prestige</li>
+                <li><strong>Farmland:</strong> 20 gold · 30 pop · 50 land per tick</li>
+                <li><strong>Mine:</strong> 60 gold · 5 pop · 10 land per tick</li>
+                <li><strong>Forest:</strong> 10 gold · 10 pop · 30 land per tick</li>
+                <li><strong>Port:</strong> 80 gold · 20 pop · 5 land per tick</li>
+                <li><strong>Stronghold:</strong> 5 gold · 0 pop · 0 land per tick (+defence)</li>
+                <li><strong>Ruins:</strong> 0 per tick (excavate for one-time gold)</li>
               </ul>
+            </div>
+
+            <div className="info-section">
+              <h4>Claiming Territories</h4>
+              <p>
+                Visit the World Map to discover regions and claim territory slots. Each claim costs
+                gold and sends settlers from your kingdom to the new territory.
+              </p>
             </div>
           </div>
         </div>
@@ -172,8 +221,8 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
       {/* Error Display */}
       {error && (
         <div className="error-banner">
-          <span>⚠️ {error}</span>
-          <button onClick={clearError} aria-label="Dismiss error">×</button>
+          <span>{error}</span>
+          <button onClick={clearError} aria-label="Dismiss error">x</button>
         </div>
       )}
 
@@ -205,6 +254,18 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
         </div>
       </div>
 
+      {/* Total Territory Production Summary */}
+      {ownedTerritoriesData.length > 0 && (
+        <div className="territory-income-summary">
+          <h3>Total territory income:</h3>
+          <div className="income-chips">
+            <span className="income-chip">💰 {totalProduction.gold}/tick</span>
+            <span className="income-chip">👥 {totalProduction.pop}/tick</span>
+            <span className="income-chip">🏞️ {totalProduction.land}/tick</span>
+          </div>
+        </div>
+      )}
+
       {/* Territory Overview */}
       <div className="territory-overview">
         <h2>Territory Overview</h2>
@@ -218,35 +279,92 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
             <span className="stat-label">Available Expansions</span>
           </div>
           <div className="stat-card">
-            <span className="stat-value">
-              {ownedTerritoriesData.reduce((sum, t) => sum + (10 * t.defenseLevel), 0)}
-            </span>
-            <span className="stat-label">Gold Per Turn</span>
+            <span className="stat-value">{totalProduction.gold}</span>
+            <span className="stat-label">Gold Per Tick</span>
           </div>
         </div>
       </div>
 
-      {/* Territory Grid */}
+      {/* Owned Territories — grouped by Region */}
+      {ownedTerritoriesData.length > 0 && (
+        <div className="owned-territories-section">
+          <h2>Your Territories</h2>
+          {Object.entries(territoriesByRegion).map(([regionId, regionTerritories]) => {
+            const regionMeta = REGION_NAMES[regionId];
+            const regionName = regionMeta ? regionMeta.name : regionId === 'unassigned' ? 'Unassigned Region' : regionId;
+            const regionType = regionMeta ? regionMeta.type : 'settlement';
+            const slotMax = REGION_SLOT_COUNTS[regionType] ?? 3;
+            const slotCount = regionTerritories.length;
+            const isFullyControlled = slotCount >= slotMax;
+
+            return (
+              <div key={regionId} className="region-group">
+                <div className="region-group-header">
+                  <span className="region-group-name">{regionName}</span>
+                  <span className="region-slot-progress">
+                    {slotCount} / {slotMax} slots
+                  </span>
+                  {isFullyControlled && (
+                    <span className="region-bonus-badge">Region Bonus Active (+20%)</span>
+                  )}
+                </div>
+                <div className="territory-grid">
+                  {regionTerritories.map((territory) => (
+                    <OwnedTerritoryCard
+                      key={territory.id}
+                      territory={territory}
+                      isSelected={selectedTerritory === territory.id}
+                      onSelect={() => selectTerritory(territory.id)}
+                      onUpgrade={() => handleUpgradeTerritory(territory.id)}
+                      upgradeCost={getUpgradeCost(territory.id)}
+                      canAfford={canAffordUpgrade(territory.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Available Expansions (claimable territories) */}
       <animated.div className="territory-grid" style={gridSpring as unknown as React.CSSProperties}>
-        {territoryTransitions((style, territory) => (
-          <TerritoryCard
-            key={territory.id}
-            territory={territory}
-            style={style as unknown as React.CSSProperties}
-            isOwned={ownedTerritories.some(t => t.id === territory.id)}
-            isSelected={selectedTerritory === territory.id}
-            canClaim={canClaimTerritory(territory.id)}
-            onSelect={() => {
-              selectTerritory(territory.id);
-            }}
-            onClaim={() => handleClaimTerritory(territory.id)}
-            onUpgrade={() => handleUpgradeTerritory(territory.id)}
-            upgradeCost={getUpgradeCost(territory.id)}
-            claimCost={getClaimCost(territory.id)}
-            canAfford={canAffordUpgrade(territory.id)}
-            canAffordClaim={canClaimTerritory(territory.id)}
-          />
-        ))}
+        {claimableTerritories.length > 0 ? (
+          <>
+            <h2 style={{ gridColumn: '1 / -1', margin: '1rem 0 0.5rem' }}>Available to Claim</h2>
+            {claimableTerritories.map((territory) => (
+              <TerritoryCard
+                key={territory.id}
+                territory={territory}
+                style={{}}
+                isOwned={false}
+                isSelected={selectedTerritory === territory.id}
+                canClaim={canClaimTerritory(territory.id)}
+                onSelect={() => selectTerritory(territory.id)}
+                onClaim={() => handleClaimTerritory(territory.id)}
+                onUpgrade={() => handleUpgradeTerritory(territory.id)}
+                upgradeCost={getUpgradeCost(territory.id)}
+                claimCost={getClaimCost(territory.id)}
+                canAfford={canAffordUpgrade(territory.id)}
+                canAffordClaim={canClaimTerritory(territory.id)}
+              />
+            ))}
+          </>
+        ) : ownedTerritoriesData.length === 0 ? (
+          <div className="empty-territories">
+            <p>No territories yet. Explore the World Map to discover and claim territories.</p>
+            <button className="worldmap-link-btn" onClick={handleNavigateToWorldMap}>
+              Go to World Map
+            </button>
+          </div>
+        ) : (
+          <div className="empty-expansions">
+            <p>No additional territories available here. Explore the World Map to discover and claim territories.</p>
+            <button className="worldmap-link-btn" onClick={handleNavigateToWorldMap}>
+              Go to World Map
+            </button>
+          </div>
+        )}
       </animated.div>
 
       {/* Expansion History */}
@@ -256,14 +374,14 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
           {historyTransitions((style, expansion) => (
             <animated.div key={expansion.timestamp} style={style} className="history-item">
               <div className="history-icon">
-                {expansion.success ? '✅' : '❌'}
+                {expansion.success ? '✓' : '✗'}
               </div>
               <div className="history-content">
                 <span className="history-territory">
                   {getTerritoryById(expansion.territoryId)?.name || 'Unknown Territory'}
                 </span>
                 <span className="history-cost">
-                  Cost: {expansion.cost.gold}💰 {expansion.cost.turns}⏱️
+                  Cost: {expansion.cost.gold} gold · {expansion.cost.turns} turns
                 </span>
               </div>
               <div className="history-time">
@@ -277,7 +395,98 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
   );
 };
 
-// Territory Card Component
+// Owned Territory Card — shows category-based production stats
+interface OwnedTerritoryCardProps {
+  territory: Territory;
+  isSelected: boolean;
+  onSelect: () => void;
+  onUpgrade: () => void;
+  upgradeCost: { gold: number } | null;
+  canAfford: boolean;
+}
+
+const OwnedTerritoryCard: React.FC<OwnedTerritoryCardProps> = ({
+  territory,
+  isSelected,
+  onSelect,
+  onUpgrade,
+  upgradeCost,
+  canAfford,
+}) => {
+  const cardSpring = useSpring({
+    borderColor: isSelected ? '#4ecdc4' : '#10b981',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    scale: isSelected ? 1.02 : 1,
+    config: config.gentle,
+  });
+
+  const production = getTerritoryProduction(territory);
+
+  const getCategoryIcon = (category?: string) => {
+    switch (category) {
+      case 'farmland':   return '🌾';
+      case 'mine':       return '⛏️';
+      case 'forest':     return '🌲';
+      case 'port':       return '⚓';
+      case 'stronghold': return '🛡️';
+      case 'ruins':      return '🏚️';
+      default:           return '📍';
+    }
+  };
+
+  return (
+    <animated.div
+      style={cardSpring as unknown as React.CSSProperties}
+      className={`territory-card owned ${isSelected ? 'selected' : ''}`}
+      onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      aria-label={`Territory: ${territory.name}`}
+    >
+      <div className="territory-header">
+        <div className="territory-icon">{getCategoryIcon(territory.category)}</div>
+        <div className="territory-info">
+          <h4>{territory.name}</h4>
+          <span className="territory-type">{territory.category || territory.type}</span>
+        </div>
+        <div className="territory-level">Lv.{territory.defenseLevel}</div>
+      </div>
+
+      {/* Production stats per tick */}
+      <div className="territory-production">
+        <div className="production-chips">
+          <span className="production-chip" title="Gold per tick">💰 {production.gold}/tick</span>
+          <span className="production-chip" title="Population per tick">👥 {production.pop}/tick</span>
+          <span className="production-chip" title="Land per tick">🏞️ {production.land}/tick</span>
+        </div>
+      </div>
+
+      <div className="territory-actions">
+        {upgradeCost && (
+          <div className="upgrade-cost">
+            <span className="cost-label">Upgrade cost:</span>
+            <span className={canAfford ? 'cost-affordable' : 'cost-insufficient'}>
+              💰 {Math.floor(upgradeCost.gold).toLocaleString()} Gold
+            </span>
+          </div>
+        )}
+        <button
+          className="upgrade-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            onUpgrade();
+          }}
+          disabled={!canAfford}
+          title={canAfford ? 'Upgrade this territory' : 'Not enough gold'}
+        >
+          {canAfford ? `Upgrade to Lv.${territory.defenseLevel + 1}` : 'Insufficient Gold'}
+        </button>
+      </div>
+    </animated.div>
+  );
+};
+
+// Territory Card Component (used for claimable territories)
 interface TerritoryCardProps {
   territory: Territory;
   style: React.CSSProperties;
@@ -309,10 +518,10 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
 }) => {
   const cardSpring = useSpring({
     borderColor: isSelected ? '#4ecdc4' : isOwned ? '#10b981' : 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: isOwned 
-      ? 'rgba(16, 185, 129, 0.1)' 
-      : canClaim 
-        ? 'rgba(79, 172, 254, 0.1)' 
+    backgroundColor: isOwned
+      ? 'rgba(16, 185, 129, 0.1)'
+      : canClaim
+        ? 'rgba(79, 172, 254, 0.1)'
         : 'rgba(255, 255, 255, 0.05)',
     scale: isSelected ? 1.02 : 1,
     config: config.gentle
@@ -328,6 +537,8 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
     }
   };
 
+  const production = getTerritoryProduction(territory);
+
   return (
     <animated.div
       style={{ ...style, ...cardSpring }}
@@ -341,7 +552,7 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
         <div className="territory-icon">{getTypeIcon(territory.type)}</div>
         <div className="territory-info">
           <h4>{territory.name}</h4>
-          <span className="territory-type">{territory.type}</span>
+          <span className="territory-type">{territory.category || territory.type}</span>
         </div>
         <div className="territory-level">
           Lv.{territory.defenseLevel}
@@ -349,17 +560,11 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
       </div>
 
       <div className="territory-production">
-        <div className="production-label">Production per turn:</div>
-        <div className="production-items">
-          <span className="production-item" title="Gold per turn">
-            💰 {10 * territory.defenseLevel}/turn
-          </span>
-          <span className="production-item" title="Population per turn">
-            👥 {5 * territory.defenseLevel}/turn
-          </span>
-          <span className="production-item" title="Land per turn">
-            🏞️ {2 * territory.defenseLevel}/turn
-          </span>
+        <div className="production-label">Production per tick:</div>
+        <div className="production-chips">
+          <span className="production-chip" title="Gold per tick">💰 {production.gold}/tick</span>
+          <span className="production-chip" title="Population per tick">👥 {production.pop}/tick</span>
+          <span className="production-chip" title="Land per tick">🏞️ {production.land}/tick</span>
         </div>
       </div>
 
@@ -376,7 +581,7 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
                 </div>
               </div>
             )}
-            <button 
+            <button
               className="upgrade-btn"
               onClick={(e) => {
                 e.stopPropagation();
@@ -403,7 +608,7 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
                 </div>
               </div>
             )}
-            <button 
+            <button
               className="claim-btn"
               onClick={(e) => {
                 e.stopPropagation();
