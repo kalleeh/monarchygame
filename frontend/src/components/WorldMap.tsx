@@ -15,6 +15,8 @@ import type { Schema } from '../../../amplify/data/resource';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 import { useTerritoryStore } from '../stores/territoryStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
+import { useKingdomStore } from '../stores/kingdomStore';
+import { ToastService } from '../services/toastService';
 
 interface Node {
   id: string;
@@ -185,6 +187,30 @@ const WORLD_REGIONS: RegionSlot[] = [
 // ─── Fog-of-war helper ───────────────────────────────────────────────────────
 
 const FOG_RADIUS = 5000;
+
+// ─── Claim costs & adjacency ─────────────────────────────────────────────────
+
+/** Gold + turns required to claim a Region, by archetype */
+const CLAIM_COST: Record<string, { gold: number; turns: number }> = {
+  capital:    { gold: 1000, turns: 5 },
+  settlement: { gold: 500,  turns: 3 },
+  outpost:    { gold: 300,  turns: 2 },
+  fortress:   { gold: 800,  turns: 4 },
+};
+
+/** Max distance (world units) from an owned region to allow claiming a neighbour */
+const CLAIM_ADJACENCY_RADIUS = 3500;
+
+/** Returns true if the target region is adjacent to at least one player-owned region */
+function isAdjacentToPlayer(
+  target: { x: number; y: number },
+  playerPositions: { x: number; y: number }[],
+): boolean {
+  if (playerPositions.length === 0) return true; // first ever claim is always allowed
+  return playerPositions.some(
+    (p) => Math.sqrt((target.x - p.x) ** 2 + (target.y - p.y) ** 2) <= CLAIM_ADJACENCY_RADIUS,
+  );
+}
 
 function isInFogOfWar(
   pos: { x: number; y: number },
@@ -358,6 +384,9 @@ function buildNodeStyle(
 const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
   const ownedTerritories = useTerritoryStore((s) => s.ownedTerritories);
   const aiKingdoms = useAIKingdomStore((s) => s.aiKingdoms);
+  const resources = useKingdomStore((s) => s.resources);
+  const addGold = useKingdomStore((s) => s.addGold);
+  const addTurns = useKingdomStore((s) => s.addTurns);
 
   // ── Build ownership map ──────────────────────────────────────────────────
 
@@ -608,21 +637,37 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
     const region = WORLD_REGIONS.find(r => r.id === wtId);
     if (!region) return;
 
-    // Determine category from region archetype
+    const cost = CLAIM_COST[region.type] ?? CLAIM_COST.settlement;
+    const currentGold = resources.gold ?? 0;
+    const currentTurns = resources.turns ?? 0;
+
+    // ── Adjacency check ───────────────────────────────────────────────────
+    if (!isAdjacentToPlayer(region.position, playerPositions)) {
+      ToastService.error('Too far away! You can only claim regions adjacent to your existing territories.');
+      return;
+    }
+
+    // ── Resource checks ───────────────────────────────────────────────────
+    if (currentGold < cost.gold) {
+      ToastService.error(`Not enough gold! Need ${cost.gold.toLocaleString()}g (you have ${currentGold.toLocaleString()}g).`);
+      return;
+    }
+    if (currentTurns < cost.turns) {
+      ToastService.error(`Not enough turns! Need ${cost.turns} turns (you have ${currentTurns}).`);
+      return;
+    }
+
+    // ── Deduct resources ──────────────────────────────────────────────────
+    addGold(-cost.gold);
+    addTurns(-cost.turns);
+
     const ARCHETYPE_CATEGORY: Record<string, string> = {
-      capital: 'farmland',
-      settlement: 'farmland',
-      outpost: 'forest',
-      fortress: 'mine',
+      capital: 'farmland', settlement: 'farmland', outpost: 'forest', fortress: 'mine',
     };
     const category = ARCHETYPE_CATEGORY[region.type] ?? 'farmland';
 
-    // The store's claimTerritory requires a pre-existing availableExpansion entry.
-    // Since world-map regions bypass that flow, we push directly into ownedTerritories
-    // via the store's internal state to ensure the ownership memo re-computes correctly.
     const storeState = useTerritoryStore.getState();
     try {
-      // Build base Territory shape then attach regionId/category for Phase 2 matching
       const baseTerritory: Parameters<typeof storeState.addTerritory>[0] = {
         id: region.id,
         name: region.name,
@@ -636,15 +681,10 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
       };
       const newTerritory = Object.assign(baseTerritory, { regionId: region.id, category });
       storeState.addTerritory(newTerritory);
-      // Also push into ownedTerritories directly
       useTerritoryStore.setState((s) => ({
-        ownedTerritories: [
-          ...s.ownedTerritories,
-          newTerritory,
-        ],
+        ownedTerritories: [...s.ownedTerritories, newTerritory],
       }));
 
-      // Update local node appearance immediately
       setNodes((nds) =>
         nds.map((n) =>
           n.id === selectedTerritoryNode.id
@@ -656,7 +696,11 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
             : n,
         ),
       );
+      ToastService.success(`${region.name} claimed! (-${cost.gold.toLocaleString()}g, -${cost.turns} turns)`);
     } catch (err) {
+      // Refund on failure
+      addGold(cost.gold);
+      addTurns(cost.turns);
       console.error('Failed to claim territory:', err);
     }
 
@@ -886,27 +930,50 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
                 </p>
               )}
 
-              {/* Claim button — only for neutral territories */}
-              {selectedTerritory.ownership === 'neutral' && (
-                <button
-                  onClick={handleClaimTerritory}
-                  style={{
-                    marginTop: '1rem',
-                    width: '100%',
-                    padding: '0.6rem',
-                    background: '#16a34a',
-                    border: 'none',
-                    color: '#fff',
-                    cursor: 'pointer',
-                    borderRadius: 6,
-                    fontFamily: 'var(--font-display, Cinzel, serif)',
-                    fontSize: '0.85rem',
-                    letterSpacing: '0.05em',
-                  }}
-                >
-                  Claim Territory
-                </button>
-              )}
+              {/* Claim button — only for neutral territories, shows cost + affordability */}
+              {selectedTerritory.ownership === 'neutral' && (() => {
+                const region = WORLD_REGIONS.find(r => r.id === selectedTerritory.id);
+                const cost = CLAIM_COST[region?.type ?? 'settlement'] ?? CLAIM_COST.settlement;
+                const canAfford = (resources.gold ?? 0) >= cost.gold && (resources.turns ?? 0) >= cost.turns;
+                const adjacent = isAdjacentToPlayer(
+                  region?.position ?? { x: 0, y: 0 },
+                  playerPositions,
+                );
+                const blocked = !adjacent || !canAfford;
+                return (
+                  <div style={{ marginTop: '1rem' }}>
+                    <p style={{ color: '#9ca3af', fontSize: '0.75rem', marginBottom: '0.4rem', textAlign: 'center' }}>
+                      Cost: <strong style={{ color: canAfford ? '#d4a017' : '#f87171' }}>
+                        {cost.gold.toLocaleString()}g
+                      </strong>
+                      {' · '}
+                      <strong style={{ color: (resources.turns ?? 0) >= cost.turns ? '#d4a017' : '#f87171' }}>
+                        {cost.turns} turns
+                      </strong>
+                      {!adjacent && <span style={{ color: '#f87171', display: 'block', marginTop: '0.2rem' }}>⚠ Too far from your territory</span>}
+                    </p>
+                    <button
+                      onClick={handleClaimTerritory}
+                      disabled={blocked}
+                      style={{
+                        width: '100%',
+                        padding: '0.6rem',
+                        background: blocked ? '#374151' : '#16a34a',
+                        border: blocked ? '1px solid #4b5563' : 'none',
+                        color: blocked ? '#6b7280' : '#fff',
+                        cursor: blocked ? 'not-allowed' : 'pointer',
+                        borderRadius: 6,
+                        fontFamily: 'var(--font-display, Cinzel, serif)',
+                        fontSize: '0.85rem',
+                        letterSpacing: '0.05em',
+                        opacity: blocked ? 0.7 : 1,
+                      }}
+                    >
+                      {blocked ? 'Cannot Claim' : 'Claim Territory'}
+                    </button>
+                  </div>
+                );
+              })()}
 
               {/* Greyed-out Claim button for enemy territories */}
               {selectedTerritory.ownership === 'enemy' && (
