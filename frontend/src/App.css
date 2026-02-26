@@ -68,6 +68,17 @@ body {
   /* same styling as the default; extend here if needed */
 }
 
+.utility-bar-btn--admin {
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.utility-bar-btn--admin:hover {
+  background: rgba(139, 92, 246, 0.25);
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
 /* sign-out-btn kept for any external references; real styles now on utility-bar-btn */
 .sign-out-btn {
   padding: 0.25rem 0.6rem;

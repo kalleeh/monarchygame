@@ -36,6 +36,7 @@ const BountyBoard = lazy(() => import('./components/BountyBoard'));
 const FaithInterface = lazy(() => import('./components/FaithInterface'));
 const MultiplayerLobby = lazy(() => import('./components/MultiplayerLobby'));
 const KingdomBrowser = lazy(() => import('./components/KingdomBrowser'));
+const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard'));
 
 interface AppRouterProps {
   kingdoms: Schema['Kingdom']['type'][];
@@ -59,6 +60,9 @@ export function AppRouter({ kingdoms, onGetStarted, onKingdomCreated }: AppRoute
         {/* Kingdom routes - all nested under /kingdom/:kingdomId */}
         <Route path="/kingdom/:kingdomId/*" element={<KingdomRoutes kingdoms={kingdoms} />} />
         
+        {/* Admin dashboard */}
+        <Route path="/admin" element={<Suspense fallback={<LoadingSkeleton type="page" />}><AdminDashboard /></Suspense>} />
+
         {/* Redirect unknown routes to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

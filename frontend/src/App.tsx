@@ -44,6 +44,7 @@ function AppContent() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [username, setUsername] = useState<string>('User');
   const [hasInitialFetch, setHasInitialFetch] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
 
   const fetchKingdoms = useCallback(async () => {
     try {
@@ -105,6 +106,13 @@ function AppContent() {
       fetchUserAttributes()
         .then(attributes => {
           setUsername(attributes.preferred_username || attributes.email || 'User');
+          // Check admin access
+          const email = attributes.email || '';
+          const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '')
+            .split(',')
+            .map((e: string) => e.trim())
+            .filter(Boolean);
+          setIsAdminUser(adminEmails.includes(email));
         })
         .catch(err => {
           console.error('Failed to fetch user attributes:', err);
@@ -285,6 +293,13 @@ function AppContent() {
         <div className="app-utility-bar">
           <span className="utility-bar-label">Demo Mode</span>
           <button
+            className="utility-bar-btn utility-bar-btn--admin"
+            onClick={() => navigate('/admin')}
+            title="Admin Dashboard"
+          >
+            ⚙ Admin
+          </button>
+          <button
             onClick={() => {
               // Clear all demo data
               const savedKingdoms = localStorage.getItem('demo-kingdoms');
@@ -376,6 +391,15 @@ function AppContent() {
         <Toaster />
         <div className="app-utility-bar">
           <span className="utility-bar-label">Welcome, {username}</span>
+          {isAdminUser && (
+            <button
+              className="utility-bar-btn utility-bar-btn--admin"
+              onClick={() => navigate('/admin')}
+              title="Admin Dashboard"
+            >
+              ⚙ Admin
+            </button>
+          )}
           <button onClick={signOut} className="utility-bar-btn utility-bar-btn--signout">
             Sign Out
           </button>
