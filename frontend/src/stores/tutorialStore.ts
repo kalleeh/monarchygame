@@ -25,7 +25,7 @@ export const useTutorialStore = create<TutorialStore>()(
       currentStep: 0,
       completed: false,
       skipped: false,
-      totalSteps: 10,
+      totalSteps: 5,
 
       // Actions
       nextStep: () => {

@@ -122,8 +122,8 @@ test.describe('Demo Mode - Core Gameplay', () => {
   test('demo mode header shows player name and Exit Demo button', async ({ page }) => {
     await enterDemoMode(page);
 
-    // App.tsx renders these in the header when demoMode === true.
-    await expect(page.locator('text=Demo Player')).toBeVisible();
+    // App.tsx renders the utility bar with "Demo Mode" label and "Exit Demo" button when demoMode === true.
+    await expect(page.locator('.utility-bar-label:has-text("Demo Mode")')).toBeVisible();
     await expect(page.locator('button:has-text("Exit Demo")')).toBeVisible();
   });
 
@@ -246,7 +246,7 @@ test.describe('Demo Mode - Core Gameplay', () => {
     await page.reload();
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('h1')).toContainText('Demo Mode');
+    await expect(page.locator('.utility-bar-label:has-text("Demo Mode")')).toBeVisible();
     await expect(page.locator('h2:has-text("Your Kingdoms")')).toBeVisible({ timeout: 10000 });
   });
 });

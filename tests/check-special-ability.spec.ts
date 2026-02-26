@@ -14,6 +14,13 @@ test('Check special ability display', async ({ page }) => {
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(2000);
 
+  // Dismiss tutorial if it appears
+  const skipBtn = page.locator('button:has-text("Skip Tutorial")');
+  if (await skipBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await skipBtn.click();
+    await page.waitForTimeout(300);
+  }
+
   // Click on Human race card
   const humanCard = page.locator('.race-card').filter({ hasText: 'Human' }).first();
   await humanCard.click();

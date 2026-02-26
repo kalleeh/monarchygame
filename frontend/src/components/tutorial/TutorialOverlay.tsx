@@ -20,29 +20,29 @@ const tutorialSteps: TutorialStepData[] = [
   },
   {
     id: 1,
+    title: '🏰 Kingdom Creation',
+    description: 'Choose your race and name your kingdom wisely. Each race has unique strengths and special abilities that define your playstyle.',
+    targetElement: '.race-grid',
+    position: 'bottom',
+  },
+  {
+    id: 2,
     title: '💰 Resource Management',
     description: 'These are your kingdom\'s vital resources. Gold funds your armies, Population provides workers, Land expands your territory, and Turns let you take actions.',
     targetElement: '.resources-panel',
     position: 'bottom',
   },
   {
-    id: 2,
+    id: 3,
     title: '🗺️ Territory & Actions',
     description: 'Use these action buttons to expand your kingdom, train armies, cast spells, and manage diplomacy. Each action costs turns.',
     targetElement: '.actions-panel',
     position: 'top',
   },
   {
-    id: 3,
-    title: '⏰ Time Travel (Demo Mode)',
-    description: 'In demo mode, use the Time Travel button (bottom-right) to fast-forward time and generate resources instantly. Perfect for testing!',
-    targetElement: '.demo-time-control',
-    position: 'top',
-  },
-  {
     id: 4,
-    title: '⚔️ Ready to Rule!',
-    description: 'You\'re all set! Explore territories, manage resources, and build the most powerful kingdom. Good luck, ruler!',
+    title: '⚔️ Combat & Alliances',
+    description: 'Battle other kingdoms, forge alliances, and dominate the leaderboard. Use your race\'s special abilities to gain the upper hand. Good luck, ruler!',
   },
 ];
 
@@ -51,7 +51,6 @@ export function TutorialOverlay() {
     currentStep,
     completed,
     skipped,
-    totalSteps,
     nextStep,
     previousStep,
     skipTutorial,
@@ -101,7 +100,7 @@ export function TutorialOverlay() {
 
   const currentStepData = tutorialSteps[currentStep];
   const isFirst = currentStep === 0;
-  const isLast = currentStep === totalSteps - 1;
+  const isLast = currentStep === tutorialSteps.length - 1;
 
   const handleNext = () => {
     if (isLast) {
@@ -118,15 +117,26 @@ export function TutorialOverlay() {
 
       {/* Bright highlight border around target element */}
       {highlightRect && (
-        <div
-          className="tutorial-spotlight"
-          style={{
-            top: highlightRect.top - 8,
-            left: highlightRect.left - 8,
-            width: highlightRect.width + 16,
-            height: highlightRect.height + 16,
-          }}
-        />
+        <>
+          <div
+            className="tutorial-spotlight"
+            style={{
+              top: highlightRect.top - 8,
+              left: highlightRect.left - 8,
+              width: highlightRect.width + 16,
+              height: highlightRect.height + 16,
+            }}
+          />
+          <div
+            className="tutorial-highlight-border"
+            style={{
+              top: highlightRect.top - 4,
+              left: highlightRect.left - 4,
+              width: highlightRect.width + 8,
+              height: highlightRect.height + 8,
+            }}
+          />
+        </>
       )}
       
       {/* Tutorial content positioned near highlighted element */}
@@ -146,7 +156,7 @@ export function TutorialOverlay() {
           transform: 'translate(-50%, -50%)'
         }}
       >
-        <ProgressIndicator currentStep={currentStep} totalSteps={totalSteps} />
+        <ProgressIndicator currentStep={currentStep} totalSteps={tutorialSteps.length} />
         
         <TutorialStep
           step={currentStepData}
