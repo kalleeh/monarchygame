@@ -71,7 +71,7 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
       filter: { kingdomId: { eq: kingdomId } }
     });
     const duplicate = existingTerritories.data?.find(
-      (t) => t.coordinates === coordStr
+      (t: { coordinates?: string | null }) => t.coordinates === coordStr
     );
     if (duplicate) {
       return { success: false, error: 'Territory already claimed at these coordinates', errorCode: ErrorCode.INVALID_PARAM };

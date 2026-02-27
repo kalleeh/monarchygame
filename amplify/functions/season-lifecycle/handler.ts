@@ -27,13 +27,13 @@ async function recordSeasonRankings(seasonNumber: number): Promise<void> {
 
   // Parse resources (stored as JSON string in DB) and compute networth
   const ranked = kingdoms
-    .map(k => {
+    .map((k: typeof kingdoms[0]) => {
       const resources = typeof k.resources === 'string'
         ? (JSON.parse(k.resources) as Record<string, number>)
         : ((k.resources ?? {}) as Record<string, number>);
       return { id: k.id, networth: calculateNetworth(resources), stats: k.stats };
     })
-    .sort((a, b) => b.networth - a.networth);
+    .sort((a: { id: string; networth: number; stats: string | null | undefined }, b: { id: string; networth: number; stats: string | null | undefined }) => b.networth - a.networth);
 
   // Write rank back to each kingdom's stats JSON
   for (let i = 0; i < ranked.length; i++) {
@@ -95,7 +95,7 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
 
         // Find the latest season number
         const { data: allSeasons } = await client.models.GameSeason.list();
-        const maxNumber = allSeasons?.reduce((max, s) => Math.max(max, s.seasonNumber), 0) ?? 0;
+        const maxNumber = allSeasons?.reduce((max: number, s: { seasonNumber: number }) => Math.max(max, s.seasonNumber), 0) ?? 0;
 
         const season = await client.models.GameSeason.create({
           seasonNumber: maxNumber + 1,
