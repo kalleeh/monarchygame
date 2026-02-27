@@ -22,6 +22,23 @@ vi.mock('aws-amplify/data', () => ({
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
+// Type helpers
+// ---------------------------------------------------------------------------
+
+interface HandlerResult {
+  success: boolean;
+  result?: string | null;
+  error?: string | null;
+  errorCode?: string | null;
+}
+
+// Cast handler to a simple single-argument callable so tests are not burdened
+// by the Amplify Gen2 / AWS Lambda 3-argument (event, context, callback)
+// signature, and so that the return type is narrowed to HandlerResult rather
+// than the loose JSON union produced by .returns(a.json()).
+const callHandler = handler as unknown as (event: unknown) => Promise<HandlerResult>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -59,7 +76,7 @@ describe('spell-caster handler', () => {
     it('deducts 50 mana from caster for calming_chant (no-damage spell)', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
 
-      const result = await handler(makeEvent({ casterId: 'kingdom-1', spellId: 'calming_chant' }));
+      const result = await callHandler(makeEvent({ casterId: 'kingdom-1', spellId: 'calming_chant' }));
 
       expect(result.success).toBe(true);
       const parsed = JSON.parse(result.result as string);
@@ -84,7 +101,7 @@ describe('spell-caster handler', () => {
         .mockResolvedValueOnce(caster)   // get caster for mana check
         .mockResolvedValueOnce(target);  // re-fetch target for damage
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ casterId: 'caster-1', spellId: 'hurricane', targetId: 'target-1' })
       );
 
@@ -97,28 +114,28 @@ describe('spell-caster handler', () => {
 
   describe('validation failures', () => {
     it('returns MISSING_PARAMS when casterId is absent', async () => {
-      const result = await handler(makeEvent({ spellId: 'calming_chant' }));
+      const result = await callHandler(makeEvent({ spellId: 'calming_chant' }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('MISSING_PARAMS');
     });
 
     it('returns MISSING_PARAMS when spellId is absent', async () => {
-      const result = await handler(makeEvent({ casterId: 'kingdom-1' }));
+      const result = await callHandler(makeEvent({ casterId: 'kingdom-1' }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('MISSING_PARAMS');
     });
 
     it('returns INVALID_PARAM for an unknown spell', async () => {
-      const result = await handler(makeEvent({ casterId: 'kingdom-1', spellId: 'fireball' }));
+      const result = await callHandler(makeEvent({ casterId: 'kingdom-1', spellId: 'fireball' }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INVALID_PARAM');
     });
 
     it('returns INVALID_PARAM when spellId exceeds 64 characters', async () => {
-      const result = await handler(makeEvent({ casterId: 'kingdom-1', spellId: 's'.repeat(65) }));
+      const result = await callHandler(makeEvent({ casterId: 'kingdom-1', spellId: 's'.repeat(65) }));
 
       expect(result.success).toBe(false);
       // handler checks length before checking valid spells list — both produce INVALID_PARAM
@@ -130,7 +147,7 @@ describe('spell-caster handler', () => {
     it('returns NOT_FOUND when target kingdom does not exist', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ casterId: 'kingdom-1', spellId: 'calming_chant', targetId: 'ghost-kingdom' })
       );
 
@@ -144,7 +161,7 @@ describe('spell-caster handler', () => {
         .mockResolvedValueOnce(mockKingdom({ id: 'target-1' })) // target validation
         .mockResolvedValueOnce({ data: null, errors: null });    // caster not found
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ casterId: 'missing-caster', spellId: 'calming_chant', targetId: 'target-1' })
       );
 
@@ -159,7 +176,7 @@ describe('spell-caster handler', () => {
         mockKingdom({ resources: { gold: 10000, population: 1000, mana: 30, land: 1000 } })
       );
 
-      const result = await handler(makeEvent({ casterId: 'kingdom-1', spellId: 'calming_chant' }));
+      const result = await callHandler(makeEvent({ casterId: 'kingdom-1', spellId: 'calming_chant' }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INSUFFICIENT_RESOURCES');
@@ -171,7 +188,7 @@ describe('spell-caster handler', () => {
         mockKingdom({ resources: { gold: 10000, population: 1000, mana: 0, land: 1000 } })
       );
 
-      const result = await handler(makeEvent({ casterId: 'kingdom-1', spellId: 'hurricane' }));
+      const result = await callHandler(makeEvent({ casterId: 'kingdom-1', spellId: 'hurricane' }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INSUFFICIENT_RESOURCES');

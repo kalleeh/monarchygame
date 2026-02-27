@@ -18,6 +18,23 @@ vi.mock('aws-amplify/data', () => ({
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
+// Type helpers
+// ---------------------------------------------------------------------------
+
+interface HandlerResult {
+  success: boolean;
+  result?: string | null;
+  error?: string | null;
+  errorCode?: string | null;
+}
+
+// Cast handler to a simple single-argument callable so tests are not burdened
+// by the Amplify Gen2 / AWS Lambda 3-argument (event, context, callback)
+// signature, and so that the return type is narrowed to HandlerResult rather
+// than the loose JSON union produced by .returns(a.json()).
+const callHandler = handler as unknown as (event: unknown) => Promise<HandlerResult>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -76,7 +93,7 @@ describe('alliance-treasury handler', () => {
         mockClient.models.Alliance.get.mockResolvedValue(mockAlliance());
         mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
 
-        const result = await handler(
+        const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'contribute', amount: 1000 })
         );
 
@@ -99,7 +116,7 @@ describe('alliance-treasury handler', () => {
         mockClient.models.Alliance.get.mockResolvedValue(mockAlliance({ treasury: null }));
         mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
 
-        const result = await handler(
+        const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'contribute', amount: 500 })
         );
 
@@ -114,7 +131,7 @@ describe('alliance-treasury handler', () => {
         mockClient.models.Alliance.get.mockResolvedValue(mockAlliance());
         mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ resources: { gold: 200, population: 1000, mana: 500, land: 1000 } }));
 
-        const result = await handler(
+        const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'contribute', amount: 500 })
         );
 
@@ -130,7 +147,7 @@ describe('alliance-treasury handler', () => {
         mockClient.models.Alliance.get.mockResolvedValue(mockAlliance());
         mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
 
-        const result = await handler(
+        const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', kingdomId: 'missing-kingdom', action: 'contribute', amount: 500 })
         );
 
@@ -142,7 +159,7 @@ describe('alliance-treasury handler', () => {
       it('returns NOT_FOUND when alliance does not exist', async () => {
         mockClient.models.Alliance.get.mockResolvedValue({ data: null, errors: null });
 
-        const result = await handler(
+        const result = await callHandler(
           makeEvent({ allianceId: 'missing-alliance', kingdomId: 'kingdom-1', action: 'contribute', amount: 500 })
         );
 
@@ -153,7 +170,7 @@ describe('alliance-treasury handler', () => {
 
     describe('MISSING_PARAMS', () => {
       it('returns MISSING_PARAMS when allianceId is absent', async () => {
-        const result = await handler(
+        const result = await callHandler(
           makeEvent({ kingdomId: 'kingdom-1', action: 'contribute', amount: 500 })
         );
 
@@ -163,7 +180,7 @@ describe('alliance-treasury handler', () => {
       });
 
       it('returns MISSING_PARAMS when kingdomId is absent', async () => {
-        const result = await handler(
+        const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', action: 'contribute', amount: 500 })
         );
 
@@ -172,7 +189,7 @@ describe('alliance-treasury handler', () => {
       });
 
       it('returns MISSING_PARAMS when amount is absent', async () => {
-        const result = await handler(
+        const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'contribute' })
         );
 
@@ -181,7 +198,7 @@ describe('alliance-treasury handler', () => {
       });
 
       it('returns MISSING_PARAMS when action is absent', async () => {
-        const result = await handler(
+        const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', kingdomId: 'kingdom-1', amount: 500 })
         );
 
@@ -197,7 +214,7 @@ describe('alliance-treasury handler', () => {
         mockClient.models.Alliance.get.mockResolvedValue(mockAlliance());
         mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
 
-        const result = await handler(
+        const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'withdraw', amount: 2000 })
         );
 
@@ -223,7 +240,7 @@ describe('alliance-treasury handler', () => {
           mockAlliance({ owner: 'other-sub-456' })
         );
 
-        const result = await handler(
+        const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'withdraw', amount: 500 })
         );
 
@@ -241,7 +258,7 @@ describe('alliance-treasury handler', () => {
         );
         mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
 
-        const result = await handler(
+        const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'withdraw', amount: 500 })
         );
 
@@ -254,7 +271,7 @@ describe('alliance-treasury handler', () => {
 
     describe('UNAUTHORIZED', () => {
       it('returns UNAUTHORIZED when identity has no sub', async () => {
-        const result = await handler(
+        const result = await callHandler(
           makeEvent(
             { allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'withdraw', amount: 500 },
             { sub: undefined, username: 'test-user' }
@@ -267,7 +284,7 @@ describe('alliance-treasury handler', () => {
         // evaluates to false (falsy sub skips the check). However the action
         // still requires allianceId/kingdomId/amount. We test UNAUTHORIZED by
         // providing null identity entirely.
-        const resultNoIdentity = await handler(
+        const resultNoIdentity = await callHandler(
           makeEvent(
             { allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'withdraw', amount: 500 },
             null
@@ -280,7 +297,7 @@ describe('alliance-treasury handler', () => {
         mockClient.models.Alliance.get.mockResolvedValue(mockAlliance());
         mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
 
-        const resultWithNullIdentity = await handler(
+        const resultWithNullIdentity = await callHandler(
           makeEvent(
             { allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'withdraw', amount: 500 },
             null
@@ -292,7 +309,7 @@ describe('alliance-treasury handler', () => {
 
       it('fails with UNAUTHORIZED when identity is null and no mocks provided at top level', async () => {
         // Test the handler dispatch: action is missing triggers MISSING_PARAMS
-        const result = await handler(
+        const result = await callHandler(
           makeEvent(
             { allianceId: 'alliance-1', kingdomId: 'kingdom-1', amount: 500 },
             null

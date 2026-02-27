@@ -31,6 +31,16 @@ vi.mock('aws-amplify/data', () => ({
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
+// Type helpers
+// ---------------------------------------------------------------------------
+
+// Cast handler to a simple single-argument callable so tests are not burdened
+// by the Amplify Gen2 / AWS Lambda 3-argument (event, context, callback)
+// signature, and so that the return type is narrowed to string rather than
+// the loose JSON union produced by .returns(a.json()).
+const callHandler = handler as unknown as (event: unknown) => Promise<string>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -95,7 +105,7 @@ describe('season-lifecycle handler — create action', () => {
           errors: null,
         });
 
-      const result = await handler(makeEvent({ action: 'create' }));
+      const result = await callHandler(makeEvent({ action: 'create' }));
 
       const parsed = JSON.parse(result as string);
       expect(parsed.success).toBe(true);
@@ -113,7 +123,7 @@ describe('season-lifecycle handler — create action', () => {
         .mockResolvedValueOnce({ data: [], errors: null })
         .mockResolvedValueOnce({ data: [], errors: null });
 
-      const result = await handler(makeEvent({ action: 'create' }));
+      const result = await callHandler(makeEvent({ action: 'create' }));
 
       const parsed = JSON.parse(result as string);
       expect(parsed.success).toBe(true);
@@ -128,7 +138,7 @@ describe('season-lifecycle handler — create action', () => {
         errors: null,
       });
 
-      const result = await handler(makeEvent({ action: 'create' }));
+      const result = await callHandler(makeEvent({ action: 'create' }));
 
       const parsed = JSON.parse(result as string);
       expect(parsed.success).toBe(false);
@@ -145,7 +155,7 @@ describe('season-lifecycle handler — check action', () => {
       errors: null,
     });
 
-    const result = await handler(makeEvent({ action: 'check' }));
+    const result = await callHandler(makeEvent({ action: 'check' }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(true);
@@ -168,7 +178,7 @@ describe('season-lifecycle handler — check action', () => {
       errors: null,
     });
 
-    const result = await handler(makeEvent({ action: 'check' }));
+    const result = await callHandler(makeEvent({ action: 'check' }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(true);
@@ -187,7 +197,7 @@ describe('season-lifecycle handler — check action', () => {
   it('returns no active seasons message when none exist', async () => {
     mockClient.models.GameSeason.list.mockResolvedValue({ data: [], errors: null });
 
-    const result = await handler(makeEvent({ action: 'check' }));
+    const result = await callHandler(makeEvent({ action: 'check' }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(true);
@@ -200,7 +210,7 @@ describe('season-lifecycle handler — check action', () => {
     const season = freshSeason({ startDate: threeWeeksAgo, currentAge: 'early' });
     mockClient.models.GameSeason.list.mockResolvedValue({ data: [season], errors: null });
 
-    const result = await handler(makeEvent({ action: 'check' }));
+    const result = await callHandler(makeEvent({ action: 'check' }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(true);
@@ -217,7 +227,7 @@ describe('season-lifecycle handler — end action', () => {
       errors: null,
     });
 
-    const result = await handler(makeEvent({ action: 'end', seasonId: 'season-2' }));
+    const result = await callHandler(makeEvent({ action: 'end', seasonId: 'season-2' }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(true);
@@ -230,7 +240,7 @@ describe('season-lifecycle handler — end action', () => {
   });
 
   it('returns MISSING_PARAMS when seasonId is absent for end action', async () => {
-    const result = await handler(makeEvent({ action: 'end' }));
+    const result = await callHandler(makeEvent({ action: 'end' }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(false);
@@ -240,7 +250,7 @@ describe('season-lifecycle handler — end action', () => {
   it('returns NOT_FOUND when season does not exist', async () => {
     mockClient.models.GameSeason.get.mockResolvedValue({ data: null, errors: null });
 
-    const result = await handler(makeEvent({ action: 'end', seasonId: 'ghost-season' }));
+    const result = await callHandler(makeEvent({ action: 'end', seasonId: 'ghost-season' }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(false);
@@ -250,7 +260,7 @@ describe('season-lifecycle handler — end action', () => {
 
 describe('season-lifecycle handler — unknown action', () => {
   it('returns INVALID_PARAM for an unrecognised action', async () => {
-    const result = await handler(makeEvent({ action: 'rewind' }));
+    const result = await callHandler(makeEvent({ action: 'rewind' }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(false);

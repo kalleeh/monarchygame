@@ -10,7 +10,7 @@ const TRADE_OFFER_EXPIRY_HOURS = 48;
 
 type CallerIdentity = { sub: string; username?: string };
 
-export const handler: Schema["createTradeOffer"]["functionHandler"] = async (event) => {
+export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event) => {
   const args = event.arguments;
 
   try {

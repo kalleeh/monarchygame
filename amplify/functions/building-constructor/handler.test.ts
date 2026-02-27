@@ -22,6 +22,23 @@ vi.mock('aws-amplify/data', () => ({
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
+// Type helpers
+// ---------------------------------------------------------------------------
+
+interface HandlerResult {
+  success: boolean;
+  buildings?: string | null;
+  error?: string | null;
+  errorCode?: string | null;
+}
+
+// Cast handler to a simple single-argument callable so tests are not burdened
+// by the Amplify Gen2 / AWS Lambda 3-argument (event, context, callback)
+// signature, and so that the return type is narrowed to HandlerResult rather
+// than the loose JSON union produced by .returns(a.json()).
+const callHandler = handler as unknown as (event: unknown) => Promise<HandlerResult>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -59,7 +76,7 @@ describe('building-constructor handler', () => {
     it('deducts 250 gold per building and increments building count', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
 
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 2 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 2 }));
 
       expect(result.success).toBe(true);
       const buildings = JSON.parse(result.buildings as string);
@@ -77,7 +94,7 @@ describe('building-constructor handler', () => {
         mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
         mockClient.models.Kingdom.update.mockResolvedValue({ data: {}, errors: null });
 
-        const result = await handler(makeEvent({ kingdomId: 'kingdom-1', buildingType, quantity: 1 }));
+        const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType, quantity: 1 }));
 
         expect(result.success).toBe(true);
         const buildings = JSON.parse(result.buildings as string);
@@ -90,7 +107,7 @@ describe('building-constructor handler', () => {
         mockKingdom({ buildings: { mine: 5, farm: 0, tower: 0, temple: 0, castle: 0, barracks: 0, wall: 0 } })
       );
 
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 3 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 3 }));
 
       expect(result.success).toBe(true);
       const buildings = JSON.parse(result.buildings as string);
@@ -100,7 +117,7 @@ describe('building-constructor handler', () => {
 
   describe('validation failures', () => {
     it('returns MISSING_PARAMS when kingdomId is absent', async () => {
-      const result = await handler(makeEvent({ buildingType: 'mine', quantity: 1 }));
+      const result = await callHandler(makeEvent({ buildingType: 'mine', quantity: 1 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('MISSING_PARAMS');
@@ -108,42 +125,42 @@ describe('building-constructor handler', () => {
     });
 
     it('returns MISSING_PARAMS when buildingType is absent', async () => {
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', quantity: 1 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', quantity: 1 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('MISSING_PARAMS');
     });
 
     it('returns MISSING_PARAMS when quantity is absent', async () => {
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine' }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine' }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('MISSING_PARAMS');
     });
 
     it('returns INVALID_PARAM for an unrecognised building type', async () => {
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'dungeon', quantity: 1 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'dungeon', quantity: 1 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INVALID_PARAM');
     });
 
     it('returns INVALID_PARAM when quantity is 0', async () => {
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 0 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 0 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INVALID_PARAM');
     });
 
     it('returns INVALID_PARAM when quantity exceeds 100', async () => {
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 101 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 101 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INVALID_PARAM');
     });
 
     it('returns INVALID_PARAM when quantity is a float', async () => {
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 1.5 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 1.5 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INVALID_PARAM');
@@ -154,7 +171,7 @@ describe('building-constructor handler', () => {
     it('returns NOT_FOUND when kingdom does not exist', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
 
-      const result = await handler(makeEvent({ kingdomId: 'missing-id', buildingType: 'mine', quantity: 1 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'missing-id', buildingType: 'mine', quantity: 1 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('NOT_FOUND');
@@ -168,7 +185,7 @@ describe('building-constructor handler', () => {
         mockKingdom({ resources: { gold: 500, population: 1000, mana: 500, land: 1000 } })
       );
 
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 3 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 3 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INSUFFICIENT_RESOURCES');
@@ -181,7 +198,7 @@ describe('building-constructor handler', () => {
         mockKingdom({ resources: { gold: 250, population: 1000, mana: 500, land: 1000 } })
       );
 
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 1 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 1 }));
 
       expect(result.success).toBe(true);
       const updateCall = mockClient.models.Kingdom.update.mock.calls[0][0];

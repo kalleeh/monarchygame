@@ -22,6 +22,23 @@ vi.mock('aws-amplify/data', () => ({
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
+// Type helpers
+// ---------------------------------------------------------------------------
+
+interface HandlerResult {
+  success: boolean;
+  result?: string | null;
+  error?: string | null;
+  errorCode?: string | null;
+}
+
+// Cast handler to a simple single-argument callable so tests are not burdened
+// by the Amplify Gen2 / AWS Lambda 3-argument (event, context, callback)
+// signature, and so that the return type is narrowed to HandlerResult rather
+// than the loose JSON union produced by .returns(a.json()).
+const callHandler = handler as unknown as (event: unknown) => Promise<HandlerResult>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -59,7 +76,7 @@ describe('bounty-processor handler — claimBounty', () => {
     it('sets activeBountyTargetId in stats and returns success', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ stats: {} }));
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent('claimBounty', { kingdomId: 'kingdom-1', targetId: 'target-kingdom' })
       );
 
@@ -75,7 +92,7 @@ describe('bounty-processor handler — claimBounty', () => {
 
   describe('validation failures', () => {
     it('returns MISSING_PARAMS when kingdomId is absent', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent('claimBounty', { targetId: 'target-kingdom' })
       );
 
@@ -84,7 +101,7 @@ describe('bounty-processor handler — claimBounty', () => {
     });
 
     it('returns MISSING_PARAMS when targetId is absent', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent('claimBounty', { kingdomId: 'kingdom-1' })
       );
 
@@ -97,7 +114,7 @@ describe('bounty-processor handler — claimBounty', () => {
         mockKingdom({ stats: { activeBountyTargetId: 'already-claimed-target' } })
       );
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent('claimBounty', { kingdomId: 'kingdom-1', targetId: 'new-target' })
       );
 
@@ -110,7 +127,7 @@ describe('bounty-processor handler — claimBounty', () => {
     it('returns NOT_FOUND when kingdom does not exist', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent('claimBounty', { kingdomId: 'missing-id', targetId: 'target-kingdom' })
       );
 
@@ -130,7 +147,7 @@ describe('bounty-processor handler — completeBounty', () => {
         })
       );
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent('completeBounty', { kingdomId: 'kingdom-1', targetId: 'target-kingdom', landGained: 2000 })
       );
 
@@ -156,7 +173,7 @@ describe('bounty-processor handler — completeBounty', () => {
 
   describe('validation failures', () => {
     it('returns MISSING_PARAMS when kingdomId is absent', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent('completeBounty', { targetId: 'target-kingdom', landGained: 1000 })
       );
 
@@ -165,7 +182,7 @@ describe('bounty-processor handler — completeBounty', () => {
     });
 
     it('returns MISSING_PARAMS when landGained is absent', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent('completeBounty', { kingdomId: 'kingdom-1', targetId: 'target-kingdom' })
       );
 
@@ -174,7 +191,7 @@ describe('bounty-processor handler — completeBounty', () => {
     });
 
     it('returns INVALID_PARAM when landGained is below 1000', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent('completeBounty', { kingdomId: 'kingdom-1', targetId: 'target-kingdom', landGained: 500 })
       );
 
@@ -187,7 +204,7 @@ describe('bounty-processor handler — completeBounty', () => {
         mockKingdom({ stats: { activeBountyTargetId: 'different-target' } })
       );
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent('completeBounty', { kingdomId: 'kingdom-1', targetId: 'wrong-target', landGained: 1000 })
       );
 
@@ -200,7 +217,7 @@ describe('bounty-processor handler — completeBounty', () => {
     it('returns NOT_FOUND when kingdom does not exist', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent('completeBounty', { kingdomId: 'missing-id', targetId: 'target', landGained: 1500 })
       );
 
@@ -212,7 +229,7 @@ describe('bounty-processor handler — completeBounty', () => {
 
 describe('bounty-processor handler — unknown mutation', () => {
   it('returns INVALID_PARAM for an unrecognised fieldName', async () => {
-    const result = await handler(makeEvent('grantBounty', { kingdomId: 'kingdom-1' }));
+    const result = await callHandler(makeEvent('grantBounty', { kingdomId: 'kingdom-1' }));
 
     expect(result.success).toBe(false);
     expect(result.errorCode).toBe('INVALID_PARAM');

@@ -22,6 +22,24 @@ vi.mock('aws-amplify/data', () => ({
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
+// Type helpers
+// ---------------------------------------------------------------------------
+
+interface HandlerResult {
+  success: boolean;
+  newTurns?: number | null;
+  resources?: string | null;
+  error?: string | null;
+  errorCode?: string | null;
+}
+
+// Cast handler to a simple single-argument callable so tests are not burdened
+// by the Amplify Gen2 / AWS Lambda 3-argument (event, context, callback)
+// signature, and so that the return type is narrowed to HandlerResult rather
+// than the loose JSON union produced by .returns(a.json()).
+const callHandler = handler as unknown as (event: unknown) => Promise<HandlerResult>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -64,7 +82,7 @@ describe('resource-manager handler', () => {
       // 3 farms → 30 pop/turn, 1 temple → 3 mana/turn
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
 
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', turns: 1 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', turns: 1 }));
 
       expect(result.success).toBe(true);
       expect(result.newTurns).toBe(1);
@@ -81,7 +99,7 @@ describe('resource-manager handler', () => {
     it('multiplies income by turns', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
 
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', turns: 3 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', turns: 3 }));
 
       expect(result.success).toBe(true);
       expect(result.newTurns).toBe(3);
@@ -93,7 +111,7 @@ describe('resource-manager handler', () => {
     it('defaults to 1 turn when turns is not provided', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
 
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1' }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1' }));
 
       expect(result.success).toBe(true);
       expect(result.newTurns).toBe(1);
@@ -108,7 +126,7 @@ describe('resource-manager handler', () => {
         stats: { tithe: 8 },
       }));
 
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', turns: 1 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', turns: 1 }));
 
       expect(result.success).toBe(true);
       const updated = JSON.parse(result.resources as string);
@@ -121,7 +139,7 @@ describe('resource-manager handler', () => {
       // ageMultiplier = 1.15 → totalGoldPerTurn = floor(216 * 1.15) = floor(248.4) = 248
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ currentAge: 'middle' }));
 
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', turns: 1 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', turns: 1 }));
 
       expect(result.success).toBe(true);
       const updated = JSON.parse(result.resources as string);
@@ -132,7 +150,7 @@ describe('resource-manager handler', () => {
       // totalGoldPerTurn = floor(216 * 1.30) = floor(280.8) = 280
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ currentAge: 'late' }));
 
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', turns: 1 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', turns: 1 }));
 
       expect(result.success).toBe(true);
       const updated = JSON.parse(result.resources as string);
@@ -144,7 +162,7 @@ describe('resource-manager handler', () => {
         mockKingdom({ resources: { gold: 999999, population: 0, mana: 0, land: 1000 } })
       );
 
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', turns: 100 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', turns: 100 }));
 
       expect(result.success).toBe(true);
       const updated = JSON.parse(result.resources as string);
@@ -154,7 +172,7 @@ describe('resource-manager handler', () => {
 
   describe('validation failures', () => {
     it('returns MISSING_PARAMS when kingdomId is absent', async () => {
-      const result = await handler(makeEvent({}));
+      const result = await callHandler(makeEvent({}));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('MISSING_PARAMS');
@@ -162,7 +180,7 @@ describe('resource-manager handler', () => {
     });
 
     it('returns INVALID_PARAM when kingdomId exceeds 128 characters', async () => {
-      const result = await handler(makeEvent({ kingdomId: 'x'.repeat(129) }));
+      const result = await callHandler(makeEvent({ kingdomId: 'x'.repeat(129) }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INVALID_PARAM');
@@ -173,7 +191,7 @@ describe('resource-manager handler', () => {
     it('returns NOT_FOUND when kingdom does not exist', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
 
-      const result = await handler(makeEvent({ kingdomId: 'missing-id' }));
+      const result = await callHandler(makeEvent({ kingdomId: 'missing-id' }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('NOT_FOUND');
@@ -184,7 +202,7 @@ describe('resource-manager handler', () => {
     it('returns INTERNAL_ERROR on unexpected exception', async () => {
       mockClient.models.Kingdom.get.mockRejectedValue(new Error('DynamoDB timeout'));
 
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1' }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1' }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INTERNAL_ERROR');

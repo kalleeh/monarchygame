@@ -22,6 +22,16 @@ vi.mock('aws-amplify/data', () => ({
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
+// Type helpers
+// ---------------------------------------------------------------------------
+
+// Cast handler to a simple single-argument callable so tests are not burdened
+// by the Amplify Gen2 / AWS Lambda 3-argument (event, context, callback)
+// signature, and so that the return type is narrowed to string rather than
+// the loose JSON union produced by .returns(a.json()).
+const callHandler = handler as unknown as (event: unknown) => Promise<string>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -74,7 +84,7 @@ describe('season-manager handler — getActiveSeason', () => {
       const season = freshActiveSeason();
       mockClient.models.GameSeason.list.mockResolvedValue({ data: [season], errors: null });
 
-      const result = await handler(makeEvent({}));
+      const result = await callHandler(makeEvent({}));
 
       const parsed = JSON.parse(result as string);
       expect(parsed.success).toBe(true);
@@ -89,7 +99,7 @@ describe('season-manager handler — getActiveSeason', () => {
       const season = freshActiveSeason({ currentAge: 'early' });
       mockClient.models.GameSeason.list.mockResolvedValue({ data: [season], errors: null });
 
-      await handler(makeEvent({}));
+      await callHandler(makeEvent({}));
 
       expect(mockClient.models.GameSeason.update).not.toHaveBeenCalled();
     });
@@ -100,7 +110,7 @@ describe('season-manager handler — getActiveSeason', () => {
       const season = freshActiveSeason({ startDate: threeWeeksAgo, currentAge: 'early' });
       mockClient.models.GameSeason.list.mockResolvedValue({ data: [season], errors: null });
 
-      await handler(makeEvent({}));
+      await callHandler(makeEvent({}));
 
       expect(mockClient.models.GameSeason.update).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'season-1', currentAge: 'middle' })
@@ -112,7 +122,7 @@ describe('season-manager handler — getActiveSeason', () => {
     it('returns SEASON_INACTIVE error when no seasons are found', async () => {
       mockClient.models.GameSeason.list.mockResolvedValue({ data: [], errors: null });
 
-      const result = await handler(makeEvent({}));
+      const result = await callHandler(makeEvent({}));
 
       const parsed = JSON.parse(result as string);
       expect(parsed.success).toBe(false);
@@ -122,7 +132,7 @@ describe('season-manager handler — getActiveSeason', () => {
     it('returns SEASON_INACTIVE when data is null', async () => {
       mockClient.models.GameSeason.list.mockResolvedValue({ data: null, errors: null });
 
-      const result = await handler(makeEvent({}));
+      const result = await callHandler(makeEvent({}));
 
       const parsed = JSON.parse(result as string);
       expect(parsed.success).toBe(false);
@@ -135,7 +145,7 @@ describe('season-manager handler — getActiveSeason', () => {
       const season = expiredSeason();
       mockClient.models.GameSeason.list.mockResolvedValue({ data: [season], errors: null });
 
-      const result = await handler(makeEvent({}));
+      const result = await callHandler(makeEvent({}));
 
       const parsed = JSON.parse(result as string);
       expect(parsed.success).toBe(false);
@@ -150,7 +160,7 @@ describe('season-manager handler — getActiveSeason', () => {
     it('returns INTERNAL_ERROR on unexpected exception', async () => {
       mockClient.models.GameSeason.list.mockRejectedValue(new Error('DynamoDB offline'));
 
-      const result = await handler(makeEvent({}));
+      const result = await callHandler(makeEvent({}));
 
       const parsed = JSON.parse(result as string);
       expect(parsed.success).toBe(false);

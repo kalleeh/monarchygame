@@ -28,6 +28,16 @@ vi.mock('aws-amplify/data', () => ({
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
+// Type helpers
+// ---------------------------------------------------------------------------
+
+// Cast handler to a simple single-argument callable so tests are not burdened
+// by the Amplify Gen2 / AWS Lambda 3-argument (event, context, callback)
+// signature, and so that the return type is narrowed to string rather than
+// the loose JSON union produced by .returns(a.json()).
+const callHandler = handler as unknown as (event: unknown) => Promise<string>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -69,7 +79,7 @@ describe('trade-processor handler — createTradeOffer', () => {
         mockKingdom('seller-1', { resources: { gold: 50000, population: 5000, mana: 500, land: 1000 } })
       );
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({
           sellerId: 'seller-1',
           seasonId: 'season-1',
@@ -96,7 +106,7 @@ describe('trade-processor handler — createTradeOffer', () => {
 
   describe('validation failures', () => {
     it('returns MISSING_PARAMS when sellerId is absent', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ seasonId: 'season-1', resourceType: 'gold', quantity: 100, pricePerUnit: 5 })
       );
 
@@ -106,7 +116,7 @@ describe('trade-processor handler — createTradeOffer', () => {
     });
 
     it('returns error when quantity is 0 or negative', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ sellerId: 'seller-1', seasonId: 's', resourceType: 'gold', quantity: 0, pricePerUnit: 5 })
       );
 
@@ -115,7 +125,7 @@ describe('trade-processor handler — createTradeOffer', () => {
     });
 
     it('returns INVALID_PARAM when pricePerUnit is negative', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ sellerId: 'seller-1', seasonId: 's', resourceType: 'gold', quantity: 100, pricePerUnit: -1 })
       );
 
@@ -129,7 +139,7 @@ describe('trade-processor handler — createTradeOffer', () => {
     it('returns NOT_FOUND when seller kingdom does not exist', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ sellerId: 'ghost-seller', seasonId: 's', resourceType: 'gold', quantity: 100, pricePerUnit: 5 })
       );
 
@@ -145,7 +155,7 @@ describe('trade-processor handler — createTradeOffer', () => {
         mockKingdom('seller-1', { resources: { gold: 50, population: 5000, mana: 500, land: 1000 } })
       );
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ sellerId: 'seller-1', seasonId: 's', resourceType: 'gold', quantity: 1000, pricePerUnit: 2 })
       );
 
@@ -180,7 +190,7 @@ describe('trade-processor handler — acceptTradeOffer', () => {
       .mockResolvedValueOnce(mockKingdom('buyer-1', { resources: { gold: 10000, population: 1000, mana: 50, land: 1000 } }))
       .mockResolvedValueOnce(mockKingdom('seller-1', { resources: { gold: 1000, population: 1000, mana: 0, land: 1000 } }));
 
-    const result = await handler(makeEvent({ offerId: 'offer-1', buyerId: 'buyer-1' }));
+    const result = await callHandler(makeEvent({ offerId: 'offer-1', buyerId: 'buyer-1' }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(true);
@@ -212,7 +222,7 @@ describe('trade-processor handler — acceptTradeOffer', () => {
       mockKingdom('buyer-1', { resources: { gold: 10, population: 1000, mana: 0, land: 1000 } })
     );
 
-    const result = await handler(makeEvent({ offerId: 'offer-1', buyerId: 'buyer-1' }));
+    const result = await callHandler(makeEvent({ offerId: 'offer-1', buyerId: 'buyer-1' }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(false);
@@ -235,7 +245,7 @@ describe('trade-processor handler — acceptTradeOffer', () => {
       errors: null,
     });
 
-    const result = await handler(makeEvent({ offerId: 'offer-1', buyerId: 'seller-1' }));
+    const result = await callHandler(makeEvent({ offerId: 'offer-1', buyerId: 'seller-1' }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(false);
@@ -260,7 +270,7 @@ describe('trade-processor handler — cancelTradeOffer', () => {
       mockKingdom('seller-1', { resources: { gold: 0, population: 1000, mana: 0, land: 1000 } })
     );
 
-    const result = await handler(makeEvent({ offerId: 'offer-1', sellerId: 'seller-1' }));
+    const result = await callHandler(makeEvent({ offerId: 'offer-1', sellerId: 'seller-1' }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(true);
@@ -273,7 +283,7 @@ describe('trade-processor handler — cancelTradeOffer', () => {
       errors: null,
     });
 
-    const result = await handler(makeEvent({ offerId: 'offer-1', sellerId: 'impersonator' }));
+    const result = await callHandler(makeEvent({ offerId: 'offer-1', sellerId: 'impersonator' }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(false);

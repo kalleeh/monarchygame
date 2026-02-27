@@ -388,7 +388,8 @@ const schema = a.schema({
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(seasonManager)),
 
-  getWorldState: a
+  // Prefixed "fetch" to avoid clash with WorldState model auto-generating getWorldState
+  fetchWorldState: a
     .query()
     .arguments({
       kingdomId: a.string().required(),
@@ -421,8 +422,9 @@ const schema = a.schema({
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(warManager)),
 
-  // Trade Processor
-  createTradeOffer: a
+  // Trade Processor — prefixed with "post/buy/revoke" to avoid clash with
+  // auto-generated TradeOffer model CRUD (createTradeOffer etc.)
+  postTradeOffer: a
     .mutation()
     .arguments({
       sellerId: a.string().required(),
@@ -435,7 +437,7 @@ const schema = a.schema({
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(tradeProcessor)),
 
-  acceptTradeOffer: a
+  buyTradeOffer: a
     .mutation()
     .arguments({
       offerId: a.string().required(),
@@ -445,7 +447,7 @@ const schema = a.schema({
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(tradeProcessor)),
 
-  cancelTradeOffer: a
+  revokeTradeOffer: a
     .mutation()
     .arguments({
       offerId: a.string().required(),

@@ -22,6 +22,23 @@ vi.mock('aws-amplify/data', () => ({
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
+// Type helpers
+// ---------------------------------------------------------------------------
+
+interface HandlerResult {
+  success: boolean;
+  result?: string | null;
+  error?: string | null;
+  errorCode?: string | null;
+}
+
+// Cast handler to a simple single-argument callable so tests are not burdened
+// by the Amplify Gen2 / AWS Lambda 3-argument (event, context, callback)
+// signature, and so that the return type is narrowed to HandlerResult rather
+// than the loose JSON union produced by .returns(a.json()).
+const callHandler = handler as unknown as (event: unknown) => Promise<HandlerResult>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -61,7 +78,7 @@ describe('thievery-processor handler', () => {
         .mockResolvedValueOnce(mockKingdom('kingdom-1'))   // attacker
         .mockResolvedValueOnce(mockKingdom('target-1'));    // target
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', operation: 'scout', targetKingdomId: 'target-1' })
       );
 
@@ -93,7 +110,7 @@ describe('thievery-processor handler', () => {
       // Mock Math.random to always return 1 so detection rate check is always passed
       vi.spyOn(Math, 'random').mockReturnValue(1);
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', operation: 'steal', targetKingdomId: 'target-1' })
       );
 
@@ -105,7 +122,7 @@ describe('thievery-processor handler', () => {
 
   describe('validation failures', () => {
     it('returns MISSING_PARAMS when kingdomId is absent', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ operation: 'scout', targetKingdomId: 'target-1' })
       );
 
@@ -114,7 +131,7 @@ describe('thievery-processor handler', () => {
     });
 
     it('returns MISSING_PARAMS when targetKingdomId is absent', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', operation: 'scout' })
       );
 
@@ -123,7 +140,7 @@ describe('thievery-processor handler', () => {
     });
 
     it('returns INVALID_PARAM for an invalid operation', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', operation: 'ninja_stuff', targetKingdomId: 'target-1' })
       );
 
@@ -132,7 +149,7 @@ describe('thievery-processor handler', () => {
     });
 
     it('returns INVALID_PARAM when operation is absent', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', targetKingdomId: 'target-1' })
       );
 
@@ -147,7 +164,7 @@ describe('thievery-processor handler', () => {
         mockKingdom('kingdom-1', { totalUnits: { scouts: 50 } })
       );
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', operation: 'scout', targetKingdomId: 'target-1' })
       );
 
@@ -160,7 +177,7 @@ describe('thievery-processor handler', () => {
         mockKingdom('kingdom-1', { totalUnits: { scouts: 0 } })
       );
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', operation: 'steal', targetKingdomId: 'target-1' })
       );
 
@@ -173,7 +190,7 @@ describe('thievery-processor handler', () => {
     it('returns NOT_FOUND when attacker kingdom does not exist', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'missing-id', operation: 'scout', targetKingdomId: 'target-1' })
       );
 
@@ -186,7 +203,7 @@ describe('thievery-processor handler', () => {
         .mockResolvedValueOnce(mockKingdom('kingdom-1'))
         .mockResolvedValueOnce({ data: null, errors: null });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', operation: 'scout', targetKingdomId: 'missing-target' })
       );
 

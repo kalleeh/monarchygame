@@ -37,6 +37,16 @@ vi.mock('aws-amplify/data', () => ({
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
+// Type helpers
+// ---------------------------------------------------------------------------
+
+// Cast handler to a simple single-argument callable so tests are not burdened
+// by the Amplify Gen2 / AWS Lambda 3-argument (event, context, callback)
+// signature, and so that the return type is narrowed to string rather than
+// the loose JSON union produced by .returns(a.json()).
+const callHandler = handler as unknown as (event: unknown) => Promise<string>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -78,7 +88,7 @@ beforeEach(() => {
 describe('war-manager handler — declareWar', () => {
   describe('happy path', () => {
     it('creates a WarDeclaration and diplomatic relation when no prior war exists', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ attackerId: 'king-1', defenderId: 'king-2', seasonId: 'season-1', reason: 'Land dispute' })
       );
 
@@ -99,7 +109,7 @@ describe('war-manager handler — declareWar', () => {
         errors: null,
       });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ attackerId: 'king-1', defenderId: 'king-2', seasonId: 'season-1' })
       );
 
@@ -115,7 +125,7 @@ describe('war-manager handler — declareWar', () => {
         errors: null,
       });
 
-      await handler(
+      await callHandler(
         makeEvent({ attackerId: 'king-1', defenderId: 'king-2', seasonId: 'season-1' })
       );
 
@@ -125,7 +135,7 @@ describe('war-manager handler — declareWar', () => {
 
   describe('validation failures', () => {
     it('returns MISSING_PARAMS when attackerId is absent', async () => {
-      const result = await handler(makeEvent({ defenderId: 'king-2', seasonId: 'season-1' }));
+      const result = await callHandler(makeEvent({ defenderId: 'king-2', seasonId: 'season-1' }));
 
       const parsed = JSON.parse(result as string);
       expect(parsed.success).toBe(false);
@@ -133,7 +143,7 @@ describe('war-manager handler — declareWar', () => {
     });
 
     it('returns MISSING_PARAMS when defenderId is absent', async () => {
-      const result = await handler(makeEvent({ attackerId: 'king-1', seasonId: 'season-1' }));
+      const result = await callHandler(makeEvent({ attackerId: 'king-1', seasonId: 'season-1' }));
 
       const parsed = JSON.parse(result as string);
       expect(parsed.success).toBe(false);
@@ -141,7 +151,7 @@ describe('war-manager handler — declareWar', () => {
     });
 
     it('returns MISSING_PARAMS when seasonId is absent', async () => {
-      const result = await handler(makeEvent({ attackerId: 'king-1', defenderId: 'king-2' }));
+      const result = await callHandler(makeEvent({ attackerId: 'king-1', defenderId: 'king-2' }));
 
       const parsed = JSON.parse(result as string);
       expect(parsed.success).toBe(false);
@@ -149,7 +159,7 @@ describe('war-manager handler — declareWar', () => {
     });
 
     it('returns INVALID_PARAM when attacker and defender are the same', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ attackerId: 'king-1', defenderId: 'king-1', seasonId: 'season-1' })
       );
 
@@ -164,7 +174,7 @@ describe('war-manager handler — declareWar', () => {
         errors: null,
       });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ attackerId: 'king-1', defenderId: 'king-2', seasonId: 'season-1' })
       );
 
@@ -188,7 +198,7 @@ describe('war-manager handler — resolveWar', () => {
         errors: null,
       });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ warId: 'war-1', resolution: 'peace_treaty' })
       );
 
@@ -210,7 +220,7 @@ describe('war-manager handler — resolveWar', () => {
     it('returns NOT_FOUND when warId does not exist', async () => {
       mockClient.models.WarDeclaration.get.mockResolvedValue({ data: null, errors: null });
 
-      const result = await handler(makeEvent({ warId: 'missing-war', resolution: 'peace' }));
+      const result = await callHandler(makeEvent({ warId: 'missing-war', resolution: 'peace' }));
 
       const parsed = JSON.parse(result as string);
       expect(parsed.success).toBe(false);
@@ -220,7 +230,7 @@ describe('war-manager handler — resolveWar', () => {
 
   describe('validation failures', () => {
     it('returns MISSING_PARAMS when warId is absent', async () => {
-      const result = await handler(makeEvent({ resolution: 'peace' }));
+      const result = await callHandler(makeEvent({ resolution: 'peace' }));
 
       // When neither warId+resolution NOR attackerId+defenderId are present,
       // the handler falls through to declareWar path and returns MISSING_PARAMS

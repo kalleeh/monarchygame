@@ -37,6 +37,16 @@ vi.mock('aws-amplify/data', () => ({
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
+// Type helpers
+// ---------------------------------------------------------------------------
+
+// Cast handler to a simple single-argument callable so tests are not burdened
+// by the Amplify Gen2 / AWS Lambda 3-argument (event, context, callback)
+// signature, and so that the return type is narrowed to string rather than
+// the loose JSON union produced by .returns(a.json()).
+const callHandler = handler as unknown as (event: unknown) => Promise<string>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -78,7 +88,7 @@ beforeEach(() => {
 describe('diplomacy-processor handler — sendTreatyProposal', () => {
   describe('happy path', () => {
     it('creates a treaty proposal and returns proposed status', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({
           proposerId: 'king-1',
           recipientId: 'king-2',
@@ -105,7 +115,7 @@ describe('diplomacy-processor handler — sendTreatyProposal', () => {
         mockClient.models.Treaty.list.mockResolvedValue({ data: [], errors: null });
         mockClient.models.Treaty.create.mockResolvedValue({ data: { id: 'treaty-x' }, errors: null });
 
-        const result = await handler(
+        const result = await callHandler(
           makeEvent({ proposerId: 'king-1', recipientId: 'king-2', seasonId: 'season-1', treatyType })
         );
 
@@ -117,7 +127,7 @@ describe('diplomacy-processor handler — sendTreatyProposal', () => {
 
   describe('validation failures', () => {
     it('returns MISSING_PARAMS when proposerId is absent', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ recipientId: 'king-2', seasonId: 'season-1', treatyType: 'non_aggression' })
       );
 
@@ -128,7 +138,7 @@ describe('diplomacy-processor handler — sendTreatyProposal', () => {
 
     it('returns MISSING_PARAMS when seasonId is absent', async () => {
       // No treatyId, no kingdomId → falls to sendTreatyProposal which requires seasonId
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ proposerId: 'king-1', recipientId: 'king-2', treatyType: 'ceasefire' })
       );
 
@@ -138,7 +148,7 @@ describe('diplomacy-processor handler — sendTreatyProposal', () => {
     });
 
     it('returns INVALID_PARAM when proposer and recipient are the same', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ proposerId: 'king-1', recipientId: 'king-1', seasonId: 'season-1', treatyType: 'non_aggression' })
       );
 
@@ -153,7 +163,7 @@ describe('diplomacy-processor handler — sendTreatyProposal', () => {
         errors: null,
       });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ proposerId: 'king-1', recipientId: 'king-2', seasonId: 'season-1', treatyType: 'non_aggression' })
       );
 
@@ -172,7 +182,7 @@ describe('diplomacy-processor handler — respondToTreaty', () => {
       errors: null,
     });
 
-    const result = await handler(makeEvent({ treatyId: 'treaty-1', accepted: true }));
+    const result = await callHandler(makeEvent({ treatyId: 'treaty-1', accepted: true }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(true);
@@ -190,7 +200,7 @@ describe('diplomacy-processor handler — respondToTreaty', () => {
       errors: null,
     });
 
-    const result = await handler(makeEvent({ treatyId: 'treaty-1', accepted: false }));
+    const result = await callHandler(makeEvent({ treatyId: 'treaty-1', accepted: false }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(true);
@@ -201,7 +211,7 @@ describe('diplomacy-processor handler — respondToTreaty', () => {
   it('returns NOT_FOUND when treaty does not exist', async () => {
     mockClient.models.Treaty.get.mockResolvedValue({ data: null, errors: null });
 
-    const result = await handler(makeEvent({ treatyId: 'ghost-treaty', accepted: true }));
+    const result = await callHandler(makeEvent({ treatyId: 'ghost-treaty', accepted: true }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(false);
@@ -214,7 +224,7 @@ describe('diplomacy-processor handler — respondToTreaty', () => {
       errors: null,
     });
 
-    const result = await handler(makeEvent({ treatyId: 'treaty-1', accepted: true }));
+    const result = await callHandler(makeEvent({ treatyId: 'treaty-1', accepted: true }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(false);
@@ -233,7 +243,7 @@ describe('diplomacy-processor handler — declareDiplomaticWar', () => {
       errors: null,
     });
 
-    const result = await handler(
+    const result = await callHandler(
       makeEvent({ kingdomId: 'king-1', targetKingdomId: 'king-2', seasonId: 'season-1' })
     );
 
@@ -255,7 +265,7 @@ describe('diplomacy-processor handler — makePeace', () => {
       errors: null,
     });
 
-    const result = await handler(makeEvent({ kingdomId: 'king-1', targetKingdomId: 'king-2' }));
+    const result = await callHandler(makeEvent({ kingdomId: 'king-1', targetKingdomId: 'king-2' }));
 
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(true);

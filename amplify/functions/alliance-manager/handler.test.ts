@@ -19,6 +19,23 @@ vi.mock('aws-amplify/data', () => ({
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
+// Type helpers
+// ---------------------------------------------------------------------------
+
+interface HandlerResult {
+  success: boolean;
+  result?: string | null;
+  error?: string | null;
+  errorCode?: string | null;
+}
+
+// Cast handler to a simple single-argument callable so tests are not burdened
+// by the Amplify Gen2 / AWS Lambda 3-argument (event, context, callback)
+// signature, and so that the return type is narrowed to HandlerResult rather
+// than the loose JSON union produced by .returns(a.json()).
+const callHandler = handler as unknown as (event: unknown) => Promise<HandlerResult>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -87,7 +104,7 @@ describe('alliance-manager handler', () => {
         errors: null,
       });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ action: 'decline', allianceId: 'alliance-1', kingdomId: 'kingdom-1' })
       );
 
@@ -106,7 +123,7 @@ describe('alliance-manager handler', () => {
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
       mockClient.models.AllianceInvitation.list.mockResolvedValue({ data: [], errors: null });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ action: 'decline', allianceId: 'alliance-1', kingdomId: 'kingdom-1' })
       );
 
@@ -115,7 +132,7 @@ describe('alliance-manager handler', () => {
     });
 
     it('returns MISSING_PARAMS when allianceId is absent', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ action: 'decline', kingdomId: 'kingdom-1' })
       );
 
@@ -126,7 +143,7 @@ describe('alliance-manager handler', () => {
     it('returns FORBIDDEN when kingdom is not owned by caller', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ owner: 'other-sub-999' }));
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ action: 'decline', allianceId: 'alliance-1', kingdomId: 'kingdom-1' })
       );
 
@@ -147,7 +164,7 @@ describe('alliance-manager handler', () => {
         errors: null,
       });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ action: 'join', allianceId: 'alliance-1', kingdomId: 'kingdom-1' })
       );
 
@@ -165,7 +182,7 @@ describe('alliance-manager handler', () => {
       );
       mockClient.models.AllianceInvitation.list.mockResolvedValue({ data: [], errors: null });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ action: 'join', allianceId: 'alliance-1', kingdomId: 'kingdom-1' })
       );
 
@@ -178,7 +195,7 @@ describe('alliance-manager handler', () => {
     it('creates an alliance and returns allianceId', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ action: 'create', kingdomId: 'kingdom-1', name: 'New Alliance' })
       );
 
@@ -188,7 +205,7 @@ describe('alliance-manager handler', () => {
     });
 
     it('returns MISSING_PARAMS when name is absent', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ action: 'create', kingdomId: 'kingdom-1' })
       );
 
@@ -204,7 +221,7 @@ describe('alliance-manager handler', () => {
         mockAlliance({ memberIds: JSON.stringify(['kingdom-1', 'kingdom-2']), leaderId: 'kingdom-2' })
       );
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ action: 'leave', allianceId: 'alliance-1', kingdomId: 'kingdom-1' })
       );
 
@@ -220,7 +237,7 @@ describe('alliance-manager handler', () => {
         mockAlliance({ memberIds: JSON.stringify(['kingdom-1']), leaderId: 'kingdom-1' })
       );
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ action: 'leave', allianceId: 'alliance-1', kingdomId: 'kingdom-1' })
       );
 
@@ -238,7 +255,7 @@ describe('alliance-manager handler', () => {
         mockAlliance({ memberIds: JSON.stringify(['kingdom-1', 'kingdom-2']), leaderId: 'kingdom-1' })
       );
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ action: 'kick', allianceId: 'alliance-1', kingdomId: 'kingdom-1', targetKingdomId: 'kingdom-2' })
       );
 
@@ -253,7 +270,7 @@ describe('alliance-manager handler', () => {
         mockAlliance({ memberIds: JSON.stringify(['kingdom-1', 'kingdom-2']), leaderId: 'kingdom-2' })
       );
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ action: 'kick', allianceId: 'alliance-1', kingdomId: 'kingdom-1', targetKingdomId: 'kingdom-2' })
       );
 
@@ -269,7 +286,7 @@ describe('alliance-manager handler', () => {
         mockAlliance({ leaderId: 'kingdom-1' })
       );
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ action: 'invite', allianceId: 'alliance-1', kingdomId: 'kingdom-1', targetKingdomId: 'kingdom-2' })
       );
 
@@ -287,7 +304,7 @@ describe('alliance-manager handler', () => {
 
   describe('invalid action', () => {
     it('returns INVALID_PARAM for unknown action', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ action: 'unknown-action', kingdomId: 'kingdom-1' })
       );
 
@@ -298,7 +315,7 @@ describe('alliance-manager handler', () => {
 
   describe('authentication', () => {
     it('returns UNAUTHORIZED when identity has no sub', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ action: 'decline', allianceId: 'alliance-1', kingdomId: 'kingdom-1' }, { sub: undefined })
       );
 

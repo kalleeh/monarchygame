@@ -26,6 +26,23 @@ vi.mock('aws-amplify/data', () => ({
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
+// Type helpers
+// ---------------------------------------------------------------------------
+
+interface HandlerResult {
+  success: boolean;
+  territory?: string | null;
+  error?: string | null;
+  errorCode?: string | null;
+}
+
+// Cast handler to a simple single-argument callable so tests are not burdened
+// by the Amplify Gen2 / AWS Lambda 3-argument (event, context, callback)
+// signature, and so that the return type is narrowed to HandlerResult rather
+// than the loose JSON union produced by .returns(a.json()).
+const callHandler = handler as unknown as (event: unknown) => Promise<HandlerResult>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -65,7 +82,7 @@ describe('territory-claimer handler', () => {
     it('creates a territory and deducts 500 gold', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', territoryName: 'Forest Keep', territoryType: 'settlement', terrainType: 'forest', coordinates: { x: 10, y: 20 } })
       );
 
@@ -83,7 +100,7 @@ describe('territory-claimer handler', () => {
     it('uses default values for territoryType and terrainType when omitted', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', territoryName: 'My Land' })
       );
 
@@ -96,21 +113,21 @@ describe('territory-claimer handler', () => {
 
   describe('validation failures', () => {
     it('returns MISSING_PARAMS when kingdomId is absent', async () => {
-      const result = await handler(makeEvent({ territoryName: 'Forest Keep' }));
+      const result = await callHandler(makeEvent({ territoryName: 'Forest Keep' }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('MISSING_PARAMS');
     });
 
     it('returns MISSING_PARAMS when territoryName is absent', async () => {
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1' }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1' }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('MISSING_PARAMS');
     });
 
     it('returns INVALID_PARAM when territoryName is too short (< 2 chars)', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', territoryName: 'X' })
       );
 
@@ -119,7 +136,7 @@ describe('territory-claimer handler', () => {
     });
 
     it('returns INVALID_PARAM when territoryName exceeds 50 chars', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', territoryName: 'A'.repeat(51) })
       );
 
@@ -128,7 +145,7 @@ describe('territory-claimer handler', () => {
     });
 
     it('returns INVALID_PARAM when coordinates are out of range', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', territoryName: 'Far Lands', coordinates: { x: 99999, y: 0 } })
       );
 
@@ -143,7 +160,7 @@ describe('territory-claimer handler', () => {
         errors: null,
       });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', territoryName: 'Overlap', coordinates: { x: 5, y: 5 } })
       );
 
@@ -156,7 +173,7 @@ describe('territory-claimer handler', () => {
     it('returns NOT_FOUND when kingdom does not exist', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'missing-id', territoryName: 'Forest Keep' })
       );
 
@@ -171,7 +188,7 @@ describe('territory-claimer handler', () => {
         mockKingdom({ resources: { gold: 400, population: 1000, mana: 500, land: 1000 } })
       );
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', territoryName: 'Poor Fort' })
       );
 

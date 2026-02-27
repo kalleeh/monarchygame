@@ -173,18 +173,18 @@ export class AmplifyFunctionService {
           });
         case 'trade-processor':
           if (payload.action === 'accept') {
-            return await client.mutations.acceptTradeOffer({
+            return await client.mutations.buyTradeOffer({
               offerId: payload.offerId || '',
               buyerId: payload.kingdomId
             });
           }
           if (payload.action === 'cancel') {
-            return await client.mutations.cancelTradeOffer({
+            return await client.mutations.revokeTradeOffer({
               offerId: payload.offerId || '',
               sellerId: payload.kingdomId
             });
           }
-          return await client.mutations.createTradeOffer({
+          return await client.mutations.postTradeOffer({
             sellerId: payload.kingdomId,
             seasonId: payload.seasonId || '',
             resourceType: payload.resourceType || '',

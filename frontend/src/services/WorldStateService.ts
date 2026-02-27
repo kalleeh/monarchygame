@@ -35,7 +35,7 @@ export class WorldStateService {
     }
 
     try {
-      const { data, errors } = await client.queries.getWorldState({
+      const { data, errors } = await client.queries.fetchWorldState({
         kingdomId,
         seasonId
       });

@@ -22,6 +22,23 @@ vi.mock('aws-amplify/data', () => ({
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
+// Type helpers
+// ---------------------------------------------------------------------------
+
+interface HandlerResult {
+  success: boolean;
+  units?: string | null;
+  error?: string | null;
+  errorCode?: string | null;
+}
+
+// Cast handler to a simple single-argument callable so tests are not burdened
+// by the Amplify Gen2 / AWS Lambda 3-argument (event, context, callback)
+// signature, and so that the return type is narrowed to HandlerResult rather
+// than the loose JSON union produced by .returns(a.json()).
+const callHandler = handler as unknown as (event: unknown) => Promise<HandlerResult>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -59,7 +76,7 @@ describe('unit-trainer handler', () => {
     it('deducts 100 gold per unit and increments unit count', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
 
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry', quantity: 5 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry', quantity: 5 }));
 
       expect(result.success).toBe(true);
       const units = JSON.parse(result.units as string);
@@ -77,7 +94,7 @@ describe('unit-trainer handler', () => {
         mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
         mockClient.models.Kingdom.update.mockResolvedValue({ data: {}, errors: null });
 
-        const result = await handler(makeEvent({ kingdomId: 'kingdom-1', unitType, quantity: 1 }));
+        const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType, quantity: 1 }));
 
         expect(result.success).toBe(true);
         const units = JSON.parse(result.units as string);
@@ -91,7 +108,7 @@ describe('unit-trainer handler', () => {
         mockKingdom({ totalUnits: { infantry: 50, archers: 0, cavalry: 0, siege: 0, mages: 0, scouts: 200 } })
       );
 
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry', quantity: 10 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry', quantity: 10 }));
 
       expect(result.success).toBe(true);
       const units = JSON.parse(result.units as string);
@@ -101,42 +118,42 @@ describe('unit-trainer handler', () => {
 
   describe('validation failures', () => {
     it('returns MISSING_PARAMS when kingdomId is absent', async () => {
-      const result = await handler(makeEvent({ unitType: 'infantry', quantity: 1 }));
+      const result = await callHandler(makeEvent({ unitType: 'infantry', quantity: 1 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('MISSING_PARAMS');
     });
 
     it('returns MISSING_PARAMS when unitType is absent', async () => {
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', quantity: 1 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', quantity: 1 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('MISSING_PARAMS');
     });
 
     it('returns MISSING_PARAMS when quantity is absent', async () => {
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry' }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry' }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('MISSING_PARAMS');
     });
 
     it('returns INVALID_PARAM for unrecognised unit type', async () => {
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'dragon', quantity: 1 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'dragon', quantity: 1 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INVALID_PARAM');
     });
 
     it('returns INVALID_PARAM when quantity is 0', async () => {
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry', quantity: 0 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry', quantity: 0 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INVALID_PARAM');
     });
 
     it('returns INVALID_PARAM when quantity exceeds 1000', async () => {
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry', quantity: 1001 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry', quantity: 1001 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INVALID_PARAM');
@@ -147,7 +164,7 @@ describe('unit-trainer handler', () => {
     it('returns NOT_FOUND when kingdom does not exist', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
 
-      const result = await handler(makeEvent({ kingdomId: 'missing-id', unitType: 'infantry', quantity: 1 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'missing-id', unitType: 'infantry', quantity: 1 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('NOT_FOUND');
@@ -161,7 +178,7 @@ describe('unit-trainer handler', () => {
         mockKingdom({ resources: { gold: 1500, population: 1000, mana: 500, land: 1000 } })
       );
 
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry', quantity: 20 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry', quantity: 20 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INSUFFICIENT_RESOURCES');

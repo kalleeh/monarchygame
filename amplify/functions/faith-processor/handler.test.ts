@@ -22,6 +22,23 @@ vi.mock('aws-amplify/data', () => ({
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
+// Type helpers
+// ---------------------------------------------------------------------------
+
+interface HandlerResult {
+  success: boolean;
+  result?: string | null;
+  error?: string | null;
+  errorCode?: string | null;
+}
+
+// Cast handler to a simple single-argument callable so tests are not burdened
+// by the Amplify Gen2 / AWS Lambda 3-argument (event, context, callback)
+// signature, and so that the return type is narrowed to HandlerResult rather
+// than the loose JSON union produced by .returns(a.json()).
+const callHandler = handler as unknown as (event: unknown) => Promise<HandlerResult>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -60,7 +77,7 @@ describe('faith-processor handler — selectAlignment', () => {
       // Human is compatible with 'angelique'
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ race: 'Human' }));
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', action: 'selectAlignment', alignment: 'angelique' })
       );
 
@@ -75,7 +92,7 @@ describe('faith-processor handler — selectAlignment', () => {
     it('allows any race to select neutral alignment', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ race: 'Orc' }));
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', action: 'selectAlignment', alignment: 'neutral' })
       );
 
@@ -85,21 +102,21 @@ describe('faith-processor handler — selectAlignment', () => {
 
   describe('validation failures', () => {
     it('returns MISSING_PARAMS when kingdomId is absent', async () => {
-      const result = await handler(makeEvent({ action: 'selectAlignment', alignment: 'neutral' }));
+      const result = await callHandler(makeEvent({ action: 'selectAlignment', alignment: 'neutral' }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('MISSING_PARAMS');
     });
 
     it('returns MISSING_PARAMS when action is absent', async () => {
-      const result = await handler(makeEvent({ kingdomId: 'kingdom-1', alignment: 'neutral' }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', alignment: 'neutral' }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('MISSING_PARAMS');
     });
 
     it('returns INVALID_PARAM for an unknown alignment', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', action: 'selectAlignment', alignment: 'chaos' })
       );
 
@@ -108,7 +125,7 @@ describe('faith-processor handler — selectAlignment', () => {
     });
 
     it('returns INVALID_PARAM for an unknown action', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', action: 'doRitual' })
       );
 
@@ -120,7 +137,7 @@ describe('faith-processor handler — selectAlignment', () => {
       // Orc is not in the 'angelique' compatible list
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ race: 'Orc' }));
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', action: 'selectAlignment', alignment: 'angelique' })
       );
 
@@ -133,7 +150,7 @@ describe('faith-processor handler — selectAlignment', () => {
     it('returns NOT_FOUND when kingdom does not exist', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'missing-id', action: 'selectAlignment', alignment: 'neutral' })
       );
 
@@ -149,7 +166,7 @@ describe('faith-processor handler — useFocusAbility', () => {
       // combat_focus costs 8; kingdom has 50 focus points
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ stats: { focusPoints: 50 } }));
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', action: 'useFocusAbility', abilityType: 'combat_focus' })
       );
 
@@ -174,7 +191,7 @@ describe('faith-processor handler — useFocusAbility', () => {
         mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ stats: { focusPoints: 100 } }));
         mockClient.models.Kingdom.update.mockResolvedValue({ data: {}, errors: null });
 
-        const result = await handler(
+        const result = await callHandler(
           makeEvent({ kingdomId: 'kingdom-1', action: 'useFocusAbility', abilityType })
         );
 
@@ -188,7 +205,7 @@ describe('faith-processor handler — useFocusAbility', () => {
 
   describe('validation failures', () => {
     it('returns INVALID_PARAM for an unknown abilityType', async () => {
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', action: 'useFocusAbility', abilityType: 'dark_magic' })
       );
 
@@ -202,7 +219,7 @@ describe('faith-processor handler — useFocusAbility', () => {
       // emergency costs 20; kingdom only has 5 focus points
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ stats: { focusPoints: 5 } }));
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', action: 'useFocusAbility', abilityType: 'emergency' })
       );
 
@@ -214,7 +231,7 @@ describe('faith-processor handler — useFocusAbility', () => {
     it('returns INSUFFICIENT_RESOURCES when focusPoints is 0', async () => {
       mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ stats: { focusPoints: 0 } }));
 
-      const result = await handler(
+      const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', action: 'useFocusAbility', abilityType: 'economic_focus' })
       );
 
