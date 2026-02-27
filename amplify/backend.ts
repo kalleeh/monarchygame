@@ -38,3 +38,11 @@ export const backend = defineBackend({
   allianceTreasury,
   allianceManager
 });
+
+// CDK escape hatch: prevent the Cognito UserPool Schema from being updated.
+// Cognito does not allow changing attribute definitions (AttributeDataType,
+// Mutable, Required) after the User Pool is created. Newer versions of
+// @aws-amplify/backend-auth generate CDK code that tries to update the Schema,
+// which causes CloudFormation to fail with "Invalid AttributeDataType input".
+// Clearing the Schema override tells CloudFormation to leave it unchanged.
+backend.auth.resources.cfnResources.cfnUserPool.addPropertyOverride('Schema', undefined);
