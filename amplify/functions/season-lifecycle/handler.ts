@@ -33,7 +33,7 @@ async function recordSeasonRankings(seasonNumber: number): Promise<void> {
         : ((k.resources ?? {}) as Record<string, number>);
       return { id: k.id, networth: calculateNetworth(resources), stats: k.stats };
     })
-    .sort((a: { id: string; networth: number; stats: string | null | undefined }, b: { id: string; networth: number; stats: string | null | undefined }) => b.networth - a.networth);
+    .sort((a, b) => b.networth - a.networth);
 
   // Write rank back to each kingdom's stats JSON
   for (let i = 0; i < ranked.length; i++) {

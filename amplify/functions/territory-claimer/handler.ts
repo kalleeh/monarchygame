@@ -70,8 +70,9 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
     const existingTerritories = await client.models.Territory.list({
       filter: { kingdomId: { eq: kingdomId } }
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const duplicate = existingTerritories.data?.find(
-      (t: { coordinates?: string | null }) => t.coordinates === coordStr
+      (t: any) => t.coordinates === coordStr
     );
     if (duplicate) {
       return { success: false, error: 'Territory already claimed at these coordinates', errorCode: ErrorCode.INVALID_PARAM };
