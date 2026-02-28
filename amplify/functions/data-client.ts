@@ -9,7 +9,7 @@
  * The API ID suffix is discovered at cold-start from the existing Kingdom table
  * and cached for subsequent warm invocations.
  */
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
   GetCommand,
@@ -17,25 +17,29 @@ import {
   UpdateCommand,
   DeleteCommand,
   ScanCommand,
-  ListTablesCommand,
 } from '@aws-sdk/lib-dynamodb';
 
 const REGION = process.env.AWS_REGION ?? 'eu-west-1';
 
 const ddb = new DynamoDBClient({ region: REGION });
-export const docClient = DynamoDBDocumentClient.from(ddb, {
+const _docClient = DynamoDBDocumentClient.from(ddb, {
   marshallOptions: { removeUndefinedValues: true },
 });
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const docClient = _docClient as any;
 
 let _tableSuffix: string | undefined;
 
 /** Discovers the Amplify table suffix (API_ID-NONE) from the existing Kingdom table. */
 async function getTableSuffix(): Promise<string> {
   if (_tableSuffix) return _tableSuffix;
-  const { TableNames } = await ddb.send(new ListTablesCommand({}));
-  const match = TableNames?.find(t => /^Kingdom-[^-]+-NONE$/.test(t));
+  const result = await ddb.send(new ListTablesCommand({}));
+  const tableNames: string[] = result.TableNames ?? [];
+  const match = tableNames.find((t: string) => /^Kingdom-[^-]+-NONE$/.test(t));
   if (!match) throw new Error('[data-client] Cannot locate Kingdom table to determine table suffix');
-  _tableSuffix = match.slice('Kingdom-'.length, -'-NONE'.length);
+  const suffix = match.slice('Kingdom-'.length, -'-NONE'.length);
+  if (!suffix) throw new Error('[data-client] Could not extract table suffix from ' + match);
+  _tableSuffix = suffix;
   return _tableSuffix;
 }
 
