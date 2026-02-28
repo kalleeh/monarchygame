@@ -10,8 +10,10 @@ import {
 import type { KingdomResources, CombatResultData } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
+import { configureAmplify } from '../amplify-configure';
 
-const client = generateClient<Schema>();
+configureAmplify();
+const client = generateClient<Schema>({ authMode: 'iam' });
 
 // Race offensive combat bonuses (based on warOffense stat 1-5)
 const RACE_OFFENSE_BONUSES: Record<string, number> = {

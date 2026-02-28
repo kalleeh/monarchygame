@@ -3,13 +3,15 @@ import { generateClient } from 'aws-amplify/data';
 import type { KingdomUnits, KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
+import { configureAmplify } from '../amplify-configure';
 
 const VALID_UNIT_TYPES = ['infantry', 'archers', 'cavalry', 'siege', 'mages', 'scouts'] as const;
 type UnitType = typeof VALID_UNIT_TYPES[number];
 
 const UNIT_QUANTITY = { min: 1, max: 1000 } as const;
 
-const client = generateClient<Schema>();
+configureAmplify();
+const client = generateClient<Schema>({ authMode: 'iam' });
 
 export const handler: Schema["trainUnits"]["functionHandler"] = async (event) => {
   const { kingdomId, unitType, quantity } = event.arguments;

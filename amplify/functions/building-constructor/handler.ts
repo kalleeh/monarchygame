@@ -3,13 +3,15 @@ import { generateClient } from 'aws-amplify/data';
 import type { KingdomBuildings, KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
+import { configureAmplify } from '../amplify-configure';
 
 const VALID_BUILDING_TYPES = ['castle', 'barracks', 'farm', 'mine', 'temple', 'tower', 'wall'] as const;
 type BuildingType = typeof VALID_BUILDING_TYPES[number];
 
 const BUILDING_QUANTITY = { min: 1, max: 100 } as const;
 
-const client = generateClient<Schema>();
+configureAmplify();
+const client = generateClient<Schema>({ authMode: 'iam' });
 
 export const handler: Schema["constructBuildings"]["functionHandler"] = async (event) => {
   const { kingdomId, buildingType, quantity } = event.arguments;

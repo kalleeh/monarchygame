@@ -3,8 +3,10 @@ import { generateClient } from 'aws-amplify/data';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { log } from '../logger';
+import { configureAmplify } from '../amplify-configure';
 
-const client = generateClient<Schema>();
+configureAmplify();
+const client = generateClient<Schema>({ authMode: 'iam' });
 
 const TRADE_OFFER_EXPIRY_HOURS = 48;
 

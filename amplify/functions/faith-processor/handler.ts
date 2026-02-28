@@ -2,8 +2,10 @@ import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
+import { configureAmplify } from '../amplify-configure';
 
-const client = generateClient<Schema>();
+configureAmplify();
+const client = generateClient<Schema>({ authMode: 'iam' });
 
 const VALID_ALIGNMENTS = ['angelique', 'neutral', 'elemental'] as const;
 const VALID_ABILITY_TYPES = ['racial_ability', 'spell_power', 'combat_focus', 'economic_focus', 'emergency'] as const;

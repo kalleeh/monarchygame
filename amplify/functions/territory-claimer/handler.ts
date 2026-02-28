@@ -3,11 +3,13 @@ import { generateClient } from 'aws-amplify/data';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
+import { configureAmplify } from '../amplify-configure';
 
 const TERRITORY_NAME_LIMITS = { min: 2, max: 50 } as const;
 const COORDINATE_LIMITS = { min: -10000, max: 10000 } as const;
 
-const client = generateClient<Schema>();
+configureAmplify();
+const client = generateClient<Schema>({ authMode: 'iam' });
 
 export const handler: Schema["claimTerritory"]["functionHandler"] = async (event) => {
   const { kingdomId, territoryName, territoryType, terrainType, coordinates, regionId, category } = event.arguments;

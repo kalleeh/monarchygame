@@ -3,6 +3,7 @@ import { generateClient } from 'aws-amplify/data';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
+import { configureAmplify } from '../amplify-configure';
 
 const MANA_COST_PER_SPELL = 50;
 
@@ -20,7 +21,8 @@ const SPELL_DAMAGE: Record<string, { type: string; damage: number }> = {
   foul_light: { type: 'peasant_kill', damage: 0.06 },
 };
 
-const client = generateClient<Schema>();
+configureAmplify();
+const client = generateClient<Schema>({ authMode: 'iam' });
 
 export const handler: Schema["castSpell"]["functionHandler"] = async (event) => {
   const { casterId, spellId, targetId } = event.arguments;

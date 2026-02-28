@@ -2,8 +2,10 @@ import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
+import { configureAmplify } from '../amplify-configure';
 
-const client = generateClient<Schema>();
+configureAmplify();
+const client = generateClient<Schema>({ authMode: 'iam' });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function verifyKingdomOwnership(kingdomId: string, identity: any): Promise<{ error?: { success: boolean; error: string; errorCode: string }; data?: any }> {

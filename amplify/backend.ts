@@ -39,6 +39,31 @@ export const backend = defineBackend({
   allianceManager
 });
 
+// Inject the AppSync GraphQL endpoint into every Lambda so they can call
+// Amplify.configure() before using generateClient<Schema>().
+const lambdaFunctions = [
+  backend.combatProcessor,
+  backend.resourceManager,
+  backend.buildingConstructor,
+  backend.unitTrainer,
+  backend.spellCaster,
+  backend.territoryClaimer,
+  backend.seasonManager,
+  backend.warManager,
+  backend.tradeProcessor,
+  backend.diplomacyProcessor,
+  backend.seasonLifecycle,
+  backend.thieveryProcessor,
+  backend.faithProcessor,
+  backend.bountyProcessor,
+  backend.allianceTreasury,
+  backend.allianceManager,
+];
+
+for (const fn of lambdaFunctions) {
+  fn.addEnvironment('AMPLIFY_DATA_GRAPHQL_ENDPOINT', backend.data.graphqlUrl);
+}
+
 // CDK escape hatch: prevent the Cognito UserPool Schema from being updated.
 // Cognito does not allow changing attribute definitions (AttributeDataType,
 // Mutable, Required) after the User Pool is created. Newer versions of

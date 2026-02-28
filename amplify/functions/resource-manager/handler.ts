@@ -3,6 +3,7 @@ import { generateClient } from 'aws-amplify/data';
 import type { KingdomResources, KingdomBuildings } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
+import { configureAmplify } from '../amplify-configure';
 
 const RESOURCE_LIMITS = {
   gold: { min: 0, max: 1000000 },
@@ -11,7 +12,8 @@ const RESOURCE_LIMITS = {
   land: { min: 1000, max: 100000 }
 } as const;
 
-const client = generateClient<Schema>();
+configureAmplify();
+const client = generateClient<Schema>({ authMode: 'iam' });
 
 export const handler: Schema["updateResources"]["functionHandler"] = async (event) => {
   const { kingdomId, turns: rawTurns } = event.arguments;

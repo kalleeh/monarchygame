@@ -3,8 +3,10 @@ import { generateClient } from 'aws-amplify/data';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
+import { configureAmplify } from '../amplify-configure';
 
-const client = generateClient<Schema>();
+configureAmplify();
+const client = generateClient<Schema>({ authMode: 'iam' });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleContribute(args: { allianceId?: string | null; kingdomId?: string | null; amount?: number | null }, identity: any): Promise<any> {

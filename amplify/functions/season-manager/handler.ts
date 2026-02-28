@@ -2,8 +2,10 @@ import type { Schema } from '../../data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
+import { configureAmplify } from '../amplify-configure';
 
-const client = generateClient<Schema>();
+configureAmplify();
+const client = generateClient<Schema>({ authMode: 'iam' });
 
 // Season duration: 6 weeks total, 2 weeks per age
 const SEASON_DURATION_WEEKS = 6;
