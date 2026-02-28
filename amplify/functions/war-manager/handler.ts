@@ -1,15 +1,42 @@
 import type { Schema } from '../../data/resource';
-import { generateClient } from 'aws-amplify/data';
+import { dbList, dbGet, dbCreate, dbUpdate } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { configureAmplify } from '../amplify-configure';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let client: ReturnType<typeof generateClient<Schema>>;
+type KingdomType = {
+  id: string;
+  owner: string;
+};
+
+type WarDeclarationType = {
+  id: string;
+  attackerId: string;
+  defenderId: string;
+  seasonId: string;
+  status: string;
+  attackCount: number;
+  declaredAt: string;
+  reason: string;
+  resolvedAt?: string;
+};
+
+type TreatyType = {
+  id: string;
+  proposerId: string;
+  recipientId: string;
+  status: string;
+};
+
+type DiplomaticRelationType = {
+  id: string;
+  kingdomId: string;
+  targetKingdomId: string;
+  status: string;
+  reputation: number;
+  lastActionAt: string;
+};
 
 export const handler: Schema["declareWar"]["functionHandler"] = async (event) => {
-  await configureAmplify();
-  client = generateClient<Schema>({ authMode: 'iam' });
   const args = event.arguments;
 
   try {
@@ -41,7 +68,7 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
     }
 
     // Verify kingdom ownership (attacker)
-    const { data: attackerKingdom } = await client.models.Kingdom.get({ id: attackerId });
+    const attackerKingdom = await dbGet<KingdomType>('Kingdom', attackerId);
     if (!attackerKingdom) {
       return JSON.stringify({ success: false, error: 'Attacker kingdom not found', errorCode: ErrorCode.NOT_FOUND });
     }
@@ -51,40 +78,36 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
     }
 
     // Check for existing active war
-    const { data: existingWars } = await client.models.WarDeclaration.list({
-      filter: {
-        attackerId: { eq: attackerId },
-        defenderId: { eq: defenderId },
-        seasonId: { eq: seasonId },
-        status: { eq: 'active' }
-      }
-    });
+    const allWars = await dbList<WarDeclarationType>('WarDeclaration');
+    const existingWars = allWars.filter(w =>
+      w.attackerId === attackerId &&
+      w.defenderId === defenderId &&
+      w.seasonId === seasonId &&
+      w.status === 'active'
+    );
 
     if (existingWars && existingWars.length > 0) {
       return JSON.stringify({ success: false, error: 'War already declared against this kingdom', errorCode: ErrorCode.VALIDATION_FAILED });
     }
 
     // Check for treaty conflicts
-    const { data: treaties } = await client.models.Treaty.list({
-      filter: {
-        proposerId: { eq: attackerId },
-        recipientId: { eq: defenderId },
-        status: { eq: 'active' }
-      }
-    });
+    const allTreaties = await dbList<TreatyType>('Treaty');
+    const treaties = allTreaties.filter(t =>
+      t.proposerId === attackerId &&
+      t.recipientId === defenderId &&
+      t.status === 'active'
+    );
 
     if (treaties && treaties.length > 0) {
       // Break any active treaties
       for (const treaty of treaties) {
-        await client.models.Treaty.update({
-          id: treaty.id,
-          status: 'broken'
-        });
+        await dbUpdate('Treaty', treaty.id, { status: 'broken' });
       }
     }
 
     // Create war declaration
-    const warDeclaration = await client.models.WarDeclaration.create({
+    const warDeclaration = await dbCreate<WarDeclarationType>('WarDeclaration', {
+      id: crypto.randomUUID(),
       attackerId,
       defenderId,
       seasonId,
@@ -95,21 +118,20 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
     });
 
     // Update diplomatic relation to war
-    const { data: relations } = await client.models.DiplomaticRelation.list({
-      filter: {
-        kingdomId: { eq: attackerId },
-        targetKingdomId: { eq: defenderId }
-      }
-    });
+    const allRelations = await dbList<DiplomaticRelationType>('DiplomaticRelation');
+    const relations = allRelations.filter(r =>
+      r.kingdomId === attackerId &&
+      r.targetKingdomId === defenderId
+    );
 
     if (relations && relations.length > 0) {
-      await client.models.DiplomaticRelation.update({
-        id: relations[0].id,
+      await dbUpdate('DiplomaticRelation', relations[0].id, {
         status: 'war',
         lastActionAt: new Date().toISOString()
       });
     } else {
-      await client.models.DiplomaticRelation.create({
+      await dbCreate<DiplomaticRelationType>('DiplomaticRelation', {
+        id: crypto.randomUUID(),
         kingdomId: attackerId,
         targetKingdomId: defenderId,
         status: 'war',
@@ -122,7 +144,7 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
     return JSON.stringify({
       success: true,
       warDeclaration: {
-        id: warDeclaration.data?.id,
+        id: warDeclaration.id,
         attackerId,
         defenderId,
         status: 'active',
@@ -142,28 +164,25 @@ async function handleResolveWar(args: { warId: string; resolution: string }): Pr
     return JSON.stringify({ success: false, error: 'Missing warId or resolution', errorCode: ErrorCode.MISSING_PARAMS });
   }
 
-  const { data: war } = await client.models.WarDeclaration.get({ id: warId });
+  const war = await dbGet<WarDeclarationType>('WarDeclaration', warId);
   if (!war) {
     return JSON.stringify({ success: false, error: 'War declaration not found', errorCode: ErrorCode.NOT_FOUND });
   }
 
-  await client.models.WarDeclaration.update({
-    id: warId,
+  await dbUpdate('WarDeclaration', warId, {
     status: 'resolved',
     resolvedAt: new Date().toISOString()
   });
 
   // Update diplomatic relation
-  const { data: relations } = await client.models.DiplomaticRelation.list({
-    filter: {
-      kingdomId: { eq: war.attackerId },
-      targetKingdomId: { eq: war.defenderId }
-    }
-  });
+  const allRelations = await dbList<DiplomaticRelationType>('DiplomaticRelation');
+  const relations = allRelations.filter(r =>
+    r.kingdomId === war.attackerId &&
+    r.targetKingdomId === war.defenderId
+  );
 
   if (relations && relations.length > 0) {
-    await client.models.DiplomaticRelation.update({
-      id: relations[0].id,
+    await dbUpdate('DiplomaticRelation', relations[0].id, {
       status: 'neutral',
       lastActionAt: new Date().toISOString()
     });

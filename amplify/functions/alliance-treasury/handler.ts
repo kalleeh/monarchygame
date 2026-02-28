@@ -1,12 +1,22 @@
 import type { Schema } from '../../data/resource';
-import { generateClient } from 'aws-amplify/data';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { configureAmplify } from '../amplify-configure';
+import { dbGet, dbUpdate } from '../data-client';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let client: ReturnType<typeof generateClient<Schema>>;
+type AllianceRecord = {
+  id: string;
+  leaderId: string;
+  memberIds: string | string[];
+  treasury?: unknown;
+  owner?: string | null;
+};
+
+type KingdomRecord = {
+  id: string;
+  owner?: string | null;
+  resources?: KingdomResources | null;
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleContribute(args: { allianceId?: string | null; kingdomId?: string | null; amount?: number | null }, identity: any): Promise<any> {
@@ -21,23 +31,23 @@ async function handleContribute(args: { allianceId?: string | null; kingdomId?: 
   }
 
   // Fetch alliance and verify it exists
-  const allianceResult = await client.models.Alliance.get({ id: allianceId });
-  if (!allianceResult.data) {
+  const alliance = await dbGet<AllianceRecord>('Alliance', allianceId);
+  if (!alliance) {
     return { success: false, error: 'Alliance not found', errorCode: ErrorCode.NOT_FOUND };
   }
 
   // Fetch kingdom and verify caller owns it
-  const kingdomResult = await client.models.Kingdom.get({ id: kingdomId });
-  if (!kingdomResult.data) {
+  const kingdom = await dbGet<KingdomRecord>('Kingdom', kingdomId);
+  if (!kingdom) {
     return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
   }
 
   // Verify caller owns the kingdom via identity
-  if (identity?.sub && kingdomResult.data.owner !== identity.sub) {
+  if (identity?.sub && kingdom.owner !== identity.sub) {
     return { success: false, error: 'Unauthorized: you do not own this kingdom', errorCode: ErrorCode.UNAUTHORIZED };
   }
 
-  const resources = (kingdomResult.data.resources ?? {}) as KingdomResources;
+  const resources = (kingdom.resources ?? {}) as KingdomResources;
   const currentGold = resources.gold ?? 0;
 
   if (currentGold < amount) {
@@ -51,14 +61,14 @@ async function handleContribute(args: { allianceId?: string | null; kingdomId?: 
   };
 
   // Update alliance treasury
-  const rawTreasury = allianceResult.data.treasury;
+  const rawTreasury = alliance.treasury;
   const treasury: Record<string, number> = rawTreasury
     ? (typeof rawTreasury === 'string' ? JSON.parse(rawTreasury) : (rawTreasury as Record<string, number>))
     : {};
   treasury.gold = (treasury.gold ?? 0) + amount;
 
-  await client.models.Kingdom.update({ id: kingdomId, resources: updatedResources });
-  await client.models.Alliance.update({ id: allianceId, treasury });
+  await dbUpdate('Kingdom', kingdomId, { resources: updatedResources });
+  await dbUpdate('Alliance', allianceId, { treasury });
 
   log.info('alliance-treasury', 'contribute', { allianceId, kingdomId, amount });
   return { success: true, result: JSON.stringify({ contributed: amount, newTreasuryBalance: treasury.gold }) };
@@ -77,18 +87,18 @@ async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: st
   }
 
   // Fetch alliance and verify caller is the leader
-  const allianceResult = await client.models.Alliance.get({ id: allianceId });
-  if (!allianceResult.data) {
+  const alliance = await dbGet<AllianceRecord>('Alliance', allianceId);
+  if (!alliance) {
     return { success: false, error: 'Alliance not found', errorCode: ErrorCode.NOT_FOUND };
   }
 
   // Verify caller is the alliance leader
-  if (identity?.sub && allianceResult.data.owner !== identity.sub) {
+  if (identity?.sub && alliance.owner !== identity.sub) {
     return { success: false, error: 'Unauthorized: only the alliance leader can withdraw from the treasury', errorCode: ErrorCode.UNAUTHORIZED };
   }
 
   // Parse treasury and verify sufficient gold
-  const rawTreasury = allianceResult.data.treasury;
+  const rawTreasury = alliance.treasury;
   const treasury: Record<string, number> = rawTreasury
     ? (typeof rawTreasury === 'string' ? JSON.parse(rawTreasury) : (rawTreasury as Record<string, number>))
     : {};
@@ -99,13 +109,13 @@ async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: st
   }
 
   // Fetch kingdom
-  const kingdomResult = await client.models.Kingdom.get({ id: kingdomId });
-  if (!kingdomResult.data) {
+  const kingdom = await dbGet<KingdomRecord>('Kingdom', kingdomId);
+  if (!kingdom) {
     return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
   }
 
   // Add gold to kingdom
-  const resources = (kingdomResult.data.resources ?? {}) as KingdomResources;
+  const resources = (kingdom.resources ?? {}) as KingdomResources;
   const updatedResources: KingdomResources = {
     ...resources,
     gold: (resources.gold ?? 0) + amount
@@ -114,16 +124,14 @@ async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: st
   // Deduct from treasury
   treasury.gold = treasuryGold - amount;
 
-  await client.models.Kingdom.update({ id: kingdomId, resources: updatedResources });
-  await client.models.Alliance.update({ id: allianceId, treasury });
+  await dbUpdate('Kingdom', kingdomId, { resources: updatedResources });
+  await dbUpdate('Alliance', allianceId, { treasury });
 
   log.info('alliance-treasury', 'withdraw', { allianceId, kingdomId, amount });
   return { success: true, result: JSON.stringify({ withdrawn: amount, newTreasuryBalance: treasury.gold }) };
 }
 
 export const handler: Schema["manageAllianceTreasury"]["functionHandler"] = async (event) => {
-  await configureAmplify();
-  client = generateClient<Schema>({ authMode: 'iam' });
   const { allianceId, kingdomId, action, amount } = event.arguments;
   const identity = (event as any).identity;
 

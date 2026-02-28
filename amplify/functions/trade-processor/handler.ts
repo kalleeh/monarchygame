@@ -1,20 +1,35 @@
 import type { Schema } from '../../data/resource';
-import { generateClient } from 'aws-amplify/data';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { configureAmplify } from '../amplify-configure';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let client: ReturnType<typeof generateClient<Schema>>;
+import { dbGet, dbCreate, dbUpdate } from '../data-client';
 
 const TRADE_OFFER_EXPIRY_HOURS = 48;
 
 type CallerIdentity = { sub: string; username?: string };
 
+type KingdomRecord = {
+  id: string;
+  owner?: string | null;
+  resources?: KingdomResources | null;
+};
+
+type TradeOfferRecord = {
+  id: string;
+  sellerId: string;
+  seasonId: string;
+  resourceType: string;
+  quantity: number;
+  pricePerUnit: number;
+  totalPrice: number;
+  status: string;
+  escrowedResources?: string;
+  expiresAt: string;
+  buyerId?: string | null;
+  acceptedAt?: string | null;
+};
+
 export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event) => {
-  await configureAmplify();
-  client = generateClient<Schema>({ authMode: 'iam' });
   const args = event.arguments;
 
   try {
@@ -51,7 +66,7 @@ export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event
     }
 
     // Verify seller has the resources
-    const { data: seller } = await client.models.Kingdom.get({ id: sellerId });
+    const seller = await dbGet<KingdomRecord>('Kingdom', sellerId);
     if (!seller) {
       return JSON.stringify({ success: false, error: 'Seller kingdom not found', errorCode: ErrorCode.NOT_FOUND });
     }
@@ -70,16 +85,13 @@ export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event
 
     // Escrow: deduct resources from seller
     const updatedResources = { ...sellerResources, [resourceType]: available - quantity };
-    await client.models.Kingdom.update({
-      id: sellerId,
-      resources: updatedResources
-    });
+    await dbUpdate('Kingdom', sellerId, { resources: updatedResources });
 
     const totalPrice = quantity * pricePerUnit;
     const expiresAt = new Date(Date.now() + TRADE_OFFER_EXPIRY_HOURS * 60 * 60 * 1000).toISOString();
 
     // Create the trade offer
-    const offer = await client.models.TradeOffer.create({
+    const offer = await dbCreate<Record<string, unknown>>('TradeOffer', {
       sellerId,
       seasonId,
       resourceType,
@@ -95,7 +107,7 @@ export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event
     return JSON.stringify({
       success: true,
       offer: {
-        id: offer.data?.id,
+        id: offer?.id,
         sellerId,
         resourceType,
         quantity,
@@ -119,7 +131,7 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }, cal
   }
 
   // Get the offer - race condition protection via status check
-  const { data: offer } = await client.models.TradeOffer.get({ id: offerId });
+  const offer = await dbGet<TradeOfferRecord>('TradeOffer', offerId);
   if (!offer) {
     return JSON.stringify({ success: false, error: 'Trade offer not found', errorCode: ErrorCode.NOT_FOUND });
   }
@@ -134,21 +146,21 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }, cal
 
   // Check if offer has expired
   if (new Date(offer.expiresAt) < new Date()) {
-    await client.models.TradeOffer.update({ id: offerId, status: 'expired' });
+    await dbUpdate('TradeOffer', offerId, { status: 'expired' });
 
     // Refund escrowed resources to seller
-    const { data: seller } = await client.models.Kingdom.get({ id: offer.sellerId });
+    const seller = await dbGet<KingdomRecord>('Kingdom', offer.sellerId);
     if (seller) {
       const sellerResources = (seller.resources ?? {}) as Record<string, number>;
       sellerResources[offer.resourceType] = (sellerResources[offer.resourceType] ?? 0) + offer.quantity;
-      await client.models.Kingdom.update({ id: offer.sellerId, resources: sellerResources });
+      await dbUpdate('Kingdom', offer.sellerId, { resources: sellerResources });
     }
 
     return JSON.stringify({ success: false, error: 'Trade offer has expired', errorCode: ErrorCode.TRADE_EXPIRED });
   }
 
   // Verify buyer has enough gold
-  const { data: buyer } = await client.models.Kingdom.get({ id: buyerId });
+  const buyer = await dbGet<KingdomRecord>('Kingdom', buyerId);
   if (!buyer) {
     return JSON.stringify({ success: false, error: 'Buyer kingdom not found', errorCode: ErrorCode.NOT_FOUND });
   }
@@ -173,7 +185,7 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }, cal
   };
 
   // 2. Add gold to seller (resources already escrowed)
-  const { data: seller } = await client.models.Kingdom.get({ id: offer.sellerId });
+  const seller = await dbGet<KingdomRecord>('Kingdom', offer.sellerId);
   const sellerResources = (seller?.resources ?? {}) as KingdomResources;
   const updatedSellerResources = {
     ...sellerResources,
@@ -182,9 +194,9 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }, cal
 
   // Execute all updates
   await Promise.all([
-    client.models.Kingdom.update({ id: buyerId, resources: updatedBuyerResources }),
-    client.models.Kingdom.update({ id: offer.sellerId, resources: updatedSellerResources }),
-    client.models.TradeOffer.update({ id: offerId, status: 'accepted', buyerId, acceptedAt: new Date().toISOString() })
+    dbUpdate('Kingdom', buyerId, { resources: updatedBuyerResources }),
+    dbUpdate('Kingdom', offer.sellerId, { resources: updatedSellerResources }),
+    dbUpdate('TradeOffer', offerId, { status: 'accepted', buyerId, acceptedAt: new Date().toISOString() })
   ]);
 
   return JSON.stringify({
@@ -207,7 +219,7 @@ async function handleCancelOffer(args: { offerId: string; sellerId: string }, ca
     return JSON.stringify({ success: false, error: 'Missing offerId or sellerId', errorCode: ErrorCode.MISSING_PARAMS });
   }
 
-  const { data: offer } = await client.models.TradeOffer.get({ id: offerId });
+  const offer = await dbGet<TradeOfferRecord>('TradeOffer', offerId);
   if (!offer) {
     return JSON.stringify({ success: false, error: 'Trade offer not found', errorCode: ErrorCode.NOT_FOUND });
   }
@@ -221,7 +233,7 @@ async function handleCancelOffer(args: { offerId: string; sellerId: string }, ca
   }
 
   // Refund escrowed resources
-  const { data: seller } = await client.models.Kingdom.get({ id: sellerId });
+  const seller = await dbGet<KingdomRecord>('Kingdom', sellerId);
   if (seller) {
     // Verify kingdom ownership (seller cancelling their own offer)
     const sellerOwnerField = (seller as any).owner as string | null;
@@ -231,10 +243,10 @@ async function handleCancelOffer(args: { offerId: string; sellerId: string }, ca
 
     const sellerResources = (seller.resources ?? {}) as Record<string, number>;
     sellerResources[offer.resourceType] = (sellerResources[offer.resourceType] ?? 0) + offer.quantity;
-    await client.models.Kingdom.update({ id: sellerId, resources: sellerResources });
+    await dbUpdate('Kingdom', sellerId, { resources: sellerResources });
   }
 
-  await client.models.TradeOffer.update({ id: offerId, status: 'cancelled' });
+  await dbUpdate('TradeOffer', offerId, { status: 'cancelled' });
 
   return JSON.stringify({ success: true, offerId, refunded: true });
 }

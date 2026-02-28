@@ -1,18 +1,22 @@
 import type { Schema } from '../../data/resource';
-import { generateClient } from 'aws-amplify/data';
 import type { KingdomUnits, KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { configureAmplify } from '../amplify-configure';
+import { dbGet, dbUpdate } from '../data-client';
 
 const VALID_UNIT_TYPES = ['infantry', 'archers', 'cavalry', 'siege', 'mages', 'scouts'] as const;
 type UnitType = typeof VALID_UNIT_TYPES[number];
 
 const UNIT_QUANTITY = { min: 1, max: 1000 } as const;
 
+type KingdomType = {
+  id: string;
+  owner?: string | null;
+  resources?: KingdomResources | null;
+  totalUnits?: KingdomUnits | null;
+};
+
 export const handler: Schema["trainUnits"]["functionHandler"] = async (event) => {
-  await configureAmplify();
-  const client = generateClient<Schema>({ authMode: 'iam' });
   const { kingdomId, unitType, quantity } = event.arguments;
 
   try {
@@ -34,19 +38,19 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
 
-    const result = await client.models.Kingdom.get({ id: kingdomId });
+    const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
 
-    if (!result.data) {
+    if (!kingdom) {
       return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
     // Verify kingdom ownership
-    const ownerField = (result.data as any).owner as string | null;
+    const ownerField = kingdom.owner ?? null;
     if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
-    const resources = (result.data.resources ?? {}) as KingdomResources;
+    const resources = (kingdom.resources ?? {}) as KingdomResources;
     const goldCost = quantity * 100;
     const currentGold = resources.gold ?? 0;
 
@@ -61,7 +65,7 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
-    const units = (result.data.totalUnits ?? {}) as KingdomUnits;
+    const units = (kingdom.totalUnits ?? {}) as KingdomUnits;
     const currentCount = units[unitType as keyof KingdomUnits] ?? 0;
     const updatedUnits: KingdomUnits = {
       ...units,
@@ -74,8 +78,7 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
       turns: Math.max(0, currentTurns - turnCost)
     };
 
-    await client.models.Kingdom.update({
-      id: kingdomId,
+    await dbUpdate('Kingdom', kingdomId, {
       totalUnits: updatedUnits,
       resources: updatedResources
     });

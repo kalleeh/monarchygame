@@ -72,6 +72,28 @@ for (const fn of lambdaFunctions) {
   );
 }
 
+// Grant all Lambda functions direct DynamoDB access so they can use data-client.ts
+// (replacing the generateClient<Schema>() Amplify frontend pattern which requires
+// model_introspection that is unavailable inside Lambda bundles).
+for (const fn of lambdaFunctions) {
+  fn.resources.lambda.addToRolePolicy(
+    new iam.PolicyStatement({
+      actions: [
+        'dynamodb:GetItem',
+        'dynamodb:PutItem',
+        'dynamodb:UpdateItem',
+        'dynamodb:DeleteItem',
+        'dynamodb:Query',
+        'dynamodb:Scan',
+        'dynamodb:BatchGetItem',
+        'dynamodb:BatchWriteItem',
+        'dynamodb:ListTables',
+      ],
+      resources: ['*'],
+    })
+  );
+}
+
 // CDK escape hatch: prevent the Cognito UserPool Schema from being updated.
 // Cognito does not allow changing attribute definitions (AttributeDataType,
 // Mutable, Required) after the User Pool is created. Newer versions of

@@ -1,13 +1,22 @@
 import type { Schema } from '../../data/resource';
-import { generateClient } from 'aws-amplify/data';
+import { dbList, dbUpdate } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { configureAmplify } from '../amplify-configure';
 
 // Season duration: 6 weeks total, 2 weeks per age
 const SEASON_DURATION_WEEKS = 6;
 const AGE_DURATION_WEEKS = 2;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+type SeasonType = {
+  id: string;
+  seasonNumber: number;
+  status: string;
+  startDate: string;
+  currentAge: string;
+  ageTransitions: string;
+  endDate?: string;
+};
 
 function calculateCurrentAge(startDate: Date): 'early' | 'middle' | 'late' {
   const elapsed = Date.now() - startDate.getTime();
@@ -25,8 +34,6 @@ function isSeasonExpired(startDate: Date): boolean {
 
 // Handler for getActiveSeason query
 export const handler: Schema["getActiveSeason"]["functionHandler"] = async (event) => {
-  await configureAmplify();
-  const client = generateClient<Schema>({ authMode: 'iam' });
   try {
     // Verify caller identity
     const identity = event.identity as { sub?: string; username?: string } | null;
@@ -35,9 +42,8 @@ export const handler: Schema["getActiveSeason"]["functionHandler"] = async (even
     }
 
     // Find the active season
-    const { data: seasons } = await client.models.GameSeason.list({
-      filter: { status: { eq: 'active' } }
-    });
+    const allSeasons = await dbList<SeasonType>('GameSeason');
+    const seasons = allSeasons.filter(s => s.status === 'active');
 
     if (!seasons || seasons.length === 0) {
       return JSON.stringify({ success: false, error: 'No active season', errorCode: ErrorCode.SEASON_INACTIVE });
@@ -49,8 +55,7 @@ export const handler: Schema["getActiveSeason"]["functionHandler"] = async (even
 
     // Check if season has expired
     if (isSeasonExpired(startDate)) {
-      await client.models.GameSeason.update({
-        id: season.id,
+      await dbUpdate('GameSeason', season.id, {
         status: 'completed',
         endDate: new Date().toISOString()
       });
@@ -59,8 +64,7 @@ export const handler: Schema["getActiveSeason"]["functionHandler"] = async (even
 
     // Update age if it has changed
     if (currentAge !== season.currentAge) {
-      await client.models.GameSeason.update({
-        id: season.id,
+      await dbUpdate('GameSeason', season.id, {
         currentAge,
         ageTransitions: JSON.stringify({
           ...JSON.parse((season.ageTransitions as string) || '{}'),

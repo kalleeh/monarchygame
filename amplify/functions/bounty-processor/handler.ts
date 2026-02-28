@@ -1,12 +1,15 @@
-import type { Schema } from '../../data/resource';
-import { generateClient } from 'aws-amplify/data';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { configureAmplify } from '../amplify-configure';
+import { dbGet, dbUpdate } from '../data-client';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let client: ReturnType<typeof generateClient<Schema>>;
+type KingdomType = {
+  id: string;
+  owner?: string | null;
+  resources?: KingdomResources | null;
+  stats?: Record<string, unknown> | null;
+};
 
 const MIN_LAND_GAINED = 1000;
 
@@ -20,18 +23,18 @@ async function handleClaim(args: { kingdomId?: string | null; targetId?: string 
     return { success: false, error: 'Missing required parameters: kingdomId, targetId', errorCode: ErrorCode.MISSING_PARAMS };
   }
 
-  const result = await client.models.Kingdom.get({ id: kingdomId });
-  if (!result.data) {
+  const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
+  if (!kingdom) {
     return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
   }
 
   // Verify kingdom ownership
-  const ownerField = (result.data as any).owner as string | null;
+  const ownerField = kingdom.owner ?? null;
   if (!ownerField || (!ownerField.includes(callerIdentity.sub) && !ownerField.includes(callerIdentity.username ?? ''))) {
     return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
   }
 
-  const stats = (result.data.stats ?? {}) as Record<string, unknown>;
+  const stats = (kingdom.stats ?? {}) as Record<string, unknown>;
 
   if (stats.activeBountyTargetId) {
     return { success: false, error: 'Bounty already active — complete or abandon the current bounty first', errorCode: ErrorCode.VALIDATION_FAILED };
@@ -43,8 +46,7 @@ async function handleClaim(args: { kingdomId?: string | null; targetId?: string 
     activeBountyClaimedAt: Date.now(),
   };
 
-  await client.models.Kingdom.update({
-    id: kingdomId,
+  await dbUpdate('Kingdom', kingdomId, {
     stats: updatedStats,
   });
 
@@ -64,18 +66,18 @@ async function handleComplete(args: { kingdomId?: string | null; targetId?: stri
     return { success: false, error: `landGained must be at least ${MIN_LAND_GAINED}`, errorCode: ErrorCode.INVALID_PARAM };
   }
 
-  const result = await client.models.Kingdom.get({ id: kingdomId });
-  if (!result.data) {
+  const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
+  if (!kingdom) {
     return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
   }
 
   // Verify kingdom ownership
-  const ownerField = (result.data as any).owner as string | null;
+  const ownerField = kingdom.owner ?? null;
   if (!ownerField || (!ownerField.includes(callerIdentity.sub) && !ownerField.includes(callerIdentity.username ?? ''))) {
     return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
   }
 
-  const stats = (result.data.stats ?? {}) as Record<string, unknown>;
+  const stats = (kingdom.stats ?? {}) as Record<string, unknown>;
 
   if (stats.activeBountyTargetId !== targetId) {
     return { success: false, error: 'No active bounty matches the provided targetId', errorCode: ErrorCode.VALIDATION_FAILED };
@@ -87,7 +89,7 @@ async function handleComplete(args: { kingdomId?: string | null; targetId?: stri
   const populationReward = structuresGained * 2;
 
   // Update resources
-  const resources = (result.data.resources ?? {}) as KingdomResources;
+  const resources = (kingdom.resources ?? {}) as KingdomResources;
   const updatedResources: KingdomResources = {
     ...resources,
     gold: (resources.gold ?? 0) + goldReward,
@@ -99,8 +101,7 @@ async function handleComplete(args: { kingdomId?: string | null; targetId?: stri
   delete updatedStats.activeBountyTargetId;
   delete updatedStats.activeBountyClaimedAt;
 
-  await client.models.Kingdom.update({
-    id: kingdomId,
+  await dbUpdate('Kingdom', kingdomId, {
     stats: updatedStats,
     resources: updatedResources,
   });
@@ -112,8 +113,6 @@ async function handleComplete(args: { kingdomId?: string | null; targetId?: stri
 // Single handler export — dispatch based on which mutation was called
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const handler = async (event: any) => {
-  await configureAmplify();
-  client = generateClient<Schema>({ authMode: 'iam' });
   const fieldName = event.info?.fieldName as string | undefined;
 
   try {

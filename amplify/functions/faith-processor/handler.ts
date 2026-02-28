@@ -1,8 +1,7 @@
 import type { Schema } from '../../data/resource';
-import { generateClient } from 'aws-amplify/data';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { configureAmplify } from '../amplify-configure';
+import { dbGet, dbUpdate } from '../data-client';
 
 const VALID_ALIGNMENTS = ['angelique', 'neutral', 'elemental'] as const;
 const VALID_ABILITY_TYPES = ['racial_ability', 'spell_power', 'combat_focus', 'economic_focus', 'emergency'] as const;
@@ -21,9 +20,14 @@ const ABILITY_COSTS: Record<string, number> = {
   emergency: 20,
 };
 
+type KingdomType = {
+  id: string;
+  owner?: string | null;
+  race?: string | null;
+  stats?: Record<string, unknown> | null;
+};
+
 export const handler: Schema["updateFaith"]["functionHandler"] = async (event) => {
-  await configureAmplify();
-  const client = generateClient<Schema>({ authMode: 'iam' });
   const { kingdomId, action, alignment, abilityType } = event.arguments;
 
   try {
@@ -42,18 +46,18 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
         return { success: false, error: `Invalid alignment. Must be one of: ${VALID_ALIGNMENTS.join(', ')}`, errorCode: ErrorCode.INVALID_PARAM };
       }
 
-      const result = await client.models.Kingdom.get({ id: kingdomId });
-      if (!result.data) {
+      const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
+      if (!kingdom) {
         return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
       }
 
       // Verify kingdom ownership
-      const ownerField = (result.data as any).owner as string | null;
+      const ownerField = kingdom.owner ?? null;
       if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
         return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
       }
 
-      const kingdomRace = result.data.race as string;
+      const kingdomRace = kingdom.race as string;
 
       // Validate race compatibility (neutral allows all)
       if (alignment !== 'neutral') {
@@ -63,11 +67,10 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
         }
       }
 
-      const stats = (result.data.stats ?? {}) as Record<string, unknown>;
+      const stats = (kingdom.stats ?? {}) as Record<string, unknown>;
       const updatedStats = { ...stats, faithAlignment: alignment };
 
-      await client.models.Kingdom.update({
-        id: kingdomId,
+      await dbUpdate('Kingdom', kingdomId, {
         stats: updatedStats,
       });
 
@@ -79,18 +82,18 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
         return { success: false, error: `Invalid abilityType. Must be one of: ${VALID_ABILITY_TYPES.join(', ')}`, errorCode: ErrorCode.INVALID_PARAM };
       }
 
-      const result = await client.models.Kingdom.get({ id: kingdomId });
-      if (!result.data) {
+      const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
+      if (!kingdom) {
         return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
       }
 
       // Verify kingdom ownership
-      const ownerField = (result.data as any).owner as string | null;
+      const ownerField = kingdom.owner ?? null;
       if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
         return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
       }
 
-      const stats = (result.data.stats ?? {}) as Record<string, unknown>;
+      const stats = (kingdom.stats ?? {}) as Record<string, unknown>;
       const focusPoints = (stats.focusPoints as number) ?? 0;
       const cost = ABILITY_COSTS[abilityType];
 
@@ -101,8 +104,7 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
       const remainingFocusPoints = focusPoints - cost;
       const updatedStats = { ...stats, focusPoints: remainingFocusPoints };
 
-      await client.models.Kingdom.update({
-        id: kingdomId,
+      await dbUpdate('Kingdom', kingdomId, {
         stats: updatedStats,
       });
 

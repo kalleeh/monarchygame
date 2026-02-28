@@ -1,19 +1,48 @@
 import type { Schema } from '../../data/resource';
-import { generateClient } from 'aws-amplify/data';
+import { dbList, dbGet, dbCreate, dbUpdate } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { configureAmplify } from '../amplify-configure';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let client: ReturnType<typeof generateClient<Schema>>;
 
 const TREATY_DURATION_DAYS = 30;
 
 type CallerIdentity = { sub: string; username?: string };
 
+type KingdomType = {
+  id: string;
+  owner: string;
+};
+
+type TreatyType = {
+  id: string;
+  proposerId: string;
+  recipientId: string;
+  seasonId: string;
+  type: string;
+  status: string;
+  terms: string;
+  proposedAt: string;
+  expiresAt: string;
+  respondedAt?: string;
+};
+
+type DiplomaticRelationType = {
+  id: string;
+  kingdomId: string;
+  targetKingdomId: string;
+  status: string;
+  reputation: number;
+  lastActionAt: string;
+};
+
+type WarDeclarationType = {
+  id: string;
+  attackerId: string;
+  defenderId: string;
+  status: string;
+  resolvedAt?: string;
+};
+
 export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (event) => {
-  await configureAmplify();
-  client = generateClient<Schema>({ authMode: 'iam' });
   const args = event.arguments;
 
   try {
@@ -53,7 +82,7 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
     }
 
     // Verify kingdom ownership (proposer)
-    const { data: proposerKingdom } = await client.models.Kingdom.get({ id: proposerId });
+    const proposerKingdom = await dbGet<KingdomType>('Kingdom', proposerId);
     if (!proposerKingdom) {
       return JSON.stringify({ success: false, error: 'Proposer kingdom not found', errorCode: ErrorCode.NOT_FOUND });
     }
@@ -63,13 +92,12 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
     }
 
     // Check for conflicting treaties
-    const { data: existingTreaties } = await client.models.Treaty.list({
-      filter: {
-        proposerId: { eq: proposerId },
-        recipientId: { eq: recipientId },
-        status: { eq: 'proposed' }
-      }
-    });
+    const allTreaties = await dbList<TreatyType>('Treaty');
+    const existingTreaties = allTreaties.filter(t =>
+      t.proposerId === proposerId &&
+      t.recipientId === recipientId &&
+      t.status === 'proposed'
+    );
 
     if (existingTreaties && existingTreaties.length > 0) {
       return JSON.stringify({ success: false, error: 'A pending treaty proposal already exists', errorCode: ErrorCode.TREATY_CONFLICT });
@@ -77,7 +105,8 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
 
     const expiresAt = new Date(Date.now() + TREATY_DURATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-    const treaty = await client.models.Treaty.create({
+    const treaty = await dbCreate<TreatyType>('Treaty', {
+      id: crypto.randomUUID(),
       proposerId,
       recipientId,
       seasonId,
@@ -92,7 +121,7 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
     return JSON.stringify({
       success: true,
       treaty: {
-        id: treaty.data?.id,
+        id: treaty.id,
         proposerId,
         recipientId,
         type: treatyType,
@@ -109,7 +138,7 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
 async function handleRespondToTreaty(args: { treatyId: string; accepted: boolean }): Promise<string> {
   const { treatyId, accepted } = args;
 
-  const { data: treaty } = await client.models.Treaty.get({ id: treatyId });
+  const treaty = await dbGet<TreatyType>('Treaty', treatyId);
   if (!treaty) {
     return JSON.stringify({ success: false, error: 'Treaty not found', errorCode: ErrorCode.NOT_FOUND });
   }
@@ -119,32 +148,30 @@ async function handleRespondToTreaty(args: { treatyId: string; accepted: boolean
   }
 
   const newStatus = accepted ? 'active' : 'expired';
-  await client.models.Treaty.update({
-    id: treatyId,
+  await dbUpdate('Treaty', treatyId, {
     status: newStatus,
     respondedAt: new Date().toISOString()
   });
 
   if (accepted) {
     // Update diplomatic relation
-    const { data: relations } = await client.models.DiplomaticRelation.list({
-      filter: {
-        kingdomId: { eq: treaty.proposerId },
-        targetKingdomId: { eq: treaty.recipientId }
-      }
-    });
+    const allRelations = await dbList<DiplomaticRelationType>('DiplomaticRelation');
+    const relations = allRelations.filter(r =>
+      r.kingdomId === treaty.proposerId &&
+      r.targetKingdomId === treaty.recipientId
+    );
 
     const newDiplomaticStatus = treaty.type === 'military_alliance' ? 'allied' : 'friendly';
 
     if (relations && relations.length > 0) {
-      await client.models.DiplomaticRelation.update({
-        id: relations[0].id,
+      await dbUpdate('DiplomaticRelation', relations[0].id, {
         status: newDiplomaticStatus as 'neutral' | 'friendly' | 'allied' | 'hostile' | 'war',
         reputation: (relations[0].reputation ?? 0) + 10,
         lastActionAt: new Date().toISOString()
       });
     } else {
-      await client.models.DiplomaticRelation.create({
+      await dbCreate<DiplomaticRelationType>('DiplomaticRelation', {
+        id: crypto.randomUUID(),
         kingdomId: treaty.proposerId,
         targetKingdomId: treaty.recipientId,
         status: newDiplomaticStatus as 'neutral' | 'friendly' | 'allied' | 'hostile' | 'war',
@@ -170,7 +197,7 @@ async function handleDeclareDiplomaticWar(args: { kingdomId: string; targetKingd
   }
 
   // Verify kingdom ownership
-  const { data: kingdom } = await client.models.Kingdom.get({ id: kingdomId });
+  const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
   if (!kingdom) {
     return JSON.stringify({ success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND });
   }
@@ -180,37 +207,35 @@ async function handleDeclareDiplomaticWar(args: { kingdomId: string; targetKingd
   }
 
   // Break any active treaties
-  const { data: treaties } = await client.models.Treaty.list({
-    filter: {
-      proposerId: { eq: kingdomId },
-      recipientId: { eq: targetKingdomId },
-      status: { eq: 'active' }
-    }
-  });
+  const allTreaties = await dbList<TreatyType>('Treaty');
+  const treaties = allTreaties.filter(t =>
+    t.proposerId === kingdomId &&
+    t.recipientId === targetKingdomId &&
+    t.status === 'active'
+  );
 
   if (treaties) {
     for (const treaty of treaties) {
-      await client.models.Treaty.update({ id: treaty.id, status: 'broken' });
+      await dbUpdate('Treaty', treaty.id, { status: 'broken' });
     }
   }
 
   // Update diplomatic relation
-  const { data: relations } = await client.models.DiplomaticRelation.list({
-    filter: {
-      kingdomId: { eq: kingdomId },
-      targetKingdomId: { eq: targetKingdomId }
-    }
-  });
+  const allRelations = await dbList<DiplomaticRelationType>('DiplomaticRelation');
+  const relations = allRelations.filter(r =>
+    r.kingdomId === kingdomId &&
+    r.targetKingdomId === targetKingdomId
+  );
 
   if (relations && relations.length > 0) {
-    await client.models.DiplomaticRelation.update({
-      id: relations[0].id,
+    await dbUpdate('DiplomaticRelation', relations[0].id, {
       status: 'war',
       reputation: Math.max(-100, (relations[0].reputation ?? 0) - 30),
       lastActionAt: new Date().toISOString()
     });
   } else {
-    await client.models.DiplomaticRelation.create({
+    await dbCreate<DiplomaticRelationType>('DiplomaticRelation', {
+      id: crypto.randomUUID(),
       kingdomId,
       targetKingdomId,
       status: 'war',
@@ -230,7 +255,7 @@ async function handleMakePeace(args: { kingdomId: string; targetKingdomId: strin
   }
 
   // Verify kingdom ownership
-  const { data: kingdom } = await client.models.Kingdom.get({ id: kingdomId });
+  const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
   if (!kingdom) {
     return JSON.stringify({ success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND });
   }
@@ -240,18 +265,16 @@ async function handleMakePeace(args: { kingdomId: string; targetKingdomId: strin
   }
 
   // Resolve any active wars
-  const { data: wars } = await client.models.WarDeclaration.list({
-    filter: {
-      attackerId: { eq: kingdomId },
-      defenderId: { eq: targetKingdomId },
-      status: { eq: 'active' }
-    }
-  });
+  const allWars = await dbList<WarDeclarationType>('WarDeclaration');
+  const wars = allWars.filter(w =>
+    w.attackerId === kingdomId &&
+    w.defenderId === targetKingdomId &&
+    w.status === 'active'
+  );
 
   if (wars) {
     for (const war of wars) {
-      await client.models.WarDeclaration.update({
-        id: war.id,
+      await dbUpdate('WarDeclaration', war.id, {
         status: 'resolved',
         resolvedAt: new Date().toISOString()
       });
@@ -259,16 +282,14 @@ async function handleMakePeace(args: { kingdomId: string; targetKingdomId: strin
   }
 
   // Update diplomatic relation
-  const { data: relations } = await client.models.DiplomaticRelation.list({
-    filter: {
-      kingdomId: { eq: kingdomId },
-      targetKingdomId: { eq: targetKingdomId }
-    }
-  });
+  const allRelations = await dbList<DiplomaticRelationType>('DiplomaticRelation');
+  const relations = allRelations.filter(r =>
+    r.kingdomId === kingdomId &&
+    r.targetKingdomId === targetKingdomId
+  );
 
   if (relations && relations.length > 0) {
-    await client.models.DiplomaticRelation.update({
-      id: relations[0].id,
+    await dbUpdate('DiplomaticRelation', relations[0].id, {
       status: 'neutral',
       reputation: (relations[0].reputation ?? 0) + 5,
       lastActionAt: new Date().toISOString()

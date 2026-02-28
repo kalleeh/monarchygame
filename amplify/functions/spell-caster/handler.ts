@@ -1,9 +1,8 @@
 import type { Schema } from '../../data/resource';
-import { generateClient } from 'aws-amplify/data';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { configureAmplify } from '../amplify-configure';
+import { dbGet, dbUpdate } from '../data-client';
 
 const MANA_COST_PER_SPELL = 50;
 
@@ -21,9 +20,9 @@ const SPELL_DAMAGE: Record<string, { type: string; damage: number }> = {
   foul_light: { type: 'peasant_kill', damage: 0.06 },
 };
 
+type KingdomType = Record<string, unknown>;
+
 export const handler: Schema["castSpell"]["functionHandler"] = async (event) => {
-  await configureAmplify();
-  const client = generateClient<Schema>({ authMode: 'iam' });
   const { casterId, spellId, targetId } = event.arguments;
 
   try {
@@ -47,25 +46,25 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     }
 
     if (targetId) {
-      const targetResult = await client.models.Kingdom.get({ id: targetId });
-      if (!targetResult.data) {
+      const targetResult = await dbGet<KingdomType>('Kingdom', targetId);
+      if (!targetResult) {
         return { success: false, error: 'Target kingdom not found', errorCode: ErrorCode.NOT_FOUND };
       }
     }
 
-    const result = await client.models.Kingdom.get({ id: casterId });
+    const casterKingdom = await dbGet<KingdomType>('Kingdom', casterId);
 
-    if (!result.data) {
+    if (!casterKingdom) {
       return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
     // Verify kingdom ownership
-    const ownerField = (result.data as any).owner as string | null;
+    const ownerField = casterKingdom.owner as string | null;
     if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
-    const resources = (result.data.resources ?? {}) as KingdomResources;
+    const resources = (casterKingdom.resources ?? {}) as KingdomResources;
     const currentMana = resources.mana ?? 0;
 
     if (currentMana < MANA_COST_PER_SPELL) {
@@ -85,8 +84,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       turns: Math.max(0, currentTurns - turnCost)
     };
 
-    await client.models.Kingdom.update({
-      id: casterId,
+    await dbUpdate('Kingdom', casterId, {
       resources: updatedResources
     });
 
@@ -95,13 +93,11 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     let damageReport: Record<string, unknown> = {};
 
     if (targetId && spellEffect && spellEffect.type !== 'none' && spellEffect.type !== 'shield_removal') {
-      const targetResult = await client.models.Kingdom.get({ id: targetId });
-      if (!targetResult.data) {
+      const targetKingdom = await dbGet<KingdomType>('Kingdom', targetId);
+      if (!targetKingdom) {
         // Mana already spent but target disappeared — still return success with warning
         return { success: true, result: JSON.stringify({ spellId, targetId, manaUsed: MANA_COST_PER_SPELL, remainingMana: updatedResources.mana, warning: 'Target kingdom not found, mana spent' }) };
       }
-
-      const targetKingdom = targetResult.data;
 
       if (spellEffect.type === 'structure_damage') {
         // Reduce all building counts by damage percentage
@@ -119,8 +115,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
           }
         }
 
-        await client.models.Kingdom.update({
-          id: targetId,
+        await dbUpdate('Kingdom', targetId, {
           buildings: damagedBuildings
         });
 
@@ -142,8 +137,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
           }
         }
 
-        await client.models.Kingdom.update({
-          id: targetId,
+        await dbUpdate('Kingdom', targetId, {
           buildings: damagedBuildings
         });
 
@@ -159,8 +153,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
           population: currentPop - killed
         };
 
-        await client.models.Kingdom.update({
-          id: targetId,
+        await dbUpdate('Kingdom', targetId, {
           resources: updatedTargetResources
         });
 

@@ -1,15 +1,38 @@
 import type { Schema } from '../../data/resource';
-import { generateClient } from 'aws-amplify/data';
+import { dbList, dbGet, dbCreate, dbUpdate } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { configureAmplify } from '../amplify-configure';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let client: ReturnType<typeof generateClient<Schema>>;
 
 const SEASON_DURATION_WEEKS = 6;
 const AGE_DURATION_WEEKS = 2;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+type SeasonType = {
+  id: string;
+  seasonNumber: number;
+  status: string;
+  startDate: string;
+  currentAge: string;
+  ageTransitions: string;
+  endDate?: string;
+  participantCount?: number;
+};
+
+type KingdomType = {
+  id: string;
+  isActive: boolean;
+  resources: string | Record<string, number>;
+  stats: string | Record<string, unknown>;
+};
+
+type TradeOfferType = {
+  id: string;
+  seasonId: string;
+  status: string;
+  sellerId: string;
+  resourceType: string;
+  quantity: number;
+};
 
 /** Calculate networth for ranking: land * 1000 + gold */
 function calculateNetworth(resources: Record<string, number>): number {
@@ -22,14 +45,13 @@ function calculateNetworth(resources: Record<string, number>): number {
  * Called when any season transitions to "completed".
  */
 async function recordSeasonRankings(seasonNumber: number): Promise<void> {
-  const { data: kingdoms } = await client.models.Kingdom.list({
-    filter: { isActive: { eq: true } }
-  });
+  const allKingdoms = await dbList<KingdomType>('Kingdom');
+  const kingdoms = allKingdoms.filter(k => k.isActive === true);
   if (!kingdoms || kingdoms.length === 0) return;
 
   // Parse resources (stored as JSON string in DB) and compute networth
   const ranked = kingdoms
-    .map((k: typeof kingdoms[0]) => {
+    .map((k) => {
       const resources = typeof k.resources === 'string'
         ? (JSON.parse(k.resources) as Record<string, number>)
         : ((k.resources ?? {}) as Record<string, number>);
@@ -49,7 +71,7 @@ async function recordSeasonRankings(seasonNumber: number): Promise<void> {
       previousSeasonNetworth: networth,
       previousSeasonNumber: seasonNumber,
     };
-    await client.models.Kingdom.update({ id, stats: updatedStats });
+    await dbUpdate('Kingdom', id, { stats: updatedStats });
   }
 }
 
@@ -73,8 +95,6 @@ function isSeasonExpired(startDate: Date): boolean {
  * or by an admin mutation.
  */
 export const handler: Schema["manageSeason"]["functionHandler"] = async (event) => {
-  await configureAmplify();
-  client = generateClient<Schema>({ authMode: 'iam' });
   const args = event.arguments;
 
   try {
@@ -89,19 +109,18 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
     switch (action) {
       case 'create': {
         // Create a new season
-        const { data: activeSeasons } = await client.models.GameSeason.list({
-          filter: { status: { eq: 'active' } }
-        });
+        const allSeasons = await dbList<SeasonType>('GameSeason');
+        const activeSeasons = allSeasons.filter(s => s.status === 'active');
 
         if (activeSeasons && activeSeasons.length > 0) {
           return JSON.stringify({ success: false, error: 'An active season already exists', errorCode: ErrorCode.VALIDATION_FAILED });
         }
 
         // Find the latest season number
-        const { data: allSeasons } = await client.models.GameSeason.list();
-        const maxNumber = allSeasons?.reduce((max: number, s: { seasonNumber: number }) => Math.max(max, s.seasonNumber), 0) ?? 0;
+        const maxNumber = allSeasons.reduce((max: number, s: { seasonNumber: number }) => Math.max(max, s.seasonNumber), 0) ?? 0;
 
-        const season = await client.models.GameSeason.create({
+        const season = await dbCreate<SeasonType>('GameSeason', {
+          id: crypto.randomUUID(),
           seasonNumber: maxNumber + 1,
           status: 'active',
           startDate: new Date().toISOString(),
@@ -114,7 +133,7 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
         return JSON.stringify({
           success: true,
           season: {
-            id: season.data?.id,
+            id: season.id,
             seasonNumber: maxNumber + 1,
             status: 'active',
             currentAge: 'early'
@@ -124,9 +143,8 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
 
       case 'check': {
         // Check and update all active seasons (age transitions + expiry)
-        const { data: activeSeasons } = await client.models.GameSeason.list({
-          filter: { status: { eq: 'active' } }
-        });
+        const allSeasons = await dbList<SeasonType>('GameSeason');
+        const activeSeasons = allSeasons.filter(s => s.status === 'active');
 
         if (!activeSeasons || activeSeasons.length === 0) {
           return JSON.stringify({ success: true, message: 'No active seasons to process' });
@@ -141,25 +159,23 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
             // Record final rankings before closing the season
             await recordSeasonRankings(season.seasonNumber);
 
-            await client.models.GameSeason.update({
-              id: season.id,
+            await dbUpdate('GameSeason', season.id, {
               status: 'completed',
               endDate: new Date().toISOString()
             });
 
             // Clean up: expire all open trade offers
-            const { data: openOffers } = await client.models.TradeOffer.list({
-              filter: { seasonId: { eq: season.id }, status: { eq: 'open' } }
-            });
+            const allOffers = await dbList<TradeOfferType>('TradeOffer');
+            const openOffers = allOffers.filter(o => o.seasonId === season.id && o.status === 'open');
             if (openOffers) {
               for (const offer of openOffers) {
-                await client.models.TradeOffer.update({ id: offer.id, status: 'expired' });
+                await dbUpdate('TradeOffer', offer.id, { status: 'expired' });
                 // Refund escrowed resources
-                const { data: seller } = await client.models.Kingdom.get({ id: offer.sellerId });
+                const seller = await dbGet<KingdomType>('Kingdom', offer.sellerId);
                 if (seller) {
                   const resources = (seller.resources ?? {}) as Record<string, number>;
                   resources[offer.resourceType] = (resources[offer.resourceType] ?? 0) + offer.quantity;
-                  await client.models.Kingdom.update({ id: offer.sellerId, resources });
+                  await dbUpdate('Kingdom', offer.sellerId, { resources });
                 }
               }
             }
@@ -174,8 +190,7 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
             const transitions = JSON.parse((season.ageTransitions as string) || '{}');
             transitions[currentAge] = new Date().toISOString();
 
-            await client.models.GameSeason.update({
-              id: season.id,
+            await dbUpdate('GameSeason', season.id, {
               currentAge,
               ageTransitions: JSON.stringify(transitions)
             });
@@ -197,7 +212,7 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
           return JSON.stringify({ success: false, error: 'seasonId required for end action', errorCode: ErrorCode.MISSING_PARAMS });
         }
 
-        const { data: season } = await client.models.GameSeason.get({ id: seasonId });
+        const season = await dbGet<SeasonType>('GameSeason', seasonId);
         if (!season) {
           return JSON.stringify({ success: false, error: 'Season not found', errorCode: ErrorCode.NOT_FOUND });
         }
@@ -205,8 +220,7 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
         // Record final rankings before closing the season
         await recordSeasonRankings(season.seasonNumber);
 
-        await client.models.GameSeason.update({
-          id: seasonId,
+        await dbUpdate('GameSeason', seasonId, {
           status: 'completed',
           endDate: new Date().toISOString()
         });

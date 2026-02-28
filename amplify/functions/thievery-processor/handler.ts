@@ -1,16 +1,15 @@
 import type { Schema } from '../../data/resource';
-import { generateClient } from 'aws-amplify/data';
 import type { KingdomResources, KingdomUnits } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { configureAmplify } from '../amplify-configure';
+import { dbGet, dbUpdate } from '../data-client';
 
 const VALID_OPERATIONS = ['scout', 'steal', 'sabotage', 'burn'] as const;
 const MIN_SCOUTS = 100;
 
+type KingdomType = Record<string, unknown>;
+
 export const handler: Schema["executeThievery"]["functionHandler"] = async (event) => {
-  await configureAmplify();
-  const client = generateClient<Schema>({ authMode: 'iam' });
   const { kingdomId, operation, targetKingdomId } = event.arguments;
 
   try {
@@ -29,18 +28,18 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     }
 
     // Fetch attacker kingdom
-    const attackerResult = await client.models.Kingdom.get({ id: kingdomId });
-    if (!attackerResult.data) {
+    const attackerKingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
+    if (!attackerKingdom) {
       return { success: false, error: 'Attacker kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
     // Verify kingdom ownership
-    const ownerField = (attackerResult.data as any).owner as string | null;
+    const ownerField = attackerKingdom.owner as string | null;
     if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
-    const attackerUnits = (attackerResult.data.totalUnits ?? {}) as Record<string, number>;
+    const attackerUnits = (attackerKingdom.totalUnits ?? {}) as Record<string, number>;
     const attackerScouts = attackerUnits.scouts ?? 0;
 
     if (attackerScouts < MIN_SCOUTS) {
@@ -48,7 +47,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     }
 
     // Check turns
-    const attackerResources = (attackerResult.data.resources ?? {}) as KingdomResources;
+    const attackerResources = (attackerKingdom.resources ?? {}) as KingdomResources;
     const currentTurns = attackerResources.turns ?? 72;
     const turnCost = 2;
     if (currentTurns < turnCost) {
@@ -56,13 +55,13 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     }
 
     // Fetch target kingdom
-    const targetResult = await client.models.Kingdom.get({ id: targetKingdomId });
-    if (!targetResult.data) {
+    const targetKingdom = await dbGet<KingdomType>('Kingdom', targetKingdomId);
+    if (!targetKingdom) {
       return { success: false, error: 'Target kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
-    const targetUnits = (targetResult.data.totalUnits ?? {}) as Record<string, number>;
-    const targetResources = (targetResult.data.resources ?? {}) as KingdomResources;
+    const targetUnits = (targetKingdom.totalUnits ?? {}) as Record<string, number>;
+    const targetResources = (targetKingdom.resources ?? {}) as KingdomResources;
 
     // Calculate detection rate
     const detectionRate = Math.min(0.95, ((targetUnits.scouts ?? 0) / Math.max(1, attackerScouts)) * 0.85);
@@ -94,8 +93,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
           ...targetResources,
           gold: (targetResources.gold ?? 0) - goldStolen,
         };
-        await client.models.Kingdom.update({
-          id: targetKingdomId,
+        await dbUpdate('Kingdom', targetKingdomId, {
           resources: updatedTargetResources,
         });
       } else if (operation === 'sabotage') {
@@ -104,8 +102,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
           ...(targetUnits as KingdomUnits),
           scouts: Math.max(0, (targetUnits.scouts ?? 0) - scoutsDestroyed),
         };
-        await client.models.Kingdom.update({
-          id: targetKingdomId,
+        await dbUpdate('Kingdom', targetKingdomId, {
           totalUnits: updatedTargetUnits,
         });
       } else if (operation === 'burn') {
@@ -114,8 +111,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
           ...(targetUnits as KingdomUnits),
           scouts: Math.max(0, (targetUnits.scouts ?? 0) - scoutsDestroyed),
         };
-        await client.models.Kingdom.update({
-          id: targetKingdomId,
+        await dbUpdate('Kingdom', targetKingdomId, {
           totalUnits: updatedTargetUnits,
         });
       }
@@ -131,8 +127,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
       gold: (attackerResources.gold ?? 0) + attackerGoldDelta,
       turns: Math.max(0, currentTurns - turnCost),
     };
-    await client.models.Kingdom.update({
-      id: kingdomId,
+    await dbUpdate('Kingdom', kingdomId, {
       totalUnits: updatedAttackerUnits,
       resources: updatedAttackerResources,
     });

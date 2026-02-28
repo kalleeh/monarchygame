@@ -1,51 +1,31 @@
 /**
- * Async Amplify configuration for Lambda functions.
+ * Configures the Amplify library for Lambda functions using the project's
+ * amplify_outputs.json which is regenerated on every deployment.
  *
- * Cannot inject the GraphQL endpoint via CDK env vars because the data stack
- * and function stack have a circular dependency (data→function via resolvers,
- * function→data via endpoint). Instead, we discover the endpoint at runtime
- * using the AppSync ListGraphqlApis API (IAM permission granted in backend.ts).
+ * The Gen2 generateClient<Schema>() requires model_introspection data that is
+ * only available in amplify_outputs.json — it cannot be reconstructed from
+ * just an AppSync endpoint URL.
  *
- * Result is cached after first call (warm Lambda invocations skip the API call).
+ * The file is bundled into the Lambda by esbuild at deploy time, so it always
+ * reflects the current deployment's API IDs, region, and schema introspection.
  */
 import { Amplify } from 'aws-amplify';
-import { AppSyncClient, ListGraphqlApisCommand } from '@aws-sdk/client-appsync';
+// amplify_outputs.json is at the project root — two levels up from amplify/functions/
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const outputs = require('../../amplify_outputs.json');
 
-let configuredEndpoint: string | undefined;
+let configured = false;
 
 export async function configureAmplify(): Promise<void> {
-  if (configuredEndpoint) return;
-
-  const region = process.env.AWS_REGION ?? 'eu-west-1';
-
-  // Fast path: endpoint injected as env var (e.g. set manually or in future CDK fix)
-  const envEndpoint = process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT;
-  if (envEndpoint) {
-    configuredEndpoint = envEndpoint;
-  } else {
-    // Discovery path: find the correct amplifyData AppSync API.
-    // Filter by amplify:app-id tag to avoid picking up sandbox or old deployments
-    // that also have name === 'amplifyData'.
-    const APP_ID = 'd2plhaotxy4zdr';
-    const appsync = new AppSyncClient({ region });
-    const { graphqlApis } = await appsync.send(new ListGraphqlApisCommand({}));
-    const api = graphqlApis?.find(
-      a => a.name === 'amplifyData' && a.tags?.['amplify:app-id'] === APP_ID
-    );
-    if (!api?.uris?.GRAPHQL) {
-      throw new Error('[amplify-configure] Could not find amplifyData AppSync API for app ' + APP_ID);
-    }
-    configuredEndpoint = api.uris.GRAPHQL;
-  }
-
-  // Amplify Gen2 uses the "data" key format (amplify_outputs.json style),
-  // NOT the old v5 "API.GraphQL" format. The data client reads from "data.url".
+  if (configured) return;
+  // Configure with the full outputs including model_introspection.
+  // Override the default auth mode to IAM so Lambda's execution role is used.
   Amplify.configure({
+    ...outputs,
     data: {
-      url: configuredEndpoint,
-      aws_region: region,
-      default_authorization_type: 'AWS_IAM' as const,
-      authorization_types: ['AWS_IAM' as const],
+      ...outputs.data,
+      default_authorization_type: 'AWS_IAM',
     },
   });
+  configured = true;
 }

@@ -1,9 +1,8 @@
 import type { Schema } from '../../data/resource';
-import { generateClient } from 'aws-amplify/data';
 import type { KingdomResources, KingdomBuildings } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { configureAmplify } from '../amplify-configure';
+import { dbGet, dbUpdate, dbList } from '../data-client';
 
 const RESOURCE_LIMITS = {
   gold: { min: 0, max: 1000000 },
@@ -12,9 +11,23 @@ const RESOURCE_LIMITS = {
   land: { min: 1000, max: 100000 }
 } as const;
 
+type KingdomType = {
+  id: string;
+  owner?: string | null;
+  resources?: KingdomResources | null;
+  buildings?: KingdomBuildings | null;
+  stats?: Record<string, unknown> | null;
+  currentAge?: string | null;
+};
+
+type TerritoryType = {
+  id: string;
+  kingdomId?: string | null;
+  category?: string | null;
+  terrainType?: string | null;
+};
+
 export const handler: Schema["updateResources"]["functionHandler"] = async (event) => {
-  await configureAmplify();
-  const client = generateClient<Schema>({ authMode: 'iam' });
   const { kingdomId, turns: rawTurns } = event.arguments;
   const turns = Math.max(1, rawTurns ?? 1);
 
@@ -33,22 +46,22 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
 
-    const result = await client.models.Kingdom.get({ id: kingdomId });
+    const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
 
-    if (!result.data) {
+    if (!kingdom) {
       return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
     // Verify kingdom ownership
-    const ownerField = (result.data as any).owner as string | null;
+    const ownerField = kingdom.owner ?? null;
     if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
-    const resources = (result.data.resources ?? {}) as KingdomResources;
-    const buildings = (result.data.buildings ?? {}) as KingdomBuildings;
-    const stats = (result.data.stats ?? {}) as Record<string, unknown>;
-    const currentAge = (result.data.currentAge as string) ?? 'early';
+    const resources = (kingdom.resources ?? {}) as KingdomResources;
+    const buildings = (kingdom.buildings ?? {}) as KingdomBuildings;
+    const stats = (kingdom.stats ?? {}) as Record<string, unknown>;
+    const currentAge = (kingdom.currentAge as string) ?? 'early';
 
     const currentGold = resources.gold ?? 0;
     const currentPop = resources.population ?? 0;
@@ -97,13 +110,12 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     let territoryLand = 0;
 
     try {
-      const territories = await client.models.Territory.list({
-        filter: { kingdomId: { eq: kingdomId } }
-      });
+      const allTerritories = await dbList<TerritoryType>('Territory');
+      const territories = allTerritories.filter(t => t.kingdomId === kingdomId);
 
-      for (const t of (territories.data ?? []) as Array<Record<string, unknown>>) {
-        const cat = (t.category as string | undefined) ?? 'farmland';
-        const terrain = (t.terrainType as string | undefined) ?? 'plains';
+      for (const t of territories) {
+        const cat = t.category ?? 'farmland';
+        const terrain = t.terrainType ?? 'plains';
         const base = CATEGORY_PRODUCTION[cat] ?? CATEGORY_PRODUCTION.farmland;
         const mult = TERRAIN_MULTIPLIERS[terrain]?.[cat] ?? 1.0;
         territoryGold += Math.floor(base.gold * mult);
@@ -122,8 +134,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       mana: Math.min(currentMana + manaPerTurn * turns, RESOURCE_LIMITS.mana.max)
     };
 
-    await client.models.Kingdom.update({
-      id: kingdomId,
+    await dbUpdate('Kingdom', kingdomId, {
       resources: updated,
       lastResourceTick: new Date().toISOString()
     });

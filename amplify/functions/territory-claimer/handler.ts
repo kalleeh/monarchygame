@@ -1,16 +1,16 @@
 import type { Schema } from '../../data/resource';
-import { generateClient } from 'aws-amplify/data';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { configureAmplify } from '../amplify-configure';
+import { dbGet, dbCreate, dbUpdate, dbList } from '../data-client';
 
 const TERRITORY_NAME_LIMITS = { min: 2, max: 50 } as const;
 const COORDINATE_LIMITS = { min: -10000, max: 10000 } as const;
 
+type KingdomType = Record<string, unknown>;
+type TerritoryType = { id: string; kingdomId?: string; regionId?: string; coordinates?: string };
+
 export const handler: Schema["claimTerritory"]["functionHandler"] = async (event) => {
-  await configureAmplify();
-  const client = generateClient<Schema>({ authMode: 'iam' });
   const { kingdomId, territoryName, territoryType, terrainType, coordinates, regionId, category } = event.arguments;
 
   try {
@@ -41,19 +41,19 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
     }
 
     // Verify the kingdom exists
-    const kingdomResult = await client.models.Kingdom.get({ id: kingdomId });
-    if (!kingdomResult.data) {
+    const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
+    if (!kingdom) {
       return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
     // Verify kingdom ownership
-    const ownerField = (kingdomResult.data as any).owner as string | null;
+    const ownerField = kingdom.owner as string | null;
     if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
     // Check kingdom has enough gold
-    const resources = (kingdomResult.data.resources ?? {}) as KingdomResources;
+    const resources = (kingdom.resources ?? {}) as KingdomResources;
     const currentGold = resources.gold ?? 0;
     if (currentGold < 500) {
       return { success: false, error: `Insufficient gold: need 500, have ${currentGold}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
@@ -68,12 +68,10 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
 
     // Check for duplicate territory at same coordinates
     const coordStr = JSON.stringify(coordObj);
-    const existingTerritories = await client.models.Territory.list({
-      filter: { kingdomId: { eq: kingdomId } }
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const duplicate = existingTerritories.data?.find(
-      (t: any) => t.coordinates === coordStr
+    const allTerritories = await dbList<TerritoryType>('Territory');
+    const kingdomTerritories = allTerritories.filter(t => t.kingdomId === kingdomId);
+    const duplicate = kingdomTerritories.find(
+      (t: TerritoryType) => t.coordinates === coordStr
     );
     if (duplicate) {
       return { success: false, error: 'Territory already claimed at these coordinates', errorCode: ErrorCode.INVALID_PARAM };
@@ -81,17 +79,16 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
 
     // Slot-count validation: cap at 5 territories per region
     if (regionId) {
-      const regionTerritories = await client.models.Territory.list({
-        filter: { regionId: { eq: regionId }, kingdomId: { eq: kingdomId } }
-      });
-      if ((regionTerritories.data?.length ?? 0) >= 5) {
+      const regionTerritories = allTerritories.filter(
+        t => t.regionId === regionId && t.kingdomId === kingdomId
+      );
+      if (regionTerritories.length >= 5) {
         return { success: false, error: 'Region is full', errorCode: 'REGION_FULL' };
       }
     }
 
     // Deduct gold cost and turns
-    await client.models.Kingdom.update({
-      id: kingdomId,
+    await dbUpdate('Kingdom', kingdomId, {
       resources: {
         ...resources,
         gold: currentGold - 500,
@@ -99,7 +96,7 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
       }
     });
 
-    await client.models.Territory.create({
+    await dbCreate<Record<string, unknown>>('Territory', {
       name: territoryName,
       type: territoryType || 'settlement',
       coordinates: JSON.stringify(coordObj),
@@ -109,7 +106,7 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
       defenseLevel: 0,
       kingdomId,
       ...(regionId ? { regionId } : {}),
-      ...(category ? { category: category as 'farmland' | 'mine' | 'forest' | 'port' | 'stronghold' | 'ruins' } : {})
+      ...(category ? { category } : {})
     });
 
     log.info('territory-claimer', 'claimTerritory', { kingdomId, territoryName, regionId, category });

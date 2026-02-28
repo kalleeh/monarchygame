@@ -1,5 +1,4 @@
 import type { Schema } from '../../data/resource';
-import { generateClient } from 'aws-amplify/data';
 import {
   calculateCombatResult,
   TERRAIN_MODIFIERS,
@@ -10,7 +9,7 @@ import {
 import type { KingdomResources, CombatResultData } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { configureAmplify } from '../amplify-configure';
+import { dbGet, dbCreate, dbUpdate, dbList } from '../data-client';
 
 // Race offensive combat bonuses (based on warOffense stat 1-5)
 const RACE_OFFENSE_BONUSES: Record<string, number> = {
@@ -40,9 +39,12 @@ const RACE_DEFENSE_BONUSES: Record<string, number> = {
   'Sidhe':     1.00,  // warDefense: 2 — fragile
 };
 
+type KingdomType = Record<string, unknown>;
+type BattleReportType = Record<string, unknown>;
+type TerritoryType = { id: string; kingdomId?: string; type?: string; defenseLevel?: number; terrainType?: string };
+type WarDeclarationType = { id: string; attackerId?: string; defenderId?: string; status?: string; attackCount?: number };
+
 export const handler: Schema["processCombat"]["functionHandler"] = async (event) => {
-  await configureAmplify();
-  const client = generateClient<Schema>({ authMode: 'iam' });
   const { attackerId, defenderId, attackType, units, formationId, terrainId } = event.arguments;
 
   try {
@@ -65,25 +67,25 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     }
 
     const [attacker, defender] = await Promise.all([
-      client.models.Kingdom.get({ id: attackerId }),
-      client.models.Kingdom.get({ id: defenderId })
+      dbGet<KingdomType>('Kingdom', attackerId),
+      dbGet<KingdomType>('Kingdom', defenderId)
     ]);
 
-    if (!attacker.data) {
+    if (!attacker) {
       return { success: false, error: 'Attacker kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
-    if (!defender.data) {
+    if (!defender) {
       return { success: false, error: 'Defender kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
     // Verify kingdom ownership (attacker only)
-    const attackerOwnerField = (attacker.data as any).owner as string | null;
+    const attackerOwnerField = attacker.owner as string | null;
     if (!attackerOwnerField || (!attackerOwnerField.includes(identity.sub) && !attackerOwnerField.includes(identity.username ?? ''))) {
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
     const attackerUnits: Record<string, number> = typeof units === 'string' ? JSON.parse(units) : units;
-    const ownedUnits = (attacker.data.totalUnits ?? {}) as Record<string, number>;
+    const ownedUnits = (attacker.totalUnits ?? {}) as Record<string, number>;
 
     // Validate that attacker has enough units
     for (const [unitType, count] of Object.entries(attackerUnits)) {
@@ -93,7 +95,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     }
 
     // Check and deduct turns
-    const attackerResources = (attacker.data.resources ?? {}) as KingdomResources;
+    const attackerResources = (attacker.resources ?? {}) as KingdomResources;
     const currentTurns = attackerResources.turns ?? 72;
     const turnCost = 4;
     if (currentTurns < turnCost) {
@@ -102,28 +104,23 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
     // Enforce war declaration requirement for repeated attacks
     // After 3 attacks against the same defender in a season, a formal WarDeclaration is required
-    const seasonId = attacker.data?.seasonId;
+    const seasonId = attacker.seasonId;
 
     if (seasonId) {
       // Count recent battle reports between attacker and defender this season
-      const { data: recentBattles } = await client.models.BattleReport.list({
-        filter: {
-          attackerId: { eq: attackerId },
-          defenderId: { eq: defenderId }
-        }
-      });
+      const allBattleReports = await dbList<BattleReportType>('BattleReport');
+      const recentBattles = allBattleReports.filter(
+        (b: BattleReportType) => (b as any).attackerId === attackerId && (b as any).defenderId === defenderId
+      );
 
-      const attackCount = recentBattles?.length ?? 0;
+      const attackCount = recentBattles.length;
 
       if (attackCount >= 3) {
         // Check for active war declaration
-        const { data: warDeclarations } = await client.models.WarDeclaration.list({
-          filter: {
-            attackerId: { eq: attackerId },
-            defenderId: { eq: defenderId },
-            status: { eq: 'active' }
-          }
-        });
+        const allWarDeclarations = await dbList<WarDeclarationType>('WarDeclaration');
+        const warDeclarations = allWarDeclarations.filter(
+          (w: WarDeclarationType) => w.attackerId === attackerId && w.defenderId === defenderId && w.status === 'active'
+        );
 
         if (!warDeclarations || warDeclarations.length === 0) {
           return { success: false, error: 'War declaration required after 3 attacks', errorCode: ErrorCode.WAR_REQUIRED };
@@ -131,15 +128,14 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
         // Increment attack count on the war declaration
         const warDecl = warDeclarations[0];
-        await client.models.WarDeclaration.update({
-          id: warDecl.id,
+        await dbUpdate('WarDeclaration', warDecl.id, {
           attackCount: (warDecl.attackCount ?? 0) + 1
         });
       }
     }
 
-    const defenderResources = (defender.data.resources ?? {}) as KingdomResources;
-    const defenderUnits = (defender.data.totalUnits ?? {}) as Record<string, number>;
+    const defenderResources = (defender.resources ?? {}) as KingdomResources;
+    const defenderUnits = (defender.totalUnits ?? {}) as Record<string, number>;
     const defenderLand = defenderResources.land ?? 1000;
 
     // -------------------------------------------------------------------------
@@ -166,7 +162,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       'middle': 1.05,   // 5% combat bonus
       'late': 1.10,     // 10% combat bonus
     };
-    const attackerAge = (attacker.data.currentAge as string) ?? 'early';
+    const attackerAge = (attacker.currentAge as string) ?? 'early';
     const ageCombatBonus = AGE_COMBAT_BONUSES[attackerAge] ?? 1.0;
     effectiveAttackerUnits = Object.fromEntries(
       Object.entries(effectiveAttackerUnits).map(([k, v]) => [k, Math.floor(v * ageCombatBonus)])
@@ -175,7 +171,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     // -------------------------------------------------------------------------
     // Step 3: Race offense bonus — applied multiplicatively after age bonus
     // -------------------------------------------------------------------------
-    const attackerRace = attacker.data.race as string ?? 'Human';
+    const attackerRace = attacker.race as string ?? 'Human';
     const raceOffenseBonus = RACE_OFFENSE_BONUSES[attackerRace] ?? 1.0;
     effectiveAttackerUnits = Object.fromEntries(
       Object.entries(effectiveAttackerUnits).map(([k, v]) => [k, Math.floor(v * raceOffenseBonus)])
@@ -184,7 +180,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     // -------------------------------------------------------------------------
     // Step 4: Race defense bonus — scale defender unit counts before combat
     // -------------------------------------------------------------------------
-    const defenderRace = defender.data.race as string ?? 'Human';
+    const defenderRace = defender.race as string ?? 'Human';
     const raceDefenseBonus = RACE_DEFENSE_BONUSES[defenderRace] ?? 1.0;
     let effectiveDefenderUnits = Object.fromEntries(
       Object.entries(defenderUnits).map(([k, v]) => [k, Math.floor((v as number) * raceDefenseBonus)])
@@ -209,13 +205,11 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     if (!resolvedTerrainId) {
       // Attempt to read terrain from the defender's first non-capital territory
       try {
-        const defTerritories = await client.models.Territory.list({
-          filter: { kingdomId: { eq: defenderId } }
-        });
-        const territories = defTerritories.data ?? [];
-        const capital = territories.find((t: any) => t.type === 'capital') ?? territories[0];
+        const allTerritories = await dbList<TerritoryType>('Territory');
+        const territories = allTerritories.filter(t => t.kingdomId === defenderId);
+        const capital = territories.find((t: TerritoryType) => t.type === 'capital') ?? territories[0];
         if (capital) {
-          resolvedTerrainId = (capital as any).terrainType ?? '';
+          resolvedTerrainId = capital.terrainType ?? '';
         }
       } catch {
         // Non-fatal — terrain lookup is a best-effort enhancement
@@ -301,7 +295,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       defenseTerrainBonus,
     });
 
-    await client.models.BattleReport.create({
+    await dbCreate<BattleReportType>('BattleReport', {
       attackerId,
       defenderId,
       attackType: attackType || 'standard',
@@ -326,7 +320,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       const durationHours = restorationType === 'death_based' ? 72 : 48;
       const endTime = new Date(Date.now() + durationHours * 60 * 60 * 1000).toISOString();
 
-      await client.models.RestorationStatus.create({
+      await dbCreate<Record<string, unknown>>('RestorationStatus', {
         kingdomId: defenderId,
         type: restorationType,
         startTime: new Date().toISOString(),
@@ -353,8 +347,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
     if (combatResult.success && combatResult.landGained > 0) {
       await Promise.all([
-        client.models.Kingdom.update({
-          id: defenderId,
+        dbUpdate('Kingdom', defenderId, {
           resources: {
             ...defenderResources,
             land: Math.max(1000, (defenderResources.land ?? 1000) - combatResult.landGained),
@@ -362,8 +355,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
           },
           totalUnits: updatedDefenderUnits
         }),
-        client.models.Kingdom.update({
-          id: attackerId,
+        dbUpdate('Kingdom', attackerId, {
           resources: {
             ...attackerResources,
             land: (attackerResources.land ?? 1000) + combatResult.landGained,
@@ -376,23 +368,19 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
       // Transfer territory: find defender's least important territory and reassign to attacker
       try {
-        const defenderTerritories = await client.models.Territory.list({
-          filter: { kingdomId: { eq: defenderId } }
-        });
+        const allTerritories = await dbList<TerritoryType>('Territory');
+        const defenderTerritories = allTerritories.filter(t => t.kingdomId === defenderId);
 
         // Sort by defense level ascending (take least developed first), never take the capital
-        type TerritoryRecord = { id: string; type?: string; defenseLevel?: number };
-        const allTerritories = (defenderTerritories.data ?? []) as unknown as TerritoryRecord[];
-        const sorted = allTerritories
-          .filter((t: TerritoryRecord) => t.type !== 'capital')
-          .sort((a: TerritoryRecord, b: TerritoryRecord) =>
+        const sorted = defenderTerritories
+          .filter((t: TerritoryType) => t.type !== 'capital')
+          .sort((a: TerritoryType, b: TerritoryType) =>
             (a.defenseLevel ?? 0) - (b.defenseLevel ?? 0)
           );
 
         if (sorted.length > 0) {
           const toTransfer = sorted[0];
-          await client.models.Territory.update({
-            id: toTransfer.id,
+          await dbUpdate('Territory', toTransfer.id, {
             kingdomId: attackerId,
           });
           log.info('combat-processor', 'territory-transferred', {
@@ -408,16 +396,14 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     } else {
       // Even if combat was not successful, still deduct casualties and turns
       await Promise.all([
-        client.models.Kingdom.update({
-          id: attackerId,
+        dbUpdate('Kingdom', attackerId, {
           resources: {
             ...attackerResources,
             turns: Math.max(0, currentTurns - turnCost)
           },
           totalUnits: updatedAttackerUnits
         }),
-        client.models.Kingdom.update({
-          id: defenderId,
+        dbUpdate('Kingdom', defenderId, {
           totalUnits: updatedDefenderUnits
         })
       ]);

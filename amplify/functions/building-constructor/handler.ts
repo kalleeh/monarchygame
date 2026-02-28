@@ -1,18 +1,22 @@
 import type { Schema } from '../../data/resource';
-import { generateClient } from 'aws-amplify/data';
 import type { KingdomBuildings, KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { configureAmplify } from '../amplify-configure';
+import { dbGet, dbUpdate } from '../data-client';
 
 const VALID_BUILDING_TYPES = ['castle', 'barracks', 'farm', 'mine', 'temple', 'tower', 'wall'] as const;
 type BuildingType = typeof VALID_BUILDING_TYPES[number];
 
 const BUILDING_QUANTITY = { min: 1, max: 100 } as const;
 
+type KingdomType = {
+  id: string;
+  owner?: string | null;
+  resources?: KingdomResources | null;
+  buildings?: KingdomBuildings | null;
+};
+
 export const handler: Schema["constructBuildings"]["functionHandler"] = async (event) => {
-  await configureAmplify();
-  const client = generateClient<Schema>({ authMode: 'iam' });
   const { kingdomId, buildingType, quantity } = event.arguments;
 
   try {
@@ -34,19 +38,19 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
 
-    const result = await client.models.Kingdom.get({ id: kingdomId });
+    const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
 
-    if (!result.data) {
+    if (!kingdom) {
       return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
     // Verify kingdom ownership
-    const ownerField = (result.data as any).owner as string | null;
+    const ownerField = kingdom.owner ?? null;
     if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
-    const resources = (result.data.resources ?? {}) as KingdomResources;
+    const resources = (kingdom.resources ?? {}) as KingdomResources;
     const goldCost = quantity * 250;
     const currentGold = resources.gold ?? 0;
 
@@ -61,7 +65,7 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
-    const buildings = (result.data.buildings ?? {}) as KingdomBuildings;
+    const buildings = (kingdom.buildings ?? {}) as KingdomBuildings;
     const currentCount = buildings[buildingType as keyof KingdomBuildings] ?? 0;
     const updatedBuildings: KingdomBuildings = {
       ...buildings,
@@ -74,8 +78,7 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
       turns: Math.max(0, currentTurns - turnCost)
     };
 
-    await client.models.Kingdom.update({
-      id: kingdomId,
+    await dbUpdate('Kingdom', kingdomId, {
       buildings: updatedBuildings,
       resources: updatedResources
     });
