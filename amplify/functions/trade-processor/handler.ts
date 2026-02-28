@@ -5,14 +5,16 @@ import type { KingdomResources } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { configureAmplify } from '../amplify-configure';
 
-configureAmplify();
-const client = generateClient<Schema>({ authMode: 'iam' });
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let client: ReturnType<typeof generateClient<Schema>>;
 
 const TRADE_OFFER_EXPIRY_HOURS = 48;
 
 type CallerIdentity = { sub: string; username?: string };
 
 export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event) => {
+  await configureAmplify();
+  client = generateClient<Schema>({ authMode: 'iam' });
   const args = event.arguments;
 
   try {

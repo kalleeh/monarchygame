@@ -4,9 +4,6 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { configureAmplify } from '../amplify-configure';
 
-configureAmplify();
-const client = generateClient<Schema>({ authMode: 'iam' });
-
 const VALID_ALIGNMENTS = ['angelique', 'neutral', 'elemental'] as const;
 const VALID_ABILITY_TYPES = ['racial_ability', 'spell_power', 'combat_focus', 'economic_focus', 'emergency'] as const;
 
@@ -25,6 +22,8 @@ const ABILITY_COSTS: Record<string, number> = {
 };
 
 export const handler: Schema["updateFaith"]["functionHandler"] = async (event) => {
+  await configureAmplify();
+  const client = generateClient<Schema>({ authMode: 'iam' });
   const { kingdomId, action, alignment, abilityType } = event.arguments;
 
   try {

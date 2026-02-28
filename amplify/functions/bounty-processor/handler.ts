@@ -5,8 +5,8 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { configureAmplify } from '../amplify-configure';
 
-configureAmplify();
-const client = generateClient<Schema>({ authMode: 'iam' });
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let client: ReturnType<typeof generateClient<Schema>>;
 
 const MIN_LAND_GAINED = 1000;
 
@@ -112,6 +112,8 @@ async function handleComplete(args: { kingdomId?: string | null; targetId?: stri
 // Single handler export — dispatch based on which mutation was called
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const handler = async (event: any) => {
+  await configureAmplify();
+  client = generateClient<Schema>({ authMode: 'iam' });
   const fieldName = event.info?.fieldName as string | undefined;
 
   try {

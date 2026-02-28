@@ -4,9 +4,6 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { configureAmplify } from '../amplify-configure';
 
-configureAmplify();
-const client = generateClient<Schema>({ authMode: 'iam' });
-
 // Season duration: 6 weeks total, 2 weeks per age
 const SEASON_DURATION_WEEKS = 6;
 const AGE_DURATION_WEEKS = 2;
@@ -28,6 +25,8 @@ function isSeasonExpired(startDate: Date): boolean {
 
 // Handler for getActiveSeason query
 export const handler: Schema["getActiveSeason"]["functionHandler"] = async (event) => {
+  await configureAmplify();
+  const client = generateClient<Schema>({ authMode: 'iam' });
   try {
     // Verify caller identity
     const identity = event.identity as { sub?: string; username?: string } | null;

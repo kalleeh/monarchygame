@@ -5,8 +5,8 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { configureAmplify } from '../amplify-configure';
 
-configureAmplify();
-const client = generateClient<Schema>({ authMode: 'iam' });
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let client: ReturnType<typeof generateClient<Schema>>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleContribute(args: { allianceId?: string | null; kingdomId?: string | null; amount?: number | null }, identity: any): Promise<any> {
@@ -122,6 +122,8 @@ async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: st
 }
 
 export const handler: Schema["manageAllianceTreasury"]["functionHandler"] = async (event) => {
+  await configureAmplify();
+  client = generateClient<Schema>({ authMode: 'iam' });
   const { allianceId, kingdomId, action, amount } = event.arguments;
   const identity = (event as any).identity;
 

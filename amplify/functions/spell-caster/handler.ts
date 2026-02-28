@@ -21,10 +21,9 @@ const SPELL_DAMAGE: Record<string, { type: string; damage: number }> = {
   foul_light: { type: 'peasant_kill', damage: 0.06 },
 };
 
-configureAmplify();
-const client = generateClient<Schema>({ authMode: 'iam' });
-
 export const handler: Schema["castSpell"]["functionHandler"] = async (event) => {
+  await configureAmplify();
+  const client = generateClient<Schema>({ authMode: 'iam' });
   const { casterId, spellId, targetId } = event.arguments;
 
   try {

@@ -8,10 +8,9 @@ import { configureAmplify } from '../amplify-configure';
 const TERRITORY_NAME_LIMITS = { min: 2, max: 50 } as const;
 const COORDINATE_LIMITS = { min: -10000, max: 10000 } as const;
 
-configureAmplify();
-const client = generateClient<Schema>({ authMode: 'iam' });
-
 export const handler: Schema["claimTerritory"]["functionHandler"] = async (event) => {
+  await configureAmplify();
+  const client = generateClient<Schema>({ authMode: 'iam' });
   const { kingdomId, territoryName, territoryType, terrainType, coordinates, regionId, category } = event.arguments;
 
   try {

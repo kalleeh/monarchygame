@@ -10,10 +10,9 @@ type UnitType = typeof VALID_UNIT_TYPES[number];
 
 const UNIT_QUANTITY = { min: 1, max: 1000 } as const;
 
-configureAmplify();
-const client = generateClient<Schema>({ authMode: 'iam' });
-
 export const handler: Schema["trainUnits"]["functionHandler"] = async (event) => {
+  await configureAmplify();
+  const client = generateClient<Schema>({ authMode: 'iam' });
   const { kingdomId, unitType, quantity } = event.arguments;
 
   try {

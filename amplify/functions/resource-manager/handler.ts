@@ -12,10 +12,9 @@ const RESOURCE_LIMITS = {
   land: { min: 1000, max: 100000 }
 } as const;
 
-configureAmplify();
-const client = generateClient<Schema>({ authMode: 'iam' });
-
 export const handler: Schema["updateResources"]["functionHandler"] = async (event) => {
+  await configureAmplify();
+  const client = generateClient<Schema>({ authMode: 'iam' });
   const { kingdomId, turns: rawTurns } = event.arguments;
   const turns = Math.max(1, rawTurns ?? 1);
 

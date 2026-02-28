@@ -12,9 +12,6 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { configureAmplify } from '../amplify-configure';
 
-configureAmplify();
-const client = generateClient<Schema>({ authMode: 'iam' });
-
 // Race offensive combat bonuses (based on warOffense stat 1-5)
 const RACE_OFFENSE_BONUSES: Record<string, number> = {
   'Droben':    1.20,  // warOffense: 5 — elite warriors, +20% offense
@@ -44,6 +41,8 @@ const RACE_DEFENSE_BONUSES: Record<string, number> = {
 };
 
 export const handler: Schema["processCombat"]["functionHandler"] = async (event) => {
+  await configureAmplify();
+  const client = generateClient<Schema>({ authMode: 'iam' });
   const { attackerId, defenderId, attackType, units, formationId, terrainId } = event.arguments;
 
   try {

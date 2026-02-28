@@ -4,8 +4,8 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { configureAmplify } from '../amplify-configure';
 
-configureAmplify();
-const client = generateClient<Schema>({ authMode: 'iam' });
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let client: ReturnType<typeof generateClient<Schema>>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function verifyKingdomOwnership(kingdomId: string, identity: any): Promise<{ error?: { success: boolean; error: string; errorCode: string }; data?: any }> {
@@ -21,6 +21,8 @@ async function verifyKingdomOwnership(kingdomId: string, identity: any): Promise
 }
 
 export const handler: Schema["manageAlliance"]["functionHandler"] = async (event) => {
+  await configureAmplify();
+  client = generateClient<Schema>({ authMode: 'iam' });
   const { kingdomId, action, allianceId, name, description, isPublic, targetKingdomId } = event.arguments;
 
   try {

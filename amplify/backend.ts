@@ -1,4 +1,5 @@
 import { defineBackend } from '@aws-amplify/backend';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
 import { combatProcessor } from './functions/combat-processor/resource';
@@ -39,8 +40,10 @@ export const backend = defineBackend({
   allianceManager
 });
 
-// Inject the AppSync GraphQL endpoint into every Lambda so they can call
-// Amplify.configure() before using generateClient<Schema>().
+// Grant all Lambda functions permission to discover the AppSync endpoint at runtime.
+// We cannot inject backend.data.graphqlUrl directly (creates circular CDK dependency
+// between data↔function nested stacks). Instead, Lambdas call appsync:ListGraphqlApis
+// to find their own endpoint on first invocation.
 const lambdaFunctions = [
   backend.combatProcessor,
   backend.resourceManager,
@@ -61,7 +64,12 @@ const lambdaFunctions = [
 ];
 
 for (const fn of lambdaFunctions) {
-  fn.addEnvironment('AMPLIFY_DATA_GRAPHQL_ENDPOINT', backend.data.graphqlUrl);
+  fn.resources.lambda.addToRolePolicy(
+    new iam.PolicyStatement({
+      actions: ['appsync:ListGraphqlApis'],
+      resources: ['*'],
+    })
+  );
 }
 
 // CDK escape hatch: prevent the Cognito UserPool Schema from being updated.

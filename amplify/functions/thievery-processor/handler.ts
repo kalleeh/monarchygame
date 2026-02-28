@@ -5,13 +5,12 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { configureAmplify } from '../amplify-configure';
 
-configureAmplify();
-const client = generateClient<Schema>({ authMode: 'iam' });
-
 const VALID_OPERATIONS = ['scout', 'steal', 'sabotage', 'burn'] as const;
 const MIN_SCOUTS = 100;
 
 export const handler: Schema["executeThievery"]["functionHandler"] = async (event) => {
+  await configureAmplify();
+  const client = generateClient<Schema>({ authMode: 'iam' });
   const { kingdomId, operation, targetKingdomId } = event.arguments;
 
   try {

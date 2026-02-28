@@ -4,8 +4,8 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { configureAmplify } from '../amplify-configure';
 
-configureAmplify();
-const client = generateClient<Schema>({ authMode: 'iam' });
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let client: ReturnType<typeof generateClient<Schema>>;
 
 const SEASON_DURATION_WEEKS = 6;
 const AGE_DURATION_WEEKS = 2;
@@ -73,6 +73,8 @@ function isSeasonExpired(startDate: Date): boolean {
  * or by an admin mutation.
  */
 export const handler: Schema["manageSeason"]["functionHandler"] = async (event) => {
+  await configureAmplify();
+  client = generateClient<Schema>({ authMode: 'iam' });
   const args = event.arguments;
 
   try {

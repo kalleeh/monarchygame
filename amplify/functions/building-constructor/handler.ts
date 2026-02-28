@@ -10,10 +10,9 @@ type BuildingType = typeof VALID_BUILDING_TYPES[number];
 
 const BUILDING_QUANTITY = { min: 1, max: 100 } as const;
 
-configureAmplify();
-const client = generateClient<Schema>({ authMode: 'iam' });
-
 export const handler: Schema["constructBuildings"]["functionHandler"] = async (event) => {
+  await configureAmplify();
+  const client = generateClient<Schema>({ authMode: 'iam' });
   const { kingdomId, buildingType, quantity } = event.arguments;
 
   try {

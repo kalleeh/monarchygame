@@ -16,6 +16,7 @@
     "@aws-amplify/backend-data": "^1.6.1",
     "@aws-amplify/backend-function": "^1.14.1",
     "@aws-lambda-powertools/logger": "^2.25.2",
+    "@aws-sdk/client-appsync": "^3.883.0",
     "@aws-sdk/client-dynamodb": "^3.883.0",
     "@aws-sdk/lib-dynamodb": "^3.883.0",
     "aws-amplify": "^6.16.2"
