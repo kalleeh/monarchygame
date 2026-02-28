@@ -23,12 +23,17 @@ export async function configureAmplify(): Promise<void> {
   if (envEndpoint) {
     configuredEndpoint = envEndpoint;
   } else {
-    // Discovery path: find the amplifyData AppSync API
+    // Discovery path: find the correct amplifyData AppSync API.
+    // Filter by amplify:app-id tag to avoid picking up sandbox or old deployments
+    // that also have name === 'amplifyData'.
+    const APP_ID = 'd2plhaotxy4zdr';
     const appsync = new AppSyncClient({ region });
     const { graphqlApis } = await appsync.send(new ListGraphqlApisCommand({}));
-    const api = graphqlApis?.find(a => a.name === 'amplifyData');
+    const api = graphqlApis?.find(
+      a => a.name === 'amplifyData' && a.tags?.['amplify:app-id'] === APP_ID
+    );
     if (!api?.uris?.GRAPHQL) {
-      throw new Error('[amplify-configure] Could not find amplifyData AppSync API');
+      throw new Error('[amplify-configure] Could not find amplifyData AppSync API for app ' + APP_ID);
     }
     configuredEndpoint = api.uris.GRAPHQL;
   }
