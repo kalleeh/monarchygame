@@ -38,13 +38,14 @@ export async function configureAmplify(): Promise<void> {
     configuredEndpoint = api.uris.GRAPHQL;
   }
 
+  // Amplify Gen2 uses the "data" key format (amplify_outputs.json style),
+  // NOT the old v5 "API.GraphQL" format. The data client reads from "data.url".
   Amplify.configure({
-    API: {
-      GraphQL: {
-        endpoint: configuredEndpoint,
-        region,
-        defaultAuthMode: 'iam',
-      },
+    data: {
+      url: configuredEndpoint,
+      aws_region: region,
+      default_authorization_type: 'AWS_IAM' as const,
+      authorization_types: ['AWS_IAM' as const],
     },
   });
 }
