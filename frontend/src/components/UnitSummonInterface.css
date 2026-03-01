@@ -1,7 +1,7 @@
 /* Unit Summon Interface Styles — Dark fantasy design system (--gm-* vars) */
 
 .unit-summon-interface {
-  min-height: calc(100vh - 4rem); /* account for TopNavigation height */
+  min-height: 0; /* let content determine height; avoid full-viewport empty void */
   background: var(--gm-bg-page, #0f0f1a);
   color: var(--gm-text, #e2e8f0);
   padding: 1.5rem 2rem 2rem;

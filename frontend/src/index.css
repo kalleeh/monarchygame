@@ -285,3 +285,16 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* ── Demo / utility bar overlap fix ──────────────────────────────────── */
+/* The sticky 32px utility bar sits above .game-content in the DOM so
+   page content is already below it. However, pages with min-height: 100vh
+   still over-extend and can push headings under the bar on some layouts.
+   Ensure page-level content wrappers never claim more height than needed. */
+main, .page-content {
+  min-height: 0;
+}
+
+/* ── Prevent pages from showing excessive empty space ────────────────── */
+/* Pages with very little content should not extend to full viewport height
+   showing pure black — let the background of the parent container show instead. */

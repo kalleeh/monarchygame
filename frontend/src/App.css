@@ -101,6 +101,8 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
+  /* Offset the sticky utility bar so page headings aren't hidden behind it */
+  min-height: calc(100vh - 32px);
 }
 
 /* Safe area support for mobile devices */

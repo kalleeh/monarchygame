@@ -6,7 +6,7 @@
 /* ── Page ──────────────────────────────────────────────────────────────── */
 
 .guild-management {
-  min-height: 100vh;
+  min-height: 0; /* avoid full-viewport empty void on sparse content tabs */
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   color: var(--gm-text, #e2e8f0);
 }
@@ -61,10 +61,10 @@
 }
 
 .guild-nav button.active {
-  background: rgba(78, 205, 196, 0.18) !important;
-  border-color: #4ecdc4 !important;
-  color: #4ecdc4 !important;
-  box-shadow: 0 0 6px rgba(78, 205, 196, 0.3) !important;
+  background: rgba(251, 191, 36, 0.18) !important;
+  border-color: #fbbf24 !important;
+  color: #fbbf24 !important;
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.3) !important;
 }
 
 /* ── Content Area ──────────────────────────────────────────────────────── */

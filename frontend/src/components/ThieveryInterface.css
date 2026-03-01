@@ -106,17 +106,25 @@
 }
 
 .operation-btn:disabled,
-.operation-btn.disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.operation-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  border-style: dashed !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #94a3b8 !important;
+}
 
 .operation-btn h4          { margin: 0; font-size: 1.1rem; }
 .operation-description     { margin: 0; color: #aaa; font-size: 0.85rem; line-height: 1.4; }
 .operation-cost {
   display: inline-block;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
+  background: rgba(251, 191, 36, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
   font-size: 0.8rem;
-  color: #ccc;
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
   align-self: flex-start;
 }
 

@@ -3,7 +3,8 @@
 
 /* ── Page wrapper ────────────────────────────────────────────────────── */
 .diplomacy-interface {
-  min-height: 100vh;
+  min-height: 0; /* avoid full-viewport black void on sparse content */
+  background: var(--gm-bg-page, #0f0f1a);
   color: #e2e8f0;
   padding: 2rem;
 }
@@ -33,22 +34,23 @@
 }
 
 .nav-btn {
-  background: transparent;
-  border: none;
-  color: #ccc;
+  background: rgba(26, 26, 46, 0.97) !important;
+  border: none !important;
+  color: #94a3b8 !important;
   padding: 1rem 1.5rem;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
+  border-bottom: 2px solid transparent !important;
   transition: all 0.3s ease;
 }
 
-.nav-btn:hover  { color: #ffd700; }
-.nav-btn.active { color: #ffd700; border-bottom-color: #ffd700; }
+.nav-btn:hover  { color: #ffd700 !important; background: rgba(26, 26, 46, 0.97) !important; }
+.nav-btn.active { color: #ffd700 !important; border-bottom-color: #ffd700 !important; background: rgba(26, 26, 46, 0.97) !important; }
 
 /* ── Content max-width wrapper ───────────────────────────────────────── */
 .diplomacy-content {
   max-width: 1200px;
   margin: 0 auto;
+  min-height: 60vh;
 }
 
 /* ── Dashboard layout ────────────────────────────────────────────────── */
