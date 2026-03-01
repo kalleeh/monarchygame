@@ -36,6 +36,7 @@ import { NotificationCenter } from './ui/NotificationCenter';
 import { AchievementWidget } from './achievements/AchievementWidget';
 import UnitRoster from './UnitRoster';
 import WorldFeed from './WorldFeed';
+import { FirstSteps } from './ui/FirstSteps';
 
 // EncampPanel — shows active encamp countdown or the two encamp buttons.
 // In auth mode the active state is driven by encampEndTimeMs/encampBonusTurns
@@ -967,6 +968,16 @@ function KingdomDashboard({
           <button className="next-step-btn" onClick={nextStep.onClick}>{nextStep.action} →</button>
         </div>
       )}
+
+      {/* First Steps onboarding checklist */}
+      <FirstSteps
+        kingdomId={kingdom.id}
+        onManageBuildings={onManageBuildings}
+        onSummonUnits={onSummonUnits}
+        onViewWorldMap={onViewWorldMap}
+        onManageCombat={onManageCombat}
+        onGenerateIncome={() => handleGenerateResources('generate_income')}
+      />
 
       <div className="dashboard-grid">
         {/* Row 1: Resources (2fr left) + Turn Generation (1fr right) */}
