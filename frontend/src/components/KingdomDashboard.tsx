@@ -34,6 +34,7 @@ import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
 import { NotificationCenter } from './ui/NotificationCenter';
 import { AchievementWidget } from './achievements/AchievementWidget';
 import UnitRoster from './UnitRoster';
+import WorldFeed from './WorldFeed';
 
 // EncampPanel — shows active encamp countdown or the two encamp buttons
 const EncampPanel = memo(({
@@ -196,6 +197,9 @@ function KingdomDashboard({
 
   // Season info for the age badge
   const [seasonInfo, setSeasonInfo] = useState<{ seasonNumber: number; currentAge: 'early' | 'middle' | 'late' } | null>(null);
+  // True when the season fetch completed and returned no active season (auth mode only)
+  const [noActiveSeason, setNoActiveSeason] = useState(false);
+  const [startingSeasonLoading, setStartingSeasonLoading] = useState(false);
 
   // Tutorial state
   const { hasCompleted: tutorialCompleted, markComplete: completeTutorial } = useTutorial('kingdom-dashboard');
@@ -358,6 +362,10 @@ function KingdomDashboard({
             seasonNumber: seasonData.seasonNumber ?? 1,
             currentAge: seasonData.currentAge as 'early' | 'middle' | 'late',
           });
+          setNoActiveSeason(false);
+        } else if (!isDemoMode()) {
+          // No active season found in auth mode — show start prompt
+          setNoActiveSeason(true);
         }
       } catch {
         // Non-fatal — season badge is informational only
@@ -366,6 +374,30 @@ function KingdomDashboard({
     void fetchSeason();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleStartSeason = async () => {
+    setStartingSeasonLoading(true);
+    try {
+      const raw = await AmplifyFunctionService.callFunction('season-lifecycle', {
+        kingdomId: kingdom.id,
+        action: 'create',
+      });
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : (raw as Record<string, unknown>);
+      const result = parsed as Record<string, unknown>;
+      if (result.success) {
+        const s = result.season as Record<string, unknown> | undefined;
+        setSeasonInfo({
+          seasonNumber: (s?.seasonNumber as number) ?? 1,
+          currentAge: (s?.currentAge as 'early' | 'middle' | 'late') ?? 'early',
+        });
+        setNoActiveSeason(false);
+      }
+    } catch (err) {
+      console.error('[KingdomDashboard] Failed to start season:', err);
+    } finally {
+      setStartingSeasonLoading(false);
+    }
+  };
 
   // Track online presence — mark online on mount, offline on unmount/tab close
   useEffect(() => {
@@ -1275,6 +1307,11 @@ function KingdomDashboard({
             return groupOrder.map((key) => actionGroups[key]);
           })()}
         </div>
+      </div>
+
+      {/* World Activity Feed — spans full width below the main dashboard grid */}
+      <div style={{ padding: '0 0.5rem 1rem' }}>
+        <WorldFeed defaultCollapsed={false} />
       </div>
 
       {/* Help Modal */}

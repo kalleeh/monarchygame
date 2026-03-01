@@ -1,0 +1,253 @@
+/* ── World Feed Panel ──────────────────────────────────────────────────── */
+
+.world-feed-panel {
+  background: linear-gradient(
+    135deg,
+    rgba(26, 26, 46, 0.97) 0%,
+    rgba(22, 33, 62, 0.97) 100%
+  );
+  border: 2px solid rgba(245, 158, 11, 0.35);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  /* Span all grid columns so the feed sits below the main panels */
+  grid-column: 1 / -1;
+}
+
+/* ── Header (toggle button) ───────────────────────────────────────────── */
+
+.world-feed-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.8rem 1.25rem;
+  background: rgba(245, 158, 11, 0.07);
+  border: none;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+  cursor: pointer;
+  color: #fbbf24;
+  font-family: var(--font-display, inherit);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.world-feed-header:hover {
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.world-feed-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.world-feed-title-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.world-feed-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 0.35rem;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: #fbbf24;
+  line-height: 1;
+  font-family: var(--font-mono, monospace);
+}
+
+.world-feed-chevron {
+  font-size: 0.7rem;
+  color: rgba(251, 191, 36, 0.6);
+  user-select: none;
+}
+
+/* ── Body ────────────────────────────────────────────────────────────── */
+
+.world-feed-body {
+  padding: 0;
+}
+
+.world-feed-loading,
+.world-feed-empty {
+  padding: 1rem 1.25rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+  text-align: center;
+  font-style: italic;
+}
+
+/* ── Event List ──────────────────────────────────────────────────────── */
+
+.world-feed-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  /* Cap height and scroll; show ~7 items before scrolling */
+  max-height: 260px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(245, 158, 11, 0.3) transparent;
+}
+
+.world-feed-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.world-feed-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.world-feed-list::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.3);
+  border-radius: 9999px;
+}
+
+/* ── Single Event Row ────────────────────────────────────────────────── */
+
+.world-feed-event {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.83rem;
+  color: #cbd5e1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  line-height: 1.4;
+  transition: background 0.1s ease;
+}
+
+.world-feed-event:last-child {
+  border-bottom: none;
+}
+
+.world-feed-event:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ── Event-type colour accents ───────────────────────────────────────── */
+
+.world-feed-event--combat {
+  border-left: 3px solid rgba(239, 68, 68, 0.55);
+}
+
+.world-feed-event--war {
+  border-left: 3px solid rgba(249, 115, 22, 0.65);
+}
+
+.world-feed-event--thievery {
+  border-left: 3px solid rgba(139, 92, 246, 0.6);
+}
+
+.world-feed-event--alliance {
+  border-left: 3px solid rgba(245, 158, 11, 0.65);
+}
+
+/* ── Event parts ─────────────────────────────────────────────────────── */
+
+.world-feed-event-icon {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  line-height: 1;
+  width: 1.3rem;
+  text-align: center;
+}
+
+.world-feed-event-message {
+  flex: 1;
+  word-break: break-word;
+}
+
+.world-feed-event-time {
+  flex-shrink: 0;
+  font-size: 0.73rem;
+  color: #4b5563;
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────── */
+
+.world-feed-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.world-feed-refresh-btn {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 6px;
+  color: #f59e0b;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0.3rem 0.85rem;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.world-feed-refresh-btn:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.18);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
+}
+
+.world-feed-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.world-feed-footer-note {
+  font-size: 0.73rem;
+  color: #4b5563;
+  font-style: italic;
+}
+
+.world-feed-footer-note--demo {
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
+  color: #64748b;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.45rem;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .world-feed-header {
+    padding: 0.7rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .world-feed-event {
+    padding: 0.45rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  .world-feed-footer {
+    padding: 0.5rem 1rem;
+  }
+}
