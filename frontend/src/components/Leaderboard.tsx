@@ -98,9 +98,11 @@ const getTargetIndicator = (yourNW: number, theirNW: number): TargetIndicator =>
 interface LeaderboardProps {
   kingdoms: Kingdom[];
   currentKingdom: Kingdom;
+  /** Optional callback to open the diplomatic message compose modal for a specific kingdom. */
+  onSendMessage?: (target: { id: string; name: string }) => void;
 }
 
-const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) => {
+const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onSendMessage }) => {
   // ── State ────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<TabId>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -650,7 +652,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
                   <div className="territory-header">
                     <span className="territory-icon">{isCurrentKingdom ? '⭐' : '👑'}</span>
                     <div className="territory-info">
-                      <h4>
+                      <h4 style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.3rem' }}>
                         {/* Online presence dot */}
                         <span
                           style={{
@@ -660,8 +662,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
                             borderRadius: '50%',
                             background: kingdom.isOnline ? '#22c55e' : '#64748b',
                             boxShadow: kingdom.isOnline ? '0 0 4px #22c55e' : 'none',
-                            marginRight: '6px',
+                            marginRight: '2px',
                             verticalAlign: 'middle',
+                            flexShrink: 0,
                           }}
                           title={kingdom.isOnline ? 'Online' : 'Offline'}
                         />
@@ -672,6 +675,45 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
                           {getRankDelta(kingdom, rankNumber)}
                         </span>
                         {' '}{kingdom.name}{isCurrentKingdom ? ' (You)' : ''}
+
+                        {/* Diplomatic message button — not shown for current player's own kingdom */}
+                        {!isCurrentKingdom && onSendMessage && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSendMessage({ id: kingdom.id, name: kingdom.name });
+                            }}
+                            title={`Send diplomatic message to ${kingdom.name}`}
+                            aria-label={`Send diplomatic message to ${kingdom.name}`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: 'rgba(139, 92, 246, 0.14)',
+                              border: '1px solid rgba(139, 92, 246, 0.4)',
+                              borderRadius: '6px',
+                              color: '#c4b5fd',
+                              cursor: 'pointer',
+                              fontSize: '0.85rem',
+                              lineHeight: 1,
+                              padding: '2px 6px',
+                              marginLeft: '4px',
+                              transition: 'background 0.15s, box-shadow 0.15s',
+                              verticalAlign: 'middle',
+                              flexShrink: 0,
+                            }}
+                            onMouseEnter={e => {
+                              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(139, 92, 246, 0.28)';
+                              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 6px rgba(139, 92, 246, 0.4)';
+                            }}
+                            onMouseLeave={e => {
+                              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(139, 92, 246, 0.14)';
+                              (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none';
+                            }}
+                          >
+                            &#9993;
+                          </button>
+                        )}
                       </h4>
                       <span className="territory-type">{kingdom.race}</span>
                     </div>

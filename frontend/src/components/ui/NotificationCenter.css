@@ -238,6 +238,23 @@
   border-color: rgba(245, 158, 11, 0.35);
 }
 
+.notification-type--diplomacy {
+  background: rgba(139, 92, 246, 0.15);
+  color: #c4b5fd;
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+/* ── Diplomacy item highlight ──────────────────────────────── */
+
+.notification-item--diplomacy.unread {
+  border-left-color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.07);
+}
+
+.notification-item--diplomacy.unread:hover {
+  background: rgba(139, 92, 246, 0.12);
+}
+
 /* ── Item content ───────────────────────────────────────────── */
 
 .notification-message {
@@ -251,6 +268,35 @@
 .notification-time {
   font-size: 0.72rem;
   color: #707070;
+}
+
+/* ── Item actions row (reply + mark-read) ───────────────────── */
+
+.notification-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Reply button ───────────────────────────────────────────── */
+
+.notification-reply-btn {
+  background: rgba(139, 92, 246, 0.14);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: #c4b5fd;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.notification-reply-btn:hover {
+  background: rgba(139, 92, 246, 0.28);
+  box-shadow: 0 0 6px rgba(139, 92, 246, 0.4);
 }
 
 /* ── Mark-as-read button ────────────────────────────────────── */

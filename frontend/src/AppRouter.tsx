@@ -4,7 +4,7 @@
  * Implements code splitting with React.lazy and Suspense
  */
 
-import React, { Suspense, lazy, useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState, useCallback } from 'react';
 import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { generateClient } from 'aws-amplify/data';
 import { useKingdomStore } from './stores/kingdomStore';
@@ -13,6 +13,8 @@ import type { Schema } from '../../amplify/data/resource';
 import { LoadingSkeleton } from './components/ui/loading/LoadingSkeleton';
 import { TopNavigation } from './components/TopNavigation';
 import { isDemoMode } from './utils/authMode';
+import { MessageCompose } from './components/MessageCompose';
+import type { MessageTarget } from './components/MessageCompose';
 import './components/KingdomList.css';
 
 // Lazy-loaded components for code splitting
@@ -184,8 +186,13 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
   const { kingdomId } = useParams<{ kingdomId: string }>();
   const navigate = useNavigate();
   const loadKingdom = useKingdomStore((state) => state.loadKingdom);
-  
+
   const kingdom = kingdoms.find(k => k.id === kingdomId);
+
+  // ── Diplomatic message compose modal state ──────────────────────────────
+  const [composeTarget, setComposeTarget] = useState<MessageTarget | null>(null);
+  const openCompose = useCallback((target: MessageTarget) => setComposeTarget(target), []);
+  const closeCompose = useCallback(() => setComposeTarget(null), []);
 
   // Load kingdom data when entering
   React.useEffect(() => {
@@ -203,12 +210,28 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
   const handleBack = () => navigate('/kingdoms');
   const handleBackToDashboard = () => navigate(`/kingdom/${kingdomId}`);
 
+  // Build the list of kingdoms the player can send messages to (everyone except themselves)
+  const messageableKingdoms: MessageTarget[] = kingdoms
+    .filter(k => k.id !== kingdom.id)
+    .map(k => ({ id: k.id, name: k.name || 'Unknown Kingdom' }));
+
   return (
-    <Suspense fallback={<LoadingSkeleton type="dashboard" />}>
+    <>
+      {/* Diplomatic message compose modal — rendered above the routed page */}
+      {composeTarget && (
+        <MessageCompose
+          senderKingdom={{ id: kingdom.id, name: kingdom.name || 'Your Kingdom' }}
+          defaultTarget={composeTarget}
+          availableTargets={messageableKingdoms}
+          onClose={closeCompose}
+        />
+      )}
+
+      <Suspense fallback={<LoadingSkeleton type="dashboard" />}>
       <Routes>
         {/* Dashboard - default view */}
         <Route index element={
-          <KingdomDashboard 
+          <KingdomDashboard
             kingdom={kingdom}
             onBack={handleBack}
             onManageTerritories={() => navigate(`/kingdom/${kingdomId}/territories`)}
@@ -221,6 +244,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
             onDiplomacy={() => navigate(`/kingdom/${kingdomId}/diplomacy`)}
             onBattleReports={() => navigate(`/kingdom/${kingdomId}/reports`)}
             onViewLeaderboard={() => navigate(`/kingdom/${kingdomId}/leaderboard`)}
+            onComposeMessage={openCompose}
           />
         } />
         
@@ -427,6 +451,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
                     guildId: kingdom.guildId || undefined
                   };
                 })()}
+                onSendMessage={openCompose}
               />
             </div>
           </Suspense>
@@ -497,6 +522,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
         } />
       </Routes>
     </Suspense>
+    </>
   );
 }
 

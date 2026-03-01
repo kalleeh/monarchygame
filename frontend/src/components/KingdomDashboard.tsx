@@ -144,21 +144,24 @@ interface KingdomDashboardProps {
   onDiplomacy?: () => void;
   onBattleReports?: () => void;
   onViewLeaderboard?: () => void;
+  /** Opens the diplomatic message compose modal for a given target kingdom. */
+  onComposeMessage?: (target: { id: string; name: string }) => void;
 }
 
-function KingdomDashboard({ 
-  kingdom, 
-  onBack, 
-  onManageTerritories, 
-  onManageCombat, 
-  onManageAlliance, 
-  onViewWorldMap, 
-  onCastSpells, 
-  onManageTrade, 
-  onSummonUnits, 
-  onDiplomacy, 
-  onBattleReports, 
-  onViewLeaderboard 
+function KingdomDashboard({
+  kingdom,
+  onBack,
+  onManageTerritories,
+  onManageCombat,
+  onManageAlliance,
+  onViewWorldMap,
+  onCastSpells,
+  onManageTrade,
+  onSummonUnits,
+  onDiplomacy,
+  onBattleReports,
+  onViewLeaderboard,
+  onComposeMessage,
 }: KingdomDashboardProps) {
   // Use centralized kingdom store for resources AND live units
   const resources = useKingdomStore((state) => state.resources);
@@ -757,7 +760,7 @@ function KingdomDashboard({
         backLabel="← Back to Kingdoms"
         actions={
           <div className="kingdom-race">
-            <NotificationCenter kingdomId={kingdom.id} />
+            <NotificationCenter kingdomId={kingdom.id} onReply={onComposeMessage} />
             <span className="race-badge">{kingdom.race}</span>
           </div>
         }
