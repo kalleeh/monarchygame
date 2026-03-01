@@ -39,6 +39,7 @@ const FaithInterface = lazy(() => import('./components/FaithInterface'));
 const MultiplayerLobby = lazy(() => import('./components/MultiplayerLobby'));
 const KingdomBrowser = lazy(() => import('./components/KingdomBrowser'));
 const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard'));
+const BuildingManagement = lazy(() => import('./components/BuildingManagement'));
 
 interface AppRouterProps {
   kingdoms: Schema['Kingdom']['type'][];
@@ -244,6 +245,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
             onDiplomacy={() => navigate(`/kingdom/${kingdomId}/diplomacy`)}
             onBattleReports={() => navigate(`/kingdom/${kingdomId}/reports`)}
             onViewLeaderboard={() => navigate(`/kingdom/${kingdomId}/leaderboard`)}
+            onManageBuildings={() => navigate(`/kingdom/${kingdomId}/buildings`)}
             onComposeMessage={openCompose}
           />
         } />
@@ -258,6 +260,17 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
           </Suspense>
         } />
         
+        {/* Building construction */}
+        <Route path="buildings" element={
+          <Suspense fallback={<LoadingSkeleton type="card" className="m-8" />}>
+            <BuildingManagement
+              kingdomId={kingdom.id}
+              race={kingdom.race || 'Human'}
+              onBack={handleBackToDashboard}
+            />
+          </Suspense>
+        } />
+
         {/* Combat */}
         <Route path="combat" element={
           <Suspense fallback={<LoadingSkeleton type="card" className="m-8" />}>

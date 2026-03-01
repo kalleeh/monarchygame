@@ -74,6 +74,9 @@ const schema = a.schema({
       lastActive: a.datetime(),
       ageStartTime: a.datetime(),
       lastResourceTick: a.datetime(),
+      // Encamp fields — set by resource-manager Lambda, cleared by turn-ticker after expiry
+      encampEndTime: a.string(),
+      encampBonusTurns: a.integer(),
       // Private fields - owner only
       guildId: a.id()
         .authorization((allow) => [allow.owner().to(['read', 'update'])]),
@@ -331,6 +334,16 @@ const schema = a.schema({
     .arguments({
       kingdomId: a.string().required(),
       turns: a.integer()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(resourceManager)),
+
+  encampKingdom: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
+      duration: a.integer().required()
     })
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])

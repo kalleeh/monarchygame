@@ -3,6 +3,7 @@ import type { KingdomResources, KingdomBuildings } from '../../../shared/types/k
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { dbGet, dbUpdate, dbList } from '../data-client';
+import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
 
 const RESOURCE_LIMITS = {
   gold: { min: 0, max: 1000000 },
@@ -19,6 +20,8 @@ type KingdomType = {
   stats?: Record<string, unknown> | null;
   currentAge?: string | null;
   race?: string | null;
+  encampEndTime?: string | null;
+  encampBonusTurns?: number | null;
 };
 
 type TerritoryType = {
@@ -28,8 +31,79 @@ type TerritoryType = {
   terrainType?: string | null;
 };
 
+// The handler is invoked for both updateResources and encampKingdom mutations.
+// We use a loose event type to handle both argument shapes.
+type ResourceManagerEvent = {
+  arguments: {
+    kingdomId?: string;
+    turns?: number | null;
+    duration?: number | null;
+  };
+  identity?: { sub?: string; username?: string } | null;
+};
+
 export const handler: Schema["updateResources"]["functionHandler"] = async (event) => {
-  const { kingdomId, turns: rawTurns } = event.arguments;
+  const rawEvent = event as unknown as ResourceManagerEvent;
+  const kingdomId = rawEvent.arguments.kingdomId;
+
+  // --- Encamp branch: triggered by encampKingdom mutation (duration arg present, no turns arg) ---
+  if (rawEvent.arguments.duration != null && rawEvent.arguments.turns == null) {
+    const duration = rawEvent.arguments.duration as number;
+    try {
+      if (!kingdomId) {
+        return { success: false, error: 'Missing kingdomId', errorCode: ErrorCode.MISSING_PARAMS };
+      }
+      if (typeof kingdomId !== 'string' || kingdomId.length > 128) {
+        return { success: false, error: 'Invalid kingdomId format', errorCode: ErrorCode.INVALID_PARAM };
+      }
+      if (duration !== 16 && duration !== 24) {
+        return { success: false, error: 'Invalid duration: must be 16 or 24', errorCode: ErrorCode.INVALID_PARAM };
+      }
+
+      const identity = rawEvent.identity as { sub?: string; username?: string } | null;
+      if (!identity?.sub) {
+        return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
+      }
+
+      const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
+      if (!kingdom) {
+        return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+      }
+
+      const ownerField = kingdom.owner ?? null;
+      if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
+        return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
+      }
+
+      // Reject if already encamped
+      if (kingdom.encampEndTime) {
+        const existingEnd = new Date(kingdom.encampEndTime).getTime();
+        if (existingEnd > Date.now()) {
+          return { success: false, error: 'Kingdom is already encamped', errorCode: ErrorCode.VALIDATION_FAILED };
+        }
+      }
+
+      const bonusTurns = duration === 24
+        ? TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_24_HOURS.bonusTurns
+        : TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_16_HOURS.bonusTurns;
+
+      const encampEndTime = new Date(Date.now() + duration * 60 * 60 * 1000).toISOString();
+
+      await dbUpdate('Kingdom', kingdomId, {
+        encampEndTime,
+        encampBonusTurns: bonusTurns,
+      });
+
+      log.info('resource-manager', 'encamp', { kingdomId, duration, bonusTurns, encampEndTime });
+      return { success: true, encampEndTime, encampBonusTurns: bonusTurns };
+    } catch (error) {
+      log.error('resource-manager', error, { kingdomId, action: 'encamp' });
+      return { success: false, error: 'Encamp failed', errorCode: ErrorCode.INTERNAL_ERROR };
+    }
+  }
+
+  // --- updateResources branch (original logic) ---
+  const { turns: rawTurns } = event.arguments;
   const turns = Math.max(1, rawTurns ?? 1);
 
   try {

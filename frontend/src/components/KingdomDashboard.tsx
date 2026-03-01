@@ -36,43 +36,57 @@ import { AchievementWidget } from './achievements/AchievementWidget';
 import UnitRoster from './UnitRoster';
 import WorldFeed from './WorldFeed';
 
-// EncampPanel — shows active encamp countdown or the two encamp buttons
+// EncampPanel — shows active encamp countdown or the two encamp buttons.
+// In auth mode the active state is driven by encampEndTimeMs/encampBonusTurns
+// props (resolved server-side from the Kingdom DynamoDB record).
+// In demo mode it falls back to localStorage so offline play is unaffected.
 const EncampPanel = memo(({
   kingdomId,
-  onEncamp
+  encampEndTimeMs,
+  encampBonusTurns: encampBonusTurnsProp,
+  onEncamp,
+  encampLoading,
 }: {
   kingdomId: string;
-  onEncamp: (action: 'encamp', duration: 16 | 24) => void;
+  encampEndTimeMs: number | null;
+  encampBonusTurns: number;
+  onEncamp: (duration: 16 | 24) => void;
+  encampLoading: boolean;
 }) => {
-  const [encampEndTime, setEncampEndTime] = useState<number | null>(null);
-  const [encampBonusTurns, setEncampBonusTurns] = useState<number>(0);
   const [now, setNow] = useState(() => Date.now());
+  // Demo-mode fallback: read/poll localStorage
+  const [demoEndTime, setDemoEndTime] = useState<number | null>(null);
+  const [demoBonusTurns, setDemoBonusTurns] = useState<number>(0);
 
-  // Poll localStorage every second to update countdown
   useEffect(() => {
     const tick = () => {
-      try {
-        const raw = localStorage.getItem(`encamp-${kingdomId}`);
-        if (raw) {
-          const data = JSON.parse(raw) as { endTime: number; bonusTurns: number };
-          setEncampEndTime(data.endTime);
-          setEncampBonusTurns(data.bonusTurns);
-        } else {
-          setEncampEndTime(null);
-          setEncampBonusTurns(0);
-        }
-      } catch {
-        setEncampEndTime(null);
-        setEncampBonusTurns(0);
-      }
       setNow(Date.now());
+      if (isDemoMode()) {
+        try {
+          const raw = localStorage.getItem(`encamp-${kingdomId}`);
+          if (raw) {
+            const data = JSON.parse(raw) as { endTime: number; bonusTurns: number };
+            setDemoEndTime(data.endTime);
+            setDemoBonusTurns(data.bonusTurns);
+          } else {
+            setDemoEndTime(null);
+            setDemoBonusTurns(0);
+          }
+        } catch {
+          setDemoEndTime(null);
+          setDemoBonusTurns(0);
+        }
+      }
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [kingdomId]);
 
-  const isActive = encampEndTime !== null && now < encampEndTime;
+  // Resolve active state: server data in auth mode, localStorage in demo mode
+  const activeEndTime = isDemoMode() ? demoEndTime : encampEndTimeMs;
+  const activeBonusTurns = isDemoMode() ? demoBonusTurns : encampBonusTurnsProp;
+  const isActive = activeEndTime !== null && now < activeEndTime;
 
   const formatCountdown = (ms: number) => {
     const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
@@ -96,10 +110,10 @@ const EncampPanel = memo(({
       {isActive ? (
         <div>
           <p style={{ margin: '0 0 0.25rem', fontSize: '0.85rem', color: '#a0a0a0' }}>
-            Kingdom is resting — {formatCountdown(encampEndTime! - now)} remaining
+            Kingdom is resting — {formatCountdown(activeEndTime! - now)} remaining
           </p>
           <p style={{ margin: 0, fontSize: '0.85rem', color: '#4ecdc4' }}>
-            +{encampBonusTurns} bonus turns when you return
+            +{activeBonusTurns} bonus turns when you return
           </p>
         </div>
       ) : (
@@ -110,19 +124,21 @@ const EncampPanel = memo(({
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
               className="resource-btn"
-              onClick={() => onEncamp('encamp', 16)}
+              onClick={() => onEncamp(16)}
+              disabled={encampLoading}
               style={{ flex: '1 1 auto' }}
               title={`Encamp for 16 hours to receive +${TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_16_HOURS.bonusTurns} bonus turns`}
             >
-              Encamp 16h (+{TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_16_HOURS.bonusTurns} turns)
+              {encampLoading ? 'Encamping...' : `Encamp 16h (+${TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_16_HOURS.bonusTurns} turns)`}
             </button>
             <button
               className="resource-btn"
-              onClick={() => onEncamp('encamp', 24)}
+              onClick={() => onEncamp(24)}
+              disabled={encampLoading}
               style={{ flex: '1 1 auto' }}
               title={`Encamp for 24 hours to receive +${TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_24_HOURS.bonusTurns} bonus turns`}
             >
-              Encamp 24h (+{TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_24_HOURS.bonusTurns} turns)
+              {encampLoading ? 'Encamping...' : `Encamp 24h (+${TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_24_HOURS.bonusTurns} turns)`}
             </button>
           </div>
         </div>
@@ -144,6 +160,7 @@ interface KingdomDashboardProps {
   onDiplomacy?: () => void;
   onBattleReports?: () => void;
   onViewLeaderboard?: () => void;
+  onManageBuildings?: () => void;
   /** Opens the diplomatic message compose modal for a given target kingdom. */
   onComposeMessage?: (target: { id: string; name: string }) => void;
 }
@@ -161,6 +178,7 @@ function KingdomDashboard({
   onDiplomacy,
   onBattleReports,
   onViewLeaderboard,
+  onManageBuildings,
   onComposeMessage,
 }: KingdomDashboardProps) {
   // Use centralized kingdom store for resources AND live units
@@ -197,6 +215,21 @@ function KingdomDashboard({
   const [showBalanceTester, setShowBalanceTester] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showUnitRoster, setShowUnitRoster] = useState(false);
+
+  // Encamp server state — initialised from the kingdom prop on mount.
+  // In auth mode these are set by the encampKingdom Lambda and cleared by turn-ticker.
+  const [encampEndTimeMs, setEncampEndTimeMs] = useState<number | null>(() => {
+    if (isDemoMode()) return null; // demo mode uses localStorage via EncampPanel
+    const raw = (kingdom as unknown as Record<string, unknown>).encampEndTime as string | null | undefined;
+    if (!raw) return null;
+    const ms = new Date(raw).getTime();
+    return ms > Date.now() ? ms : null;
+  });
+  const [encampBonusTurns, setEncampBonusTurns] = useState<number>(() => {
+    if (isDemoMode()) return 0;
+    return ((kingdom as unknown as Record<string, unknown>).encampBonusTurns as number | null | undefined) ?? 0;
+  });
+  const [encampLoading, setEncampLoading] = useState(false);
 
   // Season info for the age badge
   const [seasonInfo, setSeasonInfo] = useState<{ seasonNumber: number; currentAge: 'early' | 'middle' | 'late' } | null>(null);
@@ -441,22 +474,7 @@ function KingdomDashboard({
     };
   }, [kingdom?.id]);
 
-  const handleGenerateResources = async (action: 'generate_turns' | 'generate_income' | 'encamp', encampDuration?: 16 | 24) => {
-    // Encamp is handled client-side: store the end time and bonus turns in localStorage
-    if (action === 'encamp') {
-      const duration = encampDuration ?? 24;
-      const bonusTurns = duration === 24 ? 10 : 7;
-      const endTime = Date.now() + duration * 60 * 60 * 1000;
-      localStorage.setItem(
-        `encamp-${kingdom.id}`,
-        JSON.stringify({ endTime, bonusTurns })
-      );
-      ToastService.success(
-        `Encamping for ${duration}h! You'll receive +${bonusTurns} bonus turns when you return.`
-      );
-      return;
-    }
-
+  const handleGenerateResources = async (action: 'generate_turns' | 'generate_income') => {
     setResourceLoading(true);
 
     // Demo mode: skip Lambda entirely, update local store directly
@@ -497,6 +515,55 @@ function KingdomDashboard({
       }
     } finally {
       setResourceLoading(false);
+    }
+  };
+
+  // handleEncamp — server-authoritative encamp.
+  // In demo mode: stores to localStorage (unchanged behaviour).
+  // In auth mode: calls encampKingdom Lambda, which writes encampEndTime +
+  // encampBonusTurns to DynamoDB; turn-ticker awards the bonus on expiry.
+  const handleEncamp = async (duration: 16 | 24) => {
+    if (isDemoMode()) {
+      const bonusTurns = duration === 24
+        ? TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_24_HOURS.bonusTurns
+        : TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_16_HOURS.bonusTurns;
+      const endTime = Date.now() + duration * 60 * 60 * 1000;
+      localStorage.setItem(
+        `encamp-${kingdom.id}`,
+        JSON.stringify({ endTime, bonusTurns })
+      );
+      ToastService.success(
+        `Encamping for ${duration}h! You'll receive +${bonusTurns} bonus turns when you return.`
+      );
+      return;
+    }
+
+    setEncampLoading(true);
+    try {
+      const raw = await AmplifyFunctionService.callFunction('resource-manager', {
+        kingdomId: kingdom.id,
+        action: 'encamp',
+        amount: duration,
+      });
+      const result = (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<string, unknown>;
+      const data = (result?.data as Record<string, unknown>) ?? result;
+      const inner = (data?.encampKingdom as Record<string, unknown>) ?? data;
+      if (inner?.success) {
+        const endIso = inner.encampEndTime as string;
+        const bonus = (inner.encampBonusTurns as number) ?? 0;
+        setEncampEndTimeMs(new Date(endIso).getTime());
+        setEncampBonusTurns(bonus);
+        ToastService.success(
+          `Encamping for ${duration}h! You'll receive +${bonus} bonus turns when you return.`
+        );
+      } else {
+        ToastService.error((inner?.error as string) ?? 'Encamp failed. Please try again.');
+      }
+    } catch (err) {
+      console.error('Encamp error:', err);
+      ToastService.error('Encamp failed. Please try again.');
+    } finally {
+      setEncampLoading(false);
     }
   };
 
@@ -972,7 +1039,13 @@ function KingdomDashboard({
             </LoadingButton>
           </div>
 
-          <EncampPanel kingdomId={kingdom.id} onEncamp={handleGenerateResources} />
+          <EncampPanel
+            kingdomId={kingdom.id}
+            encampEndTimeMs={encampEndTimeMs}
+            encampBonusTurns={encampBonusTurns}
+            onEncamp={handleEncamp}
+            encampLoading={encampLoading}
+          />
         </div>
 
         <div className="race-stats-panel">
@@ -1251,6 +1324,14 @@ function KingdomDashboard({
                     >
                       <img src="/territories-icon.png" alt="Territories" className="action-icon" />
                       Manage Territories
+                    </button>
+                    <button
+                      className="action-btn primary"
+                      onClick={onManageBuildings}
+                      title="Construct buildings on your land"
+                    >
+                      <img src="/buildings-economy-icon.png" alt="Buildings" className="action-icon" />
+                      Construct Buildings
                     </button>
                     <button
                       className="action-btn primary"

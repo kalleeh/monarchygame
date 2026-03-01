@@ -1,0 +1,232 @@
+/* Building Management - dark theme matching existing component styles */
+
+.building-management {
+  min-height: 100vh;
+  background: var(--color-bg-deep, #0f1629);
+}
+
+.bm-content {
+  padding: 1rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Resource bar */
+.bm-resources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(78, 205, 196, 0.2);
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+}
+
+.bm-resource-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.bm-resource-icon {
+  font-size: 1rem;
+}
+
+.bm-resource-label {
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.bm-resource-value {
+  color: #f0c040;
+  font-weight: 700;
+}
+
+.bm-resource-hint {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Building grid */
+.bm-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.875rem;
+}
+
+@media (min-width: 600px) {
+  .bm-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 900px) {
+  .bm-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Building card */
+.bm-card {
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
+  border: 1px solid rgba(78, 205, 196, 0.25);
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: border-color 0.2s;
+}
+
+.bm-card:hover {
+  border-color: rgba(78, 205, 196, 0.5);
+}
+
+.bm-card--unaffordable {
+  opacity: 0.55;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.bm-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.bm-card-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.bm-card-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #4ecdc4;
+}
+
+.bm-card-count {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.bm-card-description {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #d1d5db;
+  line-height: 1.4;
+}
+
+.bm-card-effect {
+  font-size: 0.78rem;
+  color: #a78bfa;
+  font-style: italic;
+}
+
+.bm-card-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Quantity row */
+.bm-quantity-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bm-qty-btn {
+  background: rgba(78, 205, 196, 0.1);
+  border: 1px solid rgba(78, 205, 196, 0.35);
+  border-radius: 4px;
+  color: #4ecdc4;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.1rem 0.45rem;
+  transition: background 0.15s;
+}
+
+.bm-qty-btn:hover:not(:disabled) {
+  background: rgba(78, 205, 196, 0.25);
+}
+
+.bm-qty-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bm-qty-input {
+  width: 52px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: #f3f4f6;
+  font-size: 0.9rem;
+  padding: 0.15rem 0.3rem;
+}
+
+.bm-qty-input::-webkit-inner-spin-button,
+.bm-qty-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Cost row */
+.bm-cost-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+}
+
+.bm-cost-label {
+  color: #9ca3af;
+}
+
+.bm-cost-value {
+  color: #f0c040;
+  font-weight: 600;
+}
+
+.bm-cost--unaffordable {
+  color: #ef4444;
+}
+
+/* Build button */
+.bm-build-btn {
+  background: linear-gradient(135deg, #4ecdc4, #44a3d8);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 0.45rem 0.75rem;
+  text-align: center;
+  transition: opacity 0.15s, transform 0.1s;
+  width: 100%;
+}
+
+.bm-build-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.bm-build-btn:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: #6b7280;
+  cursor: not-allowed;
+  transform: none;
+}

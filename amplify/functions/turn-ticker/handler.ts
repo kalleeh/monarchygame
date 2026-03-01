@@ -7,7 +7,7 @@
  *
  * Turn rate: 3/hour (1 per 20 min), matching the game's TURNS_PER_HOUR constant.
  */
-import { dbList, dbAtomicAdd } from '../data-client';
+import { dbList, dbAtomicAdd, dbUpdate } from '../data-client';
 import { log } from '../logger';
 
 const MAX_STORED_TURNS = 100;
@@ -16,6 +16,8 @@ interface KingdomRow {
   id: string;
   isActive?: boolean;
   turnsBalance?: number;
+  encampEndTime?: string | null;
+  encampBonusTurns?: number | null;
 }
 
 export const handler = async (_event: unknown): Promise<{ success: boolean; ticked: number; skipped: number }> => {
@@ -40,6 +42,25 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
 
         await dbAtomicAdd('Kingdom', kingdom.id, 'turnsBalance', 1);
         ticked++;
+
+        // Encamp completion check: if the encamp window has closed, atomically
+        // credit the stored bonus turns and clear the encamp fields.
+        if (kingdom.encampEndTime) {
+          const encampEnd = new Date(kingdom.encampEndTime).getTime();
+          if (encampEnd <= Date.now() && kingdom.encampBonusTurns) {
+            const bonus = kingdom.encampBonusTurns;
+            try {
+              await dbAtomicAdd('Kingdom', kingdom.id, 'turnsBalance', bonus);
+              await dbUpdate('Kingdom', kingdom.id, {
+                encampEndTime: null,
+                encampBonusTurns: null,
+              });
+              log.info('turn-ticker', 'encamp-bonus-awarded', { kingdomId: kingdom.id, bonus });
+            } catch (encampErr) {
+              log.error('turn-ticker', encampErr, { kingdomId: kingdom.id, context: 'encamp-bonus' });
+            }
+          }
+        }
       } catch (err) {
         log.error('turn-ticker', err, { kingdomId: kingdom.id });
         skipped++;

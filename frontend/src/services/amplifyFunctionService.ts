@@ -99,6 +99,12 @@ export class AmplifyFunctionService {
           case 'unit-trainer':
             return { success: true, units: '{}' };
           case 'resource-manager':
+            if (payload.action === 'encamp') {
+              const dur = (payload.amount as number) ?? 24;
+              const bonusTurns = dur === 24 ? 10 : 7;
+              const encampEndTime = new Date(Date.now() + dur * 60 * 60 * 1000).toISOString();
+              return { success: true, encampEndTime, encampBonusTurns: bonusTurns };
+            }
             return { success: true, newTurns: payload.amount ?? 1 };
           case 'combat-processor':
             return { success: true, result: 'victory', casualties: '{}' };
@@ -140,6 +146,13 @@ export class AmplifyFunctionService {
         case 'spell-processor':
           return await this.handleSpellProcessor(payload as SpellPayload);
         case 'resource-manager':
+          // Route encamp action to the dedicated encampKingdom mutation
+          if (payload.action === 'encamp') {
+            return await client.mutations.encampKingdom({
+              kingdomId: payload.kingdomId,
+              duration: (payload.amount as number) ?? 24,
+            });
+          }
           return await client.mutations.updateResources({
             kingdomId: payload.kingdomId,
             turns: payload.amount ?? 1
