@@ -15,7 +15,7 @@ import { isRacialAbilityActive } from "../../../shared/mechanics/age-mechanics";
 import { RACES } from '../../__mocks__/@game-data/races';
 import { useSummonStore } from './useSummonStore';
 import { isDemoMode } from '../utils/authMode';
-import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { processCombat, declareWar as declareWarApi, refreshKingdomResources } from '../services/domain/CombatService';
 import { achievementTriggers } from '../utils/achievementTriggers';
 import { GuildService } from '../services/GuildService';
 import { useCombatReplayStore } from './combatReplayStore';
@@ -178,7 +178,7 @@ export const useCombatStore = create(
               targetKingdomForTerrain?.terrainType ??
               undefined;
 
-            const result = await AmplifyFunctionService.callFunction('combat-processor', {
+            const result = await processCombat({
               kingdomId,
               attackerKingdomId: kingdomId,
               defenderKingdomId: targetId,
@@ -211,7 +211,7 @@ export const useCombatStore = create(
             };
 
             // Server already updated kingdom state — refresh authoritative resources
-            void AmplifyFunctionService.refreshKingdomResources(kingdomId);
+            void refreshKingdomResources(kingdomId);
 
             // Fire achievement triggers on confirmed server victory
             if (battleReport.result === 'victory') {
@@ -571,13 +571,14 @@ export const useCombatStore = create(
           isActive: true
         };
         // Persist to backend (fire-and-forget — local state is source of truth for UI)
-        void AmplifyFunctionService.callFunction('war-manager', {
+        void declareWarApi({
           action: 'declareWar',
+          kingdomId: attackerId,
           attackerId,
-          defenderId,
+          defenderKingdomId: defenderId,
           seasonId: undefined,
           reason: 'Formal war declaration',
-        }).catch(err => console.warn('[combatStore] war declaration persist failed:', err));
+        }).catch((err: unknown) => console.warn('[combatStore] war declaration persist failed:', err));
         set((state) => ({
           warDeclarations: [...state.warDeclarations, warDeclaration]
         }));

@@ -3,18 +3,18 @@
  * Type definitions for diplomatic relations and treaties
  */
 
+import type { Kingdom as BaseKingdom } from './kingdom';
+
 export type DiplomaticStatus = 'NEUTRAL' | 'FRIENDLY' | 'ALLIED' | 'HOSTILE' | 'WAR';
 export type TreatyType = 'NON_AGGRESSION' | 'TRADE_AGREEMENT' | 'MILITARY_ALLIANCE';
 export type TreatyStatus = 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'BROKEN';
 export type DiplomaticActionType = 'PROPOSAL_SENT' | 'PROPOSAL_ACCEPTED' | 'PROPOSAL_REJECTED' | 'WAR_DECLARED' | 'PEACE_MADE';
 
-export interface Kingdom {
-  id: string;
-  name: string;
-  race: string;
+/** Diplomacy view of a kingdom — core identity fields plus optional diplomatic stats */
+export type Kingdom = Pick<BaseKingdom, 'id' | 'name' | 'race'> & {
   power?: number;
   reputation?: number;
-}
+};
 
 export interface Treaty {
   id: string;
