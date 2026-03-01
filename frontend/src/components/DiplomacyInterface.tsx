@@ -50,6 +50,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
     activeProposals,
     availableKingdoms,
     reputation,
+    diplomaticHistory,
     sendTreatyProposal,
     acceptTreatyProposal,
     rejectTreatyProposal,
@@ -130,12 +131,20 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
         {activeProposals.slice(0, 3).map(proposal => (
           <div key={proposal.id} className="activity-item">
             <div className="activity-icon">
-              {proposal.treatyType === 'NON_AGGRESSION' ? '🕊️' : 
+              {proposal.treatyType === 'NON_AGGRESSION' ? '🕊️' :
                proposal.treatyType === 'TRADE_AGREEMENT' ? '🤝' : '⚔️'}
             </div>
             <div className="activity-details">
-              <p><strong>{proposal.fromKingdom.name}</strong> proposed {proposal.treatyType.toLowerCase().replace('_', ' ')}</p>
-              <span className="activity-time">{proposal.createdAt.toLocaleDateString()}</span>
+              <p>
+                <strong>{proposal.fromKingdom?.name ?? 'Unknown Kingdom'}</strong>
+                {' proposed '}
+                {(proposal.treatyType ?? '').toLowerCase().replace(/_/g, ' ')}
+              </p>
+              <span className="activity-time">
+                {proposal.createdAt instanceof Date
+                  ? proposal.createdAt.toLocaleDateString()
+                  : new Date(proposal.createdAt).toLocaleDateString()}
+              </span>
             </div>
           </div>
         ))}
@@ -149,107 +158,121 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
   const renderKingdomRelations = () => (
     <div className="kingdom-relations">
       <h3>Kingdom Relations</h3>
-      <div className="relations-grid">
-        {availableKingdoms.map(kingdom => {
-          const relationship = relationships.find(r => 
-            r.fromKingdom.id === kingdom.id || r.toKingdom.id === kingdom.id
-          );
-          
-          return (
-            <div key={kingdom.id} className="kingdom-card gm-card">
-              <div className="kingdom-info">
-                <img src={`/races/${kingdom.race}.png`} alt={kingdom.race} className="kingdom-flag" />
-                <div className="kingdom-details">
-                  <h4>{kingdom.name}</h4>
-                  <p>{kingdom.race} Kingdom</p>
-                  <span className={`status-badge ${relationship?.status.toLowerCase() || 'neutral'}`}>
-                    {relationship?.status || 'NEUTRAL'}
-                  </span>
+      {availableKingdoms.length === 0 ? (
+        <p className="gm-empty-state">No kingdoms available for diplomacy.</p>
+      ) : (
+        <div className="relations-grid">
+          {availableKingdoms.map(kingdom => {
+            const relationship = relationships.find(r =>
+              r.fromKingdom.id === kingdom.id || r.toKingdom.id === kingdom.id
+            );
+            const statusText = relationship?.status || 'NEUTRAL';
+            const statusClass = statusText.toLowerCase();
+
+            return (
+              <div key={kingdom.id} className="kingdom-card gm-card">
+                <div className="kingdom-info">
+                  <div className="kingdom-flag" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.75rem' }}>🏰</div>
+                  <div className="kingdom-details">
+                    <h4>{kingdom.name}</h4>
+                    <p>{kingdom.race} Kingdom</p>
+                    <span className={`status-badge ${statusClass}`}>
+                      {statusText}
+                    </span>
+                  </div>
+                </div>
+                <div className="kingdom-actions">
+                  <button
+                    className="negotiate-btn gm-btn gm-btn--primary"
+                    onClick={() => {
+                      setSelectedKingdom({ ...kingdom, reputation: kingdom.reputation || 0 });
+                      setCurrentView('negotiate');
+                    }}
+                  >
+                    Negotiate
+                  </button>
+                  {relationship?.status !== 'WAR' && (
+                    <button
+                      className="war-btn gm-btn gm-btn--danger"
+                      onClick={() => declareWar(kingdom.id)}
+                    >
+                      Declare War
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="kingdom-actions">
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderTreatyProposals = () => {
+    const incoming = activeProposals.filter(p => p.toKingdom?.id === kingdomId || p.toKingdom?.id === 'player-kingdom');
+    const outgoing = activeProposals.filter(p => p.fromKingdom?.id === kingdomId);
+    return (
+      <div className="treaty-proposals">
+        <h3>Treaty Proposals</h3>
+
+        <div className="proposals-section">
+          <h4>Incoming Proposals</h4>
+          {incoming.length === 0 ? (
+            <p className="gm-empty-state">No incoming proposals.</p>
+          ) : incoming.map(proposal => (
+            <div key={proposal.id} className="proposal-card incoming gm-card">
+              <div className="proposal-header">
+                <div className="kingdom-flag" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>🏰</div>
+                <div className="proposal-info">
+                  <h5>{proposal.fromKingdom?.name ?? 'Unknown Kingdom'}</h5>
+                  <p>{(proposal.treatyType ?? '').replace(/_/g, ' ')}</p>
+                </div>
+              </div>
+              <div className="proposal-terms">
+                <p>{typeof proposal.terms === 'string' ? proposal.terms : JSON.stringify(proposal.terms, null, 2)}</p>
+              </div>
+              <div className="proposal-actions">
                 <button
-                  className="negotiate-btn gm-btn gm-btn--primary"
-                  onClick={() => {
-                    setSelectedKingdom({ ...kingdom, reputation: kingdom.reputation || 0 });
-                    setCurrentView('negotiate');
-                  }}
+                  className="accept-btn gm-btn gm-btn--primary"
+                  onClick={() => handleAcceptProposal(proposal.id)}
+                  disabled={loading}
                 >
-                  Negotiate
+                  Accept
                 </button>
-                {relationship?.status !== 'WAR' && (
-                  <button
-                    className="war-btn gm-btn gm-btn--danger"
-                    onClick={() => declareWar(kingdom.id)}
-                  >
-                    Declare War
-                  </button>
-                )}
+                <button
+                  className="reject-btn gm-btn gm-btn--danger"
+                  onClick={() => handleRejectProposal(proposal.id)}
+                  disabled={loading}
+                >
+                  Reject
+                </button>
               </div>
             </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+          ))}
+        </div>
 
-  const renderTreatyProposals = () => (
-    <div className="treaty-proposals">
-      <h3>Treaty Proposals</h3>
-      
-      <div className="proposals-section">
-        <h4>Incoming Proposals</h4>
-        {activeProposals.filter(p => p.toKingdom.id === kingdomId).map(proposal => (
-          <div key={proposal.id} className="proposal-card incoming gm-card">
-            <div className="proposal-header">
-              <img src={`/races/${proposal.fromKingdom.race}.png`} alt={proposal.fromKingdom.race} className="kingdom-flag" />
-              <div className="proposal-info">
-                <h5>{proposal.fromKingdom.name}</h5>
-                <p>{proposal.treatyType.replace('_', ' ')}</p>
+        <div className="proposals-section">
+          <h4>Outgoing Proposals</h4>
+          {outgoing.length === 0 ? (
+            <p className="gm-empty-state">No outgoing proposals.</p>
+          ) : outgoing.map(proposal => (
+            <div key={proposal.id} className="proposal-card outgoing gm-card">
+              <div className="proposal-header">
+                <div className="kingdom-flag" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>🏰</div>
+                <div className="proposal-info">
+                  <h5>To: {proposal.toKingdom?.name ?? 'Unknown Kingdom'}</h5>
+                  <p>{(proposal.treatyType ?? '').replace(/_/g, ' ')}</p>
+                </div>
+              </div>
+              <div className="proposal-status">
+                <span className="status-pending">Pending Response</span>
               </div>
             </div>
-            <div className="proposal-terms">
-              <p>{JSON.stringify(proposal.terms, null, 2)}</p>
-            </div>
-            <div className="proposal-actions">
-              <button
-                className="accept-btn gm-btn gm-btn--primary"
-                onClick={() => handleAcceptProposal(proposal.id)}
-                disabled={loading}
-              >
-                Accept
-              </button>
-              <button
-                className="reject-btn gm-btn gm-btn--danger"
-                onClick={() => handleRejectProposal(proposal.id)}
-                disabled={loading}
-              >
-                Reject
-              </button>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-
-      <div className="proposals-section">
-        <h4>Outgoing Proposals</h4>
-        {activeProposals.filter(p => p.fromKingdom.id === kingdomId).map(proposal => (
-          <div key={proposal.id} className="proposal-card outgoing gm-card">
-            <div className="proposal-header">
-              <img src={`/races/${proposal.toKingdom.race}.png`} alt={proposal.toKingdom.race} className="kingdom-flag" />
-              <div className="proposal-info">
-                <h5>To: {proposal.toKingdom.name}</h5>
-                <p>{proposal.treatyType.replace('_', ' ')}</p>
-              </div>
-            </div>
-            <div className="proposal-status">
-              <span className="status-pending">Pending Response</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderTreatyNegotiation = () => {
     if (!selectedKingdom) return null;
@@ -311,7 +334,35 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
       case 'negotiate':
         return renderTreatyNegotiation();
       case 'history':
-        return <div className="history">Diplomatic history coming soon!</div>;
+        return (
+          <div className="diplomatic-history">
+            <h3>Diplomatic History</h3>
+            {diplomaticHistory.length === 0 ? (
+              <p className="gm-empty-state">No diplomatic actions recorded yet.</p>
+            ) : (
+              <div className="history-list">
+                {diplomaticHistory.map(action => (
+                  <div key={action.id} className="history-item gm-card">
+                    <div className="history-item-header">
+                      <span className="history-action-type">{(action.type ?? '').replace(/_/g, ' ')}</span>
+                      <span className="history-timestamp">
+                        {action.timestamp instanceof Date
+                          ? action.timestamp.toLocaleDateString()
+                          : new Date(action.timestamp).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="history-details">{action.details}</p>
+                    <p className="history-kingdoms">
+                      <span style={{ color: '#fbbf24' }}>{action.fromKingdom?.name ?? 'Unknown'}</span>
+                      {' → '}
+                      <span style={{ color: '#94a3b8' }}>{action.toKingdom?.name ?? 'Unknown'}</span>
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
       default:
         return renderDiplomacyDashboard();
     }

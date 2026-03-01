@@ -74,8 +74,21 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
     config: config.gentle
   });
 
+  // Flatten economicIndicators object into a display-ready array for useTransition
+  const indicatorItems = useMemo(() => {
+    const ind = economicIndicators;
+    if (!ind || ind.tradeVolume === 0) return [];
+    return [
+      { name: 'Trade Volume',       value: ind.tradeVolume,       trend: 'up'   as const, change: 0 },
+      { name: 'Avg Price',          value: ind.averagePrice,      trend: 'stable' as const, change: 0 },
+      { name: 'Market Volatility',  value: ind.marketVolatility,  trend: ind.marketVolatility > 10 ? 'up' as const : 'stable' as const, change: 0 },
+      { name: 'Total Market Value', value: ind.totalValue,        trend: 'up'   as const, change: 0 },
+    ];
+  }, [economicIndicators]);
+
   // Economic indicators animation
-  const indicatorTransitions = useTransition(economicIndicators, {
+  const indicatorTransitions = useTransition(indicatorItems, {
+    keys: (item) => item.name,
     from: { opacity: 0, x: -50 },
     enter: { opacity: 1, x: 0 },
     leave: { opacity: 0, x: 50 },
@@ -145,10 +158,10 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
         <h2 className="gm-heading">Market Overview</h2>
 
         {/* Economic Indicators */}
-        {economicIndicators.tradeVolume === 0 ? (
+        {indicatorItems.length === 0 ? (
           <div className="market-empty">
             <p style={{ color: '#9ca3af', textAlign: 'center', padding: '2rem' }}>
-              📊 Market data will appear as trades are made
+              Market data loading...
             </p>
           </div>
         ) : (
@@ -196,7 +209,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
       {selectedResource && selectedResourceData.length > 0 && (
         <div className="price-chart-section gm-panel">
           <h3>{resources.find(r => r.id === selectedResource.id)?.name} Price History</h3>
-          <div className="chart-container">
+          <div className="chart-container" style={{ height: 300 }}>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={selectedResourceData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-primary)" />
@@ -233,34 +246,40 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
       {/* Market Distribution */}
       <div className="market-distribution gm-panel">
         <h3>Resource Distribution</h3>
-        <div className="chart-container">
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie
-                data={resourceDistribution}
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                dataKey="value"
-                label={({ name, percent }: { name: string; percent?: number }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-              >
-                {resourceDistribution.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'var(--bg-card)',
-                  border: '1px solid var(--border-primary)',
-                  borderRadius: '0.375rem',
-                  color: 'var(--text-primary)'
-                }}
-              />
-              <Legend
-                wrapperStyle={{ color: '#94a3b8', fontSize: '0.8rem', paddingTop: '0.5rem' }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+        <div className="chart-container" style={{ height: 300 }}>
+          {resourceDistribution.length === 0 ? (
+            <p style={{ color: '#9ca3af', textAlign: 'center', padding: '4rem 0' }}>
+              No resource data available
+            </p>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={resourceDistribution}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  dataKey="value"
+                  label={({ name, percent }: { name: string; percent?: number }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                >
+                  {resourceDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-primary)',
+                    borderRadius: '0.375rem',
+                    color: 'var(--text-primary)'
+                  }}
+                />
+                <Legend
+                  wrapperStyle={{ color: '#94a3b8', fontSize: '0.8rem', paddingTop: '0.5rem' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 

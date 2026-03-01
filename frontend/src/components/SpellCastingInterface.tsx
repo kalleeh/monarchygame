@@ -17,6 +17,41 @@ interface SpellCastingInterfaceProps {
   onBack?: () => void;
 }
 
+const TARGET_TYPE_LABELS: Record<string, string> = {
+  enemy_kingdom: 'Enemy Kingdom',
+  enemy_structures: 'Enemy Structures',
+  enemy_forts: 'Enemy Forts',
+  enemy_peasants: 'Enemy Peasants',
+  enemy_shields: 'Enemy Shields',
+  self: 'Self',
+};
+
+const EFFECT_TYPE_LABELS: Record<string, string> = {
+  structure_damage: 'Structure Damage',
+  fort_damage: 'Fort Damage',
+  peasant_kill: 'Peasant Kill',
+  shield_removal: 'Shield Removal',
+  utility: 'Utility',
+};
+
+const SPELL_EMOJIS: Record<string, string> = {
+  calming_chant: '🎵',
+  rousing_wind: '💨',
+  shattering_calm: '🌪️',
+  hurricane: '🌊',
+  lightning_lance: '⚡',
+  banshee_deluge: '👻',
+  foul_light: '☠️',
+};
+
+const TIER_LABELS: Record<number, string> = {
+  0: 'Universal',
+  1: 'Tier I',
+  2: 'Tier II',
+  3: 'Tier III',
+  4: 'Tier IV',
+};
+
 const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId, onBack }) => {
   const {
     currentElan,
@@ -25,6 +60,7 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
     selectedSpell,
     selectedTarget,
     activeEffects,
+    castHistory,
     loading,
     error,
     selectSpell,
@@ -53,8 +89,8 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
   // Casting glow animation
   const castingSpring = useSpring({
     scale: castingSpell ? 1.05 : 1,
-    boxShadow: castingSpell 
-      ? '0 0 30px rgba(79, 172, 254, 0.6), 0 0 60px rgba(79, 172, 254, 0.4)' 
+    boxShadow: castingSpell
+      ? '0 0 30px rgba(79, 172, 254, 0.6), 0 0 60px rgba(79, 172, 254, 0.4)'
       : '0 0 0px rgba(79, 172, 254, 0)',
     config: config.wobbly
   });
@@ -170,14 +206,58 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
         {spellCards}
       </animated.div>
 
-      {/* Magic Tips */}
-      <div className="magic-tips">
-        <p className="magic-tips-label">Magic Tips</p>
-        <ul>
-          <li>Elan regenerates 1 point every 3 turns</li>
-          <li>Some spells target buildings, others target population</li>
-          <li>Higher sorcery stat means more elan capacity</li>
-        </ul>
+      {/* Bottom panels: Tips + History */}
+      <div className="spell-bottom-panels">
+
+        {/* Magic Tips */}
+        <div className="magic-tips">
+          <p className="magic-tips-label">Magic Tips</p>
+          <ul>
+            <li>Elan regenerates 1 point every 3 turns</li>
+            <li>Some spells target buildings, others target population</li>
+            <li>Higher sorcery stat means more elan capacity</li>
+            <li>Temple percentage unlocks higher-tier spells</li>
+            <li>Backlash can damage your own kingdom — check rates before casting</li>
+            <li>Sidhe and Fae races have the best sorcery effectiveness</li>
+          </ul>
+        </div>
+
+        {/* Cast History */}
+        <div className="spell-history-panel">
+          <p className="spell-history-label">Recent Casts</p>
+          {castHistory.length === 0 ? (
+            <div className="spell-history-empty">
+              <span className="spell-history-empty-icon">🔮</span>
+              <span>No spells cast yet this session</span>
+            </div>
+          ) : (
+            <ul className="spell-history-list">
+              {castHistory.slice(0, 8).map((entry, idx) => {
+                const spell = SPELLS[entry.spellId];
+                const emoji = SPELL_EMOJIS[entry.spellId] || '✨';
+                const timeAgo = Math.round((Date.now() - entry.timestamp) / 1000);
+                const timeLabel = timeAgo < 60
+                  ? `${timeAgo}s ago`
+                  : `${Math.floor(timeAgo / 60)}m ago`;
+                return (
+                  <li key={idx} className={`spell-history-item ${entry.success ? 'success' : 'failure'}`}>
+                    <span className="spell-history-emoji">{emoji}</span>
+                    <span className="spell-history-name">{spell?.name ?? entry.spellId}</span>
+                    <span className="spell-history-meta">
+                      {entry.damage ? `${entry.damage} dmg · ` : ''}
+                      {entry.elanCost} elan
+                    </span>
+                    <span className="spell-history-time">{timeLabel}</span>
+                    <span className={`spell-history-status ${entry.success ? 'success' : 'failure'}`}>
+                      {entry.success ? '✓' : '✗'}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
       </div>
 
       {/* Active Effects */}
@@ -234,10 +314,10 @@ const SpellCard: React.FC<SpellCardProps> = ({
   const cardSpring = useSpring({
     scale: isSelected ? 1.02 : 1,
     borderColor: isSelected ? '#4ecdc4' : 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: isCasting 
-      ? 'rgba(79, 172, 254, 0.2)' 
-      : canCast 
-        ? 'rgba(255, 255, 255, 0.1)' 
+    backgroundColor: isCasting
+      ? 'rgba(79, 172, 254, 0.2)'
+      : canCast
+        ? 'rgba(255, 255, 255, 0.1)'
         : 'rgba(255, 255, 255, 0.05)',
     opacity: canCast ? 1 : 0.6,
     config: config.gentle
@@ -247,6 +327,13 @@ const SpellCard: React.FC<SpellCardProps> = ({
     width: cooldownTime > 0 ? `${(cooldownTime / (spell.cost.turns * 1000)) * 100}%` : '0%',
     config: config.slow
   });
+
+  const emoji = SPELL_EMOJIS[spell.id] || '✨';
+  const tierLabel = TIER_LABELS[spell.tier] ?? `Tier ${spell.tier}`;
+  const targetLabel = TARGET_TYPE_LABELS[spell.targetType] ?? spell.targetType;
+  const effectLabel = EFFECT_TYPE_LABELS[spell.effects.type] ?? spell.effects.type;
+  const backlashPct = Math.round(spell.effects.backlashChance * 100);
+  const templeReqPct = Math.round(spell.cost.templeThreshold * 100);
 
   return (
     <animated.div
@@ -264,28 +351,59 @@ const SpellCard: React.FC<SpellCardProps> = ({
         }
       }}
     >
+      {/* Card header: emoji + name + tier badge */}
       <div className="spell-header">
-        <h3>{spell.name}</h3>
-        <div className="spell-cost">
-          <span className="mana-cost">💙 {spell.cost.elan}</span>
-          <span className="turn-cost">⏱️ {spell.cost.turns}s</span>
+        <div className="spell-title-row">
+          <span className="spell-emoji" aria-hidden="true">{emoji}</span>
+          <h3>{spell.name}</h3>
         </div>
+        <span className={`spell-tier-badge tier-${spell.tier}`}>{tierLabel}</span>
       </div>
-      
+
       <p className="spell-description">{spell.description}</p>
-      
+
+      {/* Stats row */}
+      <div className="spell-stats">
+        <div className="spell-stat">
+          <span className="spell-stat-label">Elan</span>
+          <span className="spell-stat-value mana-cost">💙 {spell.cost.elan}</span>
+        </div>
+        <div className="spell-stat">
+          <span className="spell-stat-label">Cast Time</span>
+          <span className="spell-stat-value turn-cost">⏱ {spell.cost.turns}s</span>
+        </div>
+        <div className="spell-stat">
+          <span className="spell-stat-label">Backlash</span>
+          <span className={`spell-stat-value ${backlashPct === 0 ? 'backlash-none' : backlashPct <= 8 ? 'backlash-low' : 'backlash-high'}`}>
+            {backlashPct === 0 ? '—' : `${backlashPct}%`}
+          </span>
+        </div>
+        {templeReqPct > 0 && (
+          <div className="spell-stat">
+            <span className="spell-stat-label">Temples</span>
+            <span className="spell-stat-value temple-req">🏛 {templeReqPct}%</span>
+          </div>
+        )}
+      </div>
+
+      {/* Target + effect type tags */}
+      <div className="spell-tags">
+        <span className="spell-tag tag-target">{targetLabel}</span>
+        <span className="spell-tag tag-effect">{effectLabel}</span>
+      </div>
+
       {cooldownTime > 0 && (
         <div className="cooldown-bar">
-          <animated.div 
-            className="cooldown-fill" 
+          <animated.div
+            className="cooldown-fill"
             style={cooldownSpring}
           />
           <span className="cooldown-text">
-            {Math.ceil(cooldownTime / 1000)}s
+            {Math.ceil(cooldownTime / 1000)}s cooldown
           </span>
         </div>
       )}
-      
+
       {isCasting && (
         <div className="casting-indicator">
           <div className="casting-spinner" />
@@ -297,9 +415,9 @@ const SpellCard: React.FC<SpellCardProps> = ({
         onClick={(e) => { e.stopPropagation(); onCast(spell.id); }}
         disabled={!canCast}
         style={{
-          marginTop: '0.75rem',
+          marginTop: 'auto',
           width: '100%',
-          padding: '0.5rem 1rem',
+          padding: '0.55rem 1rem',
           background: canCast
             ? 'linear-gradient(135deg, #fbbf24, #f59e0b)'
             : 'rgba(255,255,255,0.06)',

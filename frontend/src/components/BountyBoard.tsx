@@ -7,6 +7,7 @@
 import React, { useEffect } from 'react';
 import { useBountyStore } from '../stores/bountyStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
+import { useKingdomStore } from '../stores/kingdomStore';
 import { TopNavigation } from './TopNavigation';
 import './BountyBoard.css';
 
@@ -32,14 +33,19 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId: _kingdomId, onBack
     clearError,
   } = useBountyStore();
 
-  const { aiKingdoms } = useAIKingdomStore();
+  const { aiKingdoms, generateAIKingdoms } = useAIKingdomStore();
+  const resources = useKingdomStore((state) => state.resources);
 
-  // Generate bounties on mount from current AI kingdoms
+  // Generate bounties on mount from current AI kingdoms.
+  // If none exist yet (user landed here before visiting Espionage), seed them now.
   useEffect(() => {
-    if (aiKingdoms.length > 0) {
+    if (aiKingdoms.length === 0) {
+      const networth = (resources.gold || 0) + (resources.land || 0) * 50;
+      generateAIKingdoms(5, networth);
+    } else {
       generateBounties(aiKingdoms);
     }
-  }, [aiKingdoms, generateBounties]);
+  }, [aiKingdoms, generateBounties, generateAIKingdoms, resources.gold, resources.land]);
 
   // Auto-clear errors after 5 seconds
   useEffect(() => {
@@ -80,7 +86,7 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId: _kingdomId, onBack
 
           {!loading && availableBounties.length === 0 && (
             <div className="bounty-empty gm-empty-state">
-              No bounties available. AI kingdoms must be generated first.
+              No bounties available yet. Rival kingdoms are being scouted — check back shortly.
             </div>
           )}
 
@@ -119,16 +125,16 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId: _kingdomId, onBack
                   <h4>Estimated Rewards</h4>
                   <div className="reward-items">
                     <span className="reward-item">
-                      <span className="reward-icon">💰</span>
-                      {bounty.reward.landGained.toLocaleString()} land reward
-                    </span>
-                    <span className="reward-item">
                       <span className="reward-icon">🏞️</span>
                       {bounty.reward.landGained.toLocaleString()} land
                     </span>
                     <span className="reward-item">
                       <span className="reward-icon">🏗️</span>
                       {bounty.reward.structuresGained.toLocaleString()} structures
+                    </span>
+                    <span className="reward-item">
+                      <span className="reward-icon">⏱️</span>
+                      {bounty.reward.turnsSaved.toLocaleString()} turns saved
                     </span>
                   </div>
                 </div>
@@ -174,16 +180,16 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId: _kingdomId, onBack
                   </div>
                   <div className="completed-rewards">
                     <span className="reward-item">
-                      <span className="reward-icon">💰</span>
-                      {completed.reward.landGained.toLocaleString()} land reward
-                    </span>
-                    <span className="reward-item">
                       <span className="reward-icon">🏞️</span>
                       {completed.landGained.toLocaleString()} land gained
                     </span>
                     <span className="reward-item">
                       <span className="reward-icon">🏗️</span>
                       {completed.reward.structuresGained.toLocaleString()} structures
+                    </span>
+                    <span className="reward-item">
+                      <span className="reward-icon">⏱️</span>
+                      {completed.reward.turnsSaved.toLocaleString()} turns saved
                     </span>
                   </div>
                 </div>

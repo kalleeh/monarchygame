@@ -25,7 +25,6 @@ import { DemoTimeControl } from './ui/DemoTimeControl';
 import { calculateTimeTravel, calculateGoldIncome, calculatePopulationGrowth, type BuildingCounts } from '../utils/resourceCalculations';
 import { calculateBRT, getBuildingName } from '../utils/buildingMechanics';
 import { RESOURCE_GENERATION } from '../constants/gameConfig';
-import { useNavigate } from 'react-router-dom';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { BalanceTestRunner } from './BalanceTestRunner';
 import { useRestorationStore } from '../stores/restorationStore';
@@ -242,33 +241,6 @@ function KingdomDashboard({
   // Tutorial state
   const { hasCompleted: tutorialCompleted, markComplete: completeTutorial } = useTutorial('kingdom-dashboard');
   
-  // Navigation
-  const navigate = useNavigate();
-
-  // Read playstyle for this kingdom
-  const playstyle = localStorage.getItem(`playstyle-${kingdom.id}`)
-    || localStorage.getItem('pending-playstyle')
-    || 'balanced';
-
-  // If pending, save to kingdom-specific key
-  useEffect(() => {
-    const pending = localStorage.getItem('pending-playstyle');
-    if (pending && kingdom.id) {
-      localStorage.setItem(`playstyle-${kingdom.id}`, pending);
-      localStorage.removeItem('pending-playstyle');
-    }
-  }, [kingdom.id]);
-
-  // Determine group order based on playstyle (no advanced group — cast spells merged into warfare)
-  const GROUP_ORDER: Record<string, string[]> = {
-    conqueror: ['warfare', 'kingdom', 'social'],
-    sorcerer:  ['warfare', 'kingdom', 'social'],
-    diplomat:  ['social', 'kingdom', 'warfare'],
-    saboteur:  ['warfare', 'social', 'kingdom'],
-    balanced:  ['kingdom', 'warfare', 'social'],
-  };
-  const groupOrder = GROUP_ORDER[playstyle] || GROUP_ORDER.balanced;
-
   // Calculate BRT and upkeep
   const { getTotalUpkeep, accumulatedGoldSpent, calculateRemainingCapacity } = useSummonStore();
   
