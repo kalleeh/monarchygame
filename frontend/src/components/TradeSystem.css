@@ -1,9 +1,9 @@
-/* Trade System Styles - Dark Theme Compliant */
+/* Trade System Styles - Dark Fantasy Theme */
 
 .trade-system {
   padding: 1.5rem;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  background: transparent;
+  color: #e2e8f0;
   min-height: 100vh;
 }
 
@@ -33,11 +33,19 @@
 /* Market Overview */
 .market-overview {
   margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(26, 26, 46, 0.97);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 0.5rem;
 }
 
 .market-overview h2 {
-  color: var(--text-accent);
+  color: #fbbf24;
   margin-bottom: 1.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 /* Economic Indicators */
@@ -50,9 +58,14 @@
 
 .indicator-card {
   padding: 1rem;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-primary);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(99, 102, 241, 0.25);
   border-radius: 0.5rem;
+  transition: border-color 0.2s ease;
+}
+
+.indicator-card:hover {
+  border-color: rgba(251, 191, 36, 0.35);
 }
 
 .indicator-header {
@@ -63,8 +76,11 @@
 }
 
 .indicator-name {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
+  font-size: 0.85rem;
+  color: #94a3b8;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .indicator-trend {
@@ -74,7 +90,7 @@
 .indicator-value {
   font-size: 1.5rem;
   font-weight: bold;
-  color: var(--text-primary);
+  color: #e2e8f0;
   margin-bottom: 0.25rem;
 }
 
@@ -93,8 +109,12 @@
 
 /* Resource Market */
 .resource-market h3 {
-  color: var(--text-accent);
+  color: #fbbf24;
   margin-bottom: 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .resource-grid {
@@ -105,21 +125,23 @@
 
 .resource-card {
   padding: 1rem;
-  background-color: var(--bg-card);
-  border: 2px solid var(--border-primary);
+  background: rgba(0, 0, 0, 0.25);
+  border: 2px solid rgba(99, 102, 241, 0.25);
   border-radius: 0.5rem;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .resource-card:hover {
-  background-color: var(--hover);
+  background: rgba(251, 191, 36, 0.05);
+  border-color: rgba(251, 191, 36, 0.3);
   transform: translateY(-2px);
 }
 
 .resource-card.selected {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(79, 172, 254, 0.3);
+  border-color: #fbbf24;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2);
+  background: rgba(251, 191, 36, 0.08);
 }
 
 .resource-header {
@@ -131,7 +153,7 @@
 
 .resource-name {
   font-weight: 600;
-  color: var(--text-primary);
+  color: #e2e8f0;
 }
 
 .trend-indicator {
@@ -148,7 +170,7 @@
 .current-price {
   font-size: 1.2rem;
   font-weight: bold;
-  color: var(--primary);
+  color: #fbbf24;
 }
 
 .price-change {
@@ -168,27 +190,31 @@
   display: flex;
   justify-content: space-between;
   font-size: 0.8rem;
-  color: var(--text-secondary);
+  color: #94a3b8;
 }
 
 /* Charts */
 .price-chart-section,
 .market-distribution {
   margin-bottom: 2rem;
-  padding: 1rem;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-primary);
+  padding: 1.25rem;
+  background: rgba(26, 26, 46, 0.97);
+  border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: 0.5rem;
 }
 
 .price-chart-section h3,
 .market-distribution h3 {
-  color: var(--text-accent);
+  color: #fbbf24;
   margin-bottom: 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .chart-container {
-  background-color: var(--bg-tertiary);
+  background: rgba(0, 0, 0, 0.2);
   border-radius: 0.375rem;
   padding: 1rem;
 }
@@ -196,6 +222,10 @@
 /* Active Offers */
 .active-offers {
   margin-bottom: 2rem;
+  padding: 1.25rem;
+  background: rgba(26, 26, 46, 0.97);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 0.5rem;
 }
 
 .section-header {
@@ -206,21 +236,28 @@
 }
 
 .section-header h3 {
-  color: var(--text-accent);
+  color: #fbbf24;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
 }
 
 .create-offer-btn {
-  padding: 0.5rem 1rem;
-  background-color: var(--primary);
-  color: var(--text-primary);
+  padding: 0.5rem 1.25rem;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #1a1a2e;
   border: none;
   border-radius: 0.375rem;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 700;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
 }
 
 .create-offer-btn:hover {
-  background-color: var(--primary-hover);
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.35);
+  transform: translateY(-1px);
 }
 
 .offers-grid {
@@ -231,9 +268,14 @@
 
 .offer-card {
   padding: 1rem;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-primary);
+  background: rgba(26, 26, 46, 0.97);
+  border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: 0.5rem;
+  transition: border-color 0.2s ease;
+}
+
+.offer-card:hover {
+  border-color: rgba(251, 191, 36, 0.35);
 }
 
 .offer-header {
@@ -245,16 +287,19 @@
 
 .resource-name {
   font-weight: 600;
-  color: var(--text-primary);
+  color: #e2e8f0;
 }
 
 .offer-status {
   padding: 0.25rem 0.5rem;
-  background-color: var(--bg-tertiary);
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.25);
   border-radius: 0.25rem;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
+  font-size: 0.75rem;
+  color: #94a3b8;
   text-transform: capitalize;
+  font-weight: 600;
+  letter-spacing: 0.03em;
 }
 
 .offer-details {
@@ -266,12 +311,12 @@
 .offer-total {
   margin-bottom: 0.25rem;
   font-size: 0.9rem;
-  color: var(--text-secondary);
+  color: #94a3b8;
 }
 
 .offer-total {
   font-weight: 600;
-  color: var(--text-primary);
+  color: #e2e8f0;
 }
 
 .offer-actions {
@@ -319,7 +364,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -327,17 +372,22 @@
 }
 
 .modal-content {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-primary);
-  border-radius: 0.5rem;
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.99) 0%, rgba(22, 33, 62, 0.99) 100%);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 0.75rem;
   padding: 2rem;
   min-width: 400px;
   max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
 .modal-content h3 {
-  color: var(--text-accent);
+  color: #fbbf24;
   margin-bottom: 1.5rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .offer-form {
@@ -349,17 +399,24 @@
 .form-select,
 .form-input {
   padding: 0.75rem;
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-primary);
+  background: rgba(0, 0, 0, 0.3);
+  color: #e2e8f0;
+  border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: 0.375rem;
   font-size: 1rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-select option {
+  background: #1a1a2e;
+  color: #e2e8f0;
 }
 
 .form-select:focus,
 .form-input:focus {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
+  border-color: #fbbf24;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.15);
 }
 
 .modal-actions {
@@ -371,35 +428,41 @@
 .create-btn {
   flex: 1;
   padding: 0.75rem;
-  background-color: var(--primary);
-  color: var(--text-primary);
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #1a1a2e;
   border: none;
   border-radius: 0.375rem;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 700;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
 }
 
 .create-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .create-btn:hover:not(:disabled) {
-  background-color: var(--primary-hover);
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.35);
+  transform: translateY(-1px);
 }
 
 .modal-actions .cancel-btn {
   flex: 1;
   padding: 0.75rem;
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-primary);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+  border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: 0.375rem;
   cursor: pointer;
+  font-weight: 600;
+  transition: background 0.15s ease;
 }
 
 .modal-actions .cancel-btn:hover {
-  background-color: var(--hover);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* Responsive Design */
@@ -429,7 +492,7 @@
 /* Accessibility */
 .resource-card:focus,
 .offer-card:focus {
-  outline: 2px solid var(--focus);
+  outline: 2px solid rgba(251, 191, 36, 0.5);
   outline-offset: 2px;
 }
 

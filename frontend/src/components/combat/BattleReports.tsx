@@ -7,7 +7,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { BattleHistory, Army } from '../../types/combat';
 import { useCombatReplayStore } from '../../stores/combatReplayStore';
-import '../TerritoryExpansion.css';
+import './BattleReports.css';
 
 interface BattleReportsProps {
   battleHistory: BattleHistory[];

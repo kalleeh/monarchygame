@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDiplomacyStore } from '../stores/useDiplomacyStore';
 import { ErrorBoundary } from './ErrorBoundary';
+import './DiplomacyInterface.css';
 
 // Define types locally since they're used in this component
 interface Kingdom {

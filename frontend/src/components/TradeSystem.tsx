@@ -8,6 +8,7 @@ import { useSpring, useTransition, animated, config } from '@react-spring/web';
 import type { Resource, TradeOffer, TrendData, PriceHistoryEntry } from '../types';
 import { useTradeStore } from '../stores/tradeStore';
 import { TopNavigation } from './TopNavigation';
+import './TradeSystem.css';
 import {
   LineChart,
   Line,
