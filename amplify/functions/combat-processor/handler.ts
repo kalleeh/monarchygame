@@ -85,13 +85,25 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
+    // Shared BattleReport scan — reused across alliance bonus, war check, and kill bounty
+    let cachedBattleReports: Array<{ id?: string; attackerId: string; defenderId: string; landGained?: number; timestamp?: string }> | null = null;
+
+    const getBattleReports = async () => {
+      if (!cachedBattleReports) {
+        cachedBattleReports = await dbList<{ id?: string; attackerId: string; defenderId: string; landGained?: number; timestamp?: string }>('BattleReport');
+      }
+      return cachedBattleReports;
+    };
+
     // Alliance coordination bonus: +10% if an ally attacked this defender recently
     let allianceCoordBonus = 1.0;
+    let attackerGuildId: string | undefined;
     try {
       const attackerKingdomData = await dbGet<{ guildId?: string }>('Kingdom', attackerId);
+      attackerGuildId = attackerKingdomData?.guildId;
       const defenderKingdomData = await dbGet<{ guildId?: string }>('Kingdom', defenderId);
       if (attackerKingdomData?.guildId && attackerKingdomData.guildId !== defenderKingdomData?.guildId) {
-        const recentBattles = await dbList<{ attackerId: string; defenderId: string; timestamp?: string }>('BattleReport');
+        const recentBattles = await getBattleReports();
         const twentyMinAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
         const allyRecentAttack = recentBattles.find(r =>
           r.defenderId === defenderId &&
@@ -150,7 +162,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
     // Enforce war declaration requirement for repeated attacks
     // After 3 attacks against the same defender (regardless of season), a formal WarDeclaration is required
-    const allBattleReports = await dbList<BattleReportType>('BattleReport');
+    const allBattleReports = await getBattleReports();
     const recentAttacks = allBattleReports.filter(
       (r: BattleReportType) => (r as any).attackerId === attackerId && (r as any).defenderId === defenderId
     );
@@ -367,6 +379,35 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       );
     }
 
+    // Alliance composition combat bonus (+5% if full mage+warrior+scum roster)
+    // Alliance upgrade combat bonuses (war_banner +5%, grand_assault +25%)
+    try {
+      if (attackerGuildId) {
+        const allianceData = await dbGet<{ stats?: string }>('Alliance', attackerGuildId);
+        if (allianceData?.stats) {
+          const aStats = typeof allianceData.stats === 'string' ? JSON.parse(allianceData.stats) : allianceData.stats;
+          // Composition bonus
+          const compCombat = aStats?.compositionBonus?.combat ?? 1.0;
+          if (compCombat !== 1.0) {
+            effectiveAttackerUnits = Object.fromEntries(
+              Object.entries(effectiveAttackerUnits).map(([k, v]) => [k, Math.floor(v * compCombat)])
+            );
+          }
+          // Active upgrade bonuses
+          const now = new Date().toISOString();
+          const activeUpgrades = (aStats?.activeUpgrades ?? []) as Array<{ type: string; expiresAt: string; effect: Record<string, number> }>;
+          for (const u of activeUpgrades.filter(x => x.expiresAt > now)) {
+            const combatMult = u.effect.combatBonus ?? u.effect.coordBonus ?? 1.0;
+            if (combatMult !== 1.0) {
+              effectiveAttackerUnits = Object.fromEntries(
+                Object.entries(effectiveAttackerUnits).map(([k, v]) => [k, Math.floor(v * combatMult)])
+              );
+            }
+          }
+        }
+      }
+    } catch { /* non-fatal */ }
+
     // -------------------------------------------------------------------------
     // Step 6: Resolve combat using terrain-and-formation-adjusted unit counts
     // -------------------------------------------------------------------------
@@ -422,7 +463,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     if (combatResult.success && defenderPostLand <= 1000) {
       try {
         const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const allRecent = await dbList<{ attackerId: string; defenderId: string; timestamp?: string }>('BattleReport');
+        const allRecent = await getBattleReports();
         const assists = allRecent.filter(r =>
           r.defenderId === defenderId &&
           r.attackerId !== attackerId &&

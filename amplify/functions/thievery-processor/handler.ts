@@ -59,6 +59,24 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
       return { success: false, error: `Insufficient scouts: need ${MIN_SCOUTS}, have ${attackerScouts}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
+    // Alliance composition and upgrade espionage bonus
+    let espionageBonus = 1.0;
+    try {
+      const attackerGuildId = (attackerKingdom as Record<string, unknown>).guildId as string | undefined;
+      if (attackerGuildId) {
+        const allianceData = await dbGet<{ stats?: string }>('Alliance', attackerGuildId);
+        if (allianceData?.stats) {
+          const aStats = typeof allianceData.stats === 'string' ? JSON.parse(allianceData.stats) : allianceData.stats;
+          espionageBonus = aStats?.compositionBonus?.espionage ?? 1.0;
+          const now = new Date().toISOString();
+          const activeUpgrades = (aStats?.activeUpgrades ?? []) as Array<{ type: string; expiresAt: string; effect: Record<string, number> }>;
+          for (const u of activeUpgrades.filter(x => x.expiresAt > now)) {
+            if (u.effect.espionageBonus) espionageBonus *= u.effect.espionageBonus;
+          }
+        }
+      }
+    } catch { /* non-fatal */ }
+
     // Check turns from turnsBalance (server-side pool), falling back to resources.turns
     const attackerResources = (attackerKingdom.resources ?? {}) as KingdomResources;
     const currentTurns = attackerKingdom.turnsBalance ?? attackerResources.turns ?? 72;
@@ -89,8 +107,11 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     // Calculate detection rate
     const detectionRate = Math.min(0.95, ((targetUnits.scouts ?? 0) / Math.max(1, attackerScouts)) * 0.85);
 
+    // Apply espionage bonus (reduces detection rate)
+    const adjustedDetectionRate = Math.max(0, detectionRate / espionageBonus);
+
     // Determine success
-    const succeeded = Math.random() > detectionRate;
+    const succeeded = Math.random() > adjustedDetectionRate;
 
     // Calculate scout casualties (1–2.5%)
     const casualties = Math.floor(attackerScouts * (0.01 + Math.random() * 0.015));

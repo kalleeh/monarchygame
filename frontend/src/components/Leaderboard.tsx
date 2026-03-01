@@ -387,9 +387,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
       // Warrior-types: Human, Droben, Centaur, Dwarven, Goblin
       // Scum-types: Goblin (also warrior), Vampire (also mage), any race with scum stat > 0
       // Simplified heuristic: check for at least 3 distinct race archetypes
-      const mageRaces = new Set(['elven', 'sidhe', 'elemental', 'fae', 'vampire']);
-      const warriorRaces = new Set(['human', 'droben', 'centaur', 'dwarven']);
-      const scumRaces = new Set(['goblin', 'vampire', 'sidhe']);
+      const mageRaces = new Set(['sidhe', 'elven', 'vampire', 'elemental', 'fae']);
+      const warriorRaces = new Set(['droben', 'goblin', 'dwarven', 'centaur', 'human']);
+      const scumRaces = new Set(['centaur', 'human', 'vampire', 'sidhe', 'goblin']);
 
       const hasMage = [...row.races].some(r => mageRaces.has(r));
       const hasWarrior = [...row.races].some(r => warriorRaces.has(r));

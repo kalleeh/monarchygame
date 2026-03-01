@@ -536,15 +536,21 @@ function parseVictoryResults(ageTransitions: string | null | undefined): {
     const parsed = JSON.parse(ageTransitions) as Record<string, unknown>;
     const vr = parsed.victoryResults as Record<string, Record<string, unknown>> | undefined;
     if (!vr) return undefined;
+    // For display: use the allianceName field if present, otherwise truncate the ID to last 6 chars
+    const resolveAllianceName = (record: Record<string, unknown>): string => {
+      if (record.allianceName) return String(record.allianceName);
+      const rawId = String(record.allianceId ?? '');
+      return rawId.slice(-6) || 'Unknown Alliance';
+    };
     return {
       militaryChampion: vr.militaryChampion
-        ? { allianceName: String(vr.militaryChampion.allianceId ?? ''), totalLandGained: Number(vr.militaryChampion.totalLandGained ?? 0) }
+        ? { allianceName: resolveAllianceName(vr.militaryChampion), totalLandGained: Number(vr.militaryChampion.totalLandGained ?? 0) }
         : undefined,
       economicPowerhouse: vr.economicPowerhouse
-        ? { allianceName: String(vr.economicPowerhouse.allianceId ?? ''), totalNetworth: Number(vr.economicPowerhouse.totalNetworth ?? 0) }
+        ? { allianceName: resolveAllianceName(vr.economicPowerhouse), totalNetworth: Number(vr.economicPowerhouse.totalNetworth ?? 0) }
         : undefined,
       strategistGuild: vr.strategistGuild
-        ? { allianceName: String(vr.strategistGuild.allianceId ?? ''), territoriesControlled: Number(vr.strategistGuild.territoriesControlled ?? 0) }
+        ? { allianceName: resolveAllianceName(vr.strategistGuild), territoriesControlled: Number(vr.strategistGuild.territoriesControlled ?? 0) }
         : undefined,
     };
   } catch {

@@ -225,6 +225,11 @@ const SeasonResults: React.FC<SeasonResultsProps> = ({
           <p style={{ color: '#6b7280', fontSize: '0.78rem', letterSpacing: '0.06em', textTransform: 'uppercase', margin: 0 }}>
             A new age is about to dawn. The next season begins soon.
           </p>
+          {!victoryTracks && (
+            <p style={{ color: '#4b5563', fontSize: '0.72rem', marginTop: '0.6rem', fontStyle: 'italic', letterSpacing: '0.02em', textTransform: 'none' }}>
+              Detailed alliance victory data is available in the Admin Panel &rarr; Season History.
+            </p>
+          )}
         </div>
 
         {/* Close button */}

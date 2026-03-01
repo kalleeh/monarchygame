@@ -10,10 +10,15 @@ import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-ki
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useSpring, animated, config } from '@react-spring/web';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../../amplify/data/resource';
 import { useCombatStore } from '../stores/combatStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
+import { isDemoMode } from '../utils/authMode';
 import { TopNavigation } from './TopNavigation';
+
+const amplifyClient = generateClient<Schema>();
 
 const FORMATION_DESCRIPTIONS: Record<string, string> = {
   'Defensive Wall': 'Minimizes casualties when defending',
@@ -264,6 +269,28 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
     } catch {
       // Non-fatal
     }
+
+    // Persist defensive formation to DynamoDB so combat-processor reads it from kingdom.stats
+    if (!isDemoMode() && kingdomId) {
+      void (async () => {
+        try {
+          // Read current stats from the server, merge, and write back
+          const result = await amplifyClient.models.Kingdom.get({ id: kingdomId });
+          if (result.data) {
+            const currentStats = typeof result.data.stats === 'string'
+              ? JSON.parse(result.data.stats as string)
+              : (result.data.stats ?? {});
+            await amplifyClient.models.Kingdom.update({
+              id: kingdomId,
+              stats: JSON.stringify({ ...(currentStats as Record<string, unknown>), defensiveFormation: formationId }),
+            });
+          }
+        } catch {
+          // Non-fatal — localStorage version used as fallback
+        }
+      })();
+    }
+
     setDefensiveFormationSaved(true);
     setTimeout(() => setDefensiveFormationSaved(false), 2000);
   };

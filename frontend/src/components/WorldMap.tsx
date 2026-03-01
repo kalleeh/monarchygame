@@ -1029,7 +1029,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           {Object.keys(allianceControlledRegions).length > 0 && (
             <div className="legend-item">
               <div className="legend-color" style={{ background: '#4ade80', border: '3px solid #fbbf24', boxShadow: '0 0 6px rgba(251,191,36,0.5)' }}></div>
-              <span title="+15% income">Alliance Controlled</span>
+              <span title="+15% alliance income bonus">Your Controlled (+15%)</span>
             </div>
           )}
         </div>
@@ -1134,7 +1134,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
                   }}
                 >
                   <span style={{ fontSize: '1rem' }}>&#x269C;</span>
-                  Your Alliance controls this region
+                  You control this region
                   <span style={{
                     marginLeft: 'auto',
                     background: 'rgba(251,191,36,0.2)',
@@ -1142,7 +1142,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
                     padding: '0.1rem 0.4rem',
                     fontSize: '0.72rem',
                   }}>
-                    +15% income
+                    +15% alliance bonus
                   </span>
                 </div>
               )}

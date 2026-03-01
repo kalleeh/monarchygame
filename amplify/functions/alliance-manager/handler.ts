@@ -26,8 +26,8 @@ type AllianceInvitationRecord = {
 
 // Race role categories for composition bonus
 const MAGE_RACES = ['Sidhe', 'Elven', 'Vampire', 'Elemental', 'Fae'];
-const WARRIOR_RACES = ['Droben', 'Goblin', 'Dwarven', 'Centaur'];
-const SCUM_RACES = ['Centaur', 'Human', 'Vampire', 'Sidhe'];
+const WARRIOR_RACES = ['Droben', 'Goblin', 'Dwarven', 'Centaur', 'Human'];
+const SCUM_RACES = ['Centaur', 'Human', 'Vampire', 'Sidhe', 'Goblin'];
 
 interface CompositionBonus {
   income: number;
@@ -215,6 +215,17 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         }
 
         await dbUpdate('Alliance', allianceId, { memberIds: JSON.stringify(memberIds), leaderId: newLeaderId });
+
+        // Recalculate composition bonus after member leaves
+        try {
+          const compositionBonus = await calculateCompositionBonus(memberIds);
+          const currentStats = typeof alliance.stats === 'string'
+            ? JSON.parse(alliance.stats as string)
+            : (alliance.stats ?? {});
+          await dbUpdate('Alliance', allianceId, {
+            stats: JSON.stringify({ ...currentStats, compositionBonus })
+          });
+        } catch { /* non-fatal */ }
 
         log.info('alliance-manager', 'leaveAlliance', { kingdomId, allianceId });
         return { success: true, result: JSON.stringify({ allianceId, memberIds, newLeaderId }) };

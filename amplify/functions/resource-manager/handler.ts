@@ -92,8 +92,28 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     // Human caravan bonus: +20% gold income from double-frequency trade caravans
     const caravan_bonus = currentRace === 'Human' ? Math.floor(baseGoldPerTurn * 0.20) : 0;
 
-    // Apply age multiplier to all gold income (base + tithe + caravan bonus)
-    const totalGoldPerTurn = Math.floor((baseGoldPerTurn + tithePerTurn + caravan_bonus) * ageMultiplier);
+    // Alliance composition and upgrade income bonuses
+    let compositionIncomeBonus = 1.0;
+    let upgradeIncomeBonus = 1.0;
+    try {
+      const kingdomGuildId = (kingdom as Record<string, unknown>).guildId as string | undefined;
+      if (kingdomGuildId) {
+        const alliance = await dbGet<{ stats?: string }>('Alliance', kingdomGuildId);
+        if (alliance?.stats) {
+          const allianceStats = typeof alliance.stats === 'string' ? JSON.parse(alliance.stats) : alliance.stats;
+          compositionIncomeBonus = allianceStats?.compositionBonus?.income ?? 1.0;
+          const now = new Date().toISOString();
+          const activeUpgrades = (allianceStats?.activeUpgrades ?? []) as Array<{ type: string; expiresAt: string; effect: Record<string, number> }>;
+          const liveUpgrades = activeUpgrades.filter(u => u.expiresAt > now);
+          for (const u of liveUpgrades) {
+            if (u.effect.incomeBonus) upgradeIncomeBonus *= u.effect.incomeBonus;
+          }
+        }
+      }
+    } catch { /* non-fatal */ }
+
+    // Apply age multiplier and alliance bonuses to all gold income (base + tithe + caravan bonus)
+    const totalGoldPerTurn = Math.floor((baseGoldPerTurn + tithePerTurn + caravan_bonus) * ageMultiplier * compositionIncomeBonus * upgradeIncomeBonus);
 
     // Territory-based income (Tier 2 production)
     const CATEGORY_PRODUCTION: Record<string, { gold: number; population: number; land: number }> = {
