@@ -1,10 +1,9 @@
-/* eslint-disable */
 /**
  * Attack Planner Component
  * Interface for planning and launching attacks against other kingdoms
  */
 
-import React, { useState, useCallback, useMemo, useEffect, memo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import type {
   Kingdom,
   AttackRequest,
@@ -25,11 +24,6 @@ interface AttackPlannerProps {
   isLoading: boolean;
   error?: string | null;
 }
-
-// Memoized sub-components
-const MemoizedKingdomSearch = memo(KingdomSearch);
-const MemoizedArmySelector = memo(ArmySelector);
-const MemoizedAttackPreview = memo(AttackPreview);
 
 export function AttackPlanner({
   currentKingdom,
@@ -76,14 +70,6 @@ export function AttackPlanner({
 
   const handleArmyChange = useCallback((army: Army) => {
     setSelectedArmy(army);
-  }, []);
-
-  const handleShowPreview = useCallback(() => {
-    setShowPreview(true);
-  }, []);
-
-  const handleHidePreview = useCallback(() => {
-    setShowPreview(false);
   }, []);
 
   const handleLaunchAttack = useCallback(async () => {

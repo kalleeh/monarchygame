@@ -17,7 +17,7 @@ import {
   FAITH_ALIGNMENTS,
   FOCUS_MECHANICS,
 } from '../../../shared/mechanics/faith-focus-mechanics';
-import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { updateFaith } from '../services/domain/FaithService';
 import { isDemoMode } from '../utils/authMode';
 
 type FaithAlignmentType = 'angelique' | 'neutral' | 'elemental' | null;
@@ -107,7 +107,7 @@ export const useFaithStore = create(
         // In auth mode, persist alignment selection to the backend
         const { kingdomId } = get();
         if (!isDemoMode() && kingdomId) {
-          AmplifyFunctionService.callFunction('faith-processor', {
+          updateFaith({
             kingdomId,
             action: 'selectAlignment',
             alignment,
@@ -190,7 +190,7 @@ export const useFaithStore = create(
         // In auth mode, persist focus ability usage to the backend
         const { kingdomId } = get();
         if (!isDemoMode() && kingdomId) {
-          AmplifyFunctionService.callFunction('faith-processor', {
+          updateFaith({
             kingdomId,
             action: 'useFocusAbility',
             abilityType,

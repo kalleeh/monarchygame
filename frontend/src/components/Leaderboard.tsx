@@ -223,7 +223,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
       }
     };
     void fetchWars();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- isDemoMode is a module-level stable function; intentionally omitted to avoid re-running on every render
   }, [currentKingdom.guildId]);
 
   // ── Guild name lookup map ─────────────────────────────────────────────────
@@ -258,8 +258,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
     };
 
     void fetchNames();
-  // Only re-run when the kingdoms array reference changes (i.e. a new load)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally re-runs only when kingdoms reference changes; fetchNames is defined inside the effect
   }, [kingdoms]);
 
   // ── AI kingdoms ──────────────────────────────────────────────────────────
@@ -301,7 +300,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
   // demo mode (or before the first subscription event arrives).
   // The demoRefreshTick dependency ensures we pick up fresh aiKingdoms every 30s.
   const baseKingdoms = liveKingdoms ?? kingdoms;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- demoRefreshTick is an intentional extra dep to force re-evaluation every 30s in demo mode; it is not consumed inside the memo body
   const allKingdoms = useMemo(() => [...baseKingdoms, ...aiAsKingdoms], [baseKingdoms, aiAsKingdoms, demoRefreshTick]);
 
   // ── Persist filters ──────────────────────────────────────────────────────

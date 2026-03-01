@@ -1,4 +1,3 @@
-/* eslint-disable */
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
@@ -385,7 +384,7 @@ function KingdomDashboard({
       }
     };
     void fetchSeason();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally run once on mount; fetchSeason is defined inside the effect
   }, []);
 
   const handleStartSeason = async () => {

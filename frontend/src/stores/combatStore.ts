@@ -20,6 +20,7 @@ import { GuildService } from '../services/GuildService';
 import { useCombatReplayStore } from './combatReplayStore';
 import { TerrainType, FormationType } from '../types/combat';
 import { TERRAIN_MODIFIERS, FORMATION_MODIFIERS, applyTerrainToUnitPower } from '../../../shared/combat/combatCache';
+import { calculateGoldLoot, applyCasualtyRate } from '../utils/combatMechanics';
 
 /**
  * Fire-and-forget: check if attacker and defender are in an active guild war
@@ -901,14 +902,14 @@ async function simulateBattle(
   scaledAttackerUnits.forEach(unit => {
     // Weight casualties by unit defense - tougher units take fewer losses
     const defenseModifier = Math.max(0.5, 1 - (unit.defense * 0.05));
-    const casualties = Math.floor(unit.count * attackerCasualtyRate * defenseModifier);
+    const casualties = applyCasualtyRate(unit.count, attackerCasualtyRate * defenseModifier);
     if (casualties > 0) {
       attackerCasualties[unit.id] = casualties;
     }
   });
 
   defenderUnits.forEach(unit => {
-    const casualties = Math.floor(unit.count * defenderCasualtyRate);
+    const casualties = applyCasualtyRate(unit.count, defenderCasualtyRate);
     if (casualties > 0) {
       defenderCasualties[unit.id] = casualties;
     }
@@ -929,7 +930,7 @@ async function simulateBattle(
   }
 
   // Gold looted per acre gained (from reference)
-  const goldGained = landGained * COMBAT.GOLD_LOOTED_PER_ACRE;
+  const goldGained = calculateGoldLoot(landGained);
 
   // Droben boosted summons: bonus troops after a successful attack
   const notes: string[] = [];

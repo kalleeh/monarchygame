@@ -76,7 +76,6 @@ export class SpellService {
     spellId: string,
     // @ts-expect-error unused parameter  
     targetId?: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _repeatCount: number = 1
   ): Promise<SpellCastResponse> {
     try {
@@ -110,7 +109,6 @@ export class SpellService {
    */
   static async validateSpell(
     kingdomId: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _spellId: string
   ): Promise<SpellValidationResponse> {
     try {
@@ -139,7 +137,6 @@ export class SpellService {
   /**
    * Get spell history for analytics
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   static async getSpellHistory(kingdomId: string, _limit: number = 50) {
     try {
       const response = await AmplifyFunctionService.callFunction('spell-processor', {

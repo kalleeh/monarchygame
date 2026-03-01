@@ -78,7 +78,6 @@ export class AIDialogueSystem {
   /**
    * Alliance offer responses based on personality
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private getAllianceResponses(personality: AIPersonality, _context: DialogueContext): DialogueResponse[] {
     const responses: DialogueResponse[] = [];
     
@@ -124,7 +123,6 @@ export class AIDialogueSystem {
   /**
    * Trade request responses
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private getTradeResponses(personality: AIPersonality, _context: DialogueContext): DialogueResponse[] {
     const responses: DialogueResponse[] = [];
     
@@ -215,7 +213,6 @@ export class AIDialogueSystem {
   /**
    * Peace offer responses
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private getPeaceResponses(personality: AIPersonality, _context: DialogueContext): DialogueResponse[] {
     const responses: DialogueResponse[] = [];
     
@@ -261,7 +258,6 @@ export class AIDialogueSystem {
   /**
    * Taunt responses
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private getTauntResponses(personality: AIPersonality, _context: DialogueContext): DialogueResponse[] {
     const responses: DialogueResponse[] = [];
     
@@ -296,7 +292,6 @@ export class AIDialogueSystem {
   /**
    * Victory responses
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private getVictoryResponses(personality: AIPersonality, _context: DialogueContext): DialogueResponse[] {
     const responses: DialogueResponse[] = [];
     
@@ -324,7 +319,6 @@ export class AIDialogueSystem {
   /**
    * Defeat responses
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private getDefeatResponses(personality: AIPersonality, _context: DialogueContext): DialogueResponse[] {
     const responses: DialogueResponse[] = [];
     

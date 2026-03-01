@@ -8,7 +8,7 @@ import { combine } from 'zustand/middleware';
 import { useKingdomStore } from './kingdomStore';
 import { calculateActionTurnCost } from '../../../shared/mechanics/turn-mechanics';
 import { isDemoMode } from '../utils/authMode';
-import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { claimTerritory as claimTerritoryApi } from '../services/domain/TerritoryService';
 
 interface Territory {
   id: string;
@@ -200,14 +200,14 @@ export const useTerritoryStore = create(
 
             try {
               const territory = state.territories.find(t => t.id === territoryId);
-              const result = await AmplifyFunctionService.claimTerritory({
+              const result = await claimTerritoryApi({
                 kingdomId,
                 name: territory?.name || 'New Territory',
                 terrainType: 'plains',
                 coordinates: territory?.position || { x: 0, y: 0 },
                 territoryAmount: 1,
                 goldCost: expansion.cost.gold
-              }) as any;
+              });
 
               const parsed = typeof result === 'string' ? JSON.parse(result) : result;
               if (!parsed.success) {

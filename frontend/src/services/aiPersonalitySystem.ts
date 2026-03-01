@@ -353,7 +353,6 @@ export class AIPersonalitySystem {
   }
   
   // Helper methods for behavior generation (simplified)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private getPreferredTargets(persona: AIPersonaType, _playstyle: AIPlaystyle): string[] {
     if (persona === 'berserker') return ['weak', 'isolated'];
     if (persona === 'opportunist') return ['distracted', 'weakened'];
@@ -388,7 +387,6 @@ export class AIPersonalitySystem {
     return 'defensive_military';
   }
   
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private getEndgameStrategy(race: string, persona: AIPersonaType, _playstyle: AIPlaystyle): string {
     if (persona === 'warlord') return 'military_domination';
     if (persona === 'merchant') return 'economic_victory';

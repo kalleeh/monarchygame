@@ -1,4 +1,3 @@
-/* eslint-disable */
 /**
  * AdminDashboard — Dark-fantasy styled admin panel for the Monarchy Game.
  * Guarded by VITE_ADMIN_EMAILS env var (comma-separated) or demo mode.
@@ -601,7 +600,7 @@ function SeasonHistoryPanel() {
         toast.error('Failed to load season history.');
       })
       .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- demoAgeTransitions is a render-time constant; client and isDemoMode are module-level stable references
   }, [expanded]);
 
   return (

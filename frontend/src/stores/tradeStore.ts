@@ -8,7 +8,7 @@ import type { TradeStore } from '../types/stores';
 import type { Resource, TradeOffer, MarketData, TrendData, PriceHistoryEntry } from '../types';
 import { useKingdomStore } from './kingdomStore';
 import { isDemoMode } from '../utils/authMode';
-import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { postTradeOffer, acceptTradeOffer, cancelTradeOffer } from '../services/domain/TradeService';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -218,7 +218,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
     if (!isDemoMode()) {
       set({ loading: true, error: null });
       try {
-        const result = await AmplifyFunctionService.callFunction('trade-processor', {
+        const result = await postTradeOffer({
           kingdomId: offer.sellerId || PLAYER_ID,
           seasonId: (offer as any).seasonId || 'current',
           resourceType: offer.resourceId!,
@@ -319,9 +319,8 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
     if (!isDemoMode()) {
       set({ loading: true, error: null });
       try {
-        const result = await AmplifyFunctionService.callFunction('trade-processor', {
+        const result = await acceptTradeOffer({
           kingdomId: PLAYER_ID,
-          action: 'accept',
           offerId
         }) as any;
 
@@ -398,9 +397,8 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
     if (!isDemoMode()) {
       set({ loading: true, error: null });
       try {
-        const result = await AmplifyFunctionService.callFunction('trade-processor', {
+        const result = await cancelTradeOffer({
           kingdomId: PLAYER_ID,
-          action: 'cancel',
           offerId
         }) as any;
 

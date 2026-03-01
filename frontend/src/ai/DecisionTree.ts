@@ -72,7 +72,6 @@ export class DecisionTree {
     return currentUtility * 0.1; // Building provides 10% utility boost
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private calculateAttackUtility(kingdom: KingdomState, target: KingdomState, _gameState: GameState): number {
     const winProbability = this.calculateWinProbability(kingdom, target);
     const reward = target.resources.gold * 0.3 + target.resources.land * 0.2;
@@ -80,12 +79,10 @@ export class DecisionTree {
     return winProbability * reward - (1 - winProbability) * risk;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private calculateSpellUtility(kingdom: KingdomState, _gameState: GameState): number {
     return kingdom.resources.mana * 0.01;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private calculateExpansionUtility(kingdom: KingdomState, _gameState: GameState): number {
     return Math.max(0, 100 - kingdom.resources.land) * 0.1;
   }

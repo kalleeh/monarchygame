@@ -169,7 +169,6 @@ export class AIStrategyEngine {
   /**
    * Analyze training action based on race strengths + personality
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private analyzeTrainAction(ai: AIKingdom, strategy: BuildOrder, _personality: AIPersonality): StrategicDecision | null {
     const militaryPhase = strategy.priorities.find(p => p.type === 'military');
     if (!militaryPhase) return null;

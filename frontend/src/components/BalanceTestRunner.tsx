@@ -1,41 +1,10 @@
-/* eslint-disable */
-import React, { useState, useCallback, useMemo, memo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { AIBalanceTester } from '../balance-testing/AIBalanceTester';
 import type { BalanceTestResult } from '../balance-testing/AIBalanceTester';
 
 interface BalanceTestRunnerProps {
   onClose: () => void;
 }
-
-// Memoized result display component
-const MemoizedResultDisplay = memo(({ results, getRaceColor }: {
-  results: BalanceTestResult;
-  getRaceColor: (winRate: number) => string;
-}) => (
-  <div className="mt-6">
-    <h3 className="text-lg font-semibold mb-4">Balance Test Results</h3>
-    <div className="grid grid-cols-2 gap-4">
-      {Object.entries(results.raceStats).map(([race, stats]) => (
-        <div key={race} className="bg-gray-50 p-4 rounded">
-          <h4 className="font-medium" style={{ color: getRaceColor(stats.winRate) }}>
-            {race}
-          </h4>
-          <div className="text-sm">
-            <div>Win Rate: {(stats.winRate * 100).toFixed(1)}%</div>
-            <div>Avg Land: {stats.avgLandGained.toFixed(0)}</div>
-            <div>Avg Gold: {stats.avgGoldGained.toFixed(0)}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-    <div className="mt-4 p-4 bg-blue-50 rounded">
-      <div className="text-sm">
-        <div>Imbalance Score: {results.imbalanceScore.toFixed(3)}</div>
-        <div>Games Simulated: {results.totalGames.toLocaleString()}</div>
-      </div>
-    </div>
-  </div>
-));
 
 function BalanceTestRunner({ onClose }: BalanceTestRunnerProps) {
   const [isRunning, setIsRunning] = useState(false);
@@ -84,10 +53,6 @@ function BalanceTestRunner({ onClose }: BalanceTestRunnerProps) {
       setIsRunning(false);
     }
   }, [gameCount]);
-
-  const handleGameCountChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    setGameCount(parseInt(e.target.value));
-  }, []);
 
   const getBalanceRating = (winRate: number) => {
     if (winRate >= 0.45 && winRate <= 0.55) return { text: 'Excellent', color: '#10b981' };

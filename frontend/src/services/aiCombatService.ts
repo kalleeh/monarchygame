@@ -9,6 +9,8 @@ import type { AIKingdom } from '../stores/aiKingdomStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { useCombatStore } from '../stores/combatStore';
+import { COMBAT } from '../constants/gameConfig';
+import { calculateGoldLoot, applyCasualtyRate } from '../utils/combatMechanics';
 
 export interface BattleResult {
   success: boolean;
@@ -43,31 +45,31 @@ export class AICombatService {
       // Easy victory
       difficulty = 'with_ease';
       landGainPercent = 0.0735; // 7.35% max
-      casualtiesPercent = 0.05; // 5% casualties
+      casualtiesPercent = COMBAT.CASUALTY_RATES.FAILED_ATTACK; // 5% casualties
     } else if (networthRatio >= 0.8) {
       // Good fight
       difficulty = 'good_fight';
       landGainPercent = 0.0679 + (Math.random() * 0.0056); // 6.79%-7.35%
-      casualtiesPercent = 0.15; // 15% casualties
+      casualtiesPercent = COMBAT.CASUALTY_RATES.BASE; // 15% casualties
     } else {
       // Failed attack
       difficulty = 'failed';
       landGainPercent = 0;
-      casualtiesPercent = 0.25; // 25% casualties
-      
+      casualtiesPercent = COMBAT.CASUALTY_RATES.ATTACKER_FAILED; // 25% casualties
+
       return {
         success: false,
         landGained: 0,
         goldGained: 0,
         casualtiesPercent,
-        message: `Attack failed! You lost ${Math.floor(casualtiesPercent * 100)}% of your army.`,
+        message: `Attack failed! You lost ${applyCasualtyRate(100, casualtiesPercent)}% of your army.`,
         difficulty
       };
     }
-    
+
     // Calculate gains
     const landGained = Math.floor(aiKingdom.resources.land * landGainPercent);
-    const goldGained = Math.floor(aiKingdom.resources.gold * 0.1); // 10% of enemy gold
+    const goldGained = calculateGoldLoot(landGained);
     
     return {
       success: true,
@@ -104,7 +106,7 @@ export class AICombatService {
       
       // Update AI kingdom (reduce resources) - clamp to prevent negative values
       const newLand = Math.max(0, aiKingdom.resources.land - result.landGained);
-      const newGold = Math.max(0, Math.floor(aiKingdom.resources.gold * 0.9)); // Lost 10%
+      const newGold = Math.max(0, aiKingdom.resources.gold - result.goldGained);
       aiStore.updateAIKingdom(aiKingdom.id, {
         resources: {
           ...aiKingdom.resources,

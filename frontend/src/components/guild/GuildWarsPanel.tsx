@@ -63,7 +63,7 @@ const GuildWarsPanel: React.FC<GuildWarsPanelProps> = ({ kingdom, currentGuild, 
       }
     };
     void populate();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally triggers only when the modal opens; kingdom.guildId is stable during modal lifecycle
   }, [showDeclareWarModal]);
 
   const handleDeclareWar = async () => {

@@ -13,7 +13,7 @@ import {
   THIEVERY_MECHANICS
 } from '../../../shared/mechanics/thievery-mechanics';
 import type { ThieveryResult } from '../../../shared/mechanics/thievery-mechanics';
-import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { executeThievery } from '../services/domain/ThieveryService';
 import { isDemoMode } from '../utils/authMode';
 
 export type OperationType = 'scout' | 'steal' | 'sabotage' | 'burn' | 'desecrate' | 'spread_dissention' | 'intercept_caravans' | 'scum_kill';
@@ -227,7 +227,7 @@ export const useThieveryStore = create(
         // In auth mode, persist the operation to the backend
         if (!isDemoMode()) {
           const { kingdomId } = get();
-          AmplifyFunctionService.callFunction('thievery-processor', {
+          executeThievery({
             kingdomId,
             action: type,
             targetId,

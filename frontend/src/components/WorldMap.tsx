@@ -757,7 +757,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
 
   useEffect(() => {
     setEdges(worldEdges);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally runs once on mount; worldEdges is the initial static edge set; setEdges is a stable React Flow setter
   }, [setEdges]);
 
   // ── Selection state ───────────────────────────────────────────────────────

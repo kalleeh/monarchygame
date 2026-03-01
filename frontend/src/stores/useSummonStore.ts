@@ -4,7 +4,7 @@ import { useKingdomStore } from './kingdomStore';
 import { getUnitsForRace, type UnitType } from '../utils/units';
 import { calculateActionTurnCost } from '../../../shared/mechanics/turn-mechanics';
 import { isDemoMode } from '../utils/authMode';
-import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { trainUnits, refreshKingdomResources } from '../services/domain/TrainingService';
 import { achievementTriggers } from '../utils/achievementTriggers';
 
 // Troop cap based on accumulated gold cost (from hire-screen.md)
@@ -190,7 +190,7 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
       // Auth mode: call Lambda for server-authoritative unit training
       if (!isDemoMode()) {
         try {
-          const raw = await AmplifyFunctionService.callFunction('unit-trainer', {
+          const raw = await trainUnits({
             kingdomId: _kingdomId,
             unitType,
             quantity,
@@ -219,7 +219,7 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
           });
 
           // Refresh authoritative kingdom state (resources + units) from server
-          void AmplifyFunctionService.refreshKingdomResources(_kingdomId);
+          void refreshKingdomResources(_kingdomId);
 
           // Fire achievement trigger on confirmed server unit training
           achievementTriggers.onGoldChanged();

@@ -7,7 +7,7 @@ import { create } from 'zustand';
 import { DIPLOMACY } from '../constants/gameConfig';
 import { DiplomacyService } from '../services/DiplomacyService';
 import { isDemoMode } from '../utils/authMode';
-import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { proposeTreaty, declareDiplomaticWar, makeDiplomaticPeace } from '../services/domain/DiplomacyService';
 import type {
   DiplomaticRelationship,
   TreatyProposal,
@@ -90,7 +90,7 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
     try {
       // Auth mode: call Lambda
       if (!isDemoMode()) {
-        const result = await AmplifyFunctionService.callFunction('diplomacy-processor', {
+        const result = await proposeTreaty({
           kingdomId: ('fromKingdomId' in proposal ? (proposal as TreatyProposal & { fromKingdomId?: string }).fromKingdomId : proposal.fromKingdom?.id) || '',
           defenderKingdomId: ('toKingdomId' in proposal ? (proposal as TreatyProposal & { toKingdomId?: string }).toKingdomId : proposal.toKingdom?.id) || '',
           seasonId: 'current',
@@ -229,9 +229,8 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
 
     try {
       if (!isDemoMode()) {
-        const result = await AmplifyFunctionService.callFunction('diplomacy-processor', {
+        const result = await declareDiplomaticWar({
           kingdomId: 'default-kingdom',
-          action: 'declare-war',
           defenderKingdomId: targetKingdomId,
           seasonId: 'current'
         }) as any;
@@ -274,9 +273,8 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
 
     try {
       if (!isDemoMode()) {
-        const result = await AmplifyFunctionService.callFunction('diplomacy-processor', {
+        const result = await makeDiplomaticPeace({
           kingdomId: 'default-kingdom',
-          action: 'peace',
           defenderKingdomId: targetKingdomId
         }) as any;
         const parsed = typeof result === 'string' ? JSON.parse(result) : result;
