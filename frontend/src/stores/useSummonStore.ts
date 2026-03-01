@@ -190,12 +190,16 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
       // Auth mode: call Lambda for server-authoritative unit training
       if (!isDemoMode()) {
         try {
-          const result = await AmplifyFunctionService.callFunction('unit-trainer', {
+          const raw = await AmplifyFunctionService.callFunction('unit-trainer', {
             kingdomId: _kingdomId,
             unitType,
-            quantity
+            quantity,
+            goldCost: unitData.goldCost
           }) as any;
 
+          // Amplify client wraps custom mutation responses in { data, errors };
+          // unwrap .data when present, otherwise fall back to the raw value.
+          const result = (raw && raw.data !== undefined) ? raw.data : raw;
           const parsed = typeof result === 'string' ? JSON.parse(result) : result;
           if (!parsed.success) {
             set({ error: parsed.error || 'Failed to summon units', loading: false });
@@ -208,6 +212,9 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
             accumulatedGoldSpent: accumulatedGoldSpent + totalGold,
             loading: false
           });
+
+          // Refresh authoritative kingdom state (resources + units) from server
+          void AmplifyFunctionService.refreshKingdomResources(_kingdomId);
 
           // Fire achievement trigger on confirmed server unit training
           achievementTriggers.onGoldChanged();

@@ -4,21 +4,10 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { dbGet, dbUpdate, dbList, dbAtomicAdd } from '../data-client';
 
-const VALID_UNIT_TYPES = ['infantry', 'archers', 'cavalry', 'siege', 'mages', 'scouts', 'scum', 'elite_scum'] as const;
-type UnitType = typeof VALID_UNIT_TYPES[number];
-
 const UNIT_QUANTITY = { min: 1, max: 1000 } as const;
 
-const UNIT_GOLD_COST: Record<UnitType, number> = {
-  infantry: 100,
-  archers: 100,
-  cavalry: 100,
-  siege: 100,
-  mages: 100,
-  scouts: 100,
-  scum: 100,
-  elite_scum: 200,
-};
+// Minimum gold cost per unit (sanity check to prevent zero-cost exploits)
+const MIN_GOLD_COST_PER_UNIT = 1;
 
 type KingdomType = {
   id: string;
@@ -29,19 +18,28 @@ type KingdomType = {
 };
 
 export const handler: Schema["trainUnits"]["functionHandler"] = async (event) => {
-  const { kingdomId, unitType, quantity } = event.arguments;
+  const { kingdomId, unitType, quantity, goldCost: goldCostPerUnit } = event.arguments;
 
   try {
     if (!kingdomId || !unitType || quantity === undefined || quantity === null) {
       return { success: false, error: 'Missing required parameters: kingdomId, unitType, quantity', errorCode: ErrorCode.MISSING_PARAMS };
     }
 
-    if (!VALID_UNIT_TYPES.includes(unitType as UnitType)) {
-      return { success: false, error: `Invalid unit type. Must be one of: ${VALID_UNIT_TYPES.join(', ')}`, errorCode: ErrorCode.INVALID_PARAM };
+    // Accept any non-empty unit type string (race-specific types like "militia", "knights",
+    // "elven-scouts", etc. are all valid — the frontend determines what units exist per race)
+    if (typeof unitType !== 'string' || unitType.trim().length === 0) {
+      return { success: false, error: 'Invalid unit type: must be a non-empty string', errorCode: ErrorCode.INVALID_PARAM };
     }
 
     if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < UNIT_QUANTITY.min || quantity > UNIT_QUANTITY.max) {
       return { success: false, error: `Quantity must be an integer between ${UNIT_QUANTITY.min} and ${UNIT_QUANTITY.max}`, errorCode: ErrorCode.INVALID_PARAM };
+    }
+
+    // goldCostPerUnit is the per-unit gold cost provided by the frontend.
+    // Validate it is a positive integer to prevent exploits.
+    const resolvedGoldCostPerUnit = goldCostPerUnit ?? MIN_GOLD_COST_PER_UNIT;
+    if (!Number.isInteger(resolvedGoldCostPerUnit) || resolvedGoldCostPerUnit < MIN_GOLD_COST_PER_UNIT) {
+      return { success: false, error: 'Invalid goldCost: must be a positive integer', errorCode: ErrorCode.INVALID_PARAM };
     }
 
     // Verify caller identity
@@ -75,7 +73,7 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
     }
 
     const resources = (kingdom.resources ?? {}) as KingdomResources;
-    const goldCost = quantity * UNIT_GOLD_COST[unitType as UnitType];
+    const goldCost = quantity * resolvedGoldCostPerUnit;
     const currentGold = resources.gold ?? 0;
 
     if (currentGold < goldCost) {

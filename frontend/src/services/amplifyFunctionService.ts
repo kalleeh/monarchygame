@@ -154,7 +154,8 @@ export class AmplifyFunctionService {
           return await client.mutations.trainUnits({
             kingdomId: payload.kingdomId,
             unitType: payload.unitType || '',
-            quantity: payload.quantity || 1
+            quantity: payload.quantity || 1,
+            goldCost: typeof payload.goldCost === 'number' ? payload.goldCost : undefined
           });
         case 'combat-processor':
           return await client.mutations.processCombat({
