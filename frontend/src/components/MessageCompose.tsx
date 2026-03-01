@@ -1,4 +1,3 @@
-/* eslint-disable */
 /**
  * MessageCompose — Diplomatic messaging modal
  *

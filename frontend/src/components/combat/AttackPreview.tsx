@@ -6,6 +6,7 @@
 import React, { useMemo, useCallback } from 'react';
 import type { Kingdom, AttackType, Army, Territory } from '../../types/combat';
 import { hasStats } from '../../types/guards';
+import { COMBAT } from '../../constants/gameConfig';
 
 interface AttackPreviewProps {
   attacker: Kingdom;
@@ -63,7 +64,7 @@ export const AttackPreview: React.FC<AttackPreviewProps> = ({
     const adjustedDefenderPower = defenderPower * (1 + fortBonus);
 
     const powerRatio = attackerPower / Math.max(adjustedDefenderPower, 1);
-    let winProbability = Math.min(0.95, Math.max(0.05, powerRatio * 0.6));
+    let winProbability = Math.min(COMBAT.WIN_PROBABILITY.MAX, Math.max(COMBAT.WIN_PROBABILITY.MIN, powerRatio * 0.6));
 
     // Attack type modifiers
     const typeModifiers: Record<AttackType, { winBonus: number; casualtyReduction: number; spoilsReduction: number }> = {
@@ -75,10 +76,10 @@ export const AttackPreview: React.FC<AttackPreviewProps> = ({
     };
 
     const modifier = typeModifiers[attackType];
-    winProbability = Math.min(0.95, Math.max(0.05, winProbability + modifier.winBonus));
+    winProbability = Math.min(COMBAT.WIN_PROBABILITY.MAX, Math.max(COMBAT.WIN_PROBABILITY.MIN, winProbability + modifier.winBonus));
 
     // Calculate casualties
-    const baseCasualtyRate = 0.15;
+    const baseCasualtyRate = COMBAT.CASUALTY_RATES.BASE; // base rate applied to both sides before modifiers
     const attackerCasualtyRate = baseCasualtyRate * (1 - modifier.casualtyReduction) * (2 - winProbability);
     const defenderCasualtyRate = baseCasualtyRate * (1 - modifier.casualtyReduction) * winProbability;
 

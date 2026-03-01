@@ -66,13 +66,16 @@ export const useCombatCache = () => {
     clearCombatCache();
   }, []);
 
-  return {
+  // Stable object reference: without this memo the returned object is a new literal every
+  // render, causing useCombatPreview's useMemo to treat calculatePreview as a changed dep
+  // even though the useCallback above produced the same function identity.
+  return useMemo(() => ({
     calculatePreview,
     getPowerRatio,
     initializeCache,
     getCachePerformance,
     clearCache
-  };
+  }), [calculatePreview, getPowerRatio, initializeCache, getCachePerformance, clearCache]);
 };
 
 /**

@@ -6,28 +6,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDiplomacyStore } from '../stores/useDiplomacyStore';
 import { ErrorBoundary } from './ErrorBoundary';
+import type { Kingdom, TreatyProposal } from '../types/diplomacy';
 import './DiplomacyInterface.css';
-
-// Define types locally since they're used in this component
-interface Kingdom {
-  id: string;
-  name: string;
-  race: string;
-  reputation: number;
-}
-
-interface TreatyProposal {
-  id: string;
-  fromKingdomId?: string;
-  toKingdomId?: string;
-  fromKingdom?: Kingdom;
-  toKingdom?: Kingdom;
-  type?: 'non-aggression' | 'trade' | 'military-alliance';
-  treatyType?: string;
-  terms: Record<string, string | number | boolean> | string;
-  status?: string;
-  createdAt: string;
-}
 
 interface DiplomacyInterfaceProps {
   kingdomId: string;
@@ -70,11 +50,11 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
       await sendTreatyProposal({
         ...proposal,
         id: `proposal-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        fromKingdom: proposal.fromKingdom || {} as Kingdom,
-        toKingdom: proposal.toKingdom || {} as Kingdom,
-        treatyType: proposal.treatyType || 'trade'
-      } as unknown as import('../types/diplomacy').TreatyProposal);
+        createdAt: new Date(),
+        fromKingdom: proposal.fromKingdom || ({} as Kingdom),
+        toKingdom: proposal.toKingdom || ({} as Kingdom),
+        treatyType: proposal.treatyType || 'TRADE_AGREEMENT',
+      });
       setCurrentView('proposals');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send proposal');
@@ -289,7 +269,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
               toKingdom: selectedKingdom,
               treatyType: 'NON_AGGRESSION',
               terms: { duration: '30 days' },
-              status: 'pending'
+              status: 'PENDING'
             })}
           >
             🕊️ Non-Aggression Pact
@@ -302,7 +282,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
               toKingdom: selectedKingdom,
               treatyType: 'TRADE_AGREEMENT',
               terms: { tradeBonus: '10%', duration: '60 days' },
-              status: 'pending'
+              status: 'PENDING'
             })}
           >
             🤝 Trade Agreement
@@ -315,7 +295,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
               toKingdom: selectedKingdom,
               treatyType: 'MILITARY_ALLIANCE',
               terms: { mutualDefense: true, duration: '90 days' },
-              status: 'pending'
+              status: 'PENDING'
             })}
           >
             ⚔️ Military Alliance

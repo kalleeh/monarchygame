@@ -3,6 +3,8 @@
  * Simplified cache to avoid TypeScript issues
  */
 
+import { COMBAT } from '../constants/gameConfig';
+
 // Disable caching for now to fix build issues
 const combatCache = {
   wrap: <T extends (...args: any[]) => any>(fn: T, options?: any): T => fn,
@@ -77,10 +79,13 @@ export const getBattleResult = combatCache.wrap(
 export const getCasualtyRates = combatCache.wrap(
   (battleResult: string) => {
     switch (battleResult) {
-      case 'with_ease': return { attacker: 0.05, defender: 0.2 };
-      case 'good_fight': return { attacker: 0.15, defender: 0.15 };
-      case 'failed': return { attacker: 0.25, defender: 0.05 };
-      default: return { attacker: 0.15, defender: 0.15 };
+      // Attacker barely takes losses; defender suffers heavily
+      case 'with_ease': return { attacker: COMBAT.CASUALTY_RATES.FAILED_ATTACK, defender: COMBAT.CASUALTY_RATES.DEFENDER_EASY_WIN };
+      // Balanced fight — both sides take the base casualty rate
+      case 'good_fight': return { attacker: COMBAT.CASUALTY_RATES.ATTACKER_HARD_WIN, defender: COMBAT.CASUALTY_RATES.BASE };
+      // Attack repelled — attacker takes heavy losses, defender takes minimal
+      case 'failed': return { attacker: COMBAT.CASUALTY_RATES.ATTACKER_FAILED, defender: COMBAT.CASUALTY_RATES.DEFENDER_FAILED };
+      default: return { attacker: COMBAT.CASUALTY_RATES.BASE, defender: COMBAT.CASUALTY_RATES.BASE };
     }
   },
   { ttl: '1h', keyPrefix: 'casualtyRates' }

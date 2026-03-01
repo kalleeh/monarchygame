@@ -1,4 +1,3 @@
-/* eslint-disable */
 import React, { useState, useCallback } from 'react';
 import './FirstSteps.css';
 
@@ -51,7 +50,7 @@ function markDismissed(): void {
 }
 
 export const FirstSteps: React.FC<FirstStepsProps> = ({
-  kingdomId,
+  kingdomId: _kingdomId,
   onManageBuildings,
   onSummonUnits,
   onViewWorldMap,

@@ -36,6 +36,9 @@ import { AchievementWidget } from './achievements/AchievementWidget';
 import UnitRoster from './UnitRoster';
 import WorldFeed from './WorldFeed';
 import { FirstSteps } from './ui/FirstSteps';
+import { RestorationNotice } from './ui/RestorationNotice';
+import { SeasonBadge } from './ui/SeasonBadge';
+import { NoActiveSeasonBanner } from './ui/NoActiveSeasonBanner';
 
 // EncampPanel — shows active encamp countdown or the two encamp buttons.
 // In auth mode the active state is driven by encampEndTimeMs/encampBonusTurns
@@ -827,110 +830,27 @@ function KingdomDashboard({
 
       {/* Season Age Badge */}
       {seasonInfo && (
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '0.4rem',
-          padding: '0.25rem 0.75rem',
-          marginBottom: '0.75rem',
-          borderRadius: '999px',
-          fontSize: '0.8rem',
-          fontWeight: 600,
-          letterSpacing: '0.03em',
-          background: seasonInfo.currentAge === 'early'
-            ? 'rgba(107, 114, 128, 0.2)'
-            : seasonInfo.currentAge === 'middle'
-            ? 'rgba(245, 158, 11, 0.15)'
-            : 'rgba(239, 68, 68, 0.15)',
-          border: `1px solid ${
-            seasonInfo.currentAge === 'early'
-              ? 'rgba(107, 114, 128, 0.4)'
-              : seasonInfo.currentAge === 'middle'
-              ? 'rgba(245, 158, 11, 0.5)'
-              : 'rgba(239, 68, 68, 0.5)'
-          }`,
-          color: seasonInfo.currentAge === 'early'
-            ? '#9ca3af'
-            : seasonInfo.currentAge === 'middle'
-            ? '#fbbf24'
-            : '#f87171',
-        }}>
-          Season {seasonInfo.seasonNumber} &middot; {seasonInfo.currentAge.charAt(0).toUpperCase() + seasonInfo.currentAge.slice(1)} Age
-        </div>
+        <SeasonBadge
+          seasonNumber={seasonInfo.seasonNumber}
+          currentAge={seasonInfo.currentAge}
+        />
       )}
 
       {/* No Active Season Banner — auth mode only, shown when no season is running */}
       {noActiveSeason && !isDemoMode() && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '1rem',
-          padding: '0.75rem 1.25rem',
-          marginBottom: '1rem',
-          background: 'rgba(99, 102, 241, 0.12)',
-          border: '1px solid rgba(99, 102, 241, 0.4)',
-          borderRadius: '8px',
-          color: '#a5b4fc',
-          fontSize: '0.9rem',
-          flexWrap: 'wrap',
-        }}>
-          <span>No active season — the game world is dormant.</span>
-          <button
-            onClick={() => { void handleStartSeason(); }}
-            disabled={startingSeasonLoading}
-            style={{
-              background: 'rgba(99, 102, 241, 0.25)',
-              border: '1px solid rgba(99, 102, 241, 0.6)',
-              borderRadius: '6px',
-              color: '#c7d2fe',
-              padding: '0.35rem 0.9rem',
-              cursor: startingSeasonLoading ? 'not-allowed' : 'pointer',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {startingSeasonLoading ? 'Starting...' : 'Start New Season'}
-          </button>
-        </div>
+        <NoActiveSeasonBanner
+          onStartSeason={() => { void handleStartSeason(); }}
+          isLoading={startingSeasonLoading}
+        />
       )}
 
       {/* Restoration Status Banner */}
-      {isInRestoration && (
-        <div style={{
-          padding: '1rem 1.5rem',
-          marginBottom: '1rem',
-          background: restorationType === 'death_based'
-            ? 'rgba(239, 68, 68, 0.15)'
-            : 'rgba(245, 158, 11, 0.15)',
-          border: `2px solid ${restorationType === 'death_based'
-            ? 'rgba(239, 68, 68, 0.5)'
-            : 'rgba(245, 158, 11, 0.5)'}`,
-          borderRadius: '8px',
-          color: restorationType === 'death_based' ? '#ef4444' : '#f59e0b',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <strong style={{ fontSize: '1.1rem' }}>
-              Kingdom in Restoration
-            </strong>
-            <span style={{
-              background: 'rgba(255, 255, 255, 0.1)',
-              padding: '0.25rem 0.75rem',
-              borderRadius: '12px',
-              fontSize: '0.85rem',
-            }}>
-              {restorationType === 'death_based' ? 'Death-Based' : 'Damage-Based'} &mdash; {getRemainingHours().toFixed(1)} hours remaining
-            </span>
-          </div>
-          {prohibitedActions.length > 0 && (
-            <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>
-              <span style={{ fontWeight: 600 }}>Prohibited actions: </span>
-              {prohibitedActions.join(', ')}
-            </div>
-          )}
-        </div>
-      )}
+      <RestorationNotice
+        isInRestoration={isInRestoration}
+        restorationType={restorationType}
+        getRemainingHours={getRemainingHours}
+        prohibitedActions={prohibitedActions}
+      />
 
       {/* Next Step contextual banner */}
       {nextStep && (

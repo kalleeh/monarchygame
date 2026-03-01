@@ -55,6 +55,28 @@ export const AI_KINGDOM = {
 export const COMBAT = {
   /** Gold looted per acre of land gained in combat */
   GOLD_LOOTED_PER_ACRE: 1000,
+
+  CASUALTY_RATES: {
+    /** Attacker casualty rate when the attack fails (defender routs attacker) */
+    FAILED_ATTACK: 0.05,
+    /** Base casualty rate used in balanced / good-fight outcomes */
+    BASE: 0.15,
+    /** Defender casualty rate when attacker wins with ease */
+    DEFENDER_EASY_WIN: 0.2,
+    /** Attacker casualty rate for a difficult but successful attack */
+    ATTACKER_HARD_WIN: 0.15,
+    /** Attacker casualty rate when attack fails outright */
+    ATTACKER_FAILED: 0.25,
+    /** Defender casualty rate when the attack fails */
+    DEFENDER_FAILED: 0.05,
+  },
+
+  WIN_PROBABILITY: {
+    /** Maximum win probability cap — never show 100 % certainty */
+    MAX: 0.95,
+    /** Minimum win probability floor — always some chance of success */
+    MIN: 0.05,
+  },
 } as const;
 
 // ---------------------------------------------------------------------------

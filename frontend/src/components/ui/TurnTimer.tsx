@@ -1,11 +1,10 @@
-/* eslint-disable */
 /**
  * Turn Timer Component
  * IQC Compliant: Real-time turn generation display
  * Context7 Research: React Spring animations for smooth updates
  */
 
-import React, { useMemo, useCallback, memo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useSpring, animated, config } from '@react-spring/web';
 import { useTurnGeneration } from '../../hooks/useTurnGeneration';
 import './TurnTimer.css';
@@ -38,10 +37,6 @@ function TurnTimer({
   }, [nextTurnIn]);
 
   // Memoized event handlers
-  const handleGenerateTurns = useCallback(() => {
-    generateTurns();
-  }, [generateTurns]);
-
   const handleToggleAutoGenerate = useCallback(() => {
     toggleAutoGenerate();
   }, [toggleAutoGenerate]);

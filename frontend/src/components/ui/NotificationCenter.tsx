@@ -1,4 +1,3 @@
-/* eslint-disable */
 /**
  * Notification Center Component
  * Displays a bell icon with unread count badge, drops down a panel of CombatNotifications.
@@ -60,6 +59,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ kingdomI
         const { data } = await client.models.CombatNotification.list({
           filter: { recipientId: { eq: kingdomId } },
         });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Amplify list response type doesn't carry field-level types
         const items: NotificationItem[] = ((data || []) as any[]).map((n) => {
           // Parse optional senderMeta from the data JSON field (set by diplomacy messages)
           let senderMeta: NotificationItem['senderMeta'] = null;

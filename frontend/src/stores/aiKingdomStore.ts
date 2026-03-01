@@ -27,6 +27,8 @@ export interface AIKingdom {
   };
   difficulty: 'easy' | 'medium' | 'hard';
   networth: number;
+  terrain?: string;
+  terrainType?: string;
 }
 
 interface AIKingdomState {

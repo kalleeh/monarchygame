@@ -245,8 +245,8 @@ export const useCombatStore = create(
             const aiKingdomsForTerrain = useAIKingdomStore.getState().aiKingdoms;
             const targetKingdomForTerrain = aiKingdomsForTerrain.find(k => k.id === targetId);
             const terrainId: string | undefined =
-              (targetKingdomForTerrain as any)?.terrain ??
-              (targetKingdomForTerrain as any)?.terrainType ??
+              targetKingdomForTerrain?.terrain ??
+              targetKingdomForTerrain?.terrainType ??
               undefined;
 
             const result = await AmplifyFunctionService.callFunction('combat-processor', {
@@ -376,8 +376,8 @@ export const useCombatStore = create(
 
           // Resolve terrain from the AI kingdom if available; default to 'plains'
           const defenderTerrain: string =
-            (defenderKingdom as any)?.terrain ??
-            (defenderKingdom as any)?.terrainType ??
+            defenderKingdom.terrain ??
+            defenderKingdom.terrainType ??
             'plains';
 
           // Battle calculation with real defender data
@@ -441,8 +441,8 @@ export const useCombatStore = create(
           const aiKingdomsForReplay = useAIKingdomStore.getState().aiKingdoms;
           const defenderKingdomForReplay = aiKingdomsForReplay.find(k => k.id === targetId);
           const demoTerrainId: string | undefined =
-            (defenderKingdomForReplay as any)?.terrain ??
-            (defenderKingdomForReplay as any)?.terrainType ??
+            defenderKingdomForReplay?.terrain ??
+            defenderKingdomForReplay?.terrainType ??
             undefined;
           useCombatReplayStore.getState().addReplay({
             id: `replay-${battleReport.id}`,
