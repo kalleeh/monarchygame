@@ -176,18 +176,13 @@ const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, onBack }) =>
 
       {/* Result Display */}
       {lastResult && (
-        <div className="faith-error-banner" style={{
-          background: 'rgba(78, 205, 196, 0.15)',
-          borderColor: 'rgba(78, 205, 196, 0.4)',
-          color: '#4ecdc4',
-        }}>
+        <div className="gm-success-banner">
           <span>{lastResult}</span>
           <button
             onClick={() => setLastResult(null)}
             aria-label="Dismiss result"
-            style={{ color: '#4ecdc4' }}
           >
-            x
+            ✕
           </button>
         </div>
       )}

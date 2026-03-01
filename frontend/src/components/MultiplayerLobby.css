@@ -1,9 +1,14 @@
+/* Multiplayer Lobby — follows the shared --gm-* design system (game-ui.css via index.css) */
+
+/* ── Page wrapper ─────────────────────────────────────────────────── */
 .multiplayer-lobby {
+  min-height: 100vh;
+  background: var(--gm-bg-page);
+  color: var(--gm-text);
   padding: 2rem;
-  max-width: 900px;
-  margin: 0 auto;
 }
 
+/* ── Header ───────────────────────────────────────────────────────── */
 .lobby-header {
   display: flex;
   align-items: center;
@@ -12,60 +17,100 @@
 }
 
 .lobby-header h1 {
+  margin: 0;
   font-size: 1.8rem;
-  color: #e2e8f0;
+  font-weight: 700;
+  color: var(--gm-text-gold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
+/* ── Back button → gm-back-btn pattern ───────────────────────────── */
+.lobby-header .back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius-md);
+  color: var(--gm-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--gm-transition), border-color var(--gm-transition), transform var(--gm-transition);
+  white-space: nowrap;
+}
+
+.lobby-header .back-btn:hover {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: var(--gm-border-gold);
+  transform: translateX(-2px);
+}
+
+/* ── Demo notice panel ────────────────────────────────────────────── */
 .lobby-demo-notice {
-  background: rgba(30, 41, 59, 0.8);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 12px;
+  background: var(--gm-bg-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius-lg);
   padding: 2rem;
   text-align: center;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 .lobby-demo-notice h2 {
-  color: #e2e8f0;
+  color: var(--gm-text-gold);
+  font-size: 1.3rem;
+  font-weight: 700;
   margin-bottom: 1rem;
 }
 
 .lobby-demo-notice p {
-  color: #94a3b8;
+  color: var(--gm-text-muted);
   margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .lobby-demo-notice ul {
   list-style: none;
   padding: 0;
   margin: 1rem 0;
+  text-align: left;
+  display: inline-block;
 }
 
 .lobby-demo-notice li {
-  color: #cbd5e1;
+  color: var(--gm-text);
   padding: 0.3rem 0;
+  font-size: 0.9rem;
 }
 
 .lobby-demo-notice li::before {
-  content: "⚔️ ";
+  content: "⚔ ";
+  color: var(--gm-text-gold);
 }
 
 .demo-hint {
-  color: #facc15;
+  color: var(--gm-text-gold) !important;
   font-style: italic;
-  margin-top: 1rem;
+  margin-top: 1rem !important;
 }
 
+/* ── Season banner ────────────────────────────────────────────────── */
 .season-banner {
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 12px;
+  background: var(--gm-bg-panel);
+  border: 1px solid var(--gm-border-gold);
+  border-radius: var(--gm-radius-lg);
   padding: 1.5rem;
   margin-bottom: 2rem;
 }
 
 .season-info h2 {
-  color: #e2e8f0;
+  color: var(--gm-text-gold);
   font-size: 1.5rem;
+  font-weight: 700;
   margin-bottom: 0.5rem;
 }
 
@@ -73,53 +118,92 @@
   display: flex;
   gap: 1.5rem;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .season-age {
-  font-weight: bold;
-  font-size: 1.1rem;
+  font-weight: 700;
+  font-size: 1rem;
+  /* color set inline for semantic meaning (early/middle/late age) */
 }
 
-.season-weeks, .season-status {
-  color: #94a3b8;
+.season-weeks,
+.season-status {
+  color: var(--gm-text-muted);
+  font-size: 0.9rem;
 }
 
-.lobby-loading, .lobby-error {
+/* ── Loading / error ──────────────────────────────────────────────── */
+.lobby-loading {
   text-align: center;
   padding: 2rem;
-  color: #94a3b8;
+  color: var(--gm-text-muted);
+  font-style: italic;
 }
 
 .lobby-error {
-  color: #f87171;
+  text-align: center;
+  padding: 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: var(--gm-radius-md);
+  color: #ef4444;
+  margin-bottom: 1rem;
 }
 
+/* ── Action grid ──────────────────────────────────────────────────── */
 .lobby-actions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1rem;
 }
 
+/* ── Lobby card ───────────────────────────────────────────────────── */
 .lobby-card {
-  background: rgba(30, 41, 59, 0.7);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 10px;
+  background: var(--gm-bg-overlay);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius-lg);
   padding: 1.5rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: border-color var(--gm-transition), background var(--gm-transition), transform var(--gm-transition), box-shadow var(--gm-transition);
 }
 
 .lobby-card:hover {
-  border-color: rgba(96, 165, 250, 0.5);
+  border-color: var(--gm-border-gold);
+  background: rgba(251, 191, 36, 0.05);
   transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.1);
 }
 
 .lobby-card h3 {
-  color: #e2e8f0;
+  color: var(--gm-text-gold);
+  font-size: 1rem;
+  font-weight: 700;
   margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .lobby-card p {
-  color: #94a3b8;
-  font-size: 0.9rem;
+  color: var(--gm-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .multiplayer-lobby {
+    padding: 1rem;
+  }
+
+  .lobby-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .season-details {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
 }

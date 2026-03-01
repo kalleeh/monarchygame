@@ -1,0 +1,292 @@
+/* World Map — component-specific styles */
+/* Shared theme uses --gm-* vars from game-ui.css (imported via index.css) */
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* ── Page wrapper ─────────────────────────────────────────────────── */
+.world-map {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--gm-bg-page);
+  color: var(--gm-text);
+}
+
+/* ── Header bar ───────────────────────────────────────────────────── */
+.world-map-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: var(--gm-bg-panel);
+  border-bottom: 1px solid var(--gm-border-gold);
+  flex-shrink: 0;
+}
+
+.world-map-header h1 {
+  margin: 0;
+  color: var(--gm-text-gold);
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Back button ──────────────────────────────────────────────────── */
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius-md);
+  color: var(--gm-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--gm-transition), border-color var(--gm-transition), transform var(--gm-transition);
+  white-space: nowrap;
+}
+
+.back-button:hover {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: var(--gm-border-gold);
+  transform: translateX(-2px);
+}
+
+/* ── Map legend ───────────────────────────────────────────────────── */
+.map-legend {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--gm-text-muted);
+}
+
+.legend-color {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+/* ── Map container ────────────────────────────────────────────────── */
+.map-container {
+  flex: 1;
+  position: relative;
+  background: var(--gm-bg-page);
+  border-top: none;
+}
+
+/* ── Kingdom stats panel (top-left overlay) ───────────────────────── */
+.map-stats {
+  background: var(--gm-bg-panel);
+  border: 1px solid var(--gm-border);
+  padding: 0.9rem 1.1rem;
+  border-radius: var(--gm-radius-md);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  min-width: 160px;
+}
+
+.map-stats h3 {
+  margin: 0 0 0.5rem 0;
+  color: var(--gm-text-gold);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.map-stats p {
+  margin: 0.2rem 0;
+  color: var(--gm-text);
+  font-size: 0.82rem;
+}
+
+/* ── Territory side panel (right slide-in) ────────────────────────── */
+.territory-panel {
+  position: absolute;
+  top: 50%;
+  left: 1rem;
+  transform: translateY(-50%);
+  background: var(--gm-bg-panel);
+  border: 1px solid var(--gm-border);
+  padding: 1.5rem;
+  border-radius: var(--gm-radius-lg);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  min-width: 250px;
+  z-index: 1000;
+  color: var(--gm-text);
+}
+
+.territory-panel h3 {
+  margin: 0 0 1rem 0;
+  color: var(--gm-text-gold);
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+}
+
+.territory-panel p {
+  margin: 0.5rem 0;
+  color: var(--gm-text);
+  font-size: 0.9rem;
+}
+
+/* ── Fog / partial visibility badges ─────────────────────────────── */
+.fog-badge {
+  display: inline-block;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: var(--gm-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.fog-info {
+  font-size: 0.875rem;
+  color: var(--gm-text-faint) !important;
+  font-style: italic;
+  margin-top: 0.75rem !important;
+}
+
+/* ── Territory action buttons ─────────────────────────────────────── */
+.territory-actions {
+  margin: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Claim button → gold gradient (primary action) */
+.claim-button {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #1a1a2e;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: var(--gm-radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: box-shadow var(--gm-transition), transform var(--gm-transition);
+}
+
+.claim-button:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.35);
+  transform: translateY(-1px);
+}
+
+.claim-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Attack button → red danger */
+.attack-button {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+  padding: 0.5rem 1rem;
+  border-radius: var(--gm-radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: background var(--gm-transition), border-color var(--gm-transition);
+}
+
+.attack-button:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #ef4444;
+}
+
+/* Close button → ghost */
+.close-button {
+  background: transparent;
+  color: var(--gm-text-muted);
+  border: 1px solid var(--gm-border);
+  padding: 0.5rem 1rem;
+  border-radius: var(--gm-radius-sm);
+  cursor: pointer;
+  margin-top: 1rem;
+  width: 100%;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  transition: background var(--gm-transition), color var(--gm-transition);
+}
+
+.close-button:hover {
+  background: rgba(251, 191, 36, 0.08);
+  border-color: var(--gm-border-gold);
+  color: var(--gm-text);
+}
+
+/* ── Error boundary fallback ──────────────────────────────────────── */
+.world-map-error {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--gm-bg-page);
+  color: var(--gm-text);
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.world-map-error h2 {
+  color: var(--gm-text-gold);
+  font-size: 1.4rem;
+}
+
+.world-map-error button {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #1a1a2e;
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: var(--gm-radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .world-map-header {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .map-legend {
+    gap: 0.5rem;
+  }
+
+  .legend-item {
+    font-size: 0.7rem;
+  }
+
+  .territory-panel {
+    left: 0.5rem;
+    right: 0.5rem;
+    min-width: unset;
+    top: auto;
+    bottom: 0.5rem;
+    transform: none;
+  }
+}

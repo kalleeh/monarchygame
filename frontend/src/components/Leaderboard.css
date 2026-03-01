@@ -84,17 +84,17 @@
 }
 
 .lb-tab:hover:not(.lb-tab--active) {
-  background: rgba(78, 205, 196, 0.1) !important;
-  border-color: rgba(78, 205, 196, 0.35);
+  background: rgba(251, 191, 36, 0.1) !important;
+  border-color: rgba(251, 191, 36, 0.35);
   color: #e2e8f0;
   transform: none; /* suppress game-pages translateY */
 }
 
 .lb-tab--active {
-  background: rgba(78, 205, 196, 0.18) !important;
-  border-color: #4ecdc4;
-  color: #4ecdc4;
-  box-shadow: 0 0 6px rgba(78, 205, 196, 0.3);
+  background: rgba(251, 191, 36, 0.18) !important;
+  border-color: #fbbf24;
+  color: #fbbf24;
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.3);
 }
 
 .lb-tab--guilds {
@@ -140,8 +140,8 @@
 }
 
 .lb-search-input:focus {
-  border-color: #4ecdc4;
-  box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.2);
+  border-color: #fbbf24;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.15);
 }
 
 /* Remove browser-default search clear button on WebKit */
@@ -225,7 +225,7 @@
 }
 
 .lb-guilds-td--rank {
-  color: #4ecdc4;
+  color: #fbbf24;
   font-weight: 700;
 }
 

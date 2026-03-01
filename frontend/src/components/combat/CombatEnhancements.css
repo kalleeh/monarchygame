@@ -203,7 +203,7 @@
 
 .replay-viewer {
   background: linear-gradient(135deg, rgba(26, 26, 46, 0.98) 0%, rgba(22, 33, 62, 0.98) 100%);
-  border: 2px solid rgba(139, 92, 246, 0.5);
+  border: 1px solid rgba(251, 191, 36, 0.4);
   border-radius: 16px;
   max-width: 800px;
   width: 100%;
@@ -216,7 +216,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.25);
 }
 
 .replay-header h2 {
@@ -260,7 +260,7 @@
 }
 
 .vs {
-  color: #8b5cf6;
+  color: #fbbf24;
   font-size: 1.5rem;
   font-weight: bold;
 }
@@ -300,7 +300,7 @@
 
 .replay-timeline {
   padding: 1.5rem;
-  border-top: 1px solid rgba(139, 92, 246, 0.3);
+  border-top: 1px solid rgba(251, 191, 36, 0.25);
 }
 
 .replay-timeline h3 {
@@ -323,7 +323,7 @@
 }
 
 .stat-group h4 {
-  color: #8b5cf6;
+  color: #fbbf24;
   margin: 0 0 0.5rem 0;
   font-size: 0.9rem;
 }
@@ -346,18 +346,20 @@
 }
 
 .replay-controls button {
-  background: rgba(139, 92, 246, 0.2);
-  border: 1px solid rgba(139, 92, 246, 0.5);
-  color: #fff;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: #fbbf24;
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
   cursor: pointer;
+  font-weight: 600;
   transition: all 0.2s ease;
 }
 
 .replay-controls button:hover:not(:disabled) {
-  background: rgba(139, 92, 246, 0.3);
-  border-color: #8b5cf6;
+  background: rgba(251, 191, 36, 0.22);
+  border-color: #fbbf24;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.2);
 }
 
 .replay-controls button:disabled {
@@ -372,7 +374,7 @@
 
 .replay-footer {
   padding: 1rem 1.5rem;
-  border-top: 1px solid rgba(139, 92, 246, 0.3);
+  border-top: 1px solid rgba(251, 191, 36, 0.25);
   text-align: center;
 }
 

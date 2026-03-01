@@ -10,6 +10,7 @@ import {
   type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import './WorldMap.css';
 import { ErrorBoundary } from './ErrorBoundary';
 import type { Schema } from '../../../amplify/data/resource';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
@@ -971,37 +972,15 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div
-      className="world-map"
-      style={{
-        backgroundColor: 'var(--color-bg-deep, #0f1629)',
-        color: 'var(--text-primary)',
-        minHeight: '100vh',
-      }}
-    >
-      <div
-        className="world-map-header"
-        style={{
-          backgroundColor: 'var(--color-bg-deep, #0f1629)',
-          padding: '1rem',
-          borderBottom: '1px solid var(--border-primary)',
-        }}
-      >
+    <div className="world-map">
+      <div className="world-map-header">
         <button
           onClick={onBack}
           className="back-button"
-          style={{
-            backgroundColor: 'var(--bg-card)',
-            color: 'var(--text-primary)',
-            border: '1px solid var(--border-primary)',
-            padding: '0.5rem 1rem',
-            borderRadius: '0.375rem',
-            cursor: 'pointer',
-          }}
         >
-          Back to Kingdom
+          ← Back to Kingdom
         </button>
-        <h1 style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display, Cinzel, serif)' }}>World Map</h1>
+        <h1>World Map</h1>
         <div className="map-legend">
           <div className="legend-item">
             <div className="legend-color" style={{ background: '#4ade80' }}></div>
@@ -1035,16 +1014,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         </div>
       </div>
 
-      <div
-        className="map-container"
-        style={{
-          height: '80vh',
-          backgroundColor: 'var(--color-bg-deep, #0f1629)',
-          border: '1px solid var(--border-primary)',
-          borderRadius: '0.5rem',
-          position: 'relative',
-        }}
-      >
+      <div className="map-container">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -1055,7 +1025,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           nodeTypes={nodeTypes}
           defaultViewport={{ x: 560, y: 420, zoom: 0.09 }}
           attributionPosition="bottom-left"
-          style={{ backgroundColor: 'var(--color-bg-deep, #0f1629)' }}
+          style={{ background: 'var(--gm-bg-page)' }}
         >
           <Controls style={{ backgroundColor: 'rgba(15,22,41,0.92)', border: '1px solid rgba(255,255,255,0.12)' }} />
           <MiniMap
@@ -1273,15 +1243,15 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
                       style={{
                         width: '100%',
                         padding: '0.6rem',
-                        background: blocked ? '#374151' : '#16a34a',
-                        border: blocked ? '1px solid #4b5563' : 'none',
-                        color: blocked ? '#6b7280' : '#fff',
+                        background: blocked ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                        border: blocked ? '1px solid rgba(99,102,241,0.3)' : 'none',
+                        color: blocked ? '#64748b' : '#1a1a2e',
                         cursor: blocked ? 'not-allowed' : 'pointer',
                         borderRadius: 6,
-                        fontFamily: 'var(--font-display, Cinzel, serif)',
                         fontSize: '0.85rem',
+                        fontWeight: 600,
                         letterSpacing: '0.05em',
-                        opacity: blocked ? 0.7 : 1,
+                        opacity: blocked ? 0.6 : 1,
                       }}
                     >
                       {blocked ? 'Cannot Claim' : 'Dispatch Settlers'}
@@ -1399,191 +1369,6 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         </div>
       )}
 
-      <style>{`
-        @keyframes slideInRight {
-          from { transform: translateX(100%); opacity: 0; }
-          to   { transform: translateX(0);    opacity: 1; }
-        }
-
-        .world-map {
-          height: 100vh;
-          display: flex;
-          flex-direction: column;
-        }
-
-        .world-map-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 1rem;
-          background: var(--color-bg-deep, #0f1629);
-          color: white;
-          border-bottom: 2px solid #374151;
-        }
-
-        .back-button {
-          background: #374151;
-          color: white;
-          border: none;
-          padding: 0.5rem 1rem;
-          border-radius: 0.375rem;
-          cursor: pointer;
-          transition: background-color 0.2s;
-        }
-
-        .back-button:hover {
-          background: #4b5563;
-        }
-
-        .map-legend {
-          display: flex;
-          gap: 1rem;
-        }
-
-        .legend-item {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .legend-color {
-          width: 1rem;
-          height: 1rem;
-          border-radius: 0.25rem;
-          border: 1px solid #374151;
-        }
-
-        .map-container {
-          flex: 1;
-          position: relative;
-        }
-
-        .map-stats {
-          background: rgba(15, 22, 41, 0.92);
-          border: 1px solid rgba(255,255,255,0.12);
-          padding: 1rem;
-          border-radius: 0.5rem;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
-
-        .map-stats h3 {
-          margin: 0 0 0.5rem 0;
-          color: #d4a017;
-          font-family: var(--font-display, 'Cinzel', serif);
-          font-size: 0.85rem;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-        }
-
-        .map-stats p {
-          margin: 0.25rem 0;
-          color: #d1d5db;
-          font-size: 0.85rem;
-        }
-
-        .territory-panel {
-          position: absolute;
-          top: 50%;
-          left: 1rem;
-          transform: translateY(-50%);
-          background: rgba(15, 22, 41, 0.97);
-          border: 1px solid rgba(255,255,255,0.12);
-          padding: 1.5rem;
-          border-radius: 0.5rem;
-          box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-          min-width: 250px;
-          z-index: 1000;
-          color: #f0e6cc;
-        }
-
-        .territory-panel h3 {
-          margin: 0 0 1rem 0;
-          color: #d4a017;
-          font-family: var(--font-display, 'Cinzel', serif);
-          font-size: 1.1rem;
-          letter-spacing: 0.04em;
-        }
-
-        .territory-panel p {
-          margin: 0.5rem 0;
-          color: #d1d5db;
-          font-size: 0.9rem;
-        }
-
-        .fog-badge {
-          display: inline-block;
-          background: #4b5563;
-          color: #d1d5db;
-          font-size: 0.75rem;
-          font-weight: 600;
-          padding: 0.2rem 0.6rem;
-          border-radius: 9999px;
-          margin-bottom: 0.75rem;
-          letter-spacing: 0.05em;
-          text-transform: uppercase;
-        }
-
-        .fog-info {
-          font-size: 0.875rem;
-          color: #6b7280 !important;
-          font-style: italic;
-          margin-top: 0.75rem !important;
-        }
-
-        .territory-actions {
-          margin: 1rem 0;
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .claim-button {
-          background: #16a34a;
-          color: white;
-          border: none;
-          padding: 0.5rem 1rem;
-          border-radius: 0.375rem;
-          cursor: pointer;
-          transition: background-color 0.2s;
-        }
-
-        .claim-button:hover:not(:disabled) {
-          background: #15803d;
-        }
-
-        .attack-button {
-          background: #dc2626;
-          color: white;
-          border: none;
-          padding: 0.5rem 1rem;
-          border-radius: 0.375rem;
-          cursor: pointer;
-          transition: background-color 0.2s;
-        }
-
-        .attack-button:hover {
-          background: #b91c1c;
-        }
-
-        .close-button {
-          background: transparent;
-          color: #9ca3af;
-          border: 1px solid rgba(255,255,255,0.15);
-          padding: 0.5rem 1rem;
-          border-radius: 0.375rem;
-          cursor: pointer;
-          margin-top: 1rem;
-          width: 100%;
-          font-family: var(--font-display, 'Cinzel', serif);
-          font-size: 0.8rem;
-          letter-spacing: 0.05em;
-        }
-
-        .close-button:hover {
-          background: rgba(255,255,255,0.08);
-          color: #f0e6cc;
-        }
-      `}</style>
     </div>
   );
 };
