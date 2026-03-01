@@ -8,6 +8,11 @@ import { isDemoMode } from '../utils/authMode';
 import toast from 'react-hot-toast';
 import SeasonResults from './SeasonResults';
 import type { SeasonResultsProps } from './SeasonResults';
+import { calculateNetworth, computeGuildRows } from './leaderboard/leaderboardHelpers';
+import type { GuildRow } from './leaderboard/leaderboardHelpers';
+import KingdomRankRow from './leaderboard/KingdomRankRow';
+import LeaderboardFilters from './leaderboard/LeaderboardFilters';
+import GuildRankingsTable from './leaderboard/GuildRankingsTable';
 import '../components/TerritoryExpansion.css';
 import '../components/Leaderboard.css';
 
@@ -55,17 +60,10 @@ function transformSchemaKingdom(k: Schema['Kingdom']['type']): Kingdom {
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-interface LeaderboardFilters {
+interface LeaderboardFilterState {
   showOnlyFairTargets: boolean;
   hideNPPKingdoms: boolean;
   showOnlyYourFaith: boolean;
-}
-
-interface TargetIndicator {
-  indicator: 'easy' | 'fair' | 'hard';
-  turnCostModifier: number;
-  color: string;
-  emoji: string;
 }
 
 // All 10 playable races (must stay in sync with RaceType in types/amplify.ts)
@@ -75,23 +73,6 @@ const ALL_RACES = [
 ] as const;
 
 type TabId = 'all' | typeof ALL_RACES[number] | 'guilds';
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-// Simple networth calculation (land + gold + units value)
-const calculateNetworth = (kingdom: Kingdom): number => {
-  const landValue = kingdom.resources.land * 1000;
-  const goldValue = kingdom.resources.gold;
-  const unitsValue = Object.values(kingdom.totalUnits).reduce((sum, count) => sum + count * 100, 0);
-  return landValue + goldValue + unitsValue;
-};
-
-const getTargetIndicator = (yourNW: number, theirNW: number): TargetIndicator => {
-  const ratio = theirNW / yourNW;
-  if (ratio < 0.5)                    return { indicator: 'easy', turnCostModifier: 1.5, color: 'text-yellow-400', emoji: '🟡' };
-  if (ratio >= 0.5 && ratio <= 1.5)  return { indicator: 'fair', turnCostModifier: 1.0, color: 'text-green-400', emoji: '🟢' };
-  return { indicator: 'hard', turnCostModifier: 2.0, color: 'text-red-400', emoji: '🔴' };
-};
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -107,7 +88,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
   const [activeTab, setActiveTab] = useState<TabId>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [filters, setFilters] = useState<LeaderboardFilters>(() => {
+  const [filters, setFilters] = useState<LeaderboardFilterState>(() => {
     const saved = localStorage.getItem('leaderboard-filters');
     return saved ? JSON.parse(saved) : {
       showOnlyFairTargets: false,
@@ -346,90 +327,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
   }, [tabFilteredKingdoms, searchQuery, activeTab]);
 
   // Guild aggregation for Guilds tab
-  const guildRows = useMemo(() => {
+  const guildRows = useMemo((): GuildRow[] => {
     if (activeTab !== 'guilds') return [];
-
-    const map = new Map<string, {
-      guildId: string;
-      label: string;
-      members: number;
-      totalNW: number;
-      races: Set<string>;
-    }>();
-    for (const k of allKingdoms) {
-      if (!k.guildId) continue;
-      const nw = calculateNetworth(k);
-      if (map.has(k.guildId)) {
-        const entry = map.get(k.guildId)!;
-        entry.members += 1;
-        entry.totalNW += nw;
-        if (k.race) entry.races.add(k.race.toLowerCase());
-      } else {
-        // Prefer: guildName on kingdom > guildNamesMap lookup > truncated-ID fallback
-        const resolvedName =
-          (k as Kingdom & { guildName?: string }).guildName ||
-          guildNamesMap[k.guildId] ||
-          `Guild ${k.guildId.slice(0, 8)}`;
-        const races = new Set<string>();
-        if (k.race) races.add(k.race.toLowerCase());
-        map.set(k.guildId, {
-          guildId: k.guildId,
-          label: resolvedName,
-          members: 1,
-          totalNW: nw,
-          races,
-        });
-      }
-    }
-
-    const rows = Array.from(map.values()).map(row => {
-      // Composition check: has mage-type, warrior-type, and scum-type races
-      // Mage-types: Elven, Sidhe, Elemental, Fae, Vampire
-      // Warrior-types: Human, Droben, Centaur, Dwarven, Goblin
-      // Scum-types: Goblin (also warrior), Vampire (also mage), any race with scum stat > 0
-      // Simplified heuristic: check for at least 3 distinct race archetypes
-      const mageRaces = new Set(['sidhe', 'elven', 'vampire', 'elemental', 'fae']);
-      const warriorRaces = new Set(['droben', 'goblin', 'dwarven', 'centaur', 'human']);
-      const scumRaces = new Set(['centaur', 'human', 'vampire', 'sidhe', 'goblin']);
-
-      const hasMage = [...row.races].some(r => mageRaces.has(r));
-      const hasWarrior = [...row.races].some(r => warriorRaces.has(r));
-      const hasScum = [...row.races].some(r => scumRaces.has(r));
-      const compositionScore = (hasMage ? 1 : 0) + (hasWarrior ? 1 : 0) + (hasScum ? 1 : 0);
-      const hasFullComposition = compositionScore >= 3;
-
-      // Coordination multiplier: active war involvement boosts by 1.2x
-      const isCurrentPlayerGuild = row.guildId === currentKingdom.guildId;
-      const coordMultiplier = (hasFullComposition || (isCurrentPlayerGuild && activeWarCount > 0)) ? 1.2 : 1.0;
-
-      // Sort key: totalNW * composition multiplier
-      const sortKey = row.totalNW * coordMultiplier;
-
-      return {
-        ...row,
-        hasMage,
-        hasWarrior,
-        hasScum,
-        hasFullComposition,
-        coordMultiplier,
-        sortKey,
-      };
-    });
-
-    return rows.sort((a, b) => b.sortKey - a.sortKey);
+    return computeGuildRows(allKingdoms, guildNamesMap, activeWarCount, currentKingdom.guildId);
   }, [activeTab, allKingdoms, guildNamesMap, activeWarCount, currentKingdom.guildId]);
-
-  // ── Rank-delta helper ────────────────────────────────────────────────────
-  const getRankDelta = (kingdom: Kingdom, currentRank: number) => {
-    const prev = kingdom.stats.previousSeasonRank;
-    if (prev == null) {
-      return <span className="lb-rank-new">NEW</span>;
-    }
-    const delta = prev - currentRank; // positive = improved
-    if (delta === 0) return null;
-    if (delta > 0) return <span className="lb-rank-up">▲{delta}</span>;
-    return <span className="lb-rank-down">▼{Math.abs(delta)}</span>;
-  };
 
   // ── Header label ─────────────────────────────────────────────────────────
   const tabLabel =
@@ -493,141 +394,17 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
 
       {/* ── Filters (hidden on guilds tab) ──────────────────────────────── */}
       {activeTab !== 'guilds' && (
-        <>
-          {/* Search input */}
-          <div className="lb-search-wrapper">
-            <input
-              type="search"
-              placeholder="Search kingdoms…"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="lb-search-input"
-              aria-label="Search kingdoms by name"
-            />
-          </div>
-
-          {/* Toggle filters */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', marginBottom: '1rem' }}>
-            {([
-              { key: 'showOnlyFairTargets', label: 'Show fair targets only', checked: filters.showOnlyFairTargets },
-              { key: 'hideNPPKingdoms',     label: 'Hide protected players', checked: filters.hideNPPKingdoms },
-              { key: 'showOnlyYourFaith',   label: 'Show guild-eligible',    checked: filters.showOnlyYourFaith },
-            ] as const).map(({ key, label, checked }) => (
-              <label
-                key={key}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', userSelect: 'none', color: '#d1d5db' }}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) => setFilters({ ...filters, [key]: e.target.checked })}
-                  style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
-                />
-                {/* Toggle track */}
-                <span
-                  aria-hidden="true"
-                  style={{
-                    display: 'inline-block',
-                    position: 'relative',
-                    width: '40px',
-                    height: '22px',
-                    borderRadius: '11px',
-                    background: checked ? '#14b8a6' : '#374151',
-                    transition: 'background 0.2s ease',
-                    flexShrink: 0,
-                    boxShadow: checked ? '0 0 6px rgba(20,184,166,0.5)' : 'none',
-                  }}
-                >
-                  <span
-                    style={{
-                      position: 'absolute',
-                      top: '3px',
-                      left: checked ? '21px' : '3px',
-                      width: '16px',
-                      height: '16px',
-                      borderRadius: '50%',
-                      background: '#fff',
-                      transition: 'left 0.2s ease',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
-                    }}
-                  />
-                </span>
-                {label}
-              </label>
-            ))}
-          </div>
-        </>
+        <LeaderboardFilters
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          filters={filters}
+          onFiltersChange={setFilters}
+        />
       )}
 
       {/* ── Guilds tab content ───────────────────────────────────────────── */}
       {activeTab === 'guilds' && (
-        <div className="lb-guilds-table-wrapper">
-          {guildRows.length === 0 ? (
-            <p className="lb-empty-state">No guilds found. Kingdoms must have a guild affiliation to appear here.</p>
-          ) : (
-            <table className="lb-guilds-table" aria-label="Guild rankings">
-              <thead>
-                <tr>
-                  <th className="lb-guilds-th lb-guilds-th--rank">Rank</th>
-                  <th className="lb-guilds-th">Guild</th>
-                  <th className="lb-guilds-th lb-guilds-th--center">Members</th>
-                  <th className="lb-guilds-th lb-guilds-th--center">Comp</th>
-                  <th className="lb-guilds-th lb-guilds-th--right">Combined Networth</th>
-                </tr>
-              </thead>
-              <tbody>
-                {guildRows.map((row, idx) => (
-                  <tr key={row.guildId} className={`lb-guilds-row ${idx % 2 === 0 ? 'lb-guilds-row--even' : ''}`}>
-                    <td className="lb-guilds-td lb-guilds-td--rank">#{idx + 1}</td>
-                    <td className="lb-guilds-td lb-guilds-td--name">
-                      <span>{row.label}</span>
-                      {row.coordMultiplier > 1.0 && (
-                        <span
-                          title="Active coordination bonus"
-                          style={{
-                            marginLeft: '0.5rem',
-                            padding: '0.1rem 0.4rem',
-                            background: 'rgba(245,158,11,0.15)',
-                            border: '1px solid rgba(245,158,11,0.4)',
-                            borderRadius: '4px',
-                            fontSize: '0.7rem',
-                            color: '#f59e0b',
-                            fontWeight: 600,
-                            verticalAlign: 'middle',
-                          }}
-                        >
-                          Coord: {row.coordMultiplier.toFixed(1)}×
-                        </span>
-                      )}
-                    </td>
-                    <td className="lb-guilds-td lb-guilds-td--center">{row.members}</td>
-                    <td className="lb-guilds-td lb-guilds-td--center">
-                      {row.hasFullComposition ? (
-                        <span title="Full composition: mage + warrior + scum" style={{ fontSize: '1rem', letterSpacing: '-0.05em' }}>
-                          ⚔🎭💰
-                        </span>
-                      ) : (
-                        <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>
-                          {row.hasWarrior ? '⚔' : '·'}
-                          {row.hasMage ? '🎭' : '·'}
-                          {row.hasScum ? '💰' : '·'}
-                        </span>
-                      )}
-                    </td>
-                    <td className="lb-guilds-td lb-guilds-td--right">
-                      {(row.totalNW / 1_000_000).toFixed(2)}M
-                      {row.coordMultiplier > 1.0 && (
-                        <span style={{ color: '#f59e0b', fontSize: '0.75rem', marginLeft: '0.3rem' }}>
-                          ({(row.sortKey / 1_000_000).toFixed(2)}M eff.)
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <GuildRankingsTable guildRows={guildRows} />
       )}
 
       {/* ── Kingdom grid (all / race tabs) ─────────────────────────────── */}
@@ -638,120 +415,16 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
           )}
 
           <div className="territory-grid">
-            {visibleKingdoms.map((kingdom, index) => {
-              const networth = calculateNetworth(kingdom);
-              const indicator = getTargetIndicator(currentNetworth, networth);
-              const baseTurnCost = 4;
-              const totalTurnCost = Math.round(baseTurnCost * indicator.turnCostModifier);
-              const isCurrentKingdom = kingdom.id === currentKingdom.id;
-              const rankNumber = index + 1;
-
-              return (
-                <div key={kingdom.id} className={`kingdom-card ${isCurrentKingdom ? 'owned' : ''}`}>
-                  <div className="territory-header">
-                    <span className="territory-icon">{isCurrentKingdom ? '⭐' : '👑'}</span>
-                    <div className="territory-info">
-                      <h4 style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.3rem' }}>
-                        {/* Online presence dot */}
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            background: kingdom.isOnline ? '#22c55e' : '#64748b',
-                            boxShadow: kingdom.isOnline ? '0 0 4px #22c55e' : 'none',
-                            marginRight: '2px',
-                            verticalAlign: 'middle',
-                            flexShrink: 0,
-                          }}
-                          title={kingdom.isOnline ? 'Online' : 'Offline'}
-                        />
-
-                        {/* Rank with delta */}
-                        <span className="lb-rank-badge">
-                          #{rankNumber}
-                          {getRankDelta(kingdom, rankNumber)}
-                        </span>
-                        {' '}{kingdom.name}{isCurrentKingdom ? ' (You)' : ''}
-
-                        {/* Diplomatic message button — not shown for current player's own kingdom */}
-                        {!isCurrentKingdom && onSendMessage && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onSendMessage({ id: kingdom.id, name: kingdom.name });
-                            }}
-                            title={`Send diplomatic message to ${kingdom.name}`}
-                            aria-label={`Send diplomatic message to ${kingdom.name}`}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              background: 'rgba(139, 92, 246, 0.14)',
-                              border: '1px solid rgba(139, 92, 246, 0.4)',
-                              borderRadius: '6px',
-                              color: '#c4b5fd',
-                              cursor: 'pointer',
-                              fontSize: '0.85rem',
-                              lineHeight: 1,
-                              padding: '2px 6px',
-                              marginLeft: '4px',
-                              transition: 'background 0.15s, box-shadow 0.15s',
-                              verticalAlign: 'middle',
-                              flexShrink: 0,
-                            }}
-                            onMouseEnter={e => {
-                              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(139, 92, 246, 0.28)';
-                              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 6px rgba(139, 92, 246, 0.4)';
-                            }}
-                            onMouseLeave={e => {
-                              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(139, 92, 246, 0.14)';
-                              (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none';
-                            }}
-                          >
-                            &#9993;
-                          </button>
-                        )}
-                      </h4>
-                      <span className="territory-type">{kingdom.race}</span>
-                    </div>
-                  </div>
-
-                  <div className="territory-production">
-                    <div className="production-label">Networth</div>
-                    <div className="production-items">
-                      <span className="production-item">{(networth / 1_000_000).toFixed(2)}M</span>
-                    </div>
-                  </div>
-
-                  <div className="territory-production">
-                    <div className="production-label">Target Difficulty</div>
-                    <div className="production-items">
-                      <span className="production-item">
-                        {indicator.emoji} {indicator.indicator.charAt(0).toUpperCase() + indicator.indicator.slice(1)} ({totalTurnCost} turns)
-                      </span>
-                    </div>
-                  </div>
-
-                  {kingdom.stats.previousSeasonRank != null && (
-                    <div className="territory-production">
-                      <div className="production-label">
-                        Last Season{kingdom.stats.previousSeasonNumber != null ? ` #${kingdom.stats.previousSeasonNumber}` : ''}
-                      </div>
-                      <div className="production-items">
-                        <span className="production-item">
-                          Rank #{kingdom.stats.previousSeasonRank}
-                          {kingdom.stats.previousSeasonNetworth != null && (
-                            <> &mdash; {(kingdom.stats.previousSeasonNetworth / 1_000_000).toFixed(2)}M NW</>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {visibleKingdoms.map((kingdom, index) => (
+              <KingdomRankRow
+                key={kingdom.id}
+                kingdom={kingdom}
+                rankNumber={index + 1}
+                currentKingdom={currentKingdom}
+                currentNetworth={currentNetworth}
+                onSendMessage={onSendMessage}
+              />
+            ))}
           </div>
         </>
       )}

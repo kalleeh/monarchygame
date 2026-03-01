@@ -1,7 +1,7 @@
 /**
  * Building Management Component
  * Allows players to construct buildings on their land.
- * Uses the building-constructor Lambda via AmplifyFunctionService.
+ * Uses the building-constructor Lambda via BuildingService.
  *
  * Valid building types (from handler.ts): castle, barracks, farm, mine, temple, tower, wall
  * Cost: 250 gold per building, 1 turn per construction action.
@@ -10,7 +10,8 @@
 import React, { useState, useCallback } from 'react';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { TopNavigation } from './TopNavigation';
-import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { constructBuildings } from '../services/domain/BuildingService';
+import { refreshKingdomResources } from '../services/domain/CombatService';
 import { ToastService } from '../services/toastService';
 import { getBuildingName } from '../utils/buildingMechanics';
 import './BuildingManagement.css';
@@ -146,17 +147,14 @@ export default function BuildingManagement({
 
       setLoading((prev) => ({ ...prev, [building.id]: true }));
       try {
-        const result = (await AmplifyFunctionService.callFunction('building-constructor', {
+        const result = await constructBuildings({
           kingdomId,
           buildingType: building.id,
           quantity,
-        })) as { success?: boolean; buildings?: string; error?: string } | null;
+        });
 
-        const success = (result as Record<string, unknown>)?.success ?? false;
-        if (!success) {
-          const errMsg =
-            (result as Record<string, unknown>)?.error as string | undefined ||
-            'Construction failed.';
+        if (!result.success) {
+          const errMsg = result.error || 'Construction failed.';
           ToastService.error(errMsg);
           return;
         }
@@ -166,7 +164,7 @@ export default function BuildingManagement({
         addTurns(-1);
 
         // Update displayed building counts from server response
-        const buildingsStr = (result as Record<string, unknown>)?.buildings as string | undefined;
+        const buildingsStr = result.buildings;
         if (buildingsStr) {
           try {
             const updated = JSON.parse(buildingsStr) as Record<string, number>;
@@ -194,7 +192,7 @@ export default function BuildingManagement({
         );
 
         // Refresh from server after Lambda updates turns balance
-        await AmplifyFunctionService.refreshKingdomResources(kingdomId);
+        await refreshKingdomResources(kingdomId);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Construction failed.';
         ToastService.error(message);

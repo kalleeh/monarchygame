@@ -5,17 +5,16 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import './CombatInterface.css';
-import type { 
-  Kingdom, 
-  AttackRequest, 
+import type {
+  Kingdom,
+  AttackRequest,
   BattleHistory,
   CombatNotification,
   DefenseSettings,
-  CombatResult
 } from '../types/combat';
 import type { RaceType } from '../types/amplify';
 
-import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { processCombat } from '../services/domain/CombatService';
 import { AttackPlanner } from './combat/AttackPlanner';
 import { BattleReports } from './combat/BattleReports';
 import { DefenseManager } from './combat/DefenseManager';
@@ -110,15 +109,13 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
       setError(null);
       
       // Use secure Lambda function for combat processing
-      const result = await AmplifyFunctionService.processCombat({
+      const combatResult = await processCombat({
         kingdomId: currentKingdom.id,
         attackerKingdomId: currentKingdom.id,
         defenderKingdomId: request.targetKingdomId || request.defenderId,
         attackType: request.attackType,
         units: request.units
       });
-
-      const combatResult = result as CombatResult & { success: boolean; error?: string };
       
       if (combatResult.success) {
         console.log('Combat result:', combatResult);

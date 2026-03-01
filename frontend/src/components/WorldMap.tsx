@@ -13,7 +13,7 @@ import '@xyflow/react/dist/style.css';
 import './WorldMap.css';
 import { ErrorBoundary } from './ErrorBoundary';
 import type { Schema } from '../../../amplify/data/resource';
-import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { WorldStateService } from '../services/WorldStateService';
 import { useTerritoryStore } from '../stores/territoryStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { useKingdomStore } from '../stores/kingdomStore';
@@ -284,16 +284,9 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         const seasonId = (kingdom as unknown as { seasonId?: string }).seasonId ?? '';
         if (!kingdom.id || !seasonId) return;
 
-        const result = await AmplifyFunctionService.callFunction('season-manager', {
-          kingdomId: kingdom.id,
-          seasonId,
-          action: 'getWorldState',
-        });
-
-        const parsed =
-          typeof result === 'string' ? JSON.parse(result) : result;
-        if (parsed && typeof parsed === 'object') {
-          setWorldState(parsed as WorldStateResult);
+        const result = await WorldStateService.getWorldState(kingdom.id, seasonId);
+        if (result && typeof result === 'object') {
+          setWorldState(result as unknown as WorldStateResult);
         }
       } catch (err) {
         console.warn('WorldState fetch failed (using client-side visibility):', err);

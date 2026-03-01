@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import type { Territory } from '../types/territory';
-import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { claimTerritory } from '../services/domain/TerritoryService';
+import { constructBuildings } from '../services/domain/BuildingService';
 import { ToastService } from '../services/toastService';
 import { TopNavigation } from './TopNavigation';
 import { LoadingButton } from './ui/loading/LoadingButton';
@@ -59,7 +60,7 @@ export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProp
     
     try {
       const result = await ToastService.promise(
-        AmplifyFunctionService.claimTerritory({
+        claimTerritory({
           kingdomId: kingdom.id,
           name: formData.name,
           terrainType: formData.terrainType,
@@ -95,7 +96,7 @@ export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProp
 
     try {
       const result = await ToastService.promise(
-        AmplifyFunctionService.constructBuildings({
+        constructBuildings({
           kingdomId: kingdom.id,
           territoryId,
           buildingType,
