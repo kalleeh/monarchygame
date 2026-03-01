@@ -289,6 +289,31 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         memberIds = memberIds.filter((id) => id !== targetKingdomId);
         await dbUpdate('Alliance', allianceId, { memberIds: JSON.stringify(memberIds) });
 
+        // Recalculate composition bonus and notify if kick caused bonus loss (best-effort)
+        try {
+          const compositionBonus = await calculateCompositionBonus(memberIds);
+          const currentStats = typeof alliance.stats === 'string'
+            ? JSON.parse(alliance.stats as string)
+            : (alliance.stats ?? {});
+          const previousBonusOnKick = (currentStats.compositionBonus?.combat ?? 1.0) as number;
+          await dbUpdate('Alliance', allianceId, {
+            stats: JSON.stringify({ ...currentStats, compositionBonus })
+          });
+          if (previousBonusOnKick >= 1.05 && compositionBonus.combat < 1.05) {
+            const now = new Date().toISOString();
+            await Promise.all(memberIds.map(memberId =>
+              dbCreate('CombatNotification', {
+                recipientId: memberId,
+                type: 'alliance',
+                message: `Your alliance has lost its full composition bonus after a member was kicked. Recruit a mage (Sidhe/Elven/Vampire/Elemental/Fae), warrior (Droben/Goblin/Dwarven/Centaur/Human), or scum (Centaur/Human/Vampire/Sidhe/Goblin) to restore the +5% bonus.`,
+                data: JSON.stringify({ allianceId, lostBonus: previousBonusOnKick }),
+                isRead: false,
+                createdAt: now,
+              })
+            )).catch(() => { /* non-fatal */ });
+          }
+        } catch { /* non-fatal */ }
+
         log.info('alliance-manager', 'kickMember', { kingdomId, allianceId, targetKingdomId });
         return { success: true, result: JSON.stringify({ allianceId, kickedKingdomId: targetKingdomId, memberIds }) };
       }
