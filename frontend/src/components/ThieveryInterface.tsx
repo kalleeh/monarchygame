@@ -1,6 +1,6 @@
 /**
  * Thievery/Espionage Interface Component
- * Provides UI for scum operations: Scout, Steal, Sabotage, Burn
+ * Provides UI for scum operations: Scout, Steal, Sabotage, Burn, Desecrate Temples
  * Follows existing component patterns (SpellCastingInterface, UnitSummonInterface)
  */
 
@@ -41,6 +41,12 @@ const OPERATION_CONFIG: Record<OperationType, { label: string; turnCost: number;
     turnCost: THIEVERY_MECHANICS.OPERATION_COSTS.BURN,
     description: 'High-risk operation to destroy enemy scum. Highest casualties on both sides.',
     color: '#ef4444',
+  },
+  desecrate: {
+    label: 'Desecrate Temples',
+    turnCost: THIEVERY_MECHANICS.OPERATION_COSTS.DESECRATE,
+    description: 'Destroy ~10% of enemy temples, crippling their elan generation. The primary counter to Sidhe and Vampire mage kingdoms.',
+    color: '#a855f7',
   },
 };
 
@@ -141,6 +147,11 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, onBack
               break;
             case 'burn':
               message = `Burn successful! Destroyed ${result.result.casualtiesInflicted} enemy scum in ${selectedKingdom.name}.`;
+              break;
+            case 'desecrate':
+              message = result.result.templesDestroyed > 0
+                ? `Desecration successful! Destroyed ${result.result.templesDestroyed} temples in ${selectedKingdom.name}. Their elan generation is weakened.`
+                : `Desecration successful against ${selectedKingdom.name} (no temples to destroy).`;
               break;
           }
         } else {

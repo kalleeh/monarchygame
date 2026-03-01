@@ -57,6 +57,7 @@ export const THIEVERY_MECHANICS = {
     SABOTAGE: 3,                 // 3 turns per sabotage attempt
     INTERCEPT: 2,                // 2 turns per caravan intercept
     BURN: 4,                     // 4 turns per burning attempt
+    DESECRATE: 3,                // 3 turns — destroy enemy temples (counters mage kingdoms)
   }
 }
 

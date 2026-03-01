@@ -4,7 +4,7 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { dbGet, dbUpdate, dbList, dbAtomicAdd } from '../data-client';
 
-const VALID_OPERATIONS = ['scout', 'steal', 'sabotage', 'burn'] as const;
+const VALID_OPERATIONS = ['scout', 'steal', 'sabotage', 'burn', 'desecrate'] as const;
 const MIN_SCOUTS = 100;
 
 type KingdomType = Record<string, unknown> & { turnsBalance?: number | null };
@@ -126,6 +126,18 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
         await dbUpdate('Kingdom', targetKingdomId, {
           totalUnits: updatedTargetUnits,
         });
+      } else if (operation === 'desecrate') {
+        // Desecrate Temples: destroy ~10% of target's temples, reducing their elan generation.
+        // This is the primary counter to sorcery-focused kingdoms (Sidhe, Vampire).
+        const targetBuildings = (targetKingdom.buildings ?? {}) as Record<string, number>;
+        const currentTemples = targetBuildings.temple ?? 0;
+        const templesDestroyed = Math.floor(currentTemples * 0.10);
+        if (templesDestroyed > 0) {
+          await dbUpdate('Kingdom', targetKingdomId, {
+            buildings: { ...targetBuildings, temple: Math.max(0, currentTemples - templesDestroyed) },
+          });
+        }
+        (intelligence as Record<string, unknown>).templesDestroyed = templesDestroyed;
       }
     }
 

@@ -210,17 +210,18 @@ export const RACES: Record<string, Race> = {
       building: 3
     },
     specialAbility: {
-      name: 'None',
-      description: 'No special ability (compensated by strong defensive stats)',
+      name: 'Fortress Mastery',
+      description: 'Elite defensive units and superior fort construction. Vampire defenses are 35% stronger than other races, making a developed Vampire kingdom nearly impenetrable. Best elan generation outside Sidhe.',
       mechanics: {
-        type: 'none'
+        type: 'defense_bonus',
+        value: 1.35
       },
-      strategicValue: 'Potentially untouchable if properly developed, excellent fort quality',
-      limitations: 'Requires 2x the resources of other races'
+      strategicValue: 'Late-game powerhouse. Slow early development, near-untouchable once fortified. Pair with Sidhe sorcery support in early game.',
+      limitations: 'Requires 2x resources for buildings. Vulnerable early game before forts are established.'
     },
     unitTypes: ['Thralls', 'Vampire Spawn', 'Vampire Lords', 'Ancient Vampires'],
     startingResources: {
-      gold: 1800,
+      gold: 2800,  // Higher starting gold to offset 2× building costs (effective budget ≈ 1400 vs Human's 2000)
       population: 300,
       land: 110,
       turns: 100

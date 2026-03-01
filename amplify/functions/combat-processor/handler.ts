@@ -29,7 +29,7 @@ const RACE_OFFENSE_BONUSES: Record<string, number> = {
 const RACE_DEFENSE_BONUSES: Record<string, number> = {
   'Dwarven':   1.20,  // warDefense: 5 — fortress defenders, +20% defense
   'Elven':     1.10,  // warDefense: 4 — defensive specialists
-  'Vampire':   1.10,  // warDefense: 4 — resilient
+  'Vampire':   1.35,  // warDefense: 5 effective — fortress race, compensates for 2× building cost handicap
   'Human':     1.05,  // warDefense: 3 — balanced
   'Fae':       1.05,  // warDefense: 3 — moderate defense
   'Goblin':    1.00,  // warDefense: 2 — glass cannon
