@@ -1,7 +1,8 @@
 /**
  * Advanced Combat System State Management
  * IQC Compliant: Integrity (server validation), Quality (typed), Consistency (Zustand pattern)
- * Units are managed in kingdomStore - this store handles combat operations only
+ * Units are managed in kingdomStore - this store handles combat operations only.
+ * Formation management has been extracted to formationStore.
  */
 
 import { create } from 'zustand';
@@ -21,6 +22,9 @@ import { useCombatReplayStore } from './combatReplayStore';
 import { TerrainType, FormationType } from '../types/combat';
 import { TERRAIN_MODIFIERS, FORMATION_MODIFIERS, applyTerrainToUnitPower } from '../../../shared/combat/combatCache';
 import { calculateGoldLoot, applyCasualtyRate } from '../utils/combatMechanics';
+import { useFormationStore, type Unit, type Formation } from './formationStore';
+
+export type { Unit, Formation };
 
 /**
  * Fire-and-forget: check if attacker and defender are in an active guild war
@@ -84,30 +88,6 @@ async function maybeRecordGuildWarScore(params: {
   }
 }
 
-interface Unit {
-  id: string;
-  type: 'peasant' | 'militia' | 'knight' | 'cavalry' | 'archer' | 'mage';
-  count: number;
-  attack: number;
-  defense: number;
-  health: number;
-  position?: { x: number; y: number };
-}
-
-interface Formation {
-  id: string;
-  name: string;
-  units: Unit[];
-  bonuses: {
-    attack: number;
-    defense: number;
-    special?: string;
-  };
-  positions: Record<string, { x: number; y: number }>;
-}
-
-export type { Unit, Formation };
-
 interface BattleReport {
   id: string;
   timestamp: number;
@@ -137,22 +117,14 @@ interface SiegeOperation {
 export const useCombatStore = create(
   combine(
     {
-      // Unit selection (reads from kingdomStore)
-      selectedUnits: [] as Unit[],
-      
-      // Formation system
-      formations: [] as Formation[],
-      activeFormation: null as string | null,
-      formationPositions: {} as Record<string, { x: number; y: number }>,
-      
       // Battle state
       currentBattle: null as BattleReport | null,
       battleHistory: [] as BattleReport[],
-      
+
       // War declarations (from documentation)
       warDeclarations: [] as WarDeclaration[],
       attackCounts: {} as Record<string, number>, // Track attacks per target
-      
+
       // Siege warfare
       activeSieges: [] as SiegeOperation[],
       siegeHistory: [] as Array<{
@@ -161,64 +133,20 @@ export const useCombatStore = create(
         success: boolean;
         duration: number;
       }>,
-      
+
       // UI state
-      showFormationEditor: false,
       selectedBattleReport: null as string | null,
       loading: false,
       error: null as string | null,
     },
     (set, get) => ({
-      // Unit selection (reads from kingdomStore)
-      selectUnit: (unitId: string) => {
-        const kingdomUnits = useKingdomStore.getState().units;
-        const unit = kingdomUnits.find(u => u.id === unitId);
-        if (unit && !get().selectedUnits.find(u => u.id === unitId)) {
-          set((state) => ({
-            selectedUnits: [...state.selectedUnits, unit as Unit]
-          }));
-        }
-      },
-
-      deselectUnit: (unitId: string) => {
-        set((state) => ({
-          selectedUnits: state.selectedUnits.filter(u => u.id !== unitId)
-        }));
-      },
-
-      // Formation management
-      createFormation: (name: string, units: Unit[]) => {
-        const formation: Formation = {
-          id: `formation-${Date.now()}`,
-          name,
-          units,
-          bonuses: calculateFormationBonuses(units),
-          positions: {}
-        };
-
-        set((state) => ({
-          formations: [...state.formations, formation]
-        }));
-
-        return formation.id;
-      },
-
-      updateFormationPositions: (formationId: string, positions: Record<string, { x: number; y: number }>) => {
-        set((state) => ({
-          formations: state.formations.map(f => 
-            f.id === formationId ? { ...f, positions } : f
-          )
-        }));
-      },
-
-      setActiveFormation: (formationId: string | null) => {
-        set({ activeFormation: formationId });
-      },
-
       // Battle execution
       executeBattle: async (targetId: string) => {
-        const state = get();
-        if (state.selectedUnits.length === 0) {
+        // Read formation state from formationStore
+        const formationState = useFormationStore.getState();
+        const { selectedUnits, activeFormation, formations } = formationState;
+
+        if (selectedUnits.length === 0) {
           set({ error: 'No units selected for battle' });
           return null;
         }
@@ -236,12 +164,12 @@ export const useCombatStore = create(
 
             // Convert selected units to record format for Lambda
             const unitPayload: Record<string, number> = {};
-            state.selectedUnits.forEach(unit => {
+            selectedUnits.forEach(unit => {
               unitPayload[unit.type] = (unitPayload[unit.type] || 0) + unit.count;
             });
 
             // Resolve the active formation ID and terrain from the selected AI kingdom
-            const activeFormationId = state.activeFormation ?? undefined;
+            const activeFormationId = activeFormation ?? undefined;
             // Defender terrain: look up the target kingdom's terrain if available
             const aiKingdomsForTerrain = useAIKingdomStore.getState().aiKingdoms;
             const targetKingdomForTerrain = aiKingdomsForTerrain.find(k => k.id === targetId);
@@ -274,7 +202,7 @@ export const useCombatStore = create(
               timestamp: Date.now(),
               attacker: kingdomId,
               defender: targetId,
-              attackerUnits: state.selectedUnits,
+              attackerUnits: selectedUnits,
               defenderUnits: [],
               result: combatData.result === 'with_ease' || combatData.result === 'good_fight' ? 'victory' : 'defeat',
               casualties: combatData.casualties || { attacker: {}, defender: {} },
@@ -321,9 +249,10 @@ export const useCombatStore = create(
             set((state) => ({
               currentBattle: battleReport,
               battleHistory: [battleReport, ...state.battleHistory.slice(0, 49)],
-              selectedUnits: [],
               loading: false
             }));
+            // Clear selected units in formationStore after battle
+            useFormationStore.getState().clearSelectedUnits();
 
             // Capture replay for auth-mode battle
             useCombatReplayStore.getState().addReplay({
@@ -357,7 +286,7 @@ export const useCombatStore = create(
           // Get defender kingdom data from AI store
           const aiKingdoms = useAIKingdomStore.getState().aiKingdoms;
           const defenderKingdom = aiKingdoms.find(k => k.id === targetId);
-          
+
           if (!defenderKingdom) {
             set({ error: 'Defender kingdom not found', loading: false });
             return null;
@@ -383,10 +312,10 @@ export const useCombatStore = create(
 
           // Battle calculation with real defender data
           const battleResult = await simulateBattle(
-            state.selectedUnits,
+            selectedUnits,
             defenderKingdom,
-            state.activeFormation ? (state.formations.find(f => f.id === state.activeFormation) || null) : null,
-            state.activeFormation ?? undefined,
+            activeFormation ? (formations.find(f => f.id === activeFormation) || null) : null,
+            activeFormation ?? undefined,
             defenderTerrain,
           );
 
@@ -395,7 +324,7 @@ export const useCombatStore = create(
             timestamp: Date.now(),
             attacker: 'current-player',
             defender: targetId,
-            attackerUnits: state.selectedUnits,
+            attackerUnits: selectedUnits,
             defenderUnits: battleResult.defenderUnits,
             result: battleResult.result,
             casualties: battleResult.casualties,
@@ -417,9 +346,10 @@ export const useCombatStore = create(
           set((state) => ({
             currentBattle: battleReport,
             battleHistory: [battleReport, ...state.battleHistory.slice(0, 49)],
-            selectedUnits: [], // Clear selected units after battle
             loading: false
           }));
+          // Clear selected units in formationStore after battle
+          useFormationStore.getState().clearSelectedUnits();
 
           // Auto-complete bounty if the defender was the claimed bounty target (demo mode)
           if (battleReport.result === 'victory') {
@@ -438,7 +368,7 @@ export const useCombatStore = create(
           }
 
           // Capture replay for demo-mode battle
-          const demoActiveFormationId = state.activeFormation ?? undefined;
+          const demoActiveFormationId = activeFormation ?? undefined;
           const aiKingdomsForReplay = useAIKingdomStore.getState().aiKingdoms;
           const defenderKingdomForReplay = aiKingdomsForReplay.find(k => k.id === targetId);
           const demoTerrainId: string | undefined =
@@ -471,9 +401,9 @@ export const useCombatStore = create(
 
           return battleReport;
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Battle execution failed',
-            loading: false 
+            loading: false
           });
           return null;
         }
@@ -514,7 +444,7 @@ export const useCombatStore = create(
 
       updateSiege: (siegeId: string, updates: Partial<SiegeOperation>) => {
         set((state) => ({
-          activeSieges: state.activeSieges.map(s => 
+          activeSieges: state.activeSieges.map(s =>
             s.id === siegeId ? { ...s, ...updates } : s
           )
         }));
@@ -579,7 +509,7 @@ export const useCombatStore = create(
         const victories = state.battleHistory.filter(b => b.result === 'victory').length;
         const defeats = state.battleHistory.filter(b => b.result === 'defeat').length;
         const totalBattles = state.battleHistory.length;
-        
+
         return {
           totalBattles,
           victories,
@@ -590,10 +520,6 @@ export const useCombatStore = create(
       },
 
       // UI actions
-      showFormationEditor: (show: boolean) => {
-        set({ showFormationEditor: show });
-      },
-
       selectBattleReport: (reportId: string | null) => {
         set({ selectedBattleReport: reportId });
       },
@@ -602,33 +528,9 @@ export const useCombatStore = create(
         set({ error: null });
       },
 
-      // Initialize formations only (units come from kingdomStore)
+      // Initialize combat data (formations now handled by formationStore.initializeFormations)
       initializeCombatData: () => {
-        const mockFormations: Formation[] = [
-          {
-            id: 'defensive-wall',
-            name: 'Defensive Wall',
-            units: [],
-            bonuses: { attack: 0, defense: 20 },
-            positions: {}
-          },
-          {
-            id: 'cavalry-charge',
-            name: 'Cavalry Charge',
-            units: [],
-            bonuses: { attack: 30, defense: -10 },
-            positions: {}
-          },
-          {
-            id: 'balanced',
-            name: 'Balanced Formation',
-            units: [],
-            bonuses: { attack: 10, defense: 10 },
-            positions: {}
-          }
-        ];
-
-        set({ formations: mockFormations });
+        useFormationStore.getState().initializeFormations();
       },
 
       // War declaration system (from documentation)
@@ -636,14 +538,14 @@ export const useCombatStore = create(
         const { attackCounts } = get();
         const currentCount = attackCounts[defenderId] || 0;
         const newCount = currentCount + 1;
-        
+
         set((state) => ({
           attackCounts: {
             ...state.attackCounts,
             [defenderId]: newCount
           }
         }));
-        
+
         // Check if war declaration required
         if (requiresWarDeclaration(newCount)) {
           return {
@@ -652,7 +554,7 @@ export const useCombatStore = create(
             message: `⚠️ You have attacked this kingdom ${newCount} times. You must declare war to continue!`
           };
         }
-        
+
         return {
           requiresDeclaration: false,
           attackCount: newCount,
@@ -707,33 +609,6 @@ export const useCombatStore = create(
     })
   )
 );
-
-// Helper functions
-function calculateFormationBonuses(units: Unit[]): { attack: number; defense: number; special?: string } {
-  // Formation bonuses based on unit composition
-  let attackBonus = 0;
-  let defenseBonus = 0;
-  let special: string | undefined;
-
-  // Heavy infantry formation
-  if (units.filter(u => u.type === 'knight' || u.type === 'militia').length >= 2) {
-    defenseBonus += 15;
-  }
-
-  // Cavalry formation
-  if (units.filter(u => u.type === 'cavalry').length > 0) {
-    attackBonus += 20;
-    special = 'mobility';
-  }
-
-  // Ranged formation
-  if (units.filter(u => u.type === 'archer' || u.type === 'mage').length >= 2) {
-    attackBonus += 10;
-    special = 'ranged_advantage';
-  }
-
-  return { attack: attackBonus, defense: defenseBonus, special };
-}
 
 async function simulateBattle(
   attackerUnits: Unit[],

@@ -13,6 +13,7 @@ import { useSpring, animated, config } from '@react-spring/web';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { useCombatStore } from '../stores/combatStore';
+import { useFormationStore } from '../stores/formationStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { isDemoMode } from '../utils/authMode';
@@ -87,17 +88,20 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
     selectedUnits,
     formations,
     activeFormation,
-    loading,
-    error,
-    currentBattle,
     selectUnit,
     deselectUnit,
     createFormation,
     setActiveFormation,
+  } = useFormationStore();
+
+  const {
+    loading,
+    error,
+    currentBattle,
     executeBattle,
     getBattleStats,
     clearError,
-    initializeCombatData
+    initializeCombatData,
   } = useCombatStore();
 
   // Get available units from kingdom store (single source of truth)
@@ -170,7 +174,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
     };
   }, [selectedUnits, selectedTarget, aiKingdoms]);
 
-  // Initialize combat data on mount
+  // Initialize combat data on mount (also initializes formations via formationStore)
   useEffect(() => {
     initializeCombatData();
   }, [initializeCombatData]);
