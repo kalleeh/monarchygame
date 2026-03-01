@@ -257,13 +257,13 @@ function KingdomDashboard({
     }
   }, [kingdom.id]);
 
-  // Determine group order based on playstyle
+  // Determine group order based on playstyle (no advanced group — cast spells merged into warfare)
   const GROUP_ORDER: Record<string, string[]> = {
-    conqueror: ['warfare', 'kingdom', 'social', 'advanced'],
-    sorcerer:  ['advanced', 'kingdom', 'warfare', 'social'],
-    diplomat:  ['social', 'kingdom', 'warfare', 'advanced'],
-    saboteur:  ['warfare', 'social', 'kingdom', 'advanced'],
-    balanced:  ['kingdom', 'warfare', 'social', 'advanced'],
+    conqueror: ['warfare', 'kingdom', 'social'],
+    sorcerer:  ['warfare', 'kingdom', 'social'],
+    diplomat:  ['social', 'kingdom', 'warfare'],
+    saboteur:  ['warfare', 'social', 'kingdom'],
+    balanced:  ['kingdom', 'warfare', 'social'],
   };
   const groupOrder = GROUP_ORDER[playstyle] || GROUP_ORDER.balanced;
 
@@ -1291,6 +1291,15 @@ function KingdomDashboard({
                       Summon Units
                     </button>
                     <button
+                      className={`action-btn${isActionProhibited('sorcery_casting') ? ' opacity-50 cursor-not-allowed' : ''}`}
+                      onClick={isActionProhibited('sorcery_casting') ? undefined : onCastSpells}
+                      disabled={isActionProhibited('sorcery_casting')}
+                      title={isActionProhibited('sorcery_casting') ? 'In restoration — spellcasting prohibited' : undefined}
+                    >
+                      <img src="/magic-spells-icon.png" alt="Magic" className="action-icon" />
+                      Cast Spells
+                    </button>
+                    <button
                       className={`action-btn${isActionProhibited('espionage_operations') ? ' opacity-50 cursor-not-allowed' : ''}`}
                       onClick={isActionProhibited('espionage_operations') ? undefined : () => navigate(`/kingdom/${kingdom.id}/espionage`)}
                       disabled={isActionProhibited('espionage_operations')}
@@ -1299,17 +1308,12 @@ function KingdomDashboard({
                       🕵️ Espionage
                     </button>
                     <button
-                      className="action-btn danger"
-                      onClick={onBattleReports}
-                    >
-                      <img src="/battle-reports-icon.png" alt="Battle Reports" className="action-icon" />
-                      Battle Reports
-                    </button>
-                    <button
                       className="action-btn"
-                      onClick={() => navigate(`/kingdom/${kingdom.id}/replays`)}
+                      onClick={onBattleReports}
+                      title="Battle history, reports & replays"
                     >
-                      Battle Replays
+                      <img src="/battle-reports-icon.png" alt="Battle History" className="action-icon" />
+                      Battle History
                     </button>
                   </div>
                 </div>
@@ -1319,14 +1323,14 @@ function KingdomDashboard({
                   <h4 className="action-group-header">🏛️ Kingdom</h4>
                   <div className="action-buttons">
                     <button
-                      className="action-btn primary"
+                      className="action-btn"
                       onClick={onManageTerritories}
                     >
                       <img src="/territories-icon.png" alt="Territories" className="action-icon" />
                       Manage Territories
                     </button>
                     <button
-                      className="action-btn primary"
+                      className="action-btn"
                       onClick={onManageBuildings}
                       title="Construct buildings on your land"
                     >
@@ -1334,7 +1338,7 @@ function KingdomDashboard({
                       Construct Buildings
                     </button>
                     <button
-                      className="action-btn primary"
+                      className="action-btn"
                       onClick={onViewWorldMap}
                     >
                       <img src="/world-map-icon.png" alt="World Map" className="action-icon" />
@@ -1371,7 +1375,7 @@ function KingdomDashboard({
                       Alliance Management
                     </button>
                     <button
-                      className={`action-btn trade-btn${isActionProhibited('diplomatic_actions') ? ' opacity-50 cursor-not-allowed' : ''}`}
+                      className={`action-btn${isActionProhibited('diplomatic_actions') ? ' opacity-50 cursor-not-allowed' : ''}`}
                       onClick={isActionProhibited('diplomatic_actions') ? undefined : onManageTrade}
                       disabled={isActionProhibited('diplomatic_actions')}
                       title={isActionProhibited('diplomatic_actions') ? 'In restoration — trade prohibited' : undefined}
@@ -1389,7 +1393,7 @@ function KingdomDashboard({
                       Diplomacy
                     </button>
                     <button
-                      className="action-btn primary"
+                      className="action-btn"
                       onClick={onViewLeaderboard}
                     >
                       🏆 Kingdom Scrolls
@@ -1397,37 +1401,8 @@ function KingdomDashboard({
                   </div>
                 </div>
               ),
-              advanced: (
-                <div key="advanced" className="action-group">
-                  <h4 className="action-group-header">🔮 Advanced</h4>
-                  <div className="action-buttons">
-                    <button
-                      className={`action-btn${isActionProhibited('sorcery_casting') ? ' opacity-50 cursor-not-allowed' : ''}`}
-                      onClick={isActionProhibited('sorcery_casting') ? undefined : onCastSpells}
-                      disabled={isActionProhibited('sorcery_casting')}
-                      title={isActionProhibited('sorcery_casting') ? 'In restoration — spellcasting prohibited' : undefined}
-                    >
-                      <img src="/magic-spells-icon.png" alt="Magic" className="action-icon" />
-                      Cast Spells
-                    </button>
-                    <button
-                      className="action-btn primary"
-                      onClick={() => navigate(`/kingdom/${kingdom.id}/multiplayer`)}
-                    >
-                      🌐 Multiplayer
-                    </button>
-                    <button
-                      className="action-btn"
-                      onClick={() => useTutorialStore.getState().restartTutorial()}
-                      title="Restart tutorial"
-                    >
-                      📚 Tutorial
-                    </button>
-                  </div>
-                </div>
-              ),
             };
-            return groupOrder.map((key) => actionGroups[key]);
+            return groupOrder.map((key) => actionGroups[key] ?? null);
           })()}
         </div>
       </div>
