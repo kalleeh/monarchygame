@@ -633,11 +633,7 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
   const pendingInvitations = invitations.filter(inv => inv.status === 'pending');
 
   return (
-    <div className="guild-management" style={{ 
-      backgroundColor: 'var(--bg-primary)', 
-      color: 'var(--text-primary)', 
-      minHeight: '100vh' 
-    }}>
+    <div className="guild-management">
       <TopNavigation
         title={<><img src="/alliance-icon.png" style={{width:32,height:32,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Guild Management</>}
         subtitle={currentGuild ? `${currentGuild.name} [${currentGuild.tag}]` : 'Diplomatic Relations'}
@@ -646,33 +642,23 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
       />
 
       {pendingInvitations.length > 0 && (
-        <div className="invitations-alert" style={{ 
-          backgroundColor: 'var(--accent-primary)', 
-          color: 'white',
+        <div className="invitations-alert" style={{
+          background: 'rgba(99, 102, 241, 0.15)',
+          border: '1px solid rgba(99, 102, 241, 0.4)',
+          color: '#e2e8f0',
           padding: '0.5rem 1rem',
-          textAlign: 'center'
+          textAlign: 'center',
+          fontSize: '0.875rem',
+          fontWeight: 600,
         }}>
           📨 {pendingInvitations.length} pending invitation{pendingInvitations.length !== 1 ? 's' : ''}
         </div>
       )}
 
-      <nav className="guild-nav" style={{ 
-        backgroundColor: 'var(--bg-secondary)', 
-        padding: '1rem',
-        borderBottom: '1px solid var(--border-primary)'
-      }}>
-        <button 
+      <nav className="guild-nav">
+        <button
           className={currentView === 'overview' ? 'active' : ''}
           onClick={() => setCurrentView('overview')}
-          style={{
-            backgroundColor: currentView === 'overview' ? 'var(--primary)' : 'var(--bg-card)',
-            color: 'var(--text-primary)',
-            border: '1px solid var(--border-primary)',
-            padding: '0.5rem 1rem',
-            borderRadius: '0.375rem',
-            cursor: 'pointer',
-            marginRight: '0.5rem'
-          }}
         >
           Overview
         </button>
@@ -741,7 +727,7 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
                 borderRadius: '8px',
                 border: '1px solid rgba(78, 205, 196, 0.3)',
               }}>
-                <h3 style={{ marginTop: 0, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
+                <h3 style={{ marginTop: 0, marginBottom: '0.75rem', color: '#e2e8f0' }}>
                   Pending Invitations
                 </h3>
                 {pendingAllianceInvitations.map(inv => (
@@ -750,13 +736,13 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '0.75rem 1rem',
-                    background: 'var(--bg-card)',
+                    background: 'rgba(15, 15, 30, 0.8)',
                     borderRadius: '6px',
-                    border: '1px solid var(--border-primary)',
+                    border: '1px solid rgba(99, 102, 241, 0.3)',
                     marginBottom: '0.5rem',
                   }}>
-                    <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
-                      Invited to join alliance <strong style={{ color: 'var(--text-primary)' }}>{inv.guildId}</strong>
+                    <p style={{ margin: 0, color: '#94a3b8' }}>
+                      Invited to join alliance <strong style={{ color: '#e2e8f0' }}>{inv.guildId}</strong>
                     </p>
                     <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                       <button
@@ -863,7 +849,7 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
                                 fontWeight: 500,
                                 background: `${getRacePillColor(member.race)}22`,
                                 border: `1px solid ${getRacePillColor(member.race)}66`,
-                                color: 'var(--text-primary)',
+                                color: '#e2e8f0',
                                 cursor: 'default',
                               }}
                             >
@@ -1339,7 +1325,7 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
                 zIndex: 1000,
               }}>
                 <div style={{
-                  background: 'var(--bg-secondary, #1e2a3a)',
+                  background: 'linear-gradient(135deg, rgba(26, 26, 46, 0.99) 0%, rgba(22, 33, 62, 0.99) 100%)',
                   border: '1px solid rgba(239,68,68,0.5)',
                   borderRadius: '12px',
                   padding: '1.5rem',

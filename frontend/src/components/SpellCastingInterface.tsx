@@ -10,6 +10,7 @@ import { useSpellStore } from '../stores/spellStore';
 import { SPELLS, type Spell } from "../shared-spells";
 import { TopNavigation } from './TopNavigation';
 import { achievementTriggers } from '../utils/achievementTriggers';
+import './SpellCastingInterface.css';
 
 interface SpellCastingInterfaceProps {
   kingdomId: string;
@@ -170,18 +171,12 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
       </animated.div>
 
       {/* Magic Tips */}
-      <div style={{
-        margin:'1rem 0 2rem 0',
-        padding:'1rem',
-        border:'1px solid rgba(255,255,255,0.1)',
-        borderRadius:'0.5rem',
-        background:'rgba(255,255,255,0.03)'
-      }}>
-        <p style={{margin:'0 0 0.5rem 0',fontSize:'0.8rem',color:'#6b7280',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em'}}>Magic Tips</p>
-        <ul style={{margin:0,paddingLeft:'1.25rem',listStyle:'disc'}}>
-          <li style={{fontSize:'0.82rem',color:'#6b7280',marginBottom:'0.25rem'}}>Elan regenerates 1 point every 3 turns</li>
-          <li style={{fontSize:'0.82rem',color:'#6b7280',marginBottom:'0.25rem'}}>Some spells target buildings, others target population</li>
-          <li style={{fontSize:'0.82rem',color:'#6b7280'}}>Higher sorcery stat means more elan capacity</li>
+      <div className="magic-tips">
+        <p className="magic-tips-label">Magic Tips</p>
+        <ul>
+          <li>Elan regenerates 1 point every 3 turns</li>
+          <li>Some spells target buildings, others target population</li>
+          <li>Higher sorcery stat means more elan capacity</li>
         </ul>
       </div>
 
@@ -302,22 +297,25 @@ const SpellCard: React.FC<SpellCardProps> = ({
         onClick={(e) => { e.stopPropagation(); onCast(spell.id); }}
         disabled={!canCast}
         style={{
-          marginTop:'0.75rem',
-          width:'100%',
-          padding:'0.5rem 1rem',
+          marginTop: '0.75rem',
+          width: '100%',
+          padding: '0.5rem 1rem',
           background: canCast
-            ? 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)'
-            : 'rgba(255,255,255,0.08)',
-          color: canCast ? '#fff' : '#6b7280',
+            ? 'linear-gradient(135deg, #fbbf24, #f59e0b)'
+            : 'rgba(255,255,255,0.06)',
+          color: canCast ? '#1a1a2e' : '#6b7280',
           border: canCast ? 'none' : '1px solid rgba(255,255,255,0.1)',
-          borderRadius:'0.375rem',
-          fontWeight:600,
-          fontSize:'0.875rem',
+          borderRadius: '0.375rem',
+          fontWeight: 700,
+          fontSize: '0.875rem',
           cursor: canCast ? 'pointer' : 'not-allowed',
-          opacity: canCast ? 1 : 0.6,
-          transition:'all 0.2s ease'
+          opacity: canCast ? 1 : 0.5,
+          transition: 'box-shadow 0.15s, transform 0.1s',
+          boxShadow: 'none',
         }}
         aria-label={`Cast ${spell.name}`}
+        onMouseEnter={(e) => { if (canCast) (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 12px rgba(251,191,36,0.35)'; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none'; }}
       >
         Cast Spell
       </button>

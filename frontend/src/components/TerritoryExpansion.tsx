@@ -8,6 +8,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useSpring, useTransition, animated, config } from '@react-spring/web';
 import { useTerritoryStore, type Territory } from '../stores/territoryStore';
 import { useKingdomStore } from '../stores/kingdomStore';
+import './TerritoryExpansion.css';
 
 interface TerritoryExpansionProps {
   kingdomId: string;

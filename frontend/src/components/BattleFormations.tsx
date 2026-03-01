@@ -17,6 +17,7 @@ import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { isDemoMode } from '../utils/authMode';
 import { TopNavigation } from './TopNavigation';
+import './BattleFormations.css';
 
 const amplifyClient = generateClient<Schema>();
 
@@ -303,7 +304,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
   }, [unitOrder, availableUnits]);
 
   return (
-    <div style={{ background: 'var(--color-bg-deep, #0f1629)', minHeight: '100vh' }}>
+    <div style={{ background: 'var(--gm-bg-page, #0f0f1a)', minHeight: '100vh' }}>
       <TopNavigation
         title="Battle Formations"
         onBack={onBack}
@@ -580,71 +581,42 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
       </div>
 
       {/* Battle Tips */}
-      <div style={{
-        marginTop:'1.5rem',
-        padding:'1rem',
-        border:'1px solid rgba(255,255,255,0.1)',
-        borderRadius:'0.5rem',
-        background:'rgba(255,255,255,0.03)'
-      }}>
-        <p style={{margin:'0 0 0.5rem 0',fontSize:'0.8rem',color:'#6b7280',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em'}}>Battle Tips</p>
-        <ul style={{margin:0,paddingLeft:'1.25rem',listStyle:'disc'}}>
-          <li style={{fontSize:'0.82rem',color:'#6b7280',marginBottom:'0.25rem'}}>Ambush gives 95% defense bonus when attacked</li>
-          <li style={{fontSize:'0.82rem',color:'#6b7280',marginBottom:'0.25rem'}}>Cavalry Charge formation maximizes offense</li>
-          <li style={{fontSize:'0.82rem',color:'#6b7280'}}>Train units before attacking for best results</li>
+      <div className="battle-tips">
+        <p className="battle-tips-label">Battle Tips</p>
+        <ul>
+          <li>Ambush gives 95% defense bonus when attacked</li>
+          <li>Cavalry Charge formation maximizes offense</li>
+          <li>Train units before attacking for best results</li>
         </ul>
       </div>
 
       {/* Defensive Stance */}
-      <div style={{
-        marginTop: '1.5rem',
-        padding: '1.25rem',
-        border: '1px solid rgba(59, 130, 246, 0.35)',
-        borderRadius: '0.75rem',
-        background: 'rgba(59, 130, 246, 0.05)'
-      }}>
-        <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Defensive Stance
-        </p>
-        <p style={{ margin: '0 0 1rem 0', fontSize: '0.82rem', color: '#9ca3af' }}>
+      <div className="defensive-stance">
+        <p className="defensive-stance-label">Defensive Stance</p>
+        <p className="defensive-stance-desc">
           Choose a formation your kingdom automatically uses when defending against attacks.
           {defensiveFormationSaved && (
-            <span style={{ color: '#10b981', marginLeft: '0.5rem' }}>Saved!</span>
+            <span className="defensive-stance-saved">Saved!</span>
           )}
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div className="defensive-stance-options">
           {[
             { id: 'defensive-wall', label: 'Defensive Wall', desc: 'Maximizes defense, minimizes offense' },
             { id: 'balanced', label: 'Balanced Formation', desc: 'Equal offense and defense' },
             { id: 'cavalry-charge', label: 'Cavalry Charge', desc: 'Offense-focused, lower defense' },
           ].map(opt => (
-            <div key={opt.id} style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.6rem 0.85rem',
-              background: defensiveFormation === opt.id ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${defensiveFormation === opt.id ? 'rgba(59, 130, 246, 0.5)' : 'rgba(255,255,255,0.08)'}`,
-              borderRadius: '0.5rem',
-            }}>
+            <div
+              key={opt.id}
+              className={`defensive-stance-option ${defensiveFormation === opt.id ? 'defensive-stance-option--active' : 'defensive-stance-option--inactive'}`}
+            >
               <div>
-                <span style={{ color: '#e5e7eb', fontSize: '0.88rem', fontWeight: 600 }}>{opt.label}</span>
-                <span style={{ color: '#6b7280', fontSize: '0.78rem', marginLeft: '0.5rem' }}>{opt.desc}</span>
+                <span className="defensive-stance-option-name">{opt.label}</span>
+                <span className="defensive-stance-option-desc">{opt.desc}</span>
               </div>
               <button
                 onClick={() => handleSetDefensiveFormation(opt.id)}
                 disabled={defensiveFormation === opt.id}
-                style={{
-                  padding: '0.3rem 0.75rem',
-                  fontSize: '0.78rem',
-                  background: defensiveFormation === opt.id ? '#1d4ed8' : 'rgba(59, 130, 246, 0.2)',
-                  border: `1px solid ${defensiveFormation === opt.id ? '#3b82f6' : 'rgba(59, 130, 246, 0.3)'}`,
-                  borderRadius: '0.375rem',
-                  color: defensiveFormation === opt.id ? '#fff' : '#93c5fd',
-                  cursor: defensiveFormation === opt.id ? 'default' : 'pointer',
-                  whiteSpace: 'nowrap',
-                  opacity: defensiveFormation === opt.id ? 1 : 0.85,
-                }}
+                className={`defensive-stance-btn ${defensiveFormation === opt.id ? 'defensive-stance-btn--active' : 'defensive-stance-btn--inactive'}`}
               >
                 {defensiveFormation === opt.id ? 'Active' : 'Set Stance'}
               </button>
