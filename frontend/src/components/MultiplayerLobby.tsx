@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { isDemoMode } from '../utils/authMode';
-import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { getActiveSeason } from '../services/domain/SeasonService';
 import { useKingdomStore } from '../stores/kingdomStore';
 import './MultiplayerLobby.css';
 
@@ -38,15 +38,10 @@ const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({
   const loadSeasonInfo = async () => {
     try {
       setLoading(true);
-      const result = await AmplifyFunctionService.callFunction('season-manager', {
-        kingdomId
-      }) as any;
-
-      const parsed = typeof result === 'string' ? JSON.parse(result) : result;
-      if (parsed.success && parsed.season) {
-        setSeason(parsed.season);
-      } else if (parsed.season) {
-        setSeason(parsed.season);
+      const result = await getActiveSeason(kingdomId);
+      const data = (result as any)?.data ?? result;
+      if (data?.season) {
+        setSeason(data.season);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load season');

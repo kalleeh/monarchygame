@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import type { KingdomResources } from '../types/amplify';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { getActiveSeason } from '../services/domain/SeasonService';
 import { ToastService } from '../services/toastService';
 import { TopNavigation } from './TopNavigation';
 import { KingdomActionBar } from './KingdomActionBar';
@@ -31,7 +32,6 @@ import { isDemoMode } from '../utils/authMode';
 import { subscriptionManager } from '../services/subscriptionManager';
 import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
 import { NotificationCenter } from './ui/NotificationCenter';
-import { AchievementWidget } from './achievements/AchievementWidget';
 import UnitRoster from './UnitRoster';
 import WorldFeed from './WorldFeed';
 import { FirstSteps } from './ui/FirstSteps';
@@ -40,117 +40,10 @@ import { SeasonBadge } from './ui/SeasonBadge';
 import { NoActiveSeasonBanner } from './ui/NoActiveSeasonBanner';
 import { BuildingStatsPanel } from './ui/BuildingStatsPanel';
 import { RaceAbilitiesPanel } from './ui/RaceAbilitiesPanel';
-
-// EncampPanel — shows active encamp countdown or the two encamp buttons.
-// In auth mode the active state is driven by encampEndTimeMs/encampBonusTurns
-// props (resolved server-side from the Kingdom DynamoDB record).
-// In demo mode it falls back to localStorage so offline play is unaffected.
-const EncampPanel = memo(({
-  kingdomId,
-  encampEndTimeMs,
-  encampBonusTurns: encampBonusTurnsProp,
-  onEncamp,
-  encampLoading,
-}: {
-  kingdomId: string;
-  encampEndTimeMs: number | null;
-  encampBonusTurns: number;
-  onEncamp: (duration: 16 | 24) => void;
-  encampLoading: boolean;
-}) => {
-  const [now, setNow] = useState(() => Date.now());
-  // Demo-mode fallback: read/poll localStorage
-  const [demoEndTime, setDemoEndTime] = useState<number | null>(null);
-  const [demoBonusTurns, setDemoBonusTurns] = useState<number>(0);
-
-  useEffect(() => {
-    const tick = () => {
-      setNow(Date.now());
-      if (isDemoMode()) {
-        try {
-          const raw = localStorage.getItem(`encamp-${kingdomId}`);
-          if (raw) {
-            const data = JSON.parse(raw) as { endTime: number; bonusTurns: number };
-            setDemoEndTime(data.endTime);
-            setDemoBonusTurns(data.bonusTurns);
-          } else {
-            setDemoEndTime(null);
-            setDemoBonusTurns(0);
-          }
-        } catch {
-          setDemoEndTime(null);
-          setDemoBonusTurns(0);
-        }
-      }
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [kingdomId]);
-
-  // Resolve active state: server data in auth mode, localStorage in demo mode
-  const activeEndTime = isDemoMode() ? demoEndTime : encampEndTimeMs;
-  const activeBonusTurns = isDemoMode() ? demoBonusTurns : encampBonusTurnsProp;
-  const isActive = activeEndTime !== null && now < activeEndTime;
-
-  const formatCountdown = (ms: number) => {
-    const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
-    const h = Math.floor(totalSeconds / 3600);
-    const m = Math.floor((totalSeconds % 3600) / 60);
-    const s = totalSeconds % 60;
-    return `${h}h ${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`;
-  };
-
-  return (
-    <div className="encamp-panel" style={{
-      marginTop: '1rem',
-      padding: '1rem',
-      background: 'rgba(78, 205, 196, 0.08)',
-      border: '1px solid rgba(78, 205, 196, 0.25)',
-      borderRadius: '8px'
-    }}>
-      <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem', color: 'var(--primary)' }}>
-        Encamp
-      </h4>
-      {isActive ? (
-        <div>
-          <p style={{ margin: '0 0 0.25rem', fontSize: '0.85rem', color: '#a0a0a0' }}>
-            Kingdom is resting — {formatCountdown(activeEndTime! - now)} remaining
-          </p>
-          <p style={{ margin: 0, fontSize: '0.85rem', color: '#4ecdc4' }}>
-            +{activeBonusTurns} bonus turns when you return
-          </p>
-        </div>
-      ) : (
-        <div>
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#a0a0a0' }}>
-            Rest your troops to earn bonus turns when you return
-          </p>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button
-              className="resource-btn"
-              onClick={() => onEncamp(16)}
-              disabled={encampLoading}
-              style={{ flex: '1 1 auto' }}
-              title={`Encamp for 16 hours to receive +${TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_16_HOURS.bonusTurns} bonus turns`}
-            >
-              {encampLoading ? 'Encamping...' : `Encamp 16h (+${TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_16_HOURS.bonusTurns} turns)`}
-            </button>
-            <button
-              className="resource-btn"
-              onClick={() => onEncamp(24)}
-              disabled={encampLoading}
-              style={{ flex: '1 1 auto' }}
-              title={`Encamp for 24 hours to receive +${TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_24_HOURS.bonusTurns} bonus turns`}
-            >
-              {encampLoading ? 'Encamping...' : `Encamp 24h (+${TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_24_HOURS.bonusTurns} turns)`}
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-});
+import { EncampPanel } from './ui/EncampPanel';
+import { NextStepBanner } from './ui/NextStepBanner';
+import { AchievementsPanel } from './ui/AchievementsPanel';
+import { HelpModal } from './ui/HelpModal';
 
 interface KingdomDashboardProps {
   kingdom: Schema['Kingdom']['type'];
@@ -359,17 +252,13 @@ function KingdomDashboard({
   useEffect(() => {
     const fetchSeason = async () => {
       try {
-        const raw = await AmplifyFunctionService.callFunction('season-manager', {
-          kingdomId: kingdom.id,
-          action: 'getActiveSeason',
-        });
-        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        const raw = await getActiveSeason(kingdom.id);
         // AmplifyFunctionService wraps responses in { data: ... }; unwrap first
         // Then look for the season object in the expected locations:
         //   { success: true, season: { seasonNumber, currentAge, ... } }   <- Lambda direct
         //   { data: { success: true, season: { ... } } }                   <- wrapped
         //   { data: { getActiveSeason: { ... } } }                         <- GraphQL resolver
-        const payload = (parsed as any)?.data ?? parsed;
+        const payload = (raw as any)?.data ?? raw;
         const seasonData =
           payload?.season ??
           payload?.getActiveSeason ??
@@ -858,11 +747,7 @@ function KingdomDashboard({
 
       {/* Next Step contextual banner */}
       {nextStep && (
-        <div className="next-step-banner">
-          <span className="next-step-icon">📌</span>
-          <span className="next-step-text">{nextStep.text}</span>
-          <button className="next-step-btn" onClick={nextStep.onClick}>{nextStep.action} →</button>
-        </div>
+        <NextStepBanner text={nextStep.text} action={nextStep.action} onClick={nextStep.onClick} />
       )}
 
       {/* First Steps onboarding checklist */}
@@ -1048,9 +933,7 @@ function KingdomDashboard({
         <RaceAbilitiesPanel raceData={raceData} />
 
         {/* Row 5: Achievements (full width) */}
-        <div style={{ gridColumn: '1 / -1' }}>
-          <AchievementWidget kingdomId={kingdom.id} />
-        </div>
+        <AchievementsPanel kingdomId={kingdom.id} />
       </div>
 
       {/* World Activity Feed — spans full width below the main dashboard grid */}
@@ -1059,89 +942,7 @@ function KingdomDashboard({
       </div>
 
       {/* Help Modal */}
-      {showHelp && (
-        <div
-          onClick={() => setShowHelp(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.65)',
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1rem',
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: '#1a1a2e',
-              border: '1px solid rgba(78, 205, 196, 0.4)',
-              borderRadius: '10px',
-              padding: '1.5rem',
-              maxWidth: '480px',
-              width: '100%',
-              color: '#e2e8f0',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, color: '#4ecdc4', fontSize: '1rem', letterSpacing: '0.05em' }}>
-                MONARCHY QUICK REFERENCE
-              </h3>
-              <button
-                onClick={() => setShowHelp(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#9ca3af',
-                  cursor: 'pointer',
-                  fontSize: '1.2rem',
-                  lineHeight: 1,
-                  padding: '0.1rem 0.4rem',
-                }}
-                aria-label="Close help"
-              >
-                &times;
-              </button>
-            </div>
-            <div style={{ borderTop: '1px solid rgba(78, 205, 196, 0.3)', marginBottom: '1rem' }} />
-            <dl style={{ margin: 0, display: 'grid', gap: '0.6rem', fontSize: '0.85rem' }}>
-              {[
-                ['Turns', '3/hour (1 per 20 min), cap 100'],
-                ['Combat', '4 turns per attack, win 6.79–7.35% enemy land'],
-                ['Income', 'Mines ×20, Farms ×8, Towers ×50 gold/turn'],
-                ['Magic', 'Temples generate elan, cast spells to damage enemies'],
-                ['Elan', '12 temples → 2/turn (most races), 3/turn (Sidhe/Vampire)'],
-                ['War', 'After 3 attacks on same target, must declare war'],
-                ['Restoration', '48–72h after severe defeat — no combat'],
-                ['Networth', 'Land ×1000 + Gold (used for rankings)'],
-              ].map(([label, value]) => (
-                <div key={label} style={{ display: 'flex', gap: '0.75rem' }}>
-                  <dt style={{ minWidth: '90px', color: '#4ecdc4', fontWeight: 600, flexShrink: 0 }}>{label}</dt>
-                  <dd style={{ margin: 0, color: '#cbd5e1' }}>{value}</dd>
-                </div>
-              ))}
-            </dl>
-            <div style={{ marginTop: '1.25rem', textAlign: 'right' }}>
-              <button
-                onClick={() => setShowHelp(false)}
-                style={{
-                  background: 'rgba(78, 205, 196, 0.15)',
-                  border: '1px solid rgba(78, 205, 196, 0.4)',
-                  borderRadius: '6px',
-                  color: '#4ecdc4',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                  padding: '0.4rem 1rem',
-                }}
-              >
-                Got it
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
 
       {/* Unit Roster Reference Modal */}
       {showUnitRoster && (
