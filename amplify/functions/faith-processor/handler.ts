@@ -1,7 +1,7 @@
 import type { Schema } from '../../data/resource';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate } from '../data-client';
+import { dbGet, dbUpdate, dbList } from '../data-client';
 
 const VALID_ALIGNMENTS = ['angelique', 'neutral', 'elemental'] as const;
 const VALID_ABILITY_TYPES = ['racial_ability', 'spell_power', 'combat_focus', 'economic_focus', 'emergency'] as const;
@@ -91,6 +91,18 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
       const ownerField = kingdom.owner ?? null;
       if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
         return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
+      }
+
+      // Check restoration status
+      const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
+      const activeRestoration = allRestoration.find(r => r.kingdomId === kingdomId && new Date(r.endTime) > new Date());
+      if (activeRestoration) {
+        const prohibited: string[] = typeof activeRestoration.prohibitedActions === 'string'
+          ? JSON.parse(activeRestoration.prohibitedActions)
+          : (activeRestoration.prohibitedActions ?? []);
+        if (prohibited.some(a => ['build', 'train', 'espionage', 'attack', 'trade'].includes(a))) {
+          return { success: false, error: 'Kingdom is in restoration and cannot perform this action', errorCode: ErrorCode.RESTORATION_BLOCKED };
+        }
       }
 
       const stats = (kingdom.stats ?? {}) as Record<string, unknown>;

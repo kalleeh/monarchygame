@@ -12,7 +12,7 @@ type WarDeclarationType = {
   id: string;
   attackerId: string;
   defenderId: string;
-  seasonId: string;
+  seasonId?: string;
   status: string;
   attackCount: number;
   declaredAt: string;
@@ -55,11 +55,11 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
     const { attackerId, defenderId, seasonId, reason } = args as {
       attackerId: string;
       defenderId: string;
-      seasonId: string;
+      seasonId?: string;
       reason?: string;
     };
 
-    if (!attackerId || !defenderId || !seasonId) {
+    if (!attackerId || !defenderId) {
       return JSON.stringify({ success: false, error: 'Missing required parameters', errorCode: ErrorCode.MISSING_PARAMS });
     }
 
@@ -82,7 +82,7 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
     const existingWars = allWars.filter(w =>
       w.attackerId === attackerId &&
       w.defenderId === defenderId &&
-      w.seasonId === seasonId &&
+      (!seasonId || w.seasonId === seasonId) &&
       w.status === 'active'
     );
 

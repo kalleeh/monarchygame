@@ -9,7 +9,7 @@ import {
 import type { KingdomResources, CombatResultData } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbCreate, dbUpdate, dbList } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbList, dbAtomicAdd } from '../data-client';
 
 // Race offensive combat bonuses (based on warOffense stat 1-5)
 const RACE_OFFENSE_BONUSES: Record<string, number> = {
@@ -84,6 +84,18 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
+    // Check attacker restoration status — cannot attack while under restoration
+    const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
+    const attackerRestoration = allRestoration.find(r => r.kingdomId === attackerId && new Date(r.endTime) > new Date());
+    if (attackerRestoration) {
+      const prohibited: string[] = typeof attackerRestoration.prohibitedActions === 'string'
+        ? JSON.parse(attackerRestoration.prohibitedActions)
+        : (attackerRestoration.prohibitedActions ?? []);
+      if (prohibited.includes('attack')) {
+        return JSON.stringify({ success: false, error: 'Kingdom is in restoration and cannot attack', errorCode: 'RESTORATION_ACTIVE' });
+      }
+    }
+
     const attackerUnits: Record<string, number> = typeof units === 'string' ? JSON.parse(units) : units;
     const ownedUnits = (attacker.totalUnits ?? {}) as Record<string, number>;
 
@@ -94,9 +106,18 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       }
     }
 
+    // Newbie protection: kingdoms < 72 hours old that are 3x+ smaller than attacker
+    const defenderCreatedAt = new Date((defender.createdAt as string) ?? 0);
+    const defenderAgeHours = (Date.now() - defenderCreatedAt.getTime()) / (1000 * 60 * 60);
+    const attackerNetworth = ((attacker.resources as KingdomResources | null)?.land ?? 100) * 1000 + ((attacker.resources as KingdomResources | null)?.gold ?? 0);
+    const defenderNetworth = ((defender.resources as KingdomResources | null)?.land ?? 100) * 1000 + ((defender.resources as KingdomResources | null)?.gold ?? 0);
+    if (defenderAgeHours < 72 && attackerNetworth > defenderNetworth * 3) {
+      return JSON.stringify({ success: false, error: 'This kingdom is under new player protection (72 hours)', errorCode: 'NEWBIE_PROTECTION' });
+    }
+
     // Check and deduct turns
     const attackerResources = (attacker.resources ?? {}) as KingdomResources;
-    const currentTurns = attackerResources.turns ?? 72;
+    const currentTurns = (attacker.turnsBalance ?? JSON.parse(attacker.resources as string || '{}').turns ?? 72) as number;
     const turnCost = 4;
     if (currentTurns < turnCost) {
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
@@ -373,7 +394,6 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
             ...attackerResources,
             land: (attackerResources.land ?? 1000) + combatResult.landGained,
             gold: (attackerResources.gold ?? 0) + combatResult.goldLooted,
-            turns: Math.max(0, currentTurns - turnCost)
           },
           totalUnits: updatedAttackerUnits
         })
@@ -412,7 +432,6 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
         dbUpdate('Kingdom', attackerId, {
           resources: {
             ...attackerResources,
-            turns: Math.max(0, currentTurns - turnCost)
           },
           totalUnits: updatedAttackerUnits
         }),
@@ -421,6 +440,9 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
         })
       ]);
     }
+
+    // Deduct turns atomically after combat resolves (regardless of outcome)
+    await dbAtomicAdd('Kingdom', attackerId, 'turnsBalance', -turnCost);
 
     log.info('combat-processor', 'processCombat', { attackerId, defenderId, attackType, result: combatResult.result });
     return {

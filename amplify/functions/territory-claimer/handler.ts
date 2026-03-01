@@ -2,12 +2,12 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbCreate, dbUpdate, dbList } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbList, dbAtomicAdd } from '../data-client';
 
 const TERRITORY_NAME_LIMITS = { min: 2, max: 50 } as const;
 const COORDINATE_LIMITS = { min: -10000, max: 10000 } as const;
 
-type KingdomType = Record<string, unknown>;
+type KingdomType = Record<string, unknown> & { turnsBalance?: number | null };
 type TerritoryType = { id: string; kingdomId?: string; regionId?: string; coordinates?: string };
 
 export const handler: Schema["claimTerritory"]["functionHandler"] = async (event) => {
@@ -59,8 +59,8 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
       return { success: false, error: `Insufficient gold: need 500, have ${currentGold}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
-    // Check and deduct turns
-    const currentTurns = resources.turns ?? 72;
+    // Check and deduct turns from turnsBalance (server-side pool), falling back to resources.turns
+    const currentTurns = kingdom.turnsBalance ?? resources.turns ?? 72;
     const turnCost = 1;
     if (currentTurns < turnCost) {
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
@@ -92,9 +92,9 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
       resources: {
         ...resources,
         gold: currentGold - 500,
-        turns: Math.max(0, currentTurns - turnCost)
       }
     });
+    await dbAtomicAdd('Kingdom', kingdomId, 'turnsBalance', -turnCost);
 
     await dbCreate<Record<string, unknown>>('Territory', {
       name: territoryName,

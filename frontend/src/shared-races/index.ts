@@ -76,10 +76,10 @@ export const RACES: Record<string, Race> = {
     },
     unitTypes: ['Peasants', 'Militia', 'Knights', 'Cavalry'],
     startingResources: {
-      gold: 1000,
+      gold: 2000,
       population: 500,
       land: 100,
-      turns: 50
+      turns: 100
     },
     economicMultiplier: 1.0
   },
@@ -112,10 +112,10 @@ export const RACES: Record<string, Race> = {
     },
     unitTypes: ['Elven Scouts', 'Elven Warriors', 'Elven Archers', 'Elven Lords'],
     startingResources: {
-      gold: 800,
+      gold: 1600,
       population: 400,
       land: 120,
-      turns: 50
+      turns: 100
     },
     economicMultiplier: 1.0
   },
@@ -149,10 +149,10 @@ export const RACES: Record<string, Race> = {
     },
     unitTypes: ['Goblins', 'Hobgoblins', 'Kobolds', 'Goblin Riders'],
     startingResources: {
-      gold: 600,
+      gold: 1200,
       population: 800,
       land: 80,
-      turns: 50
+      turns: 100
     },
     economicMultiplier: 1.0
   },
@@ -185,10 +185,10 @@ export const RACES: Record<string, Race> = {
     },
     unitTypes: ['Droben Warriors', 'Droben Berserkers', 'Droben Bunar', 'Droben Champions'],
     startingResources: {
-      gold: 700,
+      gold: 1400,
       population: 600,
       land: 90,
-      turns: 50
+      turns: 100
     },
     economicMultiplier: 1.0
   },
@@ -220,10 +220,10 @@ export const RACES: Record<string, Race> = {
     },
     unitTypes: ['Thralls', 'Vampire Spawn', 'Vampire Lords', 'Ancient Vampires'],
     startingResources: {
-      gold: 900,
+      gold: 1800,
       population: 300,
       land: 110,
-      turns: 50
+      turns: 100
     },
     economicMultiplier: 2.0  // Requires double resources
   },
@@ -256,10 +256,10 @@ export const RACES: Record<string, Race> = {
     },
     unitTypes: ['Earth Elementals', 'Fire Elementals', 'Water Elementals', 'Air Elementals'],
     startingResources: {
-      gold: 800,
+      gold: 1600,
       population: 400,
       land: 100,
-      turns: 50
+      turns: 100
     },
     economicMultiplier: 1.0
   },
@@ -291,10 +291,10 @@ export const RACES: Record<string, Race> = {
     },
     unitTypes: ['Centaur Scouts', 'Centaur Warriors', 'Centaur Archers', 'Centaur Chiefs'],
     startingResources: {
-      gold: 750,
+      gold: 1500,
       population: 500,
       land: 95,
-      turns: 50
+      turns: 100
     },
     economicMultiplier: 1.0
   },
@@ -327,10 +327,10 @@ export const RACES: Record<string, Race> = {
     },
     unitTypes: ['Sidhe Nobles', 'Sidhe Elders', 'Sidhe Mages', 'Sidhe Lords'],
     startingResources: {
-      gold: 1200,
+      gold: 2400,
       population: 300,
       land: 120,
-      turns: 50
+      turns: 100
     },
     economicMultiplier: 1.0
   },
@@ -362,10 +362,10 @@ export const RACES: Record<string, Race> = {
     },
     unitTypes: ['Dwarven Militia', 'Dwarven Guards', 'Dwarven Warriors', 'Dwarven Lords'],
     startingResources: {
-      gold: 900,
+      gold: 1800,
       population: 400,
       land: 85,
-      turns: 50
+      turns: 100
     },
     economicMultiplier: 1.0
   },
@@ -397,10 +397,10 @@ export const RACES: Record<string, Race> = {
     },
     unitTypes: ['Fae Sprites', 'Fae Warriors', 'Fae Nobles', 'Fae Lords'],
     startingResources: {
-      gold: 1100,
+      gold: 2200,
       population: 350,
       land: 105,
-      turns: 50
+      turns: 100
     },
     economicMultiplier: 1.0
   }

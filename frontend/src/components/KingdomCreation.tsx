@@ -61,7 +61,7 @@ const races = Object.values(RACES).map(race => ({
   specialAbility: race.specialAbility.description,
   stats: race.stats,
   unitTypes: race.unitTypes || ['Basic Units'],
-  startingResources: race.startingResources || { gold: 1000, population: 500, land: 100, turns: 50 },
+  startingResources: race.startingResources || { gold: 2000, population: 500, land: 100, turns: 100 },
   gameplayTips: {
     strengths: [race.specialAbility.strategicValue || 'Balanced approach'],
     weaknesses: [race.specialAbility.limitations || 'No major weaknesses'], 

@@ -1,7 +1,7 @@
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate } from '../data-client';
+import { dbGet, dbUpdate, dbList } from '../data-client';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type KingdomType = {
@@ -32,6 +32,18 @@ async function handleClaim(args: { kingdomId?: string | null; targetId?: string 
   const ownerField = kingdom.owner ?? null;
   if (!ownerField || (!ownerField.includes(callerIdentity.sub) && !ownerField.includes(callerIdentity.username ?? ''))) {
     return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
+  }
+
+  // Check restoration status — claiming a new bounty target counts as an attack action
+  const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
+  const activeRestoration = allRestoration.find(r => r.kingdomId === kingdomId && new Date(r.endTime) > new Date());
+  if (activeRestoration) {
+    const prohibited: string[] = typeof activeRestoration.prohibitedActions === 'string'
+      ? JSON.parse(activeRestoration.prohibitedActions)
+      : (activeRestoration.prohibitedActions ?? []);
+    if (prohibited.some(a => ['attack'].includes(a))) {
+      return { success: false, error: 'Kingdom is in restoration and cannot perform this action', errorCode: ErrorCode.RESTORATION_BLOCKED };
+    }
   }
 
   const stats = (kingdom.stats ?? {}) as Record<string, unknown>;

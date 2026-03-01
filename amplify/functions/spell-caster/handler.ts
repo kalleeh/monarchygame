@@ -4,7 +4,15 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { dbGet, dbUpdate } from '../data-client';
 
-const ELAN_COST_PER_SPELL = 50;
+const SPELL_ELAN_COSTS: Record<string, number> = {
+  calming_chant: 5,        // No damage, cheapest
+  rousing_wind: 10,        // Shield removal, tier 1
+  shattering_calm: 15,     // Shield removal, tier 1
+  hurricane: 20,           // Structure damage, tier 2
+  lightning_lance: 25,     // Fort damage, tier 2
+  banshee_deluge: 25,      // Structure damage, tier 2
+  foul_light: 30,          // Peasant kill, tier 3
+};
 
 // Spell damage definitions duplicated here because Lambda functions cannot import
 // browser-targeted frontend modules. When updating spell values, also update:
@@ -67,8 +75,9 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     const resources = (casterKingdom.resources ?? {}) as KingdomResources;
     const currentElan = resources.elan ?? 0;
 
-    if (currentElan < ELAN_COST_PER_SPELL) {
-      return { success: false, error: `Insufficient elan: need ${ELAN_COST_PER_SPELL}, have ${currentElan}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
+    const spellElanCost = SPELL_ELAN_COSTS[spellId] ?? 20;
+    if (currentElan < spellElanCost) {
+      return { success: false, error: `Insufficient elan: need ${spellElanCost}, have ${currentElan}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
     // Check and deduct turns
@@ -80,7 +89,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
 
     const updatedResources: KingdomResources = {
       ...resources,
-      elan: currentElan - ELAN_COST_PER_SPELL,
+      elan: currentElan - spellElanCost,
       turns: Math.max(0, currentTurns - turnCost)
     };
 
@@ -96,7 +105,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       const targetKingdom = await dbGet<KingdomType>('Kingdom', targetId);
       if (!targetKingdom) {
         // Mana already spent but target disappeared — still return success with warning
-        return { success: true, result: JSON.stringify({ spellId, targetId, elanUsed: ELAN_COST_PER_SPELL, remainingElan: updatedResources.elan, warning: 'Target kingdom not found, elan spent' }) };
+        return { success: true, result: JSON.stringify({ spellId, targetId, elanUsed: spellElanCost, remainingElan: updatedResources.elan, warning: 'Target kingdom not found, elan spent' }) };
       }
 
       if (spellEffect.type === 'structure_damage') {
@@ -162,7 +171,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     }
 
     log.info('spell-caster', 'castSpell', { casterId, spellId, targetId });
-    return { success: true, result: JSON.stringify({ spellId, targetId, elanUsed: ELAN_COST_PER_SPELL, remainingElan: updatedResources.elan, damageReport }) };
+    return { success: true, result: JSON.stringify({ spellId, targetId, elanUsed: spellElanCost, remainingElan: updatedResources.elan, damageReport }) };
   } catch (error) {
     log.error('spell-caster', error, { casterId, spellId });
     return { success: false, error: 'Spell casting failed', errorCode: ErrorCode.INTERNAL_ERROR };

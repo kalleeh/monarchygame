@@ -5,17 +5,19 @@
  */
 
 import React, { useState, useCallback, useMemo, useEffect, memo } from 'react';
-import type { 
-  Kingdom, 
-  AttackRequest, 
-  AttackType, 
+import type {
+  Kingdom,
+  AttackRequest,
+  AttackType,
   Army,
-  Territory 
+  Territory
 } from '../../types/combat';
 import { hasTerritories } from '../../types/guards';
 import { KingdomSearch } from './KingdomSearch';
 import { ArmySelector } from './ArmySelector';
 import { AttackPreview } from './AttackPreview';
+import { useCombatStore } from '../../stores/combatStore';
+import { requiresWarDeclaration } from '../../../../shared/mechanics/combat-mechanics';
 
 interface AttackPlannerProps {
   currentKingdom: Kingdom;
@@ -44,6 +46,15 @@ export function AttackPlanner({
     cavalry: 0
   });
   const [showPreview, setShowPreview] = useState<boolean>(false);
+  const [warDeclared, setWarDeclared] = useState<boolean>(false);
+
+  const getAttackCount = useCombatStore((state) => state.getAttackCount);
+  const declareWar = useCombatStore((state) => state.declareWar);
+  const isAtWar = useCombatStore((state) => state.isAtWar);
+
+  const attackCount = selectedTarget ? getAttackCount(selectedTarget.id) : 0;
+  const warDeclarationRequired = requiresWarDeclaration(attackCount);
+  const alreadyAtWar = selectedTarget ? isAtWar(selectedTarget.id) : false;
 
   // Memoized available army to prevent recalculation
   const availableArmy = useMemo(() => currentKingdom.totalUnits, [currentKingdom.totalUnits]);
@@ -136,6 +147,12 @@ export function AttackPlanner({
       console.error('Attack failed:', err);
     }
   }, [canAttack, selectedTarget, selectedTerritory, attackType, selectedArmy, onAttack, currentKingdom.id]);
+
+  const handleDeclareWar = useCallback(() => {
+    if (!selectedTarget) return;
+    declareWar(currentKingdom.id, selectedTarget.id);
+    setWarDeclared(true);
+  }, [selectedTarget, currentKingdom.id, declareWar]);
 
   const attackTypeOptions = useMemo(() => [
     {
@@ -241,8 +258,51 @@ export function AttackPlanner({
           </div>
         </section>
 
+        {/* War Declaration Banner */}
+        {selectedTarget && warDeclarationRequired && !alreadyAtWar && (
+          <div style={{
+            padding: '0.75rem 1rem',
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            borderRadius: '6px',
+            marginBottom: '0.75rem',
+            fontSize: '0.875rem',
+            color: '#f87171',
+          }}>
+            You have attacked {selectedTarget.name} {attackCount} time{attackCount !== 1 ? 's' : ''}. War declaration is required to continue attacking.
+          </div>
+        )}
+        {selectedTarget && (alreadyAtWar || warDeclared) && (
+          <div style={{
+            padding: '0.75rem 1rem',
+            background: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: '6px',
+            marginBottom: '0.75rem',
+            fontSize: '0.875rem',
+            color: '#fca5a5',
+          }}>
+            War declared against {selectedTarget.name}. All-out attacks are now permitted.
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="planner-actions">
+          {selectedTarget && warDeclarationRequired && !alreadyAtWar && !warDeclared && (
+            <button
+              type="button"
+              className="attack-button"
+              onClick={handleDeclareWar}
+              style={{
+                background: 'rgba(239, 68, 68, 0.2)',
+                border: '1px solid rgba(239, 68, 68, 0.6)',
+                color: '#f87171',
+              }}
+            >
+              Declare War on {selectedTarget.name}
+            </button>
+          )}
+
           <button
             type="button"
             className="preview-button"
@@ -251,7 +311,7 @@ export function AttackPlanner({
           >
             Preview Attack
           </button>
-          
+
           <button
             type="button"
             className="attack-button primary"

@@ -10,6 +10,7 @@ import { AppRouter } from './AppRouter';
 import { RACES } from './shared-races';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { isDemoMode, disableDemoMode } from './utils/authMode';
+import { AmplifyFunctionService } from './services/amplifyFunctionService';
 import './App.css';
 import './components/KingdomCreation.css';
 import './components/KingdomDashboard.css';
@@ -246,6 +247,22 @@ function AppContent() {
           turns: 50
         };
 
+        // Get active season ID for the new kingdom
+        let activeSeasonId: string | null = null;
+        try {
+          const seasonResult = await AmplifyFunctionService.callFunction('season-manager', {
+            kingdomId: 'new',
+            action: 'getActiveSeason',
+          });
+          const parsed = typeof seasonResult === 'string' ? JSON.parse(seasonResult) : seasonResult;
+          const data = (parsed as any)?.data ?? parsed;
+          if ((data as any)?.success && (data as any)?.season?.id) {
+            activeSeasonId = (data as any).season.id;
+          }
+        } catch {
+          // Non-fatal — kingdom can exist without a season
+        }
+
         const newKingdom = await client.models.Kingdom.create({
           name: kingdomName || 'New Kingdom',
           race: raceName as "Human" | "Elven" | "Goblin" | "Droben" | "Vampire" | "Elemental" | "Centaur" | "Sidhe" | "Dwarven" | "Fae",
@@ -255,7 +272,8 @@ function AppContent() {
           totalUnits: JSON.stringify({}),
           currentAge: 'early',
           isActive: true,
-          isOnline: true
+          isOnline: true,
+          ...(activeSeasonId ? { seasonId: activeSeasonId } : {})
         });
 
         if (newKingdom.data) {

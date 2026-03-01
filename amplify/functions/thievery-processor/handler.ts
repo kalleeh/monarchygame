@@ -2,12 +2,12 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources, KingdomUnits } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate } from '../data-client';
+import { dbGet, dbUpdate, dbList, dbAtomicAdd } from '../data-client';
 
 const VALID_OPERATIONS = ['scout', 'steal', 'sabotage', 'burn'] as const;
 const MIN_SCOUTS = 100;
 
-type KingdomType = Record<string, unknown>;
+type KingdomType = Record<string, unknown> & { turnsBalance?: number | null };
 
 export const handler: Schema["executeThievery"]["functionHandler"] = async (event) => {
   const { kingdomId, operation, targetKingdomId } = event.arguments;
@@ -39,6 +39,18 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
+    // Check restoration status
+    const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
+    const activeRestoration = allRestoration.find(r => r.kingdomId === kingdomId && new Date(r.endTime) > new Date());
+    if (activeRestoration) {
+      const prohibited: string[] = typeof activeRestoration.prohibitedActions === 'string'
+        ? JSON.parse(activeRestoration.prohibitedActions)
+        : (activeRestoration.prohibitedActions ?? []);
+      if (prohibited.some(a => ['espionage'].includes(a))) {
+        return { success: false, error: 'Kingdom is in restoration and cannot perform this action', errorCode: ErrorCode.RESTORATION_BLOCKED };
+      }
+    }
+
     const attackerUnits = (attackerKingdom.totalUnits ?? {}) as Record<string, number>;
     const attackerScouts = attackerUnits.scouts ?? 0;
 
@@ -46,9 +58,9 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
       return { success: false, error: `Insufficient scouts: need ${MIN_SCOUTS}, have ${attackerScouts}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
-    // Check turns
+    // Check turns from turnsBalance (server-side pool), falling back to resources.turns
     const attackerResources = (attackerKingdom.resources ?? {}) as KingdomResources;
-    const currentTurns = attackerResources.turns ?? 72;
+    const currentTurns = attackerKingdom.turnsBalance ?? attackerResources.turns ?? 72;
     const turnCost = 2;
     if (currentTurns < turnCost) {
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
@@ -117,7 +129,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
       }
     }
 
-    // Update attacker scout count, deduct turns, and apply any gold gain in one update
+    // Update attacker scout count and apply any gold gain; deduct turns atomically
     const updatedAttackerUnits: KingdomUnits = {
       ...(attackerUnits as KingdomUnits),
       scouts: Math.max(0, attackerScouts - casualties),
@@ -125,12 +137,12 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     const updatedAttackerResources: KingdomResources = {
       ...attackerResources,
       gold: (attackerResources.gold ?? 0) + attackerGoldDelta,
-      turns: Math.max(0, currentTurns - turnCost),
     };
     await dbUpdate('Kingdom', kingdomId, {
       totalUnits: updatedAttackerUnits,
       resources: updatedAttackerResources,
     });
+    await dbAtomicAdd('Kingdom', kingdomId, 'turnsBalance', -turnCost);
 
     log.info('thievery-processor', 'executeThievery', { kingdomId, operation, targetKingdomId });
     return {

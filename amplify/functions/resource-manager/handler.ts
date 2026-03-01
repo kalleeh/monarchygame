@@ -7,7 +7,7 @@ import { dbGet, dbUpdate, dbList } from '../data-client';
 const RESOURCE_LIMITS = {
   gold: { min: 0, max: 1000000 },
   population: { min: 0, max: 100000 },
-  elan: { min: 0, max: 50000 },
+  elan: { min: 0, max: 500 },
   land: { min: 1000, max: 100000 }
 } as const;
 
@@ -86,7 +86,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     const populationPerTurn = (buildings.farm ?? 0) * 10;
     // Race-specific elan generation per turn (matches shared/mechanics/elan-mechanics.ts)
     const currentRace = (kingdom.race as string) ?? '';
-    const ELAN_RATE = (['Sidhe', 'Vampire'].includes(currentRace)) ? 0.005 : 0.003;
+    const ELAN_RATE = (['Sidhe', 'Vampire'].includes(currentRace)) ? 0.15 : 0.10;
     const elanPerTurn = Math.ceil((buildings.temple ?? 0) * ELAN_RATE);
 
     // Apply age multiplier to all gold income (base + tithe)

@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomUnits, KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate } from '../data-client';
+import { dbGet, dbUpdate, dbList, dbAtomicAdd } from '../data-client';
 
 const VALID_UNIT_TYPES = ['infantry', 'archers', 'cavalry', 'siege', 'mages', 'scouts', 'scum', 'elite_scum'] as const;
 type UnitType = typeof VALID_UNIT_TYPES[number];
@@ -25,6 +25,7 @@ type KingdomType = {
   owner?: string | null;
   resources?: KingdomResources | null;
   totalUnits?: KingdomUnits | null;
+  turnsBalance?: number | null;
 };
 
 export const handler: Schema["trainUnits"]["functionHandler"] = async (event) => {
@@ -61,6 +62,18 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
+    // Check restoration status
+    const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
+    const activeRestoration = allRestoration.find(r => r.kingdomId === kingdomId && new Date(r.endTime) > new Date());
+    if (activeRestoration) {
+      const prohibited: string[] = typeof activeRestoration.prohibitedActions === 'string'
+        ? JSON.parse(activeRestoration.prohibitedActions)
+        : (activeRestoration.prohibitedActions ?? []);
+      if (prohibited.some(a => ['train'].includes(a))) {
+        return { success: false, error: 'Kingdom is in restoration and cannot perform this action', errorCode: ErrorCode.RESTORATION_BLOCKED };
+      }
+    }
+
     const resources = (kingdom.resources ?? {}) as KingdomResources;
     const goldCost = quantity * UNIT_GOLD_COST[unitType as UnitType];
     const currentGold = resources.gold ?? 0;
@@ -69,8 +82,8 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
       return { success: false, error: `Insufficient gold: need ${goldCost}, have ${currentGold}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
-    // Check and deduct turns
-    const currentTurns = resources.turns ?? 72;
+    // Check and deduct turns from turnsBalance (server-side pool), falling back to resources.turns
+    const currentTurns = kingdom.turnsBalance ?? resources.turns ?? 72;
     const turnCost = 1;
     if (currentTurns < turnCost) {
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
@@ -86,13 +99,13 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
     const updatedResources: KingdomResources = {
       ...resources,
       gold: currentGold - goldCost,
-      turns: Math.max(0, currentTurns - turnCost)
     };
 
     await dbUpdate('Kingdom', kingdomId, {
       totalUnits: updatedUnits,
       resources: updatedResources
     });
+    await dbAtomicAdd('Kingdom', kingdomId, 'turnsBalance', -turnCost);
 
     log.info('unit-trainer', 'trainUnits', { kingdomId, unitType, quantity });
     return { success: true, units: JSON.stringify(updatedUnits) };
