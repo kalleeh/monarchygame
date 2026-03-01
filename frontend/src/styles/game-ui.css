@@ -1,0 +1,660 @@
+/**
+ * game-ui.css — Shared Design System for Monarchy Game
+ *
+ * This file defines all reusable UI patterns so per-component CSS files only
+ * contain truly unique layout rules (specific grids, component-specific positioning).
+ *
+ * Imported once from index.css — no component-level import needed.
+ */
+
+/* ── CSS Custom Properties ───────────────────────────────────────────────── */
+:root {
+  /* Backgrounds */
+  --gm-bg-page:    #0f0f1a;
+  --gm-bg-panel:   rgba(26, 26, 46, 0.97);
+  --gm-bg-card:    rgba(15, 15, 30, 0.8);
+  --gm-bg-overlay: rgba(0, 0, 0, 0.25);
+
+  /* Borders */
+  --gm-border:      rgba(99, 102, 241, 0.3);
+  --gm-border-gold: rgba(251, 191, 36, 0.3);
+  --gm-border-teal: rgba(78, 205, 196, 0.3);
+
+  /* Text */
+  --gm-text:         #e2e8f0;
+  --gm-text-muted:   #94a3b8;
+  --gm-text-faint:   #64748b;
+  --gm-text-gold:    #fbbf24;
+  --gm-text-teal:    #4ecdc4;
+  --gm-text-success: #4ade80;
+  --gm-text-warning: #f59e0b;
+  --gm-text-danger:  #ef4444;
+
+  /* Radii */
+  --gm-radius-sm: 0.375rem;
+  --gm-radius-md: 0.5rem;
+  --gm-radius-lg: 0.75rem;
+
+  /* Transitions */
+  --gm-transition: 0.15s ease;
+}
+
+/* ── Panel ───────────────────────────────────────────────────────────────── */
+/**
+ * .gm-panel
+ * Dark content panel — the primary container shape used across all screens.
+ * rgba(26,26,46,0.97) background + indigo border.
+ */
+.gm-panel {
+  background: var(--gm-bg-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius-lg);
+  padding: 1.25rem;
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────── */
+/**
+ * .gm-card
+ * Smaller selectable/hoverable card unit within panels.
+ */
+.gm-card {
+  background: var(--gm-bg-overlay);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius-md);
+  padding: 1rem;
+  transition: border-color var(--gm-transition);
+}
+
+.gm-card:hover {
+  border-color: var(--gm-border-gold);
+}
+
+/* ── Headings ────────────────────────────────────────────────────────────── */
+/**
+ * .gm-heading — gold section heading (h2/h3 equivalent)
+ * .gm-subheading — secondary heading (h4 equivalent)
+ */
+.gm-heading {
+  margin: 0 0 1rem 0;
+  color: var(--gm-text-gold);
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.gm-subheading {
+  margin: 0 0 0.75rem 0;
+  color: var(--gm-text-teal);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+/* ── Table ───────────────────────────────────────────────────────────────── */
+/**
+ * .gm-table — full-width dark table that matches panel backgrounds.
+ * Wrap in a div with overflow-x: auto for mobile.
+ */
+.gm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  background: var(--gm-bg-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius-md);
+  overflow: hidden;
+}
+
+.gm-table thead {
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 2px solid var(--gm-border-gold);
+}
+
+.gm-table th {
+  padding: 0.65rem 0.875rem;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--gm-text-muted);
+  white-space: nowrap;
+}
+
+.gm-table td {
+  padding: 0.75rem 0.875rem;
+  color: var(--gm-text);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.875rem;
+}
+
+.gm-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.gm-table tbody tr {
+  transition: background var(--gm-transition);
+}
+
+.gm-table tbody tr:hover {
+  background: rgba(251, 191, 36, 0.05);
+}
+
+.gm-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+/**
+ * .gm-btn            — base button (resets browser defaults)
+ * .gm-btn--primary   — gold gradient primary action
+ * .gm-btn--danger    — red danger/destructive action
+ * .gm-btn--ghost     — ghost/outline button
+ */
+.gm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.25rem;
+  border: none;
+  border-radius: var(--gm-radius-sm);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--gm-transition), box-shadow var(--gm-transition), background var(--gm-transition);
+  white-space: nowrap;
+  min-height: 36px;
+}
+
+.gm-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Primary — gold gradient */
+.gm-btn--primary {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #1a1a2e;
+}
+
+.gm-btn--primary:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Danger — red */
+.gm-btn--danger {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+}
+
+.gm-btn--danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #ef4444;
+}
+
+/* Ghost — transparent with indigo border */
+.gm-btn--ghost {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--gm-border);
+  color: var(--gm-text);
+}
+
+.gm-btn--ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--gm-border-gold);
+}
+
+/* ── Back Button ─────────────────────────────────────────────────────────── */
+/**
+ * .gm-back-btn — back navigation button (← Back pattern)
+ */
+.gm-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius-md);
+  color: var(--gm-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--gm-transition), border-color var(--gm-transition), transform var(--gm-transition);
+  white-space: nowrap;
+}
+
+.gm-back-btn:hover {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: var(--gm-border-gold);
+  transform: translateX(-2px);
+}
+
+/* ── Badges ──────────────────────────────────────────────────────────────── */
+/**
+ * .gm-badge              — base pill badge
+ * .gm-badge--success     — green
+ * .gm-badge--warning     — amber
+ * .gm-badge--danger      — red
+ * .gm-badge--info        — indigo/blue
+ * .gm-badge--neutral     — slate
+ */
+.gm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.gm-badge--success {
+  background: rgba(74, 222, 128, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  color: #4ade80;
+}
+
+.gm-badge--warning {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #f59e0b;
+}
+
+.gm-badge--danger {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+.gm-badge--info {
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #818cf8;
+}
+
+.gm-badge--neutral {
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #64748b;
+}
+
+/* ── Form Inputs ─────────────────────────────────────────────────────────── */
+/**
+ * .gm-input  — dark-theme text/number input
+ * .gm-select — dark-theme select
+ */
+.gm-input,
+.gm-select {
+  padding: 0.5rem 0.875rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius-md);
+  color: var(--gm-text);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color var(--gm-transition), box-shadow var(--gm-transition);
+  box-sizing: border-box;
+}
+
+.gm-input::placeholder {
+  color: var(--gm-text-faint);
+}
+
+.gm-input:focus,
+.gm-select:focus {
+  border-color: var(--gm-text-gold);
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.15);
+}
+
+.gm-select {
+  cursor: pointer;
+  background: var(--gm-bg-panel);
+}
+
+.gm-select option {
+  background: #1a1a2e;
+  color: var(--gm-text);
+}
+
+/* ── Banners ─────────────────────────────────────────────────────────────── */
+/**
+ * .gm-error-banner   — red dismissible error banner
+ * .gm-success-banner — green success/result banner
+ */
+.gm-error-banner,
+.gm-success-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: var(--gm-radius-md);
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.gm-error-banner {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+.gm-success-banner {
+  background: rgba(78, 205, 196, 0.15);
+  border: 1px solid rgba(78, 205, 196, 0.4);
+  color: #4ecdc4;
+}
+
+/* Dismiss button inside banners */
+.gm-error-banner button,
+.gm-success-banner button {
+  background: none !important;
+  border: none !important;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+  opacity: 0.8;
+  transition: opacity var(--gm-transition);
+}
+
+.gm-error-banner button  { color: #ef4444 !important; }
+.gm-success-banner button { color: #4ecdc4 !important; }
+
+.gm-error-banner button:hover,
+.gm-success-banner button:hover { opacity: 1; }
+
+/* Mobile: stack banner content vertically */
+@media (max-width: 480px) {
+  .gm-error-banner,
+  .gm-success-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .gm-error-banner button,
+  .gm-success-banner button {
+    align-self: flex-end;
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ── Empty State ─────────────────────────────────────────────────────────── */
+/**
+ * .gm-empty-state — centered italic placeholder when a list is empty
+ */
+.gm-empty-state {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--gm-text-faint);
+  font-style: italic;
+  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(99, 102, 241, 0.2);
+  border-radius: var(--gm-radius-md);
+}
+
+/* ── Loading ─────────────────────────────────────────────────────────────── */
+/**
+ * .gm-loading — centred italic loading state line
+ */
+.gm-loading {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--gm-text-muted);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+/* ── Stat Row ────────────────────────────────────────────────────────────── */
+/**
+ * .gm-stat-row — single horizontal "Label: Value" stat line
+ */
+.gm-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.875rem;
+}
+
+.gm-stat-row:last-child {
+  border-bottom: none;
+}
+
+.gm-stat-row__label {
+  color: var(--gm-text-muted);
+}
+
+.gm-stat-row__value {
+  color: var(--gm-text);
+  font-weight: 500;
+}
+
+/* ── Stat Grid ───────────────────────────────────────────────────────────── */
+/**
+ * .gm-stat-grid — responsive grid of stat cards (auto-fill min 180px)
+ */
+.gm-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+/* ── Stat Card (inside .gm-stat-grid) ───────────────────────────────────── */
+/**
+ * .gm-stat-card — individual stat card with centred value + label
+ */
+.gm-stat-card {
+  background: var(--gm-bg-overlay);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius-md);
+  padding: 1rem 1.25rem;
+  text-align: center;
+  transition: border-color var(--gm-transition);
+}
+
+.gm-stat-card:hover {
+  border-color: var(--gm-border-gold);
+}
+
+.gm-stat-card__value {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--gm-text-gold);
+  line-height: 1.2;
+}
+
+.gm-stat-card__label {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--gm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* Responsive: collapse to 2-col on mobile */
+@media (max-width: 480px) {
+  .gm-stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .gm-stat-card__value {
+    font-size: 1.4rem;
+  }
+}
+
+/* ── Warning Text Block ──────────────────────────────────────────────────── */
+/**
+ * .gm-warning-text — amber warning notice block
+ */
+.gm-warning-text {
+  color: var(--gm-text-warning);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--gm-radius-sm);
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* ── Modal ───────────────────────────────────────────────────────────────── */
+/**
+ * .gm-modal-overlay / .gm-modal-content — fixed centered modal
+ */
+.gm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.gm-modal-content {
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.99) 0%, rgba(22, 33, 62, 0.99) 100%);
+  border: 1px solid var(--gm-border-gold);
+  border-radius: var(--gm-radius-lg);
+  padding: 2rem;
+  min-width: 400px;
+  max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 480px) {
+  .gm-modal-content {
+    min-width: auto;
+    margin: 1rem;
+    padding: 1.25rem;
+  }
+}
+
+/* ── Section Header Row ──────────────────────────────────────────────────── */
+/**
+ * .gm-section-header — flex row with heading on left, action button on right
+ */
+.gm-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .gm-section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+}
+
+/* ── Navigation Tab Bar ──────────────────────────────────────────────────── */
+/**
+ * .gm-tab-bar — horizontal scrolling pill tab bar
+ * .gm-tab     — individual tab pill
+ * .gm-tab--active — active state
+ */
+.gm-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gm-tab {
+  padding: 0.35rem 0.8rem;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  color: var(--gm-text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background var(--gm-transition), color var(--gm-transition), border-color var(--gm-transition);
+  white-space: nowrap;
+}
+
+.gm-tab:hover:not(.gm-tab--active) {
+  background: rgba(78, 205, 196, 0.1) !important;
+  border-color: rgba(78, 205, 196, 0.35);
+  color: var(--gm-text);
+  transform: none;
+}
+
+.gm-tab--active {
+  background: rgba(78, 205, 196, 0.18) !important;
+  border-color: #4ecdc4;
+  color: #4ecdc4;
+  box-shadow: 0 0 6px rgba(78, 205, 196, 0.3);
+}
+
+/* Mobile: horizontal scroll instead of wrapping */
+@media (max-width: 768px) {
+  .gm-tab-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .gm-tab-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .gm-tab {
+    flex-shrink: 0;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .gm-tab {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+  }
+}
+
+/* ── Page Container ──────────────────────────────────────────────────────── */
+/**
+ * .gm-page — top-level page wrapper (full-height, dark background)
+ */
+.gm-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  color: var(--gm-text);
+  padding: 2rem;
+  overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+  .gm-page {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .gm-page {
+    padding: 0.75rem;
+  }
+}

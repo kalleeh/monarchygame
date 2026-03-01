@@ -1,5 +1,7 @@
-/* Building Management - dark theme matching existing component styles */
+/* Building Management — component-specific layout only */
+/* Shared panel/card/badge/button patterns → game-ui.css */
 
+/* ── Page container ──────────────────────────────────────────────────── */
 .building-management {
   min-height: 100vh;
   background: var(--color-bg-deep, #0f1629);
@@ -11,7 +13,7 @@
   margin: 0 auto;
 }
 
-/* Resource bar */
+/* ── Resource bar ────────────────────────────────────────────────────── */
 .bm-resources {
   display: flex;
   flex-wrap: wrap;
@@ -31,19 +33,9 @@
   font-size: 0.95rem;
 }
 
-.bm-resource-icon {
-  font-size: 1rem;
-}
-
-.bm-resource-label {
-  color: #9ca3af;
-  font-weight: 500;
-}
-
-.bm-resource-value {
-  color: #f0c040;
-  font-weight: 700;
-}
+.bm-resource-icon  { font-size: 1rem; }
+.bm-resource-label { color: #9ca3af; font-weight: 500; }
+.bm-resource-value { color: #f0c040; font-weight: 700; }
 
 .bm-resource-hint {
   margin-left: auto;
@@ -52,7 +44,7 @@
   font-style: italic;
 }
 
-/* Building grid */
+/* ── Building grid (3-column responsive) ────────────────────────────── */
 .bm-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -60,18 +52,14 @@
 }
 
 @media (min-width: 600px) {
-  .bm-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  .bm-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (min-width: 900px) {
-  .bm-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  .bm-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
-/* Building card */
+/* ── Building card ───────────────────────────────────────────────────── */
 .bm-card {
   background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
   border: 1px solid rgba(78, 205, 196, 0.25);
@@ -83,14 +71,8 @@
   transition: border-color 0.2s;
 }
 
-.bm-card:hover {
-  border-color: rgba(78, 205, 196, 0.5);
-}
-
-.bm-card--unaffordable {
-  opacity: 0.55;
-  border-color: rgba(255, 255, 255, 0.1);
-}
+.bm-card:hover              { border-color: rgba(78, 205, 196, 0.5); }
+.bm-card--unaffordable      { opacity: 0.55; border-color: rgba(255, 255, 255, 0.1); }
 
 .bm-card-header {
   display: flex;
@@ -106,30 +88,10 @@
   gap: 0.5rem;
 }
 
-.bm-card-name {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #4ecdc4;
-}
-
-.bm-card-count {
-  font-size: 0.75rem;
-  color: #9ca3af;
-  white-space: nowrap;
-}
-
-.bm-card-description {
-  margin: 0;
-  font-size: 0.82rem;
-  color: #d1d5db;
-  line-height: 1.4;
-}
-
-.bm-card-effect {
-  font-size: 0.78rem;
-  color: #a78bfa;
-  font-style: italic;
-}
+.bm-card-name        { font-size: 1rem; font-weight: 700; color: #4ecdc4; }
+.bm-card-count       { font-size: 0.75rem; color: #9ca3af; white-space: nowrap; }
+.bm-card-description { margin: 0; font-size: 0.82rem; color: #d1d5db; line-height: 1.4; }
+.bm-card-effect      { font-size: 0.78rem; color: #a78bfa; font-style: italic; }
 
 .bm-card-footer {
   display: flex;
@@ -137,7 +99,7 @@
   gap: 0.5rem;
 }
 
-/* Quantity row */
+/* ── Quantity stepper ────────────────────────────────────────────────── */
 .bm-quantity-row {
   display: flex;
   align-items: center;
@@ -157,14 +119,8 @@
   transition: background 0.15s;
 }
 
-.bm-qty-btn:hover:not(:disabled) {
-  background: rgba(78, 205, 196, 0.25);
-}
-
-.bm-qty-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+.bm-qty-btn:hover:not(:disabled) { background: rgba(78, 205, 196, 0.25); }
+.bm-qty-btn:disabled              { opacity: 0.4; cursor: not-allowed; }
 
 .bm-qty-input {
   width: 52px;
@@ -183,7 +139,7 @@
   margin: 0;
 }
 
-/* Cost row */
+/* ── Cost row ────────────────────────────────────────────────────────── */
 .bm-cost-row {
   display: flex;
   align-items: center;
@@ -191,20 +147,11 @@
   font-size: 0.82rem;
 }
 
-.bm-cost-label {
-  color: #9ca3af;
-}
+.bm-cost-label          { color: #9ca3af; }
+.bm-cost-value          { color: #f0c040; font-weight: 600; }
+.bm-cost--unaffordable  { color: #ef4444; }
 
-.bm-cost-value {
-  color: #f0c040;
-  font-weight: 600;
-}
-
-.bm-cost--unaffordable {
-  color: #ef4444;
-}
-
-/* Build button */
+/* ── Build button ────────────────────────────────────────────────────── */
 .bm-build-btn {
   background: linear-gradient(135deg, #4ecdc4, #44a3d8);
   border: none;
@@ -219,11 +166,7 @@
   width: 100%;
 }
 
-.bm-build-btn:hover:not(:disabled) {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
+.bm-build-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
 .bm-build-btn:disabled {
   background: rgba(255, 255, 255, 0.1);
   color: #6b7280;

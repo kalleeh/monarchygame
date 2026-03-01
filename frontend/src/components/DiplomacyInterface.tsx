@@ -106,22 +106,22 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
 
   const renderDiplomacyDashboard = () => (
     <div className="diplomacy-dashboard">
-      <div className="diplomacy-stats">
-        <div className="stat-card">
-          <h4>Reputation</h4>
-          <span className="stat-value reputation">{reputation}</span>
+      <div className="diplomacy-stats gm-stat-grid">
+        <div className="gm-stat-card">
+          <span className="gm-stat-card__label">Reputation</span>
+          <span className="gm-stat-card__value" style={{ color: '#22c55e' }}>{reputation}</span>
         </div>
-        <div className="stat-card">
-          <h4>Active Treaties</h4>
-          <span className="stat-value">{relationships.filter(r => r.treaties.length > 0).length}</span>
+        <div className="gm-stat-card">
+          <span className="gm-stat-card__label">Active Treaties</span>
+          <span className="gm-stat-card__value">{relationships.filter(r => r.treaties.length > 0).length}</span>
         </div>
-        <div className="stat-card">
-          <h4>Pending Proposals</h4>
-          <span className="stat-value">{activeProposals.length}</span>
+        <div className="gm-stat-card">
+          <span className="gm-stat-card__label">Pending Proposals</span>
+          <span className="gm-stat-card__value">{activeProposals.length}</span>
         </div>
-        <div className="stat-card">
-          <h4>At War</h4>
-          <span className="stat-value war">{relationships.filter(r => r.status === 'WAR').length}</span>
+        <div className="gm-stat-card">
+          <span className="gm-stat-card__label">At War</span>
+          <span className="gm-stat-card__value" style={{ color: '#ef4444' }}>{relationships.filter(r => r.status === 'WAR').length}</span>
         </div>
       </div>
 
@@ -140,7 +140,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
           </div>
         ))}
         {activeProposals.length === 0 && (
-          <p className="empty-state">No recent diplomatic activity</p>
+          <p className="gm-empty-state">No recent diplomatic activity</p>
         )}
       </div>
     </div>
@@ -156,7 +156,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
           );
           
           return (
-            <div key={kingdom.id} className="kingdom-card">
+            <div key={kingdom.id} className="kingdom-card gm-card">
               <div className="kingdom-info">
                 <img src={`/races/${kingdom.race}.png`} alt={kingdom.race} className="kingdom-flag" />
                 <div className="kingdom-details">
@@ -168,8 +168,8 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
                 </div>
               </div>
               <div className="kingdom-actions">
-                <button 
-                  className="negotiate-btn"
+                <button
+                  className="negotiate-btn gm-btn gm-btn--primary"
                   onClick={() => {
                     setSelectedKingdom({ ...kingdom, reputation: kingdom.reputation || 0 });
                     setCurrentView('negotiate');
@@ -178,8 +178,8 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
                   Negotiate
                 </button>
                 {relationship?.status !== 'WAR' && (
-                  <button 
-                    className="war-btn"
+                  <button
+                    className="war-btn gm-btn gm-btn--danger"
                     onClick={() => declareWar(kingdom.id)}
                   >
                     Declare War
@@ -200,7 +200,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
       <div className="proposals-section">
         <h4>Incoming Proposals</h4>
         {activeProposals.filter(p => p.toKingdom.id === kingdomId).map(proposal => (
-          <div key={proposal.id} className="proposal-card incoming">
+          <div key={proposal.id} className="proposal-card incoming gm-card">
             <div className="proposal-header">
               <img src={`/races/${proposal.fromKingdom.race}.png`} alt={proposal.fromKingdom.race} className="kingdom-flag" />
               <div className="proposal-info">
@@ -212,15 +212,15 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
               <p>{JSON.stringify(proposal.terms, null, 2)}</p>
             </div>
             <div className="proposal-actions">
-              <button 
-                className="accept-btn"
+              <button
+                className="accept-btn gm-btn gm-btn--primary"
                 onClick={() => handleAcceptProposal(proposal.id)}
                 disabled={loading}
               >
                 Accept
               </button>
-              <button 
-                className="reject-btn"
+              <button
+                className="reject-btn gm-btn gm-btn--danger"
                 onClick={() => handleRejectProposal(proposal.id)}
                 disabled={loading}
               >
@@ -234,7 +234,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
       <div className="proposals-section">
         <h4>Outgoing Proposals</h4>
         {activeProposals.filter(p => p.fromKingdom.id === kingdomId).map(proposal => (
-          <div key={proposal.id} className="proposal-card outgoing">
+          <div key={proposal.id} className="proposal-card outgoing gm-card">
             <div className="proposal-header">
               <img src={`/races/${proposal.toKingdom.race}.png`} alt={proposal.toKingdom.race} className="kingdom-flag" />
               <div className="proposal-info">
@@ -259,8 +259,8 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
         <h3>Negotiate with {selectedKingdom.name}</h3>
         
         <div className="treaty-types">
-          <button 
-            className="treaty-type-btn"
+          <button
+            className="treaty-type-btn gm-btn gm-btn--ghost"
             onClick={() => handleSendProposal({
               fromKingdom: { id: kingdomId, name: 'Your Kingdom', race: 'Human', reputation: 0 },
               toKingdom: selectedKingdom,
@@ -271,9 +271,9 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
           >
             🕊️ Non-Aggression Pact
           </button>
-          
-          <button 
-            className="treaty-type-btn"
+
+          <button
+            className="treaty-type-btn gm-btn gm-btn--ghost"
             onClick={() => handleSendProposal({
               fromKingdom: { id: kingdomId, name: 'Your Kingdom', race: 'Human', reputation: 0 },
               toKingdom: selectedKingdom,
@@ -284,9 +284,9 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
           >
             🤝 Trade Agreement
           </button>
-          
-          <button 
-            className="treaty-type-btn"
+
+          <button
+            className="treaty-type-btn gm-btn gm-btn--ghost"
             onClick={() => handleSendProposal({
               fromKingdom: { id: kingdomId, name: 'Your Kingdom', race: 'Human', reputation: 0 },
               toKingdom: selectedKingdom,
@@ -319,9 +319,9 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
 
   if (error) {
     return (
-      <div className="diplomacy-error" role="alert">
-        <h3>Diplomacy Error</h3>
-        <p>{error}</p>
+      <div className="gm-error-banner" role="alert" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.75rem', borderRadius: '0.5rem', padding: '1.5rem' }}>
+        <strong>Diplomacy Error</strong>
+        <p style={{ margin: 0 }}>{error}</p>
         <button onClick={() => setError(null)}>Dismiss</button>
       </div>
     );
@@ -330,7 +330,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
   return (
     <div className="diplomacy-interface">
       <div className="diplomacy-header">
-        <button className="back-btn" onClick={onBack} aria-label="Back to Kingdom">
+        <button className="gm-back-btn" onClick={onBack} aria-label="Back to Kingdom">
           ← Back to Kingdom
         </button>
         <h1><img src="/diplomacy-icon.png" style={{width:32,height:32,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Diplomacy</h1>

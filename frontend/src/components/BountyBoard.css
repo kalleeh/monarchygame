@@ -1,4 +1,7 @@
-/* BountyBoard Styles */
+/* Bounty Board — component-specific layout only */
+/* Shared panel/card/badge/button/banner/empty/loading patterns → game-ui.css */
+
+/* ── Page container ──────────────────────────────────────────────────── */
 .bounty-board {
   min-height: 100vh;
   background: var(--color-bg-deep, #0f1629);
@@ -6,37 +9,14 @@
   padding: 2rem;
 }
 
-/* Error Banner */
-.bounty-error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  color: #ef4444;
-}
-
-.bounty-error .dismiss-btn {
-  background: none;
-  border: none;
-  color: #ef4444;
-  cursor: pointer;
-  font-size: 0.9rem;
-  padding: 0 0.5rem;
-  text-decoration: underline;
-}
-
-/* Content area */
+/* ── Content max-width wrapper ───────────────────────────────────────── */
 .bounty-content {
   max-width: 1200px;
   margin: 0 auto;
   padding-top: 1rem;
 }
 
-/* Sections */
+/* ── Sections ────────────────────────────────────────────────────────── */
 .bounty-section {
   margin-bottom: 2rem;
 }
@@ -49,30 +29,14 @@
   padding-bottom: 0.5rem;
 }
 
-/* Loading / Empty */
-.bounty-loading {
-  text-align: center;
-  padding: 2rem;
-  color: #94a3b8;
-  font-style: italic;
-}
-
-.bounty-empty {
-  text-align: center;
-  padding: 2rem;
-  color: #64748b;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-}
-
-/* Bounty Grid */
+/* ── Bounty grid ─────────────────────────────────────────────────────── */
 .bounty-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.25rem;
 }
 
-/* Bounty Card */
+/* ── Bounty card ─────────────────────────────────────────────────────── */
 .bounty-card {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -81,17 +45,10 @@
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
-.bounty-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(255, 215, 0, 0.3);
-}
+.bounty-card:hover               { transform: translateY(-2px); border-color: rgba(255, 215, 0, 0.3); }
+.bounty-card.claimed             { border-color: rgba(78, 205, 196, 0.4); background: rgba(78, 205, 196, 0.08); }
 
-.bounty-card.claimed {
-  border-color: rgba(78, 205, 196, 0.4);
-  background: rgba(78, 205, 196, 0.08);
-}
-
-/* Card Header */
+/* Card header */
 .bounty-card-header {
   display: flex;
   justify-content: space-between;
@@ -115,10 +72,8 @@
   color: #fff;
 }
 
-/* Details */
-.bounty-details {
-  margin-bottom: 1rem;
-}
+/* Details rows */
+.bounty-details { margin-bottom: 1rem; }
 
 .bounty-detail-row {
   display: flex;
@@ -127,16 +82,8 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.detail-label {
-  color: #94a3b8;
-  font-size: 0.9rem;
-}
-
-.detail-value {
-  color: #e2e8f0;
-  font-weight: 500;
-  font-size: 0.9rem;
-}
+.detail-label { color: #94a3b8; font-size: 0.9rem; }
+.detail-value { color: #e2e8f0; font-weight: 500; font-size: 0.9rem; }
 
 /* Rewards */
 .bounty-rewards {
@@ -169,9 +116,7 @@
   color: #cbd5e1;
 }
 
-.reward-icon {
-  font-size: 1rem;
-}
+.reward-icon { font-size: 1rem; }
 
 /* Footer */
 .bounty-footer {
@@ -182,67 +127,16 @@
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.efficiency-score {
-  display: flex;
-  flex-direction: column;
-}
+.efficiency-score  { display: flex; flex-direction: column; }
+.efficiency-label  { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+.efficiency-value  { font-size: 1.1rem; font-weight: 700; color: #4ecdc4; }
 
-.efficiency-label {
-  font-size: 0.7rem;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
+/* Claimed badge */
+.bounty-claimed-badge  { display: flex; flex-direction: column; align-items: flex-end; }
+.claimed-text          { font-size: 0.9rem; font-weight: 700; color: #4ecdc4; }
+.claimed-hint          { font-size: 0.75rem; color: #94a3b8; font-style: italic; }
 
-.efficiency-value {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #4ecdc4;
-}
-
-/* Claim Button */
-.claim-bounty-btn {
-  background: linear-gradient(135deg, #ffd700, #f59e0b);
-  color: #1a1a2e;
-  border: none;
-  border-radius: 8px;
-  padding: 0.6rem 1.2rem;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.claim-bounty-btn:hover:not(:disabled) {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
-}
-
-.claim-bounty-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Claimed Badge */
-.bounty-claimed-badge {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-
-.claimed-text {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #4ecdc4;
-}
-
-.claimed-hint {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  font-style: italic;
-}
-
-/* Completed Bounties */
+/* Completed bounties */
 .completed-list {
   display: flex;
   flex-direction: column;
@@ -259,39 +153,15 @@
   padding: 1rem 1.25rem;
 }
 
-.completed-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
+.completed-info   { display: flex; flex-direction: column; gap: 0.25rem; }
+.completed-name   { font-size: 1rem; font-weight: 600; color: #e2e8f0; margin: 0; }
+.completed-date   { font-size: 0.8rem; color: #64748b; }
+.completed-rewards { display: flex; gap: 1rem; flex-wrap: wrap; }
 
-.completed-name {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #e2e8f0;
-  margin: 0;
-}
-
-.completed-date {
-  font-size: 0.8rem;
-  color: #64748b;
-}
-
-.completed-rewards {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-/* Responsive */
+/* ── Responsive ──────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .bounty-board {
-    padding: 1rem;
-  }
-
-  .bounty-grid {
-    grid-template-columns: 1fr;
-  }
+  .bounty-board { padding: 1rem; }
+  .bounty-grid  { grid-template-columns: 1fr; }
 
   .completed-card {
     flex-direction: column;

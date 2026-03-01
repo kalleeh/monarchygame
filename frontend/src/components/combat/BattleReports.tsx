@@ -172,7 +172,7 @@ const BattleReports: React.FC<BattleReportsProps> = ({
         <div className="report-header">
           <button
             type="button"
-            className="back-button"
+            className="gm-back-btn"
             onClick={() => setSelectedReport(null)}
             aria-label="Back to battle list"
           >
@@ -301,23 +301,23 @@ const BattleReports: React.FC<BattleReportsProps> = ({
   return (
     <div className={`battle-reports ${className}`}>
       <div className="reports-header">
-        <h3>Battle Reports</h3>
-        <div className="battle-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
-          <div className="stat-item">
-            <span className="stat-value">{battleStats.total}</span>
-            <span className="stat-label">Total Battles</span>
+        <h3 className="gm-heading">Battle Reports</h3>
+        <div className="battle-stats gm-stat-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+          <div className="gm-stat-card">
+            <span className="gm-stat-card__value">{battleStats.total}</span>
+            <span className="gm-stat-card__label">Total Battles</span>
           </div>
-          <div className="stat-item">
-            <span className="stat-value" style={{ color: '#22c55e' }}>{battleStats.victories}</span>
-            <span className="stat-label">Victories</span>
+          <div className="gm-stat-card">
+            <span className="gm-stat-card__value" style={{ color: '#22c55e' }}>{battleStats.victories}</span>
+            <span className="gm-stat-card__label">Victories</span>
           </div>
-          <div className="stat-item">
-            <span className="stat-value" style={{ color: '#ef4444' }}>{battleStats.defeats}</span>
-            <span className="stat-label">Defeats</span>
+          <div className="gm-stat-card">
+            <span className="gm-stat-card__value" style={{ color: '#ef4444' }}>{battleStats.defeats}</span>
+            <span className="gm-stat-card__label">Defeats</span>
           </div>
-          <div className="stat-item">
-            <span className="stat-value">{battleStats.winRate}%</span>
-            <span className="stat-label">Win Rate</span>
+          <div className="gm-stat-card">
+            <span className="gm-stat-card__value">{battleStats.winRate}%</span>
+            <span className="gm-stat-card__label">Win Rate</span>
           </div>
         </div>
       </div>
@@ -326,14 +326,14 @@ const BattleReports: React.FC<BattleReportsProps> = ({
         <div className="search-filter">
           <input
             type="text"
-            className="search-input"
+            className="search-input gm-input"
             placeholder="Search by opponent or attack type..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           
           <select
-            className="filter-select"
+            className="filter-select gm-select"
             value={filter}
             onChange={(e) => setFilter(e.target.value as FilterType)}
           >
@@ -346,7 +346,7 @@ const BattleReports: React.FC<BattleReportsProps> = ({
         </div>
       </div>
 
-      <div className="reports-table">
+      <div className="reports-table gm-panel" style={{ padding: 0 }}>
         <div className="table-header">
           <button
             className={`sort-button ${sortField === 'timestamp' ? 'active' : ''}`}

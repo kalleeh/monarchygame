@@ -82,6 +82,8 @@
   padding: 0;
 }
 
+/* Loading and empty states delegate to gm-loading / gm-empty-state sizing,
+   but override color/size to match the compact feed context. */
 .world-feed-loading,
 .world-feed-empty {
   padding: 1rem 1.25rem;

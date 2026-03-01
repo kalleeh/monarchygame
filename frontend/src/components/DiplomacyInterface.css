@@ -1,11 +1,14 @@
-/* Diplomacy Interface Styles */
+/* Diplomacy Interface — component-specific layout only */
+/* Shared panel/card/badge/button/empty/stat patterns → game-ui.css */
+
+/* ── Page wrapper ────────────────────────────────────────────────────── */
 .diplomacy-interface {
   min-height: 100vh;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   color: #e2e8f0;
   padding: 2rem;
 }
 
+/* ── Page header ─────────────────────────────────────────────────────── */
 .diplomacy-header {
   display: flex;
   align-items: center;
@@ -21,21 +24,7 @@
   color: #ffd700;
 }
 
-.back-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 215, 0, 0.3);
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.back-btn:hover {
-  background: rgba(255, 215, 0, 0.1);
-  border-color: #ffd700;
-}
-
+/* ── Tab navigation (underline style, specific to Diplomacy) ─────────── */
 .diplomacy-navigation {
   display: flex;
   gap: 1rem;
@@ -53,21 +42,16 @@
   transition: all 0.3s ease;
 }
 
-.nav-btn:hover {
-  color: #ffd700;
-}
+.nav-btn:hover  { color: #ffd700; }
+.nav-btn.active { color: #ffd700; border-bottom-color: #ffd700; }
 
-.nav-btn.active {
-  color: #ffd700;
-  border-bottom-color: #ffd700;
-}
-
+/* ── Content max-width wrapper ───────────────────────────────────────── */
 .diplomacy-content {
   max-width: 1200px;
   margin: 0 auto;
 }
 
-/* Diplomacy Dashboard */
+/* ── Dashboard layout ────────────────────────────────────────────────── */
 .diplomacy-dashboard {
   display: flex;
   flex-direction: column;
@@ -80,82 +64,20 @@
   gap: 1rem;
 }
 
-.stat-card {
-  background: rgba(26, 26, 46, 0.97);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  text-align: center;
-  transition: border-color 0.2s ease;
-}
-
-.stat-card:hover {
-  border-color: rgba(251, 191, 36, 0.4);
-}
-
-.stat-card h4 {
-  margin: 0 0 0.5rem 0;
-  color: #94a3b8;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  font-weight: 700;
-}
-
-.stat-value {
-  font-size: 2rem;
-  font-weight: bold;
-  color: #ffd700;
-}
-
-.stat-value.reputation {
-  color: #22c55e;
-}
-
-.stat-value.war {
-  color: #ef4444;
-}
-
-.recent-activity h3 {
-  color: #ffd700;
-  margin-bottom: 1rem;
-}
-
+/* ── Recent activity ─────────────────────────────────────────────────── */
 .activity-item {
-  background: rgba(26, 26, 46, 0.97);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: 0.5rem;
-  padding: 1rem;
   display: flex;
   align-items: center;
   gap: 1rem;
   margin-bottom: 0.5rem;
 }
 
-.activity-icon {
-  font-size: 1.5rem;
-}
+.activity-icon    { font-size: 1.5rem; }
+.activity-details { flex: 1; }
+.activity-details p { margin: 0; color: #e2e8f0; }
+.activity-time    { color: #94a3b8; font-size: 0.8rem; }
 
-.activity-details {
-  flex: 1;
-}
-
-.activity-details p {
-  margin: 0;
-  color: #e2e8f0;
-}
-
-.activity-time {
-  color: #94a3b8;
-  font-size: 0.8rem;
-}
-
-/* Kingdom Relations */
-.kingdom-relations h3 {
-  color: #ffd700;
-  margin-bottom: 1rem;
-}
-
+/* ── Kingdom relations grid ──────────────────────────────────────────── */
 .relations-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -163,15 +85,7 @@
 }
 
 .kingdom-card {
-  background: rgba(26, 26, 46, 0.97);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: 0.5rem;
-  padding: 1rem;
   transition: border-color 0.2s ease;
-}
-
-.kingdom-card:hover {
-  border-color: rgba(251, 191, 36, 0.4);
 }
 
 .kingdom-info {
@@ -188,112 +102,20 @@
   background: rgba(255, 215, 0, 0.1);
 }
 
-.kingdom-details h4 {
-  margin: 0 0 0.25rem 0;
-  color: #ffd700;
-}
+.kingdom-details h4 { margin: 0 0 0.25rem 0; color: #ffd700; }
+.kingdom-details p  { margin: 0 0 0.5rem 0; color: #94a3b8; font-size: 0.9rem; }
 
-.kingdom-details p {
-  margin: 0 0 0.5rem 0;
-  color: #94a3b8;
-  font-size: 0.9rem;
-}
+.kingdom-actions { display: flex; gap: 0.5rem; }
 
-.status-badge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: bold;
-  text-transform: uppercase;
-}
-
-.status-badge.neutral {
-  background: rgba(156, 163, 175, 0.2);
-  color: #9ca3af;
-}
-
-.status-badge.friendly {
-  background: rgba(34, 197, 94, 0.2);
-  color: #22c55e;
-}
-
-.status-badge.allied {
-  background: rgba(59, 130, 246, 0.2);
-  color: #3b82f6;
-}
-
-.status-badge.hostile {
-  background: rgba(245, 158, 11, 0.2);
-  color: #f59e0b;
-}
-
-.status-badge.war {
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-}
-
-.kingdom-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.negotiate-btn {
-  background: linear-gradient(135deg, #ffd700, #ffed4e);
-  color: #1a1a2e;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.3s ease;
-  flex: 1;
-}
-
-.negotiate-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
-}
-
-.war-btn {
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid rgba(239, 68, 68, 0.5);
-  color: #ef4444;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.war-btn:hover {
-  background: rgba(239, 68, 68, 0.3);
-  border-color: #ef4444;
-}
-
-/* Treaty Proposals */
-.treaty-proposals h3, .treaty-proposals h4 {
-  color: #ffd700;
-  margin-bottom: 1rem;
-}
-
-.proposals-section {
-  margin-bottom: 2rem;
-}
+/* ── Treaty proposals ────────────────────────────────────────────────── */
+.proposals-section { margin-bottom: 2rem; }
 
 .proposal-card {
-  background: rgba(26, 26, 46, 0.97);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: 0.5rem;
-  padding: 1rem;
   margin-bottom: 1rem;
 }
 
-.proposal-card.incoming {
-  border-left: 4px solid #22c55e;
-}
-
-.proposal-card.outgoing {
-  border-left: 4px solid #3b82f6;
-}
+.proposal-card.incoming { border-left: 4px solid #22c55e; }
+.proposal-card.outgoing { border-left: 4px solid #3b82f6; }
 
 .proposal-header {
   display: flex;
@@ -302,17 +124,8 @@
   margin-bottom: 1rem;
 }
 
-.proposal-info h5 {
-  margin: 0 0 0.25rem 0;
-  color: #ffd700;
-}
-
-.proposal-info p {
-  margin: 0;
-  color: #94a3b8;
-  font-size: 0.9rem;
-  text-transform: capitalize;
-}
+.proposal-info h5 { margin: 0 0 0.25rem 0; color: #ffd700; }
+.proposal-info p  { margin: 0; color: #94a3b8; font-size: 0.9rem; text-transform: capitalize; }
 
 .proposal-terms {
   background: rgba(0, 0, 0, 0.3);
@@ -327,53 +140,11 @@
   word-break: break-all;
 }
 
-.proposal-actions {
-  display: flex;
-  gap: 0.5rem;
-}
+.proposal-actions { display: flex; gap: 0.5rem; }
 
-.accept-btn {
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.3s ease;
-}
+.status-pending { color: #f59e0b; font-style: italic; }
 
-.accept-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
-}
-
-.reject-btn {
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid rgba(239, 68, 68, 0.5);
-  color: #ef4444;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.reject-btn:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.3);
-  border-color: #ef4444;
-}
-
-.status-pending {
-  color: #f59e0b;
-  font-style: italic;
-}
-
-/* Treaty Negotiation */
-.treaty-negotiation h3 {
-  color: #ffd700;
-  margin-bottom: 2rem;
-}
-
+/* ── Treaty type buttons grid ────────────────────────────────────────── */
 .treaty-types {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -381,10 +152,6 @@
 }
 
 .treaty-type-btn {
-  background: rgba(26, 26, 46, 0.97);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  color: #e2e8f0;
-  padding: 2rem;
   border-radius: 0.5rem;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -398,70 +165,13 @@
   transform: translateY(-2px);
 }
 
-/* Empty States */
-.empty-state {
-  text-align: center;
-  color: #64748b;
-  font-style: italic;
-  padding: 2rem;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 0.5rem;
-  border: 1px dashed rgba(99, 102, 241, 0.2);
-}
-
-/* Error State */
-.diplomacy-error {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 8px;
-  padding: 2rem;
-  text-align: center;
-  color: #ef4444;
-}
-
-.diplomacy-error h3 {
-  margin: 0 0 1rem 0;
-  color: #ef4444;
-}
-
-.diplomacy-error button {
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid rgba(239, 68, 68, 0.5);
-  color: #ef4444;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-top: 1rem;
-}
-
-/* Responsive Design */
+/* ── Responsive ──────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .diplomacy-interface {
-    padding: 1rem;
-  }
-  
-  .diplomacy-navigation {
-    flex-wrap: wrap;
-  }
-  
-  .nav-btn {
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
-  }
-  
-  .relations-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .diplomacy-stats {
-    grid-template-columns: 1fr;
-  }
-  
-  .kingdom-actions {
-    flex-direction: column;
-  }
-  
-  .treaty-types {
-    grid-template-columns: 1fr;
-  }
+  .diplomacy-interface   { padding: 1rem; }
+  .diplomacy-navigation  { flex-wrap: wrap; }
+  .nav-btn               { padding: 0.75rem 1rem; font-size: 0.9rem; }
+  .relations-grid        { grid-template-columns: 1fr; }
+  .diplomacy-stats       { grid-template-columns: 1fr; }
+  .kingdom-actions       { flex-direction: column; }
+  .treaty-types          { grid-template-columns: 1fr; }
 }

@@ -1,4 +1,5 @@
-/* Battle Reports — Dark Fantasy Theme */
+/* Battle Reports — component-specific layout only */
+/* Shared panel/card/badge/table/input/button/empty patterns → game-ui.css */
 
 /* ── Page container ──────────────────────────────────────────────────── */
 .battle-reports {
@@ -7,51 +8,12 @@
   min-height: 400px;
 }
 
-/* ── Reports header & stats ──────────────────────────────────────────── */
-.reports-header {
-  margin-bottom: 1.5rem;
-}
-
-.reports-header h3 {
-  color: #fbbf24;
-  font-size: 1.4rem;
-  font-weight: 700;
-  margin: 0 0 1rem 0;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
+/* ── Stats row ───────────────────────────────────────────────────────── */
 .battle-stats {
   margin-bottom: 1rem;
 }
 
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0.75rem 1rem;
-  background: rgba(26, 26, 46, 0.97);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: 0.5rem;
-  text-align: center;
-}
-
-.stat-item .stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #e2e8f0;
-  line-height: 1.2;
-}
-
-.stat-item .stat-label {
-  font-size: 0.72rem;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  margin-top: 0.2rem;
-}
-
-/* ── Controls: search + filter ──────────────────────────────────────── */
+/* ── Controls: search + filter row ──────────────────────────────────── */
 .reports-controls {
   margin-bottom: 1.25rem;
 }
@@ -65,51 +27,10 @@
 .search-input {
   flex: 1;
   min-width: 200px;
-  padding: 0.5rem 0.875rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: 0.5rem;
-  color: #e2e8f0;
-  font-size: 0.9rem;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.search-input::placeholder {
-  color: #64748b;
-}
-
-.search-input:focus {
-  border-color: #fbbf24;
-  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.15);
-}
-
-.filter-select {
-  padding: 0.5rem 0.875rem;
-  background: rgba(26, 26, 46, 0.97);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: 0.5rem;
-  color: #e2e8f0;
-  font-size: 0.9rem;
-  outline: none;
-  cursor: pointer;
-  transition: border-color 0.15s ease;
-}
-
-.filter-select:focus {
-  border-color: #fbbf24;
-}
-
-.filter-select option {
-  background: #1a1a2e;
-  color: #e2e8f0;
-}
-
-/* ── Table layout ───────────────────────────────────────────────────── */
+/* ── 5-column grid table layout (unique to BattleReports) ───────────── */
 .reports-table {
-  background: rgba(26, 26, 46, 0.97);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: 0.5rem;
   overflow: hidden;
 }
 
@@ -119,7 +40,6 @@
   gap: 0;
   background: rgba(0, 0, 0, 0.3);
   border-bottom: 2px solid rgba(251, 191, 36, 0.25);
-  padding: 0;
 }
 
 .sort-button {
@@ -137,10 +57,7 @@
   white-space: nowrap;
 }
 
-.sort-button:hover {
-  color: #fbbf24;
-}
-
+.sort-button:hover,
 .sort-button.active {
   color: #fbbf24;
 }
@@ -171,120 +88,37 @@
   transition: background 0.12s ease;
 }
 
-.table-row:last-child {
-  border-bottom: none;
-}
-
-.table-row:hover {
-  background: rgba(251, 191, 36, 0.05);
-}
-
+.table-row:last-child { border-bottom: none; }
+.table-row:hover      { background: rgba(251, 191, 36, 0.05); }
 .table-row:focus {
   outline: 2px solid rgba(251, 191, 36, 0.4);
   outline-offset: -2px;
 }
 
-.cell {
-  padding: 0.75rem 0.875rem;
-  font-size: 0.875rem;
-}
+.cell { padding: 0.75rem 0.875rem; font-size: 0.875rem; }
 
 /* Date cell */
-.date-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.date-main {
-  color: #e2e8f0;
-  font-weight: 500;
-}
-
-.date-full {
-  font-size: 0.75rem;
-  color: #64748b;
-}
+.date-cell    { display: flex; flex-direction: column; gap: 0.15rem; }
+.date-main    { color: #e2e8f0; font-weight: 500; }
+.date-full    { font-size: 0.75rem; color: #64748b; }
 
 /* Opponent cell */
-.opponent-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.opponent-name {
-  color: #e2e8f0;
-  font-weight: 600;
-}
-
-.opponent-race {
-  font-size: 0.75rem;
-  color: #94a3b8;
-}
-
-/* Outcome badge */
-.outcome-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.2rem 0.6rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
+.opponent-cell  { display: flex; flex-direction: column; gap: 0.15rem; }
+.opponent-name  { color: #e2e8f0; font-weight: 600; }
+.opponent-race  { font-size: 0.75rem; color: #94a3b8; }
 
 /* Type cell */
-.type-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.battle-type {
-  color: #e2e8f0;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.attack-type {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  text-transform: capitalize;
-}
+.type-cell   { display: flex; flex-direction: column; gap: 0.15rem; }
+.battle-type { color: #e2e8f0; font-size: 0.85rem; font-weight: 600; }
+.attack-type { font-size: 0.75rem; color: #94a3b8; text-transform: capitalize; }
 
 /* Gain cell */
-.gain-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.gain-item {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-
-.gain-icon {
-  font-size: 0.9rem;
-  line-height: 1;
-}
-
-.gain-value {
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.gain-value.positive {
-  color: #4ade80;
-}
-
-.gain-value.negative {
-  color: #f87171;
-}
+.gain-cell  { display: flex; flex-direction: column; gap: 0.2rem; }
+.gain-item  { display: flex; align-items: center; gap: 0.3rem; }
+.gain-icon  { font-size: 0.9rem; line-height: 1; }
+.gain-value { font-size: 0.85rem; font-weight: 600; }
+.gain-value.positive { color: #4ade80; }
+.gain-value.negative { color: #f87171; }
 
 /* ── Empty state ─────────────────────────────────────────────────────── */
 .no-reports {
@@ -296,21 +130,11 @@
   color: #64748b;
 }
 
-.no-reports-icon {
-  font-size: 2.5rem;
-  opacity: 0.5;
-}
+.no-reports-icon { font-size: 2.5rem; opacity: 0.5; }
+.no-reports-text { font-style: italic; font-size: 0.9rem; text-align: center; }
 
-.no-reports-text {
-  font-style: italic;
-  font-size: 0.9rem;
-  text-align: center;
-}
-
-/* ── Detailed Report view ────────────────────────────────────────────── */
-.battle-reports.detailed-view {
-  padding: 1.5rem;
-}
+/* ── Detailed report view ────────────────────────────────────────────── */
+.battle-reports.detailed-view { padding: 1.5rem; }
 
 .report-header {
   display: flex;
@@ -326,24 +150,6 @@
   font-size: 1.3rem;
   font-weight: 700;
   margin: 0;
-}
-
-.back-button {
-  padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: 0.5rem;
-  color: #e2e8f0;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: background 0.15s ease, transform 0.15s ease;
-  white-space: nowrap;
-}
-
-.back-button:hover {
-  background: rgba(251, 191, 36, 0.1);
-  border-color: rgba(251, 191, 36, 0.4);
-  transform: translateX(-2px);
 }
 
 .detailed-report {
@@ -364,46 +170,16 @@
   flex-wrap: wrap;
 }
 
-.battle-outcome {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+.battle-outcome { display: flex; align-items: center; gap: 0.5rem; }
+.outcome-icon   { font-size: 1.8rem; line-height: 1; }
+.outcome-text   { font-size: 1.3rem; font-weight: 700; letter-spacing: 0.05em; }
 
-.outcome-icon {
-  font-size: 1.8rem;
-  line-height: 1;
-}
+.battle-info    { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.info-item      { display: flex; gap: 0.4rem; font-size: 0.875rem; }
+.info-item .label { color: #94a3b8; }
+.info-item .value { color: #e2e8f0; font-weight: 500; text-transform: capitalize; }
 
-.outcome-text {
-  font-size: 1.3rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-}
-
-.battle-info {
-  display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.info-item {
-  display: flex;
-  gap: 0.4rem;
-  font-size: 0.875rem;
-}
-
-.info-item .label {
-  color: #94a3b8;
-}
-
-.info-item .value {
-  color: #e2e8f0;
-  font-weight: 500;
-  text-transform: capitalize;
-}
-
-/* Combatants */
+/* Combatants — 3-column: attacker | VS | defender */
 .combatants {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -418,13 +194,8 @@
   border-radius: 0.5rem;
 }
 
-.combatant.attacker {
-  border-left: 3px solid #ef4444;
-}
-
-.combatant.defender {
-  border-left: 3px solid #3b82f6;
-}
+.combatant.attacker { border-left: 3px solid #ef4444; }
+.combatant.defender { border-left: 3px solid #3b82f6; }
 
 .combatant h4 {
   color: #fbbf24;
@@ -433,41 +204,24 @@
   margin: 0 0 0.75rem 0;
 }
 
-.kingdom-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
+.kingdom-info   { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+.kingdom-name   { color: #e2e8f0; font-weight: 600; font-size: 0.95rem; }
+.kingdom-race   { color: #94a3b8; font-size: 0.85rem; }
 
-.kingdom-name {
-  color: #e2e8f0;
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.kingdom-race {
-  color: #94a3b8;
-  font-size: 0.85rem;
-}
-
+/* Army 3-col comparison grid */
 .army-comparison {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 0.75rem;
 }
 
-.army-before,
-.army-after,
-.casualties {
+.army-before, .army-after, .casualties {
   padding: 0.625rem;
   background: rgba(0, 0, 0, 0.2);
   border-radius: 0.375rem;
 }
 
-.army-before h5,
-.army-after h5,
-.casualties h5 {
+.army-before h5, .army-after h5, .casualties h5 {
   color: #94a3b8;
   font-size: 0.7rem;
   font-weight: 700;
@@ -476,8 +230,7 @@
   margin: 0 0 0.3rem 0;
 }
 
-.army-before p,
-.army-after p {
+.army-before p, .army-after p {
   color: #e2e8f0;
   font-size: 0.8rem;
   margin: 0;
@@ -544,24 +297,11 @@
   border-radius: 0.375rem;
 }
 
-.spoil-icon {
-  font-size: 1.2rem;
-  line-height: 1;
-}
+.spoil-icon  { font-size: 1.2rem; line-height: 1; }
+.spoil-label { color: #94a3b8; font-size: 0.85rem; flex: 1; }
+.spoil-value { color: #4ade80; font-weight: 700; font-size: 0.95rem; }
 
-.spoil-label {
-  color: #94a3b8;
-  font-size: 0.85rem;
-  flex: 1;
-}
-
-.spoil-value {
-  color: #4ade80;
-  font-weight: 700;
-  font-size: 0.95rem;
-}
-
-/* Action button (replay) */
+/* Replay action button (purple ghost) */
 .battle-reports .action-btn {
   padding: 0.35rem 0.75rem;
   background: rgba(139, 92, 246, 0.15);
@@ -579,55 +319,26 @@
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────── */
-@media (max-width: 900px) {
-  .table-header,
-  .table-row {
-    /* Collapse to 3 visible columns, hide type col */
-    grid-template-columns: 1.2fr 1.5fr 1fr 1fr 1.2fr;
-  }
-}
-
 @media (max-width: 768px) {
-  .battle-reports {
-    padding: 1rem;
-  }
+  .battle-reports { padding: 1rem; }
 
   .table-header,
   .table-row {
-    /* Simpler 2-column layout on small screens */
     grid-template-columns: 1fr 1fr;
   }
 
-  /* Hide less critical columns on mobile */
   .table-header .sort-button:nth-child(3),
   .table-header .sort-button:nth-child(4),
-  .table-header .header-cell {
-    display: none;
-  }
-
+  .table-header .header-cell,
   .table-row .outcome-cell,
   .table-row .type-cell {
     display: none;
   }
 
-  .combatants {
-    grid-template-columns: 1fr;
-  }
-
-  .vs-divider {
-    text-align: center;
-    padding: 0.25rem 0;
-  }
-
-  .army-comparison {
-    grid-template-columns: 1fr;
-  }
-
-  .report-summary {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
+  .combatants          { grid-template-columns: 1fr; }
+  .vs-divider          { text-align: center; padding: 0.25rem 0; }
+  .army-comparison     { grid-template-columns: 1fr; }
+  .report-summary      { flex-direction: column; align-items: flex-start; gap: 1rem; }
 }
 
 @media (max-width: 480px) {
@@ -639,9 +350,5 @@
   .filter-select {
     width: 100%;
     min-width: 0;
-  }
-
-  .battle-stats {
-    grid-template-columns: repeat(2, 1fr) !important;
   }
 }

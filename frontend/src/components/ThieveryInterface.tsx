@@ -210,7 +210,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, onBack
 
       {/* Error Display */}
       {error && (
-        <div className="thievery-error-banner">
+        <div className="thievery-error-banner gm-error-banner">
           <span>{error}</span>
           <button onClick={clearError} aria-label="Dismiss error">
             x
@@ -220,7 +220,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, onBack
 
       {/* Result Display */}
       {lastResult && (
-        <div className="thievery-result-banner">
+        <div className="thievery-result-banner gm-success-banner">
           <span>{lastResult}</span>
           <button onClick={() => setLastResult(null)} aria-label="Dismiss result">
             x
@@ -262,7 +262,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, onBack
         <section className="thievery-targets">
           <h3>Select Target</h3>
           {aiKingdoms.length === 0 ? (
-            <p className="empty-state">No kingdoms available to target.</p>
+            <p className="gm-empty-state">No kingdoms available to target.</p>
           ) : (
             <div className="target-grid">
               {aiKingdoms.map((kingdom) => (
@@ -321,7 +321,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, onBack
         <section className="thievery-history">
           <h3>Operation History</h3>
           {operations.length === 0 ? (
-            <p className="empty-state">No operations performed yet.</p>
+            <p className="gm-empty-state">No operations performed yet.</p>
           ) : (
             <div className="history-list">
               {operations.map((op) => (

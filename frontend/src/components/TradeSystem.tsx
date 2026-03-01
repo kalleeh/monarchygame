@@ -133,15 +133,15 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
 
       {/* Error Display */}
       {error && (
-        <div className="error-banner">
+        <div className="gm-error-banner">
           <span>⚠️ {error}</span>
           <button onClick={clearError} aria-label="Dismiss error">×</button>
         </div>
       )}
 
       {/* Market Overview */}
-      <animated.div className="market-overview" style={marketSpring}>
-        <h2>Market Overview</h2>
+      <animated.div className="market-overview gm-panel" style={marketSpring}>
+        <h2 className="gm-heading">Market Overview</h2>
 
         {/* Economic Indicators */}
         {economicIndicators.tradeVolume === 0 ? (
@@ -153,7 +153,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
         ) : (
           <div className="economic-indicators">
             {indicatorTransitions((style, indicator) => (
-              <animated.div key={indicator.name} style={style} className="indicator-card">
+              <animated.div key={indicator.name} style={style} className="indicator-card gm-card">
                 <div className="indicator-header">
                   <span className="indicator-name">{indicator.name}</span>
                   <span className={`indicator-trend ${indicator.trend}`}>
@@ -193,7 +193,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
 
       {/* Price Chart */}
       {selectedResource && selectedResourceData.length > 0 && (
-        <div className="price-chart-section">
+        <div className="price-chart-section gm-panel">
           <h3>{resources.find(r => r.id === selectedResource.id)?.name} Price History</h3>
           <div className="chart-container">
             <ResponsiveContainer width="100%" height={300}>
@@ -230,7 +230,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
       )}
 
       {/* Market Distribution */}
-      <div className="market-distribution">
+      <div className="market-distribution gm-panel">
         <h3>Resource Distribution</h3>
         <div className="chart-container">
           <ResponsiveContainer width="100%" height={250}>
@@ -261,11 +261,11 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
       </div>
 
       {/* Active Offers */}
-      <div className="active-offers">
-        <div className="section-header">
-          <h3>Active Offers</h3>
-          <button 
-            className="create-offer-btn"
+      <div className="active-offers gm-panel">
+        <div className="section-header gm-section-header">
+          <h3 className="gm-heading" style={{ margin: 0 }}>Active Offers</h3>
+          <button
+            className="create-offer-btn gm-btn gm-btn--primary"
             onClick={() => setShowCreateOffer(true)}
           >
             Create Offer
@@ -274,12 +274,12 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
         
         <div className="offers-grid">
           {offerTransitions((style, offer) => (
-            <animated.div key={offer.id} style={style} className="offer-card">
+            <animated.div key={offer.id} style={style} className="offer-card gm-card">
               <div className="offer-header">
                 <span className="resource-name">
                   {getResourceById(offer.resourceId)?.name}
                 </span>
-                <span className="offer-status">{offer.status}</span>
+                <span className="offer-status gm-badge gm-badge--info">{offer.status}</span>
               </div>
               <div className="offer-details">
                 <div className="offer-quantity">{offer.quantity} units</div>
@@ -311,14 +311,14 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
 
       {/* Create Offer Modal */}
       {showCreateOffer && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Create Trade Offer</h3>
+        <div className="gm-modal-overlay">
+          <div className="gm-modal-content">
+            <h3 className="gm-heading">Create Trade Offer</h3>
             <div className="offer-form">
               <select
                 value={offerForm.resourceId}
                 onChange={(e) => setOfferForm(prev => ({ ...prev, resourceId: e.target.value }))}
-                className="form-select"
+                className="form-select gm-select"
               >
                 <option value="">Select Resource</option>
                 {resources.map(resource => (
@@ -333,7 +333,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
                 placeholder="Quantity"
                 value={offerForm.quantity || ''}
                 onChange={(e) => setOfferForm(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
-                className="form-input"
+                className="form-input gm-input"
               />
               
               <input
@@ -341,19 +341,21 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
                 placeholder="Price per unit"
                 value={offerForm.pricePerUnit || ''}
                 onChange={(e) => setOfferForm(prev => ({ ...prev, pricePerUnit: parseFloat(e.target.value) || 0 }))}
-                className="form-input"
+                className="form-input gm-input"
               />
               
               <div className="modal-actions">
-                <button 
-                  className="create-btn"
+                <button
+                  className="create-btn gm-btn gm-btn--primary"
+                  style={{ flex: 1 }}
                   onClick={handleCreateOffer}
                   disabled={!offerForm.resourceId || offerForm.quantity <= 0 || offerForm.pricePerUnit <= 0}
                 >
                   Create Offer
                 </button>
-                <button 
-                  className="cancel-btn"
+                <button
+                  className="cancel-btn gm-btn gm-btn--ghost"
+                  style={{ flex: 1 }}
                   onClick={() => setShowCreateOffer(false)}
                 >
                   Cancel

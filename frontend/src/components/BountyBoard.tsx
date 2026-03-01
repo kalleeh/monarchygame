@@ -63,7 +63,7 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId: _kingdomId, onBack
       />
 
       {error && (
-        <div className="bounty-error">
+        <div className="bounty-error gm-error-banner">
           <span>{error}</span>
           <button onClick={clearError} className="dismiss-btn">Dismiss</button>
         </div>
@@ -75,12 +75,12 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId: _kingdomId, onBack
           <h2 className="section-title">Available Bounties</h2>
 
           {loading && (
-            <div className="bounty-loading">Scanning rival kingdoms...</div>
+            <div className="bounty-loading gm-loading">Scanning rival kingdoms...</div>
           )}
 
           {!loading && availableBounties.length === 0 && (
-            <div className="bounty-empty">
-              <p>No bounties available. AI kingdoms must be generated first.</p>
+            <div className="bounty-empty gm-empty-state">
+              No bounties available. AI kingdoms must be generated first.
             </div>
           )}
 
@@ -146,7 +146,7 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId: _kingdomId, onBack
                     </div>
                   ) : (
                     <button
-                      className="claim-bounty-btn"
+                      className="claim-bounty-btn gm-btn gm-btn--primary"
                       onClick={() => handleClaimBounty(bounty.target.kingdomId)}
                       disabled={loading}
                     >
