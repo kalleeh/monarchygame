@@ -117,7 +117,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
     // Check and deduct turns
     const attackerResources = (attacker.resources ?? {}) as KingdomResources;
-    const currentTurns = (attacker.turnsBalance ?? JSON.parse(attacker.resources as string || '{}').turns ?? 72) as number;
+    const currentTurns = (attacker.turnsBalance ?? attackerResources.turns ?? 72) as number;
     const turnCost = 4;
     if (currentTurns < turnCost) {
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };

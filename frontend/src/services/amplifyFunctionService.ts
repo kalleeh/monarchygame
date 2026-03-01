@@ -157,7 +157,7 @@ export class AmplifyFunctionService {
           return await client.mutations.processCombat({
             attackerId: payload.attackerKingdomId || '',
             defenderId: payload.defenderKingdomId || '',
-            attackType: (payload.attackType || 'raid') as 'standard' | 'raid' | 'siege' | 'pillage',
+            attackType: ({ controlled_strike: 'standard', guerilla_raid: 'raid', mob_assault: 'pillage', full_attack: 'siege', ambush: 'standard', raid: 'raid', siege: 'siege', pillage: 'pillage', standard: 'standard' } as Record<string, 'standard' | 'raid' | 'siege' | 'pillage'>)[payload.attackType as string] ?? 'raid',
             units: payload.units || {},
             formationId: payload.formationId as string | undefined,
             terrainId: payload.terrainId as string | undefined,

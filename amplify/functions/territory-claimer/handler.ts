@@ -52,6 +52,18 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
+    // Check restoration status — territory claiming is blocked during restoration
+    const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
+    const activeRestoration = allRestoration.find(r => r.kingdomId === kingdomId && new Date(r.endTime) > new Date());
+    if (activeRestoration) {
+      const prohibited: string[] = typeof activeRestoration.prohibitedActions === 'string'
+        ? JSON.parse(activeRestoration.prohibitedActions)
+        : (activeRestoration.prohibitedActions ?? []);
+      if (prohibited.some(a => ['build', 'attack'].includes(a))) {
+        return { success: false, error: 'Kingdom is in restoration and cannot claim territories', errorCode: ErrorCode.RESTORATION_BLOCKED };
+      }
+    }
+
     // Check kingdom has enough gold
     const resources = (kingdom.resources ?? {}) as KingdomResources;
     const currentGold = resources.gold ?? 0;

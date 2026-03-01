@@ -667,7 +667,14 @@ export const useCombatStore = create(
           declaredAt: Date.now(),
           isActive: true
         };
-        
+        // Persist to backend (fire-and-forget — local state is source of truth for UI)
+        void AmplifyFunctionService.callFunction('war-manager', {
+          action: 'declareWar',
+          attackerId,
+          defenderId,
+          seasonId: undefined,
+          reason: 'Formal war declaration',
+        }).catch(err => console.warn('[combatStore] war declaration persist failed:', err));
         set((state) => ({
           warDeclarations: [...state.warDeclarations, warDeclaration]
         }));
