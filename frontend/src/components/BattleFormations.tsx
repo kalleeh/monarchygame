@@ -102,6 +102,15 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
   const [selectedTarget, setSelectedTarget] = useState<string>('');
   const [showBattleResult, setShowBattleResult] = useState(false);
   const [ambushActive, setAmbushActive] = useState(false);
+  const [defensiveFormation, setDefensiveFormation] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem(`defensive-formation-${kingdomId}`);
+      return stored ?? 'balanced';
+    } catch {
+      return 'balanced';
+    }
+  });
+  const [defensiveFormationSaved, setDefensiveFormationSaved] = useState(false);
 
   // Battle preview calculation (useMemo for performance)
   const battlePreview = useMemo(() => {
@@ -239,6 +248,24 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
       // Set as active
       setActiveFormation(formationId);
     }
+  };
+
+  const handleSetDefensiveFormation = (formationId: string) => {
+    setDefensiveFormation(formationId);
+    try {
+      // Persist to localStorage so combat-processor can read it via kingdom stats
+      localStorage.setItem(`defensive-formation-${kingdomId}`, formationId);
+      // Also merge into the kingdom localStorage blob so it travels with kingdom stats
+      const stored = localStorage.getItem(`kingdom-${kingdomId}`);
+      const kingdomBlob = stored ? JSON.parse(stored) : {};
+      const existingStats = kingdomBlob.stats ?? {};
+      kingdomBlob.stats = { ...existingStats, defensiveFormation: formationId };
+      localStorage.setItem(`kingdom-${kingdomId}`, JSON.stringify(kingdomBlob));
+    } catch {
+      // Non-fatal
+    }
+    setDefensiveFormationSaved(true);
+    setTimeout(() => setDefensiveFormationSaved(false), 2000);
   };
 
   // Get ordered units for display
@@ -539,6 +566,64 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
           <li style={{fontSize:'0.82rem',color:'#6b7280',marginBottom:'0.25rem'}}>Cavalry Charge formation maximizes offense</li>
           <li style={{fontSize:'0.82rem',color:'#6b7280'}}>Train units before attacking for best results</li>
         </ul>
+      </div>
+
+      {/* Defensive Stance */}
+      <div style={{
+        marginTop: '1.5rem',
+        padding: '1.25rem',
+        border: '1px solid rgba(59, 130, 246, 0.35)',
+        borderRadius: '0.75rem',
+        background: 'rgba(59, 130, 246, 0.05)'
+      }}>
+        <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Defensive Stance
+        </p>
+        <p style={{ margin: '0 0 1rem 0', fontSize: '0.82rem', color: '#9ca3af' }}>
+          Choose a formation your kingdom automatically uses when defending against attacks.
+          {defensiveFormationSaved && (
+            <span style={{ color: '#10b981', marginLeft: '0.5rem' }}>Saved!</span>
+          )}
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {[
+            { id: 'defensive-wall', label: 'Defensive Wall', desc: 'Maximizes defense, minimizes offense' },
+            { id: 'balanced', label: 'Balanced Formation', desc: 'Equal offense and defense' },
+            { id: 'cavalry-charge', label: 'Cavalry Charge', desc: 'Offense-focused, lower defense' },
+          ].map(opt => (
+            <div key={opt.id} style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.6rem 0.85rem',
+              background: defensiveFormation === opt.id ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${defensiveFormation === opt.id ? 'rgba(59, 130, 246, 0.5)' : 'rgba(255,255,255,0.08)'}`,
+              borderRadius: '0.5rem',
+            }}>
+              <div>
+                <span style={{ color: '#e5e7eb', fontSize: '0.88rem', fontWeight: 600 }}>{opt.label}</span>
+                <span style={{ color: '#6b7280', fontSize: '0.78rem', marginLeft: '0.5rem' }}>{opt.desc}</span>
+              </div>
+              <button
+                onClick={() => handleSetDefensiveFormation(opt.id)}
+                disabled={defensiveFormation === opt.id}
+                style={{
+                  padding: '0.3rem 0.75rem',
+                  fontSize: '0.78rem',
+                  background: defensiveFormation === opt.id ? '#1d4ed8' : 'rgba(59, 130, 246, 0.2)',
+                  border: `1px solid ${defensiveFormation === opt.id ? '#3b82f6' : 'rgba(59, 130, 246, 0.3)'}`,
+                  borderRadius: '0.375rem',
+                  color: defensiveFormation === opt.id ? '#fff' : '#93c5fd',
+                  cursor: defensiveFormation === opt.id ? 'default' : 'pointer',
+                  whiteSpace: 'nowrap',
+                  opacity: defensiveFormation === opt.id ? 1 : 0.85,
+                }}
+              >
+                {defensiveFormation === opt.id ? 'Active' : 'Set Stance'}
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Battle Result Modal */}

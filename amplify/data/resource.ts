@@ -116,6 +116,9 @@ const schema = a.schema({
       updatedAt: a.datetime(),
       // Private alliance data - members only
       treasury: a.json()
+        .authorization((allow) => [allow.authenticated().to(['read'])]),
+      // Alliance-wide computed stats: compositionBonus, activeUpgrades, relationships
+      stats: a.json()
         .authorization((allow) => [allow.authenticated().to(['read'])])
     })
     .authorization((allow) => [
@@ -567,7 +570,8 @@ const schema = a.schema({
       allianceId: a.string().required(),
       kingdomId: a.string().required(),
       action: a.string().required(),
-      amount: a.integer().required()
+      amount: a.integer(),
+      upgradeType: a.string()
     })
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])
@@ -583,7 +587,9 @@ const schema = a.schema({
       name: a.string(),
       description: a.string(),
       isPublic: a.boolean(),
-      targetKingdomId: a.string()
+      targetKingdomId: a.string(),
+      targetAllianceId: a.string(),
+      relationship: a.string()
     })
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])

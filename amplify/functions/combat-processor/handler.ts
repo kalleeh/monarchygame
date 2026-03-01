@@ -85,6 +85,30 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
+    // Alliance coordination bonus: +10% if an ally attacked this defender recently
+    let allianceCoordBonus = 1.0;
+    try {
+      const attackerKingdomData = await dbGet<{ guildId?: string }>('Kingdom', attackerId);
+      const defenderKingdomData = await dbGet<{ guildId?: string }>('Kingdom', defenderId);
+      if (attackerKingdomData?.guildId && attackerKingdomData.guildId !== defenderKingdomData?.guildId) {
+        const recentBattles = await dbList<{ attackerId: string; defenderId: string; timestamp?: string }>('BattleReport');
+        const twentyMinAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+        const allyRecentAttack = recentBattles.find(r =>
+          r.defenderId === defenderId &&
+          r.attackerId !== attackerId &&
+          (r.timestamp ?? '') >= twentyMinAgo
+        );
+        if (allyRecentAttack) {
+          // Verify the other attacker is in the same alliance
+          const allyKingdom = await dbGet<{ guildId?: string }>('Kingdom', allyRecentAttack.attackerId);
+          if (allyKingdom?.guildId === attackerKingdomData.guildId) {
+            allianceCoordBonus = 1.10;
+            log.info('combat-processor', 'alliance-coord-bonus', { attackerId, allianceBonus: '10%' });
+          }
+        }
+      }
+    } catch { /* non-fatal */ }
+
     // Check attacker restoration status — cannot attack while under restoration
     const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
     const attackerRestoration = allRestoration.find(r => r.kingdomId === attackerId && new Date(r.endTime) > new Date());
@@ -230,6 +254,19 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       Object.entries(defenderUnits).map(([k, v]) => [k, Math.floor((v as number) * raceDefenseBonus)])
     );
 
+    // Apply defender's persistent defensive formation if set
+    const defenderStats = (typeof defender.stats === 'string'
+      ? JSON.parse(defender.stats as string)
+      : (defender.stats ?? {})) as Record<string, unknown>;
+    const defFormationId = (defenderStats.defensiveFormation as string | undefined) ?? 'balanced';
+    const defFormationMods = FORMATION_MODIFIERS[defFormationId] ?? FORMATION_MODIFIERS['balanced'];
+    const defFormationDefenseFactor = 1 + defFormationMods.defense;
+    if (defFormationDefenseFactor !== 1) {
+      effectiveDefenderUnits = Object.fromEntries(
+        Object.entries(effectiveDefenderUnits).map(([k, v]) => [k, Math.floor((v as number) * defFormationDefenseFactor)])
+      );
+    }
+
     // -------------------------------------------------------------------------
     // Step 5: Terrain modifiers.
     // The defender always fights on their home terrain.  We resolve the terrain
@@ -323,6 +360,13 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       );
     }
 
+    // Apply alliance coordination bonus (+10% offense) if an ally recently attacked
+    if (allianceCoordBonus !== 1.0) {
+      effectiveAttackerUnits = Object.fromEntries(
+        Object.entries(effectiveAttackerUnits).map(([k, v]) => [k, Math.floor(v * allianceCoordBonus)])
+      );
+    }
+
     // -------------------------------------------------------------------------
     // Step 6: Resolve combat using terrain-and-formation-adjusted unit counts
     // -------------------------------------------------------------------------
@@ -372,6 +416,33 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
         allowedActions: JSON.stringify(['view', 'message', 'diplomacy']),
         prohibitedActions: JSON.stringify(['attack', 'trade', 'build', 'train'])
       });
+    }
+
+    // Combined kill bounty: notify alliance members who assisted in the last 24h
+    if (combatResult.success && defenderPostLand <= 1000) {
+      try {
+        const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const allRecent = await dbList<{ attackerId: string; defenderId: string; timestamp?: string }>('BattleReport');
+        const assists = allRecent.filter(r =>
+          r.defenderId === defenderId &&
+          r.attackerId !== attackerId &&
+          (r.timestamp ?? '') >= last24h
+        );
+        const attackerGuild = (await dbGet<{ guildId?: string }>('Kingdom', attackerId))?.guildId;
+        for (const assist of assists) {
+          const assistGuild = (await dbGet<{ guildId?: string }>('Kingdom', assist.attackerId))?.guildId;
+          if (attackerGuild && assistGuild === attackerGuild) {
+            await dbCreate('CombatNotification', {
+              recipientId: assist.attackerId,
+              type: 'victory',
+              message: `Assist bonus! A kingdom you weakened was finished off by your ally. You contributed to this kill.`,
+              data: JSON.stringify({ defenderId, killerKingdomId: attackerId }),
+              isRead: false,
+              createdAt: new Date().toISOString(),
+            });
+          }
+        }
+      } catch { /* non-fatal */ }
     }
 
     // Deduct casualties from both sides' units

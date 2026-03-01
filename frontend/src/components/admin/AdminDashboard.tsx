@@ -10,6 +10,7 @@ import { fetchUserAttributes } from 'aws-amplify/auth';
 import toast from 'react-hot-toast';
 import type { Schema } from '../../../../amplify/data/resource';
 import { isDemoMode } from '../../utils/authMode';
+import SeasonResults from '../SeasonResults';
 import './AdminDashboard.css';
 
 const client = generateClient<Schema>();
@@ -524,16 +525,60 @@ function TurnManagementPanel() {
 
 // ─── Section 4: Season History ────────────────────────────────────────────────
 
+/** Parse victoryResults from a season's ageTransitions JSON string. */
+function parseVictoryResults(ageTransitions: string | null | undefined): {
+  militaryChampion?: { allianceName: string; totalLandGained: number };
+  economicPowerhouse?: { allianceName: string; totalNetworth: number };
+  strategistGuild?: { allianceName: string; territoriesControlled: number };
+} | undefined {
+  if (!ageTransitions) return undefined;
+  try {
+    const parsed = JSON.parse(ageTransitions) as Record<string, unknown>;
+    const vr = parsed.victoryResults as Record<string, Record<string, unknown>> | undefined;
+    if (!vr) return undefined;
+    return {
+      militaryChampion: vr.militaryChampion
+        ? { allianceName: String(vr.militaryChampion.allianceId ?? ''), totalLandGained: Number(vr.militaryChampion.totalLandGained ?? 0) }
+        : undefined,
+      economicPowerhouse: vr.economicPowerhouse
+        ? { allianceName: String(vr.economicPowerhouse.allianceId ?? ''), totalNetworth: Number(vr.economicPowerhouse.totalNetworth ?? 0) }
+        : undefined,
+      strategistGuild: vr.strategistGuild
+        ? { allianceName: String(vr.strategistGuild.allianceId ?? ''), territoriesControlled: Number(vr.strategistGuild.territoriesControlled ?? 0) }
+        : undefined,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 function SeasonHistoryPanel() {
   const [seasons, setSeasons] = useState<SeasonRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
+  // State for the "View Results" ceremony modal
+  const [resultsModal, setResultsModal] = useState<{
+    seasonNumber: number;
+    victoryTracks: ReturnType<typeof parseVictoryResults>;
+  } | null>(null);
+
+  const demoAgeTransitions = JSON.stringify({
+    early: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000).toISOString(),
+    middle: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString(),
+    late: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+    victoryResults: {
+      militaryChampion:  { allianceId: 'Iron Brotherhood', totalLandGained: 4200 },
+      economicPowerhouse:{ allianceId: 'Merchant Council', totalNetworth: 12500000 },
+      strategistGuild:   { allianceId: 'Iron Brotherhood', territoriesControlled: 5 },
+    },
+  });
+
   useEffect(() => {
     if (!expanded) return;
     if (isDemoMode()) {
       setSeasons([
-        { id: 'old-1', seasonNumber: 0, status: 'completed', startDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), endDate: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000).toISOString(), participantCount: 5, currentAge: 'late', ageTransitions: null, createdAt: '', updatedAt: '', owner: null } as unknown as SeasonRow,
+        { id: 'old-1', seasonNumber: 0, status: 'completed', startDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), endDate: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000).toISOString(), participantCount: 5, currentAge: 'late', ageTransitions: demoAgeTransitions, createdAt: '', updatedAt: '', owner: null } as unknown as SeasonRow,
       ]);
       return;
     }
@@ -550,10 +595,21 @@ function SeasonHistoryPanel() {
         toast.error('Failed to load season history.');
       })
       .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded]);
 
   return (
     <section className="admin-panel">
+      {/* Victory results ceremony modal */}
+      {resultsModal && (
+        <SeasonResults
+          seasonNumber={resultsModal.seasonNumber}
+          topKingdoms={[]}
+          victoryTracks={resultsModal.victoryTracks}
+          onClose={() => setResultsModal(null)}
+        />
+      )}
+
       <div
         className="admin-panel-header admin-panel-header--clickable"
         onClick={() => setExpanded((v) => !v)}
@@ -579,16 +635,28 @@ function SeasonHistoryPanel() {
                   <th>Season</th>
                   <th>End Date</th>
                   <th>Participants</th>
+                  <th>Results</th>
                 </tr>
               </thead>
               <tbody>
-                {seasons.map((s) => (
-                  <tr key={s.id}>
-                    <td>#{s.seasonNumber}</td>
-                    <td>{s.endDate ? new Date(s.endDate).toLocaleDateString() : '—'}</td>
-                    <td>{s.participantCount ?? 0}</td>
-                  </tr>
-                ))}
+                {seasons.map((s) => {
+                  const victoryTracks = parseVictoryResults(s.ageTransitions);
+                  return (
+                    <tr key={s.id}>
+                      <td>#{s.seasonNumber}</td>
+                      <td>{s.endDate ? new Date(s.endDate).toLocaleDateString() : '—'}</td>
+                      <td>{s.participantCount ?? 0}</td>
+                      <td>
+                        <button
+                          className="admin-btn admin-btn--secondary admin-btn--sm"
+                          onClick={() => setResultsModal({ seasonNumber: s.seasonNumber ?? 0, victoryTracks })}
+                        >
+                          View Results
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

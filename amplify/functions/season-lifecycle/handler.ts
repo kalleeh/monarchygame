@@ -75,6 +75,72 @@ async function recordSeasonRankings(seasonNumber: number): Promise<void> {
   }
 }
 
+/** Compute alliance-level victory track winners for the season that is ending */
+async function computeSeasonVictory(seasonId: string): Promise<{
+  militaryChampion?: { allianceId: string; totalLandGained: number };
+  economicPowerhouse?: { allianceId: string; totalNetworth: number };
+  strategistGuild?: { allianceId: string; territoriesControlled: number };
+}> {
+  void seasonId; // parameter reserved for future per-season filtering
+
+  // Military: alliance with most land gained from BattleReports this season
+  const allBattles = await dbList<{ attackerId: string; landGained?: number; timestamp?: string }>('BattleReport');
+
+  // Economic: alliance with highest combined networth
+  const allKingdoms = await dbList<{ guildId?: string; resources?: string; totalUnits?: string; stats?: string }>('Kingdom');
+
+  // Strategic: alliance controlling most territories (3+ territories in same region)
+  const allTerritories = await dbList<{ kingdomId?: string; regionId?: string }>('Territory');
+
+  // Build per-alliance stats
+  const allianceMilitary: Record<string, number> = {};
+  const allianceNetworth: Record<string, number> = {};
+  const allianceTerritories: Record<string, number> = {};
+
+  // Compute military champion
+  for (const battle of allBattles) {
+    const kingdom = allKingdoms.find(k => (k as Record<string, unknown>).id === battle.attackerId);
+    const guildId = (kingdom as Record<string, unknown>)?.guildId as string | undefined;
+    if (guildId && battle.landGained) {
+      allianceMilitary[guildId] = (allianceMilitary[guildId] ?? 0) + (battle.landGained ?? 0);
+    }
+  }
+
+  // Compute economic powerhouse
+  for (const kingdom of allKingdoms) {
+    const guildId = (kingdom as Record<string, unknown>)?.guildId as string | undefined;
+    if (guildId) {
+      const res = typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources as string) : (kingdom.resources ?? {});
+      const nw = ((res as Record<string, number>).land ?? 0) * 1000 + ((res as Record<string, number>).gold ?? 0);
+      allianceNetworth[guildId] = (allianceNetworth[guildId] ?? 0) + nw;
+    }
+  }
+
+  // Compute strategic guild (territories per region per alliance; 3+ in a region = control)
+  const regionsByAlliance: Record<string, Record<string, number>> = {};
+  for (const territory of allTerritories) {
+    const kingdom = allKingdoms.find(k => (k as Record<string, unknown>).id === territory.kingdomId);
+    const guildId = (kingdom as Record<string, unknown>)?.guildId as string | undefined;
+    if (guildId && territory.regionId) {
+      if (!regionsByAlliance[guildId]) regionsByAlliance[guildId] = {};
+      regionsByAlliance[guildId][territory.regionId] = (regionsByAlliance[guildId][territory.regionId] ?? 0) + 1;
+    }
+  }
+  for (const [guildId, regions] of Object.entries(regionsByAlliance)) {
+    allianceTerritories[guildId] = Object.values(regions).filter(count => count >= 3).length;
+  }
+
+  const topMilitary  = Object.entries(allianceMilitary).sort(([, a], [, b]) => b - a)[0];
+  const topEconomic  = Object.entries(allianceNetworth).sort(([, a], [, b]) => b - a)[0];
+  const topStrategic = Object.entries(allianceTerritories).sort(([, a], [, b]) => b - a)[0];
+
+  return {
+    militaryChampion:  topMilitary  ? { allianceId: topMilitary[0],  totalLandGained:      topMilitary[1]  } : undefined,
+    economicPowerhouse:topEconomic  ? { allianceId: topEconomic[0],  totalNetworth:         topEconomic[1]  } : undefined,
+    strategistGuild:   topStrategic ? { allianceId: topStrategic[0], territoriesControlled: topStrategic[1] } : undefined,
+  };
+}
+
 type GameAge = 'early' | 'middle' | 'late';
 
 function calculateCurrentAge(startDate: Date): GameAge {
@@ -156,12 +222,17 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
 
           // Check expiry
           if (isSeasonExpired(startDate)) {
+            // Compute victory tracks before closing the season
+            const victoryResults = await computeSeasonVictory(season.id);
+
             // Record final rankings before closing the season
             await recordSeasonRankings(season.seasonNumber);
 
+            const existingTransitions = JSON.parse(season.ageTransitions || '{}');
             await dbUpdate('GameSeason', season.id, {
               status: 'completed',
-              endDate: new Date().toISOString()
+              endDate: new Date().toISOString(),
+              ageTransitions: JSON.stringify({ ...existingTransitions, victoryResults }),
             });
 
             // Clean up: expire all open trade offers
@@ -217,12 +288,17 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
           return JSON.stringify({ success: false, error: 'Season not found', errorCode: ErrorCode.NOT_FOUND });
         }
 
+        // Compute victory tracks before closing the season
+        const victoryResults = await computeSeasonVictory(season.id);
+
         // Record final rankings before closing the season
         await recordSeasonRankings(season.seasonNumber);
 
+        const existingTransitions = JSON.parse(season.ageTransitions || '{}');
         await dbUpdate('GameSeason', seasonId, {
           status: 'completed',
-          endDate: new Date().toISOString()
+          endDate: new Date().toISOString(),
+          ageTransitions: JSON.stringify({ ...existingTransitions, victoryResults }),
         });
 
         log.info('season-lifecycle', 'endSeason', { seasonId });

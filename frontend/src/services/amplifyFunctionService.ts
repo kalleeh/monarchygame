@@ -62,11 +62,14 @@ interface FunctionPayload {
   abilityType?: string;
   // Alliance treasury fields
   allianceId?: string;
+  upgradeType?: string;
   // Alliance manager fields
   name?: string;
   description?: string;
   isPublic?: boolean;
   targetKingdomId?: string;
+  targetAllianceId?: string;
+  relationship?: string;
 }
 
 type TerritoryPayload = FunctionPayload & BaseTerritoryPayload;
@@ -118,9 +121,9 @@ export class AmplifyFunctionService {
           case 'bounty-processor':
             return { success: true, result: JSON.stringify({ action: payload.action ?? 'claim', goldReward: 500000, populationReward: 100 }) };
           case 'alliance-treasury':
-            return { success: true, result: JSON.stringify({ contributed: payload.amount, newTreasuryBalance: 5000 }) };
+            return { success: true, result: JSON.stringify({ contributed: payload.amount, newTreasuryBalance: 5000, upgradeType: payload.upgradeType }) };
           case 'alliance-manager':
-            return { success: true, result: JSON.stringify({ action: payload.action, allianceId: `alliance-${Date.now()}` }) };
+            return { success: true, result: JSON.stringify({ action: payload.action, allianceId: `alliance-${Date.now()}`, relationship: payload.relationship }) };
           default:
             return { success: true };
         }
@@ -253,7 +256,8 @@ export class AmplifyFunctionService {
             allianceId: payload.allianceId || '',
             kingdomId: payload.kingdomId,
             action: payload.action || 'contribute',
-            amount: (payload.amount as number) ?? 0
+            amount: payload.amount as number | undefined,
+            upgradeType: payload.upgradeType as string | undefined,
           });
         case 'alliance-manager':
           return await client.mutations.manageAlliance({
@@ -264,6 +268,8 @@ export class AmplifyFunctionService {
             description: payload.description as string | undefined,
             isPublic: payload.isPublic as boolean | undefined,
             targetKingdomId: (payload.targetKingdomId ?? payload.targetId) as string | undefined,
+            targetAllianceId: payload.targetAllianceId as string | undefined,
+            relationship: payload.relationship as string | undefined,
           });
         default:
           throw new Error(`Unknown function: ${functionName}`);

@@ -3,7 +3,7 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { dbGet, dbCreate, dbUpdate, dbDelete, dbList } from '../data-client';
 
-type KingdomRecord = { id: string; owner?: string | null };
+type KingdomRecord = { id: string; owner?: string | null; race?: string };
 type AllianceRecord = {
   id: string;
   name: string;
@@ -13,6 +13,7 @@ type AllianceRecord = {
   maxMembers?: number;
   isPublic?: boolean;
   treasury?: unknown;
+  stats?: unknown;
 };
 type AllianceInvitationRecord = {
   id: string;
@@ -22,6 +23,33 @@ type AllianceInvitationRecord = {
   status: string;
   createdAt?: string;
 };
+
+// Race role categories for composition bonus
+const MAGE_RACES = ['Sidhe', 'Elven', 'Vampire', 'Elemental', 'Fae'];
+const WARRIOR_RACES = ['Droben', 'Goblin', 'Dwarven', 'Centaur'];
+const SCUM_RACES = ['Centaur', 'Human', 'Vampire', 'Sidhe'];
+
+interface CompositionBonus {
+  income: number;
+  combat: number;
+  espionage: number;
+}
+
+async function calculateCompositionBonus(memberIds: string[]): Promise<CompositionBonus> {
+  const kingdoms = await Promise.all(
+    memberIds.slice(0, 20).map(id => dbGet<{ race?: string }>('Kingdom', id))
+  );
+  const races = kingdoms.map(k => k?.race ?? '').filter(Boolean);
+  const hasMage = races.some(r => MAGE_RACES.includes(r));
+  const hasWarrior = races.some(r => WARRIOR_RACES.includes(r));
+  const hasScum = races.some(r => SCUM_RACES.includes(r));
+  const fullComposition = hasMage && hasWarrior && hasScum;
+  return {
+    income: fullComposition ? 1.05 : 1.0,
+    combat: fullComposition ? 1.05 : 1.0,
+    espionage: fullComposition ? 1.05 : 1.0,
+  };
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function verifyKingdomOwnership(kingdomId: string, identity: any): Promise<{ error?: { success: boolean; error: string; errorCode: string }; data?: KingdomRecord }> {
@@ -38,6 +66,9 @@ async function verifyKingdomOwnership(kingdomId: string, identity: any): Promise
 
 export const handler: Schema["manageAlliance"]["functionHandler"] = async (event) => {
   const { kingdomId, action, allianceId, name, description, isPublic, targetKingdomId } = event.arguments;
+  const args = event.arguments as Record<string, unknown>;
+  const targetAllianceId = args.targetAllianceId as string | undefined;
+  const relationship = args.relationship as string | undefined;
 
   try {
     if (!kingdomId || !action) {
@@ -72,6 +103,13 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         if (!newAlliance) {
           return { success: false, error: 'Failed to create alliance', errorCode: ErrorCode.INTERNAL_ERROR };
         }
+
+        // Compute and store composition bonus
+        const memberIds = [kingdomId];
+        const compositionBonus = await calculateCompositionBonus(memberIds);
+        await dbUpdate('Alliance', newAlliance.id as string, {
+          stats: JSON.stringify({ compositionBonus }),
+        });
 
         log.info('alliance-manager', 'createAlliance', { kingdomId, allianceId: newAlliance.id });
         return { success: true, result: JSON.stringify({ allianceId: newAlliance.id }) };
@@ -128,6 +166,15 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         if (pendingInvitation) {
           await dbUpdate('AllianceInvitation', pendingInvitation.id, { status: 'accepted' });
         }
+
+        // Recompute and store composition bonus after member joins
+        const compositionBonus = await calculateCompositionBonus(memberIds);
+        const existingStats = typeof alliance.stats === 'string'
+          ? JSON.parse(alliance.stats as string)
+          : (alliance.stats ?? {});
+        await dbUpdate('Alliance', allianceId, {
+          stats: JSON.stringify({ ...existingStats, compositionBonus }),
+        });
 
         log.info('alliance-manager', 'joinAlliance', { kingdomId, allianceId });
         return { success: true, result: JSON.stringify({ allianceId, memberIds }) };
@@ -261,8 +308,54 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         return { success: true, result: JSON.stringify({ action: 'decline', allianceId }) };
       }
 
+      case 'set_relationship': {
+        if (!allianceId || !targetAllianceId || !relationship) {
+          return { success: false, error: 'Missing allianceId, targetAllianceId, or relationship', errorCode: ErrorCode.MISSING_PARAMS };
+        }
+
+        const VALID_RELATIONSHIPS = ['neutral', 'trade_pact', 'non_aggression', 'allied', 'hostile'];
+        if (!VALID_RELATIONSHIPS.includes(relationship)) {
+          return { success: false, error: `Invalid relationship. Must be: ${VALID_RELATIONSHIPS.join(', ')}`, errorCode: ErrorCode.INVALID_PARAM };
+        }
+
+        const alliance = await dbGet<AllianceRecord>('Alliance', allianceId);
+        if (!alliance || alliance.leaderId !== kingdomId) {
+          return { success: false, error: 'Only leader can set inter-alliance relationships', errorCode: ErrorCode.FORBIDDEN };
+        }
+
+        const stats = typeof alliance.stats === 'string'
+          ? JSON.parse(alliance.stats as string)
+          : (alliance.stats ?? {});
+        const relationships = (stats.relationships as Record<string, string>) ?? {};
+        relationships[targetAllianceId] = relationship;
+
+        await dbUpdate('Alliance', allianceId, { stats: JSON.stringify({ ...stats, relationships }) });
+
+        log.info('alliance-manager', 'setRelationship', { kingdomId, allianceId, targetAllianceId, relationship });
+        return { success: true, result: JSON.stringify({ allianceId, targetAllianceId, relationship }) };
+      }
+
+      case 'get_relationship': {
+        if (!allianceId || !targetAllianceId) {
+          return { success: false, error: 'Missing allianceId or targetAllianceId', errorCode: ErrorCode.MISSING_PARAMS };
+        }
+
+        const alliance = await dbGet<AllianceRecord>('Alliance', allianceId);
+        if (!alliance) {
+          return { success: false, error: 'Alliance not found', errorCode: ErrorCode.NOT_FOUND };
+        }
+
+        const stats = typeof alliance.stats === 'string'
+          ? JSON.parse(alliance.stats as string)
+          : (alliance.stats ?? {});
+        const relationships = (stats.relationships as Record<string, string>) ?? {};
+        const currentRelationship = relationships[targetAllianceId] ?? 'neutral';
+
+        return { success: true, result: JSON.stringify({ allianceId, targetAllianceId, relationship: currentRelationship }) };
+      }
+
       default:
-        return { success: false, error: `Invalid action: ${action}. Must be one of: create, join, leave, kick, invite, decline`, errorCode: ErrorCode.INVALID_PARAM };
+        return { success: false, error: `Invalid action: ${action}. Must be one of: create, join, leave, kick, invite, decline, set_relationship, get_relationship`, errorCode: ErrorCode.INVALID_PARAM };
     }
   } catch (error) {
     log.error('alliance-manager', error, { kingdomId, action, allianceId });

@@ -33,6 +33,7 @@ import { subscriptionManager } from '../services/subscriptionManager';
 import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
 import { NotificationCenter } from './ui/NotificationCenter';
 import { AchievementWidget } from './achievements/AchievementWidget';
+import UnitRoster from './UnitRoster';
 
 // EncampPanel — shows active encamp countdown or the two encamp buttons
 const EncampPanel = memo(({
@@ -191,6 +192,7 @@ function KingdomDashboard({
   const [resourceLoading, setResourceLoading] = useState(false);
   const [showBalanceTester, setShowBalanceTester] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showUnitRoster, setShowUnitRoster] = useState(false);
 
   // Season info for the age badge
   const [seasonInfo, setSeasonInfo] = useState<{ seasonNumber: number; currentAge: 'early' | 'middle' | 'late' } | null>(null);
@@ -1083,22 +1085,40 @@ function KingdomDashboard({
         <div className="actions-panel">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
             <h2 style={{ margin: 0 }}>Kingdom Actions</h2>
-            <button
-              onClick={() => setShowHelp(true)}
-              style={{
-                background: 'rgba(78, 205, 196, 0.1)',
-                border: '1px solid rgba(78, 205, 196, 0.35)',
-                borderRadius: '6px',
-                color: '#4ecdc4',
-                cursor: 'pointer',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                padding: '0.3rem 0.7rem',
-              }}
-              title="Quick reference guide"
-            >
-              ? Help
-            </button>
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <button
+                onClick={() => setShowUnitRoster(true)}
+                style={{
+                  background: 'rgba(139, 92, 246, 0.1)',
+                  border: '1px solid rgba(139, 92, 246, 0.35)',
+                  borderRadius: '6px',
+                  color: '#a78bfa',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  padding: '0.3rem 0.7rem',
+                }}
+                title="Unit tier reference panel"
+              >
+                ? Units
+              </button>
+              <button
+                onClick={() => setShowHelp(true)}
+                style={{
+                  background: 'rgba(78, 205, 196, 0.1)',
+                  border: '1px solid rgba(78, 205, 196, 0.35)',
+                  borderRadius: '6px',
+                  color: '#4ecdc4',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  padding: '0.3rem 0.7rem',
+                }}
+                title="Quick reference guide"
+              >
+                ? Help
+              </button>
+            </div>
           </div>
 
           {(() => {
@@ -1340,6 +1360,11 @@ function KingdomDashboard({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Unit Roster Reference Modal */}
+      {showUnitRoster && (
+        <UnitRoster onClose={() => setShowUnitRoster(false)} />
       )}
 
       {/* Balance Test Runner Modal */}

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import type { Kingdom } from '../types/kingdom';
@@ -6,6 +6,8 @@ import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { GuildService } from '../services/GuildService';
 import { isDemoMode } from '../utils/authMode';
 import toast from 'react-hot-toast';
+import SeasonResults from './SeasonResults';
+import type { SeasonResultsProps } from './SeasonResults';
 import '../components/TerritoryExpansion.css';
 import '../components/Leaderboard.css';
 
@@ -112,6 +114,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
     };
   });
 
+  // ── Season-end ceremony modal ─────────────────────────────────────────────
+  const [seasonModal, setSeasonModal] = useState<Omit<SeasonResultsProps, 'onClose'> | null>(null);
+
   // ── Live kingdom data (auth mode) / demo refresh indicator ───────────────
   // liveKingdoms overrides the kingdoms prop when auth-mode subscription is active.
   const [liveKingdoms, setLiveKingdoms] = useState<Kingdom[] | null>(null);
@@ -130,17 +135,38 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
         const transformed = items.map(transformSchemaKingdom);
 
         // Detect season-end: if any kingdom's previousSeasonNumber just changed
-        // (appeared for the first time or incremented), fire a one-time toast.
+        // (appeared for the first time or incremented), show the ceremony modal.
         let seasonEndDetected = false;
+        let detectedSeasonNumber: number | undefined;
         for (const k of transformed) {
           const newVal = k.stats.previousSeasonNumber;
           const oldVal = prevSeasonNumbersRef.current[k.id];
           if (newVal != null && newVal !== oldVal) {
             seasonEndDetected = true;
+            detectedSeasonNumber = newVal;
           }
           prevSeasonNumbersRef.current[k.id] = newVal;
         }
-        if (seasonEndDetected) {
+        if (seasonEndDetected && detectedSeasonNumber != null) {
+          // Build top-5 kingdoms list from current snapshot
+          const sorted = [...transformed]
+            .sort((a, b) => calculateNetworth(b) - calculateNetworth(a))
+            .slice(0, 5)
+            .map((k, i) => ({
+              name: k.name,
+              race: k.race,
+              networth: calculateNetworth(k),
+              rank: i + 1,
+            }));
+
+          setSeasonModal({
+            seasonNumber: detectedSeasonNumber,
+            topKingdoms: sorted,
+            // Victory tracks are fetched from the completed GameSeason record;
+            // the admin panel's "View Results" button shows full alliance details.
+            victoryTracks: undefined,
+          });
+
           toast('Season has ended — final rankings recorded!', {
             icon: '🏆',
             duration: 6000,
@@ -181,6 +207,22 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
       }
     };
   }, []);
+
+  // ── Active wars (for coordination multiplier) ────────────────────────────
+  const [activeWarCount, setActiveWarCount] = useState(0);
+  useEffect(() => {
+    if (isDemoMode() || !currentKingdom.guildId) return;
+    const fetchWars = async () => {
+      try {
+        const { active } = await GuildService.loadGuildWars(currentKingdom.guildId!);
+        setActiveWarCount(active.length);
+      } catch {
+        // non-fatal
+      }
+    };
+    void fetchWars();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentKingdom.guildId]);
 
   // ── Guild name lookup map ─────────────────────────────────────────────────
   // Populated from kingdoms' own guildName fields (if present) plus a
@@ -306,7 +348,13 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
   const guildRows = useMemo(() => {
     if (activeTab !== 'guilds') return [];
 
-    const map = new Map<string, { guildId: string; label: string; members: number; totalNW: number }>();
+    const map = new Map<string, {
+      guildId: string;
+      label: string;
+      members: number;
+      totalNW: number;
+      races: Set<string>;
+    }>();
     for (const k of allKingdoms) {
       if (!k.guildId) continue;
       const nw = calculateNetworth(k);
@@ -314,23 +362,61 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
         const entry = map.get(k.guildId)!;
         entry.members += 1;
         entry.totalNW += nw;
+        if (k.race) entry.races.add(k.race.toLowerCase());
       } else {
         // Prefer: guildName on kingdom > guildNamesMap lookup > truncated-ID fallback
         const resolvedName =
-          k.guildName ||
+          (k as Kingdom & { guildName?: string }).guildName ||
           guildNamesMap[k.guildId] ||
           `Guild ${k.guildId.slice(0, 8)}`;
+        const races = new Set<string>();
+        if (k.race) races.add(k.race.toLowerCase());
         map.set(k.guildId, {
           guildId: k.guildId,
           label: resolvedName,
           members: 1,
           totalNW: nw,
+          races,
         });
       }
     }
 
-    return Array.from(map.values()).sort((a, b) => b.totalNW - a.totalNW);
-  }, [activeTab, allKingdoms, guildNamesMap]);
+    const rows = Array.from(map.values()).map(row => {
+      // Composition check: has mage-type, warrior-type, and scum-type races
+      // Mage-types: Elven, Sidhe, Elemental, Fae, Vampire
+      // Warrior-types: Human, Droben, Centaur, Dwarven, Goblin
+      // Scum-types: Goblin (also warrior), Vampire (also mage), any race with scum stat > 0
+      // Simplified heuristic: check for at least 3 distinct race archetypes
+      const mageRaces = new Set(['elven', 'sidhe', 'elemental', 'fae', 'vampire']);
+      const warriorRaces = new Set(['human', 'droben', 'centaur', 'dwarven']);
+      const scumRaces = new Set(['goblin', 'vampire', 'sidhe']);
+
+      const hasMage = [...row.races].some(r => mageRaces.has(r));
+      const hasWarrior = [...row.races].some(r => warriorRaces.has(r));
+      const hasScum = [...row.races].some(r => scumRaces.has(r));
+      const compositionScore = (hasMage ? 1 : 0) + (hasWarrior ? 1 : 0) + (hasScum ? 1 : 0);
+      const hasFullComposition = compositionScore >= 3;
+
+      // Coordination multiplier: active war involvement boosts by 1.2x
+      const isCurrentPlayerGuild = row.guildId === currentKingdom.guildId;
+      const coordMultiplier = (hasFullComposition || (isCurrentPlayerGuild && activeWarCount > 0)) ? 1.2 : 1.0;
+
+      // Sort key: totalNW * composition multiplier
+      const sortKey = row.totalNW * coordMultiplier;
+
+      return {
+        ...row,
+        hasMage,
+        hasWarrior,
+        hasScum,
+        hasFullComposition,
+        coordMultiplier,
+        sortKey,
+      };
+    });
+
+    return rows.sort((a, b) => b.sortKey - a.sortKey);
+  }, [activeTab, allKingdoms, guildNamesMap, activeWarCount, currentKingdom.guildId]);
 
   // ── Rank-delta helper ────────────────────────────────────────────────────
   const getRankDelta = (kingdom: Kingdom, currentRank: number) => {
@@ -353,6 +439,14 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="leaderboard-container">
+
+      {/* ── Season-end ceremony modal ────────────────────────────────────── */}
+      {seasonModal && (
+        <SeasonResults
+          {...seasonModal}
+          onClose={() => setSeasonModal(null)}
+        />
+      )}
 
       {/* ── Tab bar ─────────────────────────────────────────────────────── */}
       <div className="lb-tab-bar" role="tablist" aria-label="Leaderboard categories">
@@ -476,6 +570,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
                   <th className="lb-guilds-th lb-guilds-th--rank">Rank</th>
                   <th className="lb-guilds-th">Guild</th>
                   <th className="lb-guilds-th lb-guilds-th--center">Members</th>
+                  <th className="lb-guilds-th lb-guilds-th--center">Comp</th>
                   <th className="lb-guilds-th lb-guilds-th--right">Combined Networth</th>
                 </tr>
               </thead>
@@ -483,9 +578,49 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
                 {guildRows.map((row, idx) => (
                   <tr key={row.guildId} className={`lb-guilds-row ${idx % 2 === 0 ? 'lb-guilds-row--even' : ''}`}>
                     <td className="lb-guilds-td lb-guilds-td--rank">#{idx + 1}</td>
-                    <td className="lb-guilds-td lb-guilds-td--name">{row.label}</td>
+                    <td className="lb-guilds-td lb-guilds-td--name">
+                      <span>{row.label}</span>
+                      {row.coordMultiplier > 1.0 && (
+                        <span
+                          title="Active coordination bonus"
+                          style={{
+                            marginLeft: '0.5rem',
+                            padding: '0.1rem 0.4rem',
+                            background: 'rgba(245,158,11,0.15)',
+                            border: '1px solid rgba(245,158,11,0.4)',
+                            borderRadius: '4px',
+                            fontSize: '0.7rem',
+                            color: '#f59e0b',
+                            fontWeight: 600,
+                            verticalAlign: 'middle',
+                          }}
+                        >
+                          Coord: {row.coordMultiplier.toFixed(1)}×
+                        </span>
+                      )}
+                    </td>
                     <td className="lb-guilds-td lb-guilds-td--center">{row.members}</td>
-                    <td className="lb-guilds-td lb-guilds-td--right">{(row.totalNW / 1_000_000).toFixed(2)}M</td>
+                    <td className="lb-guilds-td lb-guilds-td--center">
+                      {row.hasFullComposition ? (
+                        <span title="Full composition: mage + warrior + scum" style={{ fontSize: '1rem', letterSpacing: '-0.05em' }}>
+                          ⚔🎭💰
+                        </span>
+                      ) : (
+                        <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>
+                          {row.hasWarrior ? '⚔' : '·'}
+                          {row.hasMage ? '🎭' : '·'}
+                          {row.hasScum ? '💰' : '·'}
+                        </span>
+                      )}
+                    </td>
+                    <td className="lb-guilds-td lb-guilds-td--right">
+                      {(row.totalNW / 1_000_000).toFixed(2)}M
+                      {row.coordMultiplier > 1.0 && (
+                        <span style={{ color: '#f59e0b', fontSize: '0.75rem', marginLeft: '0.3rem' }}>
+                          ({(row.sortKey / 1_000_000).toFixed(2)}M eff.)
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

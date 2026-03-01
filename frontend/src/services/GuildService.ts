@@ -10,6 +10,25 @@ import { AmplifyFunctionService } from './amplifyFunctionService';
 
 const client = generateClient<Schema>();
 
+export interface AllianceUpgradeRecord {
+  key: string;
+  purchasedAt: string;
+  expiresAt: string;
+  purchasedBy: string;
+}
+
+export interface AllianceRelationship {
+  targetAllianceId: string;
+  targetAllianceName?: string;
+  relationship: 'neutral' | 'trade_pact' | 'non_aggression' | 'allied' | 'hostile';
+}
+
+export interface GuildStats {
+  treasury?: number;
+  activeUpgrades?: AllianceUpgradeRecord[];
+  relationships?: AllianceRelationship[];
+}
+
 export interface GuildData {
   id: string;
   name: string;
@@ -25,6 +44,7 @@ export interface GuildData {
   charter?: GuildCharter;
   ranking?: number;
   warDeclarations?: GuildWar[];
+  stats?: GuildStats;
 }
 
 export interface GuildCharter {
@@ -1155,6 +1175,174 @@ export class GuildService {
     } catch (error) {
       console.warn('[GuildService] findActiveWarBetweenAsync failed, using cache:', error);
       return GuildService.findActiveWarBetween(guildIdA, guildIdB);
+    }
+  }
+
+  // =========================================================================
+  // Alliance composition bonus
+  // =========================================================================
+
+  /**
+   * Read the current composition bonus stored in alliance stats.
+   * Returns default multipliers (all 1.0) if not yet computed.
+   */
+  static async getCompositionBonus(allianceId: string): Promise<{ income: number; combat: number; espionage: number }> {
+    const defaultBonus = { income: 1.0, combat: 1.0, espionage: 1.0 };
+
+    if (isDemoMode()) {
+      await new Promise(resolve => setTimeout(resolve, 0));
+      return defaultBonus;
+    }
+
+    try {
+      const response = await client.models.Alliance.get({ id: allianceId });
+      if (response.errors || !response.data) return defaultBonus;
+
+      const rawStats = response.data.stats as unknown;
+      const stats: Record<string, unknown> = rawStats
+        ? (typeof rawStats === 'string' ? JSON.parse(rawStats as string) : (rawStats as Record<string, unknown>))
+        : {};
+
+      return (stats.compositionBonus as { income: number; combat: number; espionage: number }) ?? defaultBonus;
+    } catch (error) {
+      console.error('[GuildService] getCompositionBonus error:', error);
+      return defaultBonus;
+    }
+  }
+
+  // =========================================================================
+  // Alliance treasury upgrades
+  // =========================================================================
+
+  /**
+   * Purchase a guild-wide timed upgrade from the alliance treasury.
+   * Only the alliance leader may call this.
+   * Returns the upgrade type and its expiry timestamp.
+   */
+  static async purchaseUpgrade(
+    allianceId: string,
+    kingdomId: string,
+    upgradeType: string
+  ): Promise<{ upgradeType: string; expiresAt: string }> {
+    if (isDemoMode()) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return {
+        upgradeType,
+        expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+      };
+    }
+
+    try {
+      const result = await AmplifyFunctionService.callFunction('alliance-treasury', {
+        kingdomId,
+        action: 'upgrade',
+        allianceId,
+        upgradeType,
+      });
+      const parsed = JSON.parse((result as Record<string, string>).result || '{}');
+      return {
+        upgradeType: (parsed.upgradeType as string) ?? upgradeType,
+        expiresAt: (parsed.expiresAt as string) ?? new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('[GuildService] purchaseUpgrade error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Read active (non-expired) upgrades from alliance stats.
+   */
+  static async getActiveUpgrades(allianceId: string): Promise<Array<{ type: string; expiresAt: string; effect: Record<string, number> }>> {
+    if (isDemoMode()) {
+      await new Promise(resolve => setTimeout(resolve, 0));
+      return [];
+    }
+
+    try {
+      const response = await client.models.Alliance.get({ id: allianceId });
+      if (response.errors || !response.data) return [];
+
+      const rawStats = response.data.stats as unknown;
+      const stats: Record<string, unknown> = rawStats
+        ? (typeof rawStats === 'string' ? JSON.parse(rawStats as string) : (rawStats as Record<string, unknown>))
+        : {};
+
+      const upgrades = (stats.activeUpgrades as Array<{ type: string; expiresAt: string; effect: Record<string, number> }>) ?? [];
+      const now = Date.now();
+      return upgrades.filter(u => new Date(u.expiresAt).getTime() > now);
+    } catch (error) {
+      console.error('[GuildService] getActiveUpgrades error:', error);
+      return [];
+    }
+  }
+
+  // =========================================================================
+  // Inter-alliance diplomacy
+  // =========================================================================
+
+  /**
+   * Set a formal relationship status between this alliance and another.
+   * Only the alliance leader may call this.
+   * Valid relationship values: 'neutral' | 'trade_pact' | 'non_aggression' | 'allied' | 'hostile'
+   */
+  static async setInterAllianceRelationship(
+    allianceId: string,
+    kingdomId: string,
+    targetAllianceId: string,
+    relationship: 'neutral' | 'trade_pact' | 'non_aggression' | 'allied' | 'hostile'
+  ): Promise<{ allianceId: string; targetAllianceId: string; relationship: string }> {
+    if (isDemoMode()) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return { allianceId, targetAllianceId, relationship };
+    }
+
+    try {
+      const result = await AmplifyFunctionService.callFunction('alliance-manager', {
+        kingdomId,
+        action: 'set_relationship',
+        allianceId,
+        targetAllianceId,
+        relationship,
+      });
+      const parsed = JSON.parse((result as Record<string, string>).result || '{}');
+      return {
+        allianceId: (parsed.allianceId as string) ?? allianceId,
+        targetAllianceId: (parsed.targetAllianceId as string) ?? targetAllianceId,
+        relationship: (parsed.relationship as string) ?? relationship,
+      };
+    } catch (error) {
+      console.error('[GuildService] setInterAllianceRelationship error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieve the current relationship status between two alliances.
+   * Returns 'neutral' when no formal relationship has been recorded.
+   */
+  static async getInterAllianceRelationship(
+    allianceId: string,
+    kingdomId: string,
+    targetAllianceId: string
+  ): Promise<string> {
+    if (isDemoMode()) {
+      await new Promise(resolve => setTimeout(resolve, 0));
+      return 'neutral';
+    }
+
+    try {
+      const result = await AmplifyFunctionService.callFunction('alliance-manager', {
+        kingdomId,
+        action: 'get_relationship',
+        allianceId,
+        targetAllianceId,
+      });
+      const parsed = JSON.parse((result as Record<string, string>).result || '{}');
+      return (parsed.relationship as string) ?? 'neutral';
+    } catch (error) {
+      console.error('[GuildService] getInterAllianceRelationship error:', error);
+      return 'neutral';
     }
   }
 

@@ -406,6 +406,7 @@ function buildNodeStyle(
   settling: boolean,
   enemySettling: boolean,
   contested: boolean,
+  allianceControlled: boolean,
 ): Record<string, unknown> {
   const base: Record<string, unknown> = {
     borderRadius: '8px',
@@ -432,7 +433,8 @@ function buildNodeStyle(
       return {
         ...base,
         background: '#d4a017',
-        border: '2px solid #f0c040',
+        border: allianceControlled ? '3px solid #fbbf24' : '2px solid #f0c040',
+        boxShadow: allianceControlled ? '0 0 8px 2px rgba(251,191,36,0.55)' : undefined,
         color: '#000',
         fontWeight: 700,
         padding: '12px',
@@ -441,7 +443,8 @@ function buildNodeStyle(
     return {
       ...base,
       background: '#4ade80',
-      border: '2px solid #16a34a',
+      border: allianceControlled ? '3px solid #fbbf24' : '2px solid #16a34a',
+      boxShadow: allianceControlled ? '0 0 8px 2px rgba(251,191,36,0.55)' : undefined,
       color: '#000',
     };
   }
@@ -566,6 +569,52 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
     return ownership;
   }, [ownedTerritories, aiKingdoms]);
 
+  // ── Alliance-controlled regions ──────────────────────────────────────────
+  /**
+   * A region is "alliance-controlled" when 3 or more territory slots in the
+   * same region (same position cluster, approximated by proximity) belong to
+   * kingdoms in the same alliance (guild).
+   *
+   * For the demo/client-only model the only alliance we can infer is the
+   * player's own guild: count how many player-owned regions neighbour each
+   * other within CLAIM_ADJACENCY_RADIUS and treat any run of >=3 as
+   * controlled.  A map of regionId → allianceId is returned so the detail
+   * panel and node styling can use it.
+   *
+   * In auth mode, territory records carry `regionId` and the kingdom carries
+   * `guildId`; we count territories per (guildId, regionId) pair.
+   */
+  const allianceControlledRegions = useMemo((): Record<string, string> => {
+    // Build a per-(guildId, regionId) count using the player's owned territories.
+    // AI kingdoms are not part of any guild in the demo, so only the player side
+    // is meaningful here. We proxy the player's guildId from the kingdom prop.
+    const playerGuildId = (kingdom as unknown as { guildId?: string }).guildId;
+    if (!playerGuildId) return {};
+
+    // Count how many world-region slots the player's alliance owns.
+    // We group by proximity: two slots are in the "same cluster" if they are
+    // within CLAIM_ADJACENCY_RADIUS of each other.  Use a simple union-find
+    // approach over player-owned regions.
+    const playerOwnedRegions = WORLD_REGIONS.filter(r => territoryOwnership[r.id] === 'player');
+
+    // For each owned region, check how many other owned regions are within
+    // CLAIM_ADJACENCY_RADIUS — this constitutes contiguous alliance territory.
+    // Mark a region as "controlled" when at least 3 player regions form such a cluster.
+    const controlled: Record<string, string> = {};
+    for (const region of playerOwnedRegions) {
+      const cluster = playerOwnedRegions.filter(
+        r => dist(r.position, region.position) <= CLAIM_ADJACENCY_RADIUS
+      );
+      if (cluster.length >= 3) {
+        // Every member of the cluster is marked as controlled by the player's guild
+        for (const r of cluster) {
+          controlled[r.id] = playerGuildId;
+        }
+      }
+    }
+    return controlled;
+  }, [kingdom, territoryOwnership]);
+
   /**
    * Reverse map: which AI kingdom owns which world-territory slot?
    */
@@ -650,6 +699,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         !!settling,
         !!enemySettling,
         contested,
+        wt.id in allianceControlledRegions,
       );
 
       return {
@@ -689,7 +739,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         style,
       } as TerritoryNode;
     });
-  }, [territoryOwnership, playerPositions, aiKingdoms, aiOwnerMap, ownedTerritories, kingdom, pendingSettlements]);
+  }, [territoryOwnership, playerPositions, aiKingdoms, aiOwnerMap, ownedTerritories, kingdom, pendingSettlements, allianceControlledRegions]);
 
   // No edges needed — territory slots are independent
   const worldEdges: Edge[] = [];
@@ -976,6 +1026,12 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
             ></div>
             <span>Fog of War</span>
           </div>
+          {Object.keys(allianceControlledRegions).length > 0 && (
+            <div className="legend-item">
+              <div className="legend-color" style={{ background: '#4ade80', border: '3px solid #fbbf24', boxShadow: '0 0 6px rgba(251,191,36,0.5)' }}></div>
+              <span title="+15% income">Alliance Controlled</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1057,6 +1113,39 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
 
               {/* Ownership badge */}
               {ownershipBadge(selectedTerritory.ownership)}
+
+              {/* Alliance control banner */}
+              {selectedTerritory.id in allianceControlledRegions && (
+                <div
+                  title="+15% income from alliance territory control"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    background: 'rgba(251,191,36,0.12)',
+                    border: '1px solid rgba(251,191,36,0.45)',
+                    borderRadius: 6,
+                    padding: '0.35rem 0.65rem',
+                    marginBottom: '0.75rem',
+                    fontSize: '0.78rem',
+                    color: '#fbbf24',
+                    fontWeight: 600,
+                    letterSpacing: '0.03em',
+                  }}
+                >
+                  <span style={{ fontSize: '1rem' }}>&#x269C;</span>
+                  Your Alliance controls this region
+                  <span style={{
+                    marginLeft: 'auto',
+                    background: 'rgba(251,191,36,0.2)',
+                    borderRadius: 4,
+                    padding: '0.1rem 0.4rem',
+                    fontSize: '0.72rem',
+                  }}>
+                    +15% income
+                  </span>
+                </div>
+              )}
 
               {/* Region info */}
               {(() => {
