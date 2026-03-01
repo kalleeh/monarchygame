@@ -1209,8 +1209,10 @@ function KingdomDashboard({
                       Combat Operations
                     </button>
                     <button
-                      className="action-btn"
-                      onClick={onSummonUnits}
+                      className={`action-btn${isActionProhibited('train') ? ' opacity-50 cursor-not-allowed' : ''}`}
+                      onClick={isActionProhibited('train') ? undefined : onSummonUnits}
+                      disabled={isActionProhibited('train')}
+                      title={isActionProhibited('train') ? 'In restoration — unit training prohibited' : undefined}
                     >
                       <img src="/train-units-icon.png" alt="Summon Units" className="action-icon" />
                       Summon Units

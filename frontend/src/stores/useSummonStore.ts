@@ -202,7 +202,12 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
           const result = (raw && raw.data !== undefined) ? raw.data : raw;
           const parsed = typeof result === 'string' ? JSON.parse(result) : result;
           if (!parsed.success) {
-            set({ error: parsed.error || 'Failed to summon units', loading: false });
+            const rawError: string = parsed.error || 'Failed to summon units';
+            // Give a clearer message when the kingdom is in post-battle restoration
+            const userFacingError = parsed.errorCode === 'RESTORATION_BLOCKED' || rawError.toLowerCase().includes('restoration')
+              ? 'Your kingdom is in restoration and cannot train units. Return to your dashboard to see when restoration ends.'
+              : rawError;
+            set({ error: userFacingError, loading: false });
             return;
           }
 
