@@ -27,6 +27,7 @@ export interface GuildStats {
   treasury?: number;
   activeUpgrades?: AllianceUpgradeRecord[];
   relationships?: AllianceRelationship[];
+  compositionBonus?: { income: number; combat: number; espionage: number };
 }
 
 export interface GuildData {

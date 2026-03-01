@@ -177,7 +177,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
           stats: JSON.stringify({ ...existingStats, compositionBonus }),
         });
 
-        // Notify all members if full composition bonus was just unlocked
+        // Notify all members if full composition bonus was just unlocked (best-effort, non-fatal)
         if (previousBonus < 1.05 && compositionBonus.combat >= 1.05) {
           const now = new Date().toISOString();
           await Promise.all(memberIds.map(memberId =>
@@ -189,7 +189,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
               isRead: false,
               createdAt: now,
             })
-          ));
+          )).catch(() => { /* non-fatal: notification delivery failure must not break join */ });
         }
 
         log.info('alliance-manager', 'joinAlliance', { kingdomId, allianceId });
@@ -232,15 +232,30 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
 
         await dbUpdate('Alliance', allianceId, { memberIds: JSON.stringify(memberIds), leaderId: newLeaderId });
 
-        // Recalculate composition bonus after member leaves
+        // Recalculate composition bonus after member leaves and notify if bonus was lost
         try {
           const compositionBonus = await calculateCompositionBonus(memberIds);
           const currentStats = typeof alliance.stats === 'string'
             ? JSON.parse(alliance.stats as string)
             : (alliance.stats ?? {});
+          const previousBonusOnLeave = (currentStats.compositionBonus?.combat ?? 1.0) as number;
           await dbUpdate('Alliance', allianceId, {
             stats: JSON.stringify({ ...currentStats, compositionBonus })
           });
+          // Notify remaining members if full composition bonus was just lost (best-effort)
+          if (previousBonusOnLeave >= 1.05 && compositionBonus.combat < 1.05) {
+            const now = new Date().toISOString();
+            await Promise.all(memberIds.map(memberId =>
+              dbCreate('CombatNotification', {
+                recipientId: memberId,
+                type: 'alliance',
+                message: `Your alliance has lost its full composition bonus. A race category is no longer represented. Recruit a mage (Sidhe/Elven/Vampire/Elemental/Fae), warrior (Droben/Goblin/Dwarven/Centaur/Human), or scum (Centaur/Human/Vampire/Sidhe/Goblin) to restore the +5% bonus.`,
+                data: JSON.stringify({ allianceId, lostBonus: previousBonusOnLeave }),
+                isRead: false,
+                createdAt: now,
+              })
+            )).catch(() => { /* non-fatal */ });
+          }
         } catch { /* non-fatal */ }
 
         log.info('alliance-manager', 'leaveAlliance', { kingdomId, allianceId });

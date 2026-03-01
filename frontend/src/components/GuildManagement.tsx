@@ -710,6 +710,19 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
                     <span>Members: {currentGuild.memberCount}/{currentGuild.maxMembers}</span>
                     <span>Power: {currentGuild.totalPower.toLocaleString()}</span>
                     <span>Leader: {currentGuild.leaderName}</span>
+                    {(() => {
+                      const rawStats = currentGuild.stats as unknown;
+                      const stats = rawStats
+                        ? (typeof rawStats === 'string' ? JSON.parse(rawStats as string) : (rawStats as Record<string, unknown>))
+                        : {};
+                      const bonus = stats.compositionBonus as { combat: number } | undefined;
+                      const isFullComp = bonus && bonus.combat >= 1.05;
+                      return (
+                        <span style={{ color: isFullComp ? '#4ade80' : '#f59e0b' }} title={isFullComp ? '+5% income, +5% combat, +5% espionage active' : 'Need mage (Sidhe/Elven/Vampire/Elemental/Fae) + warrior (Droben/Goblin/Dwarven/Centaur/Human) + scum (Centaur/Human/Vampire/Sidhe/Goblin)'}>
+                          Composition: {isFullComp ? '✓ Full (+5% all)' : '✗ Partial (missing role)'}
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
                 <div className="guild-actions">
