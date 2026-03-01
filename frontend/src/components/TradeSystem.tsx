@@ -19,7 +19,8 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  Legend
 } from 'recharts';
 interface TradeSystemProps {
   kingdomId: string;
@@ -247,13 +248,16 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip 
+              <Tooltip
                 contentStyle={{
                   backgroundColor: 'var(--bg-card)',
                   border: '1px solid var(--border-primary)',
                   borderRadius: '0.375rem',
                   color: 'var(--text-primary)'
                 }}
+              />
+              <Legend
+                wrapperStyle={{ color: '#94a3b8', fontSize: '0.8rem', paddingTop: '0.5rem' }}
               />
             </PieChart>
           </ResponsiveContainer>

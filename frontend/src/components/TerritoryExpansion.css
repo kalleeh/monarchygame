@@ -48,14 +48,14 @@
 
 .info-btn {
   padding: 0.45rem 0.9rem !important;
-  background: rgba(78, 205, 196, 0.08) !important;
-  border: 1px solid rgba(78, 205, 196, 0.35) !important;
+  background: transparent !important;
+  border: 1px solid rgba(251, 191, 36, 0.3) !important;
   border-radius: var(--gm-radius-md, 0.5rem) !important;
-  color: var(--gm-text-teal, #4ecdc4) !important;
+  color: #fbbf24 !important;
   cursor: pointer !important;
   font-weight: 600 !important;
   font-size: 0.875rem !important;
-  transition: background 0.15s, transform 0.1s !important;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s !important;
   box-shadow: none !important;
   display: flex;
   align-items: center;
@@ -64,7 +64,8 @@
 }
 
 .info-btn:hover {
-  background: rgba(78, 205, 196, 0.16) !important;
+  background: rgba(251, 191, 36, 0.08) !important;
+  border-color: rgba(251, 191, 36, 0.55) !important;
   transform: translateY(-1px) !important;
 }
 

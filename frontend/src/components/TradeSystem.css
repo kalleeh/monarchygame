@@ -126,11 +126,8 @@
   background: rgba(0, 0, 0, 0.2);
   border-radius: 0.375rem;
   padding: 1rem;
-  min-height: 120px;
+  min-height: auto;
   height: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 /* ── Trade offer card accept button ─────────────────────────────────── */

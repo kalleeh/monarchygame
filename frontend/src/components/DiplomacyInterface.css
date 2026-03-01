@@ -68,6 +68,27 @@
   gap: 1rem;
 }
 
+/* ── Stat cards (Reputation, Treaties, Proposals, At War) ───────────── */
+.stat-card {
+  background: rgba(26, 26, 46, 0.97);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+}
+
+.stat-label {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-top: 0.25rem;
+}
+
 /* ── Recent activity ─────────────────────────────────────────────────── */
 .activity-item {
   display: flex;

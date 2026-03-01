@@ -88,7 +88,7 @@
   gap: 0.5rem;
 }
 
-.bm-card-name        { font-size: 1rem; font-weight: 700; color: var(--gm-text-teal, #4ecdc4); }
+.bm-card-name        { font-size: 1rem; font-weight: 700; color: var(--gm-text-gold, #fbbf24); }
 .bm-card-count       { font-size: 0.75rem; color: var(--gm-text-muted, #94a3b8); white-space: nowrap; }
 .bm-card-description { margin: 0; font-size: 0.82rem; color: var(--gm-text, #e2e8f0); line-height: 1.4; }
 .bm-card-effect      { font-size: 0.78rem; color: #a78bfa; font-style: italic; }
