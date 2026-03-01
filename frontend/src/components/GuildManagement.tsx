@@ -21,12 +21,51 @@ interface GuildManagementProps {
   onBack: () => void;
 }
 
+// Race role classification (matches tooltip text in existing code)
+const MAGE_RACES = new Set(['Sidhe', 'Elven', 'Vampire', 'Elemental', 'Fae']);
+const WARRIOR_RACES = new Set(['Droben', 'Goblin', 'Dwarven', 'Centaur', 'Human']);
+const SCUM_RACES = new Set(['Centaur', 'Human', 'Vampire', 'Sidhe', 'Goblin']);
+
+const RACE_EMOJIS: Record<string, string> = {
+  Sidhe: '⚗️', Elven: '🌿', Vampire: '🧛', Elemental: '🔥', Fae: '✨',
+  Droben: '⚔️', Goblin: '🗡️', Dwarven: '🪓', Centaur: '🏹', Human: '👑',
+};
+
+function getRacePillColor(race: string): string {
+  // Prefer mage > scum > warrior for multi-role races
+  if (MAGE_RACES.has(race)) return '#a855f7';
+  if (SCUM_RACES.has(race)) return '#f59e0b';
+  if (WARRIOR_RACES.has(race)) return '#ef4444';
+  return '#6b7280';
+}
+
+function getRacePrimaryRole(race: string): 'mage' | 'warrior' | 'scum' | null {
+  if (MAGE_RACES.has(race)) return 'mage';
+  if (SCUM_RACES.has(race)) return 'scum';
+  if (WARRIOR_RACES.has(race)) return 'warrior';
+  return null;
+}
+
+interface MemberDetail {
+  id: string;
+  name: string;
+  race: string;
+}
+
+// Demo member roster (shown when in demo mode and player is in a guild)
+const DEMO_MEMBER_DETAILS: MemberDetail[] = [
+  { id: 'demo-member-1', name: 'Aelindra Moonsong', race: 'Elven' },
+  { id: 'demo-member-2', name: 'Grax Ironjaw', race: 'Droben' },
+  { id: 'demo-member-3', name: 'Sable Nightwhisper', race: 'Vampire' },
+];
+
 const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBack }) => {
   const [currentView, setCurrentView] = useState<'overview' | 'browse' | 'create' | 'chat' | 'applications' | 'rankings' | 'wars' | 'upgrades' | 'diplomacy'>('overview');
   const [guilds, setGuilds] = useState<GuildData[]>([]);
   const [messages, setMessages] = useState<GuildMessage[]>([]);
   const [invitations, setInvitations] = useState<GuildInvitation[]>([]);
   const [loading, setLoading] = useState(false);
+  const [memberDetails, setMemberDetails] = useState<MemberDetail[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [newGuildName, setNewAllianceName] = useState('');
   const [newGuildTag, setNewAllianceTag] = useState('');
@@ -537,6 +576,60 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
   void handleInviteMember;
 
   const currentGuild = guilds.find(a => a.id === kingdom.guildId);
+
+  // Fetch member details (name + race) whenever the current guild changes
+  useEffect(() => {
+    if (!currentGuild) {
+      setMemberDetails([]);
+      return;
+    }
+
+    if (isDemoMode()) {
+      setMemberDetails(DEMO_MEMBER_DETAILS);
+      return;
+    }
+
+    // Auth mode: resolve memberIds from the raw Alliance record
+    const rawAlliance = currentGuild as unknown as Record<string, unknown>;
+    let memberIds: string[] = [];
+    try {
+      const raw = rawAlliance.memberIds;
+      if (Array.isArray(raw)) {
+        memberIds = raw as string[];
+      } else if (typeof raw === 'string') {
+        memberIds = JSON.parse(raw) as string[];
+      }
+    } catch {
+      memberIds = [];
+    }
+
+    if (memberIds.length === 0) {
+      setMemberDetails([]);
+      return;
+    }
+
+    const fetchMembers = async () => {
+      try {
+        const dataClient = generateClient<Schema>();
+        const results = await Promise.all(
+          memberIds.map(id => dataClient.models.Kingdom.get({ id }))
+        );
+        const details: MemberDetail[] = results
+          .filter(r => r.data != null)
+          .map(r => ({
+            id: r.data!.id,
+            name: r.data!.name,
+            race: r.data!.race ?? 'Human',
+          }));
+        setMemberDetails(details);
+      } catch (err) {
+        console.error('[GuildManagement] Failed to fetch member details:', err);
+        setMemberDetails([]);
+      }
+    };
+
+    void fetchMembers();
+  }, [currentGuild]);
   const pendingInvitations = invitations.filter(inv => inv.status === 'pending');
 
   return (
@@ -724,6 +817,69 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
                       );
                     })()}
                   </div>
+
+                  {/* Member roster with race badges */}
+                  {memberDetails.length > 0 && (() => {
+                    const hasMage    = memberDetails.some(m => MAGE_RACES.has(m.race));
+                    const hasWarrior = memberDetails.some(m => WARRIOR_RACES.has(m.race));
+                    const hasScum    = memberDetails.some(m => SCUM_RACES.has(m.race));
+                    return (
+                      <div style={{ marginTop: '1rem' }}>
+                        {/* Role coverage summary */}
+                        <div style={{
+                          display: 'flex',
+                          gap: '0.75rem',
+                          marginBottom: '0.75rem',
+                          fontSize: '0.8rem',
+                          flexWrap: 'wrap',
+                        }}>
+                          <span style={{ color: hasMage ? '#4ade80' : '#6b7280' }}>
+                            {hasMage ? '✓' : '○'} Mage
+                          </span>
+                          <span style={{ color: hasWarrior ? '#4ade80' : '#6b7280' }}>
+                            {hasWarrior ? '✓' : '○'} Warrior
+                          </span>
+                          <span style={{ color: hasScum ? '#4ade80' : '#6b7280' }}>
+                            {hasScum ? '✓' : '○'} Scum
+                          </span>
+                        </div>
+                        {/* Member list */}
+                        <div style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: '0.4rem',
+                        }}>
+                          {memberDetails.map(member => (
+                            <span
+                              key={member.id}
+                              title={`${member.name} — ${member.race} (${getRacePrimaryRole(member.race) ?? 'unknown'})`}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem',
+                                padding: '0.2rem 0.55rem',
+                                borderRadius: '999px',
+                                fontSize: '0.78rem',
+                                fontWeight: 500,
+                                background: `${getRacePillColor(member.race)}22`,
+                                border: `1px solid ${getRacePillColor(member.race)}66`,
+                                color: 'var(--text-primary)',
+                                cursor: 'default',
+                              }}
+                            >
+                              <span>{RACE_EMOJIS[member.race] ?? '👤'}</span>
+                              <span style={{ maxWidth: '10rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {member.name}
+                              </span>
+                              <span style={{ color: getRacePillColor(member.race), fontSize: '0.7rem' }}>
+                                {member.race}
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="guild-actions">
                   <button
