@@ -1,5 +1,5 @@
 import React from 'react';
-import { getBuildingName } from '../../../shared/mechanics/building-mechanics';
+import { getBuildingName } from '../../utils/buildingMechanics';
 
 interface BuildingStats {
   brt: number;
