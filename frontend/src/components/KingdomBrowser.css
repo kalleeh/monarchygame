@@ -1,3 +1,4 @@
+/* Kingdom Browser — uses --gm-* design system */
 .kingdom-browser {
   padding: 2rem;
   max-width: 900px;
@@ -13,7 +14,9 @@
 
 .browser-header h1 {
   font-size: 1.8rem;
-  color: #e2e8f0;
+  color: var(--gm-text-gold, #fbbf24);
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 .browser-search {
@@ -25,28 +28,32 @@
 
 .search-input {
   flex: 1;
-  padding: 0.75rem 1rem;
-  background: rgba(30, 41, 59, 0.8);
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 8px;
-  color: #e2e8f0;
-  font-size: 1rem;
+  padding: 0.5rem 0.875rem;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--gm-border, rgba(99, 102, 241, 0.3)) !important;
+  border-radius: var(--gm-radius-md, 0.5rem);
+  color: var(--gm-text, #e2e8f0) !important;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s ease;
 }
 
 .search-input:focus {
-  outline: none;
-  border-color: rgba(96, 165, 250, 0.5);
+  border-color: var(--gm-text-gold, #fbbf24) !important;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.15);
 }
 
 .result-count {
-  color: #94a3b8;
+  color: var(--gm-text-muted, #94a3b8);
   white-space: nowrap;
+  font-size: 0.875rem;
 }
 
 .browser-loading {
   text-align: center;
   padding: 2rem;
-  color: #94a3b8;
+  color: var(--gm-text-muted, #94a3b8);
+  font-style: italic;
 }
 
 .kingdoms-list {
@@ -56,10 +63,15 @@
 }
 
 .browser-kingdom-card {
-  background: rgba(30, 41, 59, 0.7);
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  border-radius: 10px;
+  background: var(--gm-bg-card, rgba(15, 15, 30, 0.8));
+  border: 1px solid var(--gm-border, rgba(99, 102, 241, 0.3));
+  border-radius: var(--gm-radius-md, 0.5rem);
   padding: 1.25rem;
+  transition: border-color 0.15s ease;
+}
+
+.browser-kingdom-card:hover {
+  border-color: var(--gm-border-gold, rgba(251, 191, 36, 0.3));
 }
 
 .kingdom-main-info {
@@ -70,21 +82,27 @@
 }
 
 .kingdom-main-info h3 {
-  color: #e2e8f0;
+  color: var(--gm-text, #e2e8f0);
   margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .kingdom-race {
-  color: #94a3b8;
-  font-size: 0.9rem;
+  color: var(--gm-text-muted, #94a3b8);
+  font-size: 0.875rem;
 }
 
 .online-badge {
-  background: #22c55e;
-  color: #fff;
-  font-size: 0.7rem;
+  background: rgba(74, 222, 128, 0.15);
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  color: var(--gm-text-success, #4ade80);
+  font-size: 0.68rem;
+  font-weight: 700;
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .presence-dot {
@@ -98,19 +116,19 @@
 }
 
 .presence-dot--online {
-  background: #22c55e;
-  box-shadow: 0 0 4px #22c55e;
+  background: var(--gm-text-success, #4ade80);
+  box-shadow: 0 0 4px rgba(74, 222, 128, 0.6);
 }
 
 .presence-dot--offline {
-  background: #64748b;
+  background: var(--gm-text-faint, #64748b);
 }
 
 .kingdom-stats-row {
   display: flex;
   gap: 1.5rem;
-  color: #94a3b8;
-  font-size: 0.9rem;
+  color: var(--gm-text-muted, #94a3b8);
+  font-size: 0.875rem;
   margin-bottom: 0.75rem;
 }
 
@@ -120,29 +138,46 @@
 }
 
 .action-btn {
-  padding: 0.4rem 0.8rem;
+  padding: 0.35rem 0.8rem;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--gm-radius-sm, 0.375rem);
   font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: opacity 0.15s, transform 0.1s;
 }
 
 .action-btn:hover {
-  opacity: 0.85;
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 .attack-btn {
-  background: #dc2626;
-  color: white;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5) !important;
+  color: var(--gm-text-danger, #ef4444);
+}
+
+.attack-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
 }
 
 .trade-btn {
-  background: #2563eb;
-  color: white;
+  background: rgba(78, 205, 196, 0.12);
+  border: 1px solid rgba(78, 205, 196, 0.4) !important;
+  color: var(--gm-text-teal, #4ecdc4);
+}
+
+.trade-btn:hover {
+  background: rgba(78, 205, 196, 0.22);
 }
 
 .diplomacy-btn {
-  background: #7c3aed;
-  color: white;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.4) !important;
+  color: #a78bfa;
+}
+
+.diplomacy-btn:hover {
+  background: rgba(139, 92, 246, 0.25);
 }

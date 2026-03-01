@@ -2,8 +2,8 @@
 
 .page-wrapper {
   min-height: 100vh;
-  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
-  color: #fff;
+  background: var(--gm-bg-page, #0f0f1a);
+  color: var(--gm-text, #e2e8f0);
 }
 
 .page-content {

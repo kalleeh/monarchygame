@@ -22,7 +22,7 @@
 .diplomacy-header h1 {
   margin: 0;
   font-size: 2rem;
-  color: #ffd700;
+  color: var(--gm-text-gold, #fbbf24);
 }
 
 /* ── Tab navigation (underline style, specific to Diplomacy) ─────────── */
@@ -34,17 +34,19 @@
 }
 
 .nav-btn {
-  background: rgba(26, 26, 46, 0.97) !important;
+  background: transparent !important;
   border: none !important;
-  color: #94a3b8 !important;
-  padding: 1rem 1.5rem;
+  color: var(--gm-text-muted, #94a3b8) !important;
+  padding: 0.75rem 1.25rem;
   cursor: pointer;
   border-bottom: 2px solid transparent !important;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
-.nav-btn:hover  { color: #ffd700 !important; background: rgba(26, 26, 46, 0.97) !important; }
-.nav-btn.active { color: #ffd700 !important; border-bottom-color: #ffd700 !important; background: rgba(26, 26, 46, 0.97) !important; }
+.nav-btn:hover  { color: var(--gm-text-gold, #fbbf24) !important; background: transparent !important; }
+.nav-btn.active { color: var(--gm-text-gold, #fbbf24) !important; border-bottom-color: var(--gm-text-gold, #fbbf24) !important; background: transparent !important; }
 
 /* ── Content max-width wrapper ───────────────────────────────────────── */
 .diplomacy-content {
@@ -101,10 +103,11 @@
   width: 48px;
   height: 48px;
   border-radius: 4px;
-  background: rgba(255, 215, 0, 0.1);
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid var(--gm-border-gold, rgba(251, 191, 36, 0.3));
 }
 
-.kingdom-details h4 { margin: 0 0 0.25rem 0; color: #ffd700; }
+.kingdom-details h4 { margin: 0 0 0.25rem 0; color: var(--gm-text-gold, #fbbf24); }
 .kingdom-details p  { margin: 0 0 0.5rem 0; color: #94a3b8; font-size: 0.9rem; }
 
 .kingdom-actions { display: flex; gap: 0.5rem; }
@@ -116,8 +119,8 @@
   margin-bottom: 1rem;
 }
 
-.proposal-card.incoming { border-left: 4px solid #22c55e; }
-.proposal-card.outgoing { border-left: 4px solid #3b82f6; }
+.proposal-card.incoming { border-left: 3px solid var(--gm-text-success, #4ade80); }
+.proposal-card.outgoing { border-left: 3px solid var(--gm-text-teal, #4ecdc4); }
 
 .proposal-header {
   display: flex;
@@ -126,7 +129,7 @@
   margin-bottom: 1rem;
 }
 
-.proposal-info h5 { margin: 0 0 0.25rem 0; color: #ffd700; }
+.proposal-info h5 { margin: 0 0 0.25rem 0; color: var(--gm-text-gold, #fbbf24); }
 .proposal-info p  { margin: 0; color: #94a3b8; font-size: 0.9rem; text-transform: capitalize; }
 
 .proposal-terms {
@@ -163,7 +166,7 @@
 
 .treaty-type-btn:hover {
   background: rgba(255, 215, 0, 0.1);
-  border-color: #ffd700;
+  border-color: var(--gm-text-gold, #fbbf24);
   transform: translateY(-2px);
 }
 

@@ -2,9 +2,9 @@
 
 .territory-expansion {
   padding: 1.5rem;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: var(--gm-bg-page, #0f0f1a);
   color: var(--gm-text, #e2e8f0);
-  min-height: 100vh;
+  min-height: 0;
 }
 
 /* Header with Back Navigation */

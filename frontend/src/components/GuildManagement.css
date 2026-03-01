@@ -7,7 +7,7 @@
 
 .guild-management {
   min-height: 0; /* avoid full-viewport empty void on sparse content tabs */
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: var(--gm-bg-page, #0f0f1a);
   color: var(--gm-text, #e2e8f0);
 }
 

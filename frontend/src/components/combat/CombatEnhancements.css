@@ -8,7 +8,7 @@
 }
 
 .terrain-selector h3 {
-  color: #fff;
+  color: var(--gm-text, #e2e8f0);
   margin: 0 0 1rem 0;
   font-size: 1.2rem;
 }
@@ -49,7 +49,7 @@
 }
 
 .terrain-name {
-  color: #fff;
+  color: var(--gm-text, #e2e8f0);
   font-size: 0.9rem;
   font-weight: 500;
 }
@@ -70,7 +70,7 @@
 }
 
 .terrain-description {
-  color: #a0a0a0;
+  color: var(--gm-text-muted, #94a3b8);
   font-size: 0.9rem;
   margin: 0.5rem 0;
 }
@@ -91,12 +91,12 @@
 }
 
 .modifier-name {
-  color: #a0a0a0;
+  color: var(--gm-text-muted, #94a3b8);
   text-transform: capitalize;
 }
 
 .modifier.positive .modifier-value {
-  color: #10b981;
+  color: var(--gm-text-success, #4ade80);
 }
 
 .modifier.negative .modifier-value {
@@ -113,7 +113,7 @@
 }
 
 .formation-selector h3 {
-  color: #fff;
+  color: var(--gm-text, #e2e8f0);
   margin: 0 0 1rem 0;
   font-size: 1.2rem;
 }
@@ -161,13 +161,13 @@
 }
 
 .formation-name {
-  color: #fff;
+  color: var(--gm-text, #e2e8f0);
   font-size: 1rem;
   font-weight: 600;
 }
 
 .formation-description {
-  color: #a0a0a0;
+  color: var(--gm-text-muted, #94a3b8);
   font-size: 0.85rem;
 }
 
@@ -179,7 +179,7 @@
 }
 
 .formation-modifiers .positive {
-  color: #10b981;
+  color: var(--gm-text-success, #4ade80);
 }
 
 .formation-modifiers .negative {
@@ -220,14 +220,14 @@
 }
 
 .replay-header h2 {
-  color: #fff;
+  color: var(--gm-text, #e2e8f0);
   margin: 0;
 }
 
 .close-btn {
   background: none;
   border: none;
-  color: #fff;
+  color: var(--gm-text, #e2e8f0);
   font-size: 1.5rem;
   cursor: pointer;
   padding: 0.5rem;
@@ -250,12 +250,12 @@
 }
 
 .participant h3 {
-  color: #fff;
+  color: var(--gm-text, #e2e8f0);
   margin: 0 0 0.5rem 0;
 }
 
 .participant p {
-  color: #a0a0a0;
+  color: var(--gm-text-muted, #94a3b8);
   margin: 0;
 }
 
@@ -278,20 +278,20 @@
 }
 
 .condition .label {
-  color: #a0a0a0;
+  color: var(--gm-text-muted, #94a3b8);
   font-size: 0.85rem;
   display: block;
   margin-bottom: 0.25rem;
 }
 
 .condition .value {
-  color: #fff;
+  color: var(--gm-text, #e2e8f0);
   font-size: 1rem;
   font-weight: 500;
 }
 
 .condition .value.victory {
-  color: #10b981;
+  color: var(--gm-text-success, #4ade80);
 }
 
 .condition .value.defeat {
@@ -304,7 +304,7 @@
 }
 
 .replay-timeline h3 {
-  color: #fff;
+  color: var(--gm-text, #e2e8f0);
   margin: 0 0 1rem 0;
   text-align: center;
 }
@@ -329,7 +329,7 @@
 }
 
 .stat-group p {
-  color: #fff;
+  color: var(--gm-text, #e2e8f0);
   margin: 0.25rem 0;
   font-size: 0.9rem;
 }
@@ -368,7 +368,7 @@
 }
 
 .round-indicator {
-  color: #a0a0a0;
+  color: var(--gm-text-muted, #94a3b8);
   font-size: 0.9rem;
 }
 
@@ -379,7 +379,7 @@
 }
 
 .timestamp {
-  color: #a0a0a0;
+  color: var(--gm-text-muted, #94a3b8);
   font-size: 0.85rem;
   margin: 0;
 }

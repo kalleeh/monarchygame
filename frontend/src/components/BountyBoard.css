@@ -4,8 +4,8 @@
 /* ── Page container ──────────────────────────────────────────────────── */
 .bounty-board {
   min-height: 100vh;
-  background: var(--color-bg-deep, #0f1629);
-  color: white;
+  background: var(--gm-bg-page, #0f0f1a);
+  color: var(--gm-text, #e2e8f0);
   padding: 2rem;
 }
 
@@ -22,11 +22,13 @@
 }
 
 .section-title {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
   margin-bottom: 1rem;
-  color: #e2e8f0;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  color: var(--gm-text-gold, #fbbf24);
+  border-bottom: 1px solid var(--gm-border-gold, rgba(251, 191, 36, 0.3));
   padding-bottom: 0.5rem;
+  letter-spacing: 0.03em;
 }
 
 /* ── Bounty grid ─────────────────────────────────────────────────────── */
@@ -38,15 +40,15 @@
 
 /* ── Bounty card ─────────────────────────────────────────────────────── */
 .bounty-card {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  background: var(--gm-bg-card, rgba(15, 15, 30, 0.8));
+  border: 1px solid var(--gm-border, rgba(99, 102, 241, 0.3));
+  border-radius: var(--gm-radius-md, 0.5rem);
   padding: 1.25rem;
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
-.bounty-card:hover               { transform: translateY(-2px); border-color: rgba(255, 215, 0, 0.3); }
-.bounty-card.claimed             { border-color: rgba(78, 205, 196, 0.4); background: rgba(78, 205, 196, 0.08); }
+.bounty-card:hover               { transform: translateY(-2px); border-color: var(--gm-border-gold, rgba(251, 191, 36, 0.3)); }
+.bounty-card.claimed             { border-color: rgba(78, 205, 196, 0.4); background: rgba(78, 205, 196, 0.06); }
 
 /* Card header */
 .bounty-card-header {
@@ -59,7 +61,7 @@
 .bounty-target-name {
   font-size: 1.15rem;
   font-weight: 600;
-  color: #f1f5f9;
+  color: var(--gm-text, #e2e8f0);
   margin: 0;
 }
 
@@ -95,11 +97,12 @@
 }
 
 .bounty-rewards h4 {
-  font-size: 0.85rem;
-  color: #ffd700;
+  font-size: 0.75rem;
+  color: var(--gm-text-gold, #fbbf24);
   margin: 0 0 0.5rem 0;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.07em;
+  font-weight: 700;
 }
 
 .reward-items {
@@ -113,7 +116,7 @@
   align-items: center;
   gap: 0.3rem;
   font-size: 0.85rem;
-  color: #cbd5e1;
+  color: var(--gm-text, #e2e8f0);
 }
 
 .reward-icon { font-size: 1rem; }
@@ -147,15 +150,15 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
+  background: var(--gm-bg-overlay, rgba(0, 0, 0, 0.25));
+  border: 1px solid var(--gm-border, rgba(99, 102, 241, 0.3));
+  border-radius: var(--gm-radius-md, 0.5rem);
   padding: 1rem 1.25rem;
 }
 
 .completed-info   { display: flex; flex-direction: column; gap: 0.25rem; }
-.completed-name   { font-size: 1rem; font-weight: 600; color: #e2e8f0; margin: 0; }
-.completed-date   { font-size: 0.8rem; color: #64748b; }
+.completed-name   { font-size: 1rem; font-weight: 600; color: var(--gm-text, #e2e8f0); margin: 0; }
+.completed-date   { font-size: 0.8rem; color: var(--gm-text-faint, #64748b); }
 .completed-rewards { display: flex; gap: 1rem; flex-wrap: wrap; }
 
 /* ── Responsive ──────────────────────────────────────────────────────── */

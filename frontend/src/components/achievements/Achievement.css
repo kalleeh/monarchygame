@@ -13,19 +13,20 @@
 
 .achievement-header h1 {
   font-size: 2rem;
-  color: #fff;
+  color: var(--gm-text-gold, #fbbf24);
   margin: 0;
+  font-weight: 700;
 }
 
 .achievement-stats {
   display: flex;
   gap: 0.5rem;
-  font-size: 1.1rem;
-  color: #a0a0a0;
+  font-size: 1rem;
+  color: var(--gm-text-muted, #94a3b8);
 }
 
 .achievement-percentage {
-  color: #8b5cf6;
+  color: var(--gm-text-teal, #4ecdc4);
   font-weight: bold;
 }
 

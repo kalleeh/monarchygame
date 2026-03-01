@@ -1,13 +1,9 @@
 /* ── World Feed Panel ──────────────────────────────────────────────────── */
 
 .world-feed-panel {
-  background: linear-gradient(
-    135deg,
-    rgba(26, 26, 46, 0.97) 0%,
-    rgba(22, 33, 62, 0.97) 100%
-  );
-  border: 2px solid rgba(245, 158, 11, 0.35);
-  border-radius: 12px;
+  background: var(--gm-bg-panel, rgba(26, 26, 46, 0.97));
+  border: 1px solid var(--gm-border-gold, rgba(251, 191, 36, 0.3));
+  border-radius: var(--gm-radius-lg, 0.75rem);
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   /* Span all grid columns so the feed sits below the main panels */
@@ -88,7 +84,7 @@
 .world-feed-empty {
   padding: 1rem 1.25rem;
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--gm-text-faint, #64748b);
   text-align: center;
   font-style: italic;
 }
@@ -127,7 +123,7 @@
   gap: 0.5rem;
   padding: 0.5rem 1.25rem;
   font-size: 0.83rem;
-  color: #cbd5e1;
+  color: var(--gm-text, #e2e8f0);
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   line-height: 1.4;
   transition: background 0.1s ease;
@@ -177,7 +173,7 @@
 .world-feed-event-time {
   flex-shrink: 0;
   font-size: 0.73rem;
-  color: #4b5563;
+  color: var(--gm-text-faint, #64748b);
   font-family: var(--font-mono, monospace);
   white-space: nowrap;
   letter-spacing: -0.01em;
@@ -220,7 +216,7 @@
 
 .world-feed-footer-note {
   font-size: 0.73rem;
-  color: #4b5563;
+  color: var(--gm-text-faint, #64748b);
   font-style: italic;
 }
 

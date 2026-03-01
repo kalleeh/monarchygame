@@ -84,7 +84,7 @@
   font-size: 1.2rem;
   line-height: 1.6;
   margin: 2rem 0;
-  color: var(--text-secondary)ccc;
+  color: var(--gm-text-muted, #94a3b8);
   max-width: 500px;
   margin-left: auto;
   margin-right: auto;
@@ -318,7 +318,7 @@
 
 .feature-display p {
   font-size: 1.2rem;
-  color: var(--text-secondary)ccc;
+  color: var(--gm-text-muted, #94a3b8);
   line-height: 1.6;
 }
 
@@ -341,7 +341,7 @@
 
 .races-preview > p {
   font-size: 1.2rem;
-  color: var(--text-secondary)ccc;
+  color: var(--gm-text-muted, #94a3b8);
   margin-bottom: 3rem;
 }
 
@@ -432,7 +432,7 @@
 
 .race-description {
   font-size: 1.2rem;
-  color: var(--text-secondary)ccc;
+  color: var(--gm-text-muted, #94a3b8);
   line-height: 1.6;
   margin-bottom: 2rem;
 }
@@ -514,7 +514,7 @@
 }
 
 .special-ability p {
-  color: var(--text-secondary)ccc;
+  color: var(--gm-text-muted, #94a3b8);
   line-height: 1.5;
 }
 
@@ -539,7 +539,7 @@
 
 .cta-content > p {
   font-size: 1.3rem;
-  color: var(--text-secondary)ccc;
+  color: var(--gm-text-muted, #94a3b8);
   margin-bottom: 3rem;
 }
 
@@ -567,7 +567,7 @@
 
 .stat-label {
   font-size: 1.1rem;
-  color: var(--text-secondary)ccc;
+  color: var(--gm-text-muted, #94a3b8);
 }
 
 .cta-button.large {

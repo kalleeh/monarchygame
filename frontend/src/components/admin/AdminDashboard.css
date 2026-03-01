@@ -6,10 +6,10 @@
 /* ── Page container ─────────────────────────────────────────── */
 .admin-page {
   min-height: 100vh;
-  background: var(--color-bg-deep, #0f1629);
+  background: var(--gm-bg-page, #0f0f1a);
   padding: 1.5rem 1rem 3rem;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #d1d5db;
+  color: var(--gm-text, #e2e8f0);
 }
 
 /* ── Header ──────────────────────────────────────────────────── */
