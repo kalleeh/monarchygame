@@ -37,7 +37,7 @@
 
 .create-new-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.35);
+  box-shadow: 0 4px 12px var(--gm-border-gold-stronger);
 }
 
 .no-kingdoms {
@@ -68,7 +68,7 @@
 
 .create-first-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.35);
+  box-shadow: 0 4px 12px var(--gm-border-gold-stronger);
 }
 
 .kingdoms-grid {
@@ -134,7 +134,7 @@
 
 .enter-kingdom-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.35);
+  box-shadow: 0 4px 12px var(--gm-border-gold-stronger);
 }
 
 @media (max-width: 768px) {

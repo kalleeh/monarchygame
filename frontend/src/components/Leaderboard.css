@@ -70,7 +70,7 @@
 .lb-tab {
   padding: 0.35rem 0.8rem;
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--gm-bg-subtle-strong);
   border-radius: 9999px;    /* pill shape */
   color: #94a3b8;
   font-size: 0.78rem;
@@ -85,7 +85,7 @@
 
 .lb-tab:hover:not(.lb-tab--active) {
   background: rgba(251, 191, 36, 0.1) !important;
-  border-color: rgba(251, 191, 36, 0.35);
+  border-color: var(--gm-border-gold-stronger);
   color: #e2e8f0;
   transform: none; /* suppress game-pages translateY */
 }
@@ -125,7 +125,7 @@
   width: 100%;
   max-width: 360px;
   padding: 0.5rem 0.875rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gm-bg-subtle);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 0.5rem;
   color: #e2e8f0;
@@ -207,7 +207,7 @@
 .lb-guilds-th--right  { text-align: right; }
 
 .lb-guilds-row {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--gm-bg-subtle);
   transition: background 0.12s ease;
 }
 

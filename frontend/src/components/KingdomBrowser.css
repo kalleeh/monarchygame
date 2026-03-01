@@ -29,7 +29,7 @@
 .search-input {
   flex: 1;
   padding: 0.5rem 0.875rem;
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: var(--gm-bg-subtle) !important;
   border: 1px solid var(--gm-border, rgba(99, 102, 241, 0.3)) !important;
   border-radius: var(--gm-radius-md, 0.5rem);
   color: var(--gm-text, #e2e8f0) !important;
@@ -164,7 +164,7 @@
 
 .trade-btn {
   background: rgba(78, 205, 196, 0.12);
-  border: 1px solid rgba(78, 205, 196, 0.4) !important;
+  border: 1px solid var(--gm-border-teal-stronger) !important;
   color: var(--gm-text-teal, #4ecdc4);
 }
 

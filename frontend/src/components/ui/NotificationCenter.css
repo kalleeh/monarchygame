@@ -149,7 +149,7 @@
 }
 
 .notification-list::-webkit-scrollbar-thumb {
-  background: rgba(251, 191, 36, 0.35);
+  background: var(--gm-border-gold-stronger);
   border-radius: 2px;
 }
 

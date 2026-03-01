@@ -265,7 +265,7 @@
 
 .feature-tab {
   padding: 1.5rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gm-bg-subtle);
   border: 2px solid transparent;
   border-radius: 15px;
   cursor: pointer;
@@ -297,7 +297,7 @@
 
 .feature-content {
   padding: 2rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gm-bg-subtle);
   border-radius: 15px;
 }
 
@@ -364,7 +364,7 @@
 
 .race-tab {
   padding: 1rem 2rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gm-bg-subtle);
   border: 2px solid transparent;
   border-radius: 25px;
   color: #fff;
@@ -502,7 +502,7 @@
 
 .special-ability {
   padding: 1.5rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gm-bg-subtle);
   border-radius: 10px;
   border-left: 4px solid #ffd700;
 }

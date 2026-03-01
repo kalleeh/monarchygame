@@ -22,7 +22,7 @@
 }
 
 .indicator-card:hover {
-  border-color: rgba(251, 191, 36, 0.35);
+  border-color: var(--gm-border-gold-stronger);
 }
 
 .indicator-header {
@@ -165,7 +165,7 @@
 }
 
 .offer-card:hover {
-  border-color: rgba(251, 191, 36, 0.35);
+  border-color: var(--gm-border-gold-stronger);
 }
 
 .offer-header {

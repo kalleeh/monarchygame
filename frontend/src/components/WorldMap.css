@@ -41,7 +41,7 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gm-bg-subtle);
   border: 1px solid var(--gm-border);
   border-radius: var(--gm-radius-md);
   color: var(--gm-text);
@@ -187,7 +187,7 @@
 }
 
 .claim-button:hover:not(:disabled) {
-  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.35);
+  box-shadow: 0 4px 12px var(--gm-border-gold-stronger);
   transform: translateY(-1px);
 }
 

@@ -51,11 +51,11 @@
   gap: 0.875rem;
 }
 
-@media (min-width: 600px) {
+@media (min-width: 640px) {
   .bm-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-@media (min-width: 900px) {
+@media (min-width: 1024px) {
   .bm-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
@@ -72,7 +72,7 @@
 }
 
 .bm-card:hover              { border-color: rgba(78, 205, 196, 0.5); }
-.bm-card--unaffordable      { opacity: 0.55; border-color: rgba(255, 255, 255, 0.1); }
+.bm-card--unaffordable      { opacity: 0.55; border-color: var(--gm-bg-subtle-strong); }
 
 .bm-card-header {
   display: flex;
@@ -173,7 +173,7 @@
 
 .bm-build-btn:disabled {
   background: rgba(255, 255, 255, 0.07) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid var(--gm-bg-subtle-strong) !important;
   color: var(--gm-text-faint, #64748b) !important;
   cursor: not-allowed;
   transform: none;

@@ -593,7 +593,7 @@
 
 /* ── Responsive ─────────────────────────────────────────────────────── */
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .spell-bottom-panels {
     grid-template-columns: 1fr;
   }

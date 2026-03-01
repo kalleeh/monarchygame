@@ -165,7 +165,7 @@
 }
 
 .tutorial-skip {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--gm-bg-subtle-strong);
   color: rgba(255, 255, 255, 0.7);
 }
 

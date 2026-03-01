@@ -48,7 +48,7 @@
 }
 
 .bounty-card:hover               { transform: translateY(-2px); border-color: var(--gm-border-gold, rgba(251, 191, 36, 0.3)); }
-.bounty-card.claimed             { border-color: rgba(78, 205, 196, 0.4); background: rgba(78, 205, 196, 0.06); }
+.bounty-card.claimed             { border-color: var(--gm-border-teal-stronger); background: rgba(78, 205, 196, 0.06); }
 
 /* Card header */
 .bounty-card-header {
@@ -81,7 +81,7 @@
   display: flex;
   justify-content: space-between;
   padding: 0.3rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--gm-bg-subtle);
 }
 
 .detail-label { color: #94a3b8; font-size: 0.9rem; }

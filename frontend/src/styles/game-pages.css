@@ -59,7 +59,7 @@
 .guild-management .back-button,
 .world-map-container .back-button {
   padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gm-bg-subtle);
   color: var(--gm-text, #e2e8f0);
   border: 1px solid var(--gm-border, rgba(99, 102, 241, 0.3));
   border-radius: var(--gm-radius-md, 0.5rem);

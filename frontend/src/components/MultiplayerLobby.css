@@ -31,7 +31,7 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gm-bg-subtle);
   border: 1px solid var(--gm-border);
   border-radius: var(--gm-radius-md);
   color: var(--gm-text);

@@ -39,7 +39,7 @@
 }
 
 .back-button {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gm-bg-subtle);
   border: 1px solid var(--gm-border, rgba(99, 102, 241, 0.3));
   color: var(--gm-text, #e2e8f0);
   padding: 0.5rem 1rem;
@@ -223,7 +223,7 @@
 .form-group input,
 .form-group select {
   width: 100%;
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: var(--gm-bg-subtle) !important;
   border: 1px solid var(--gm-border, rgba(99, 102, 241, 0.3)) !important;
   border-radius: var(--gm-radius-sm, 0.375rem);
   padding: 0.75rem;
@@ -251,7 +251,7 @@
 }
 
 .create-route-btn:hover {
-  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.35);
+  box-shadow: 0 4px 12px var(--gm-border-gold-stronger);
 }
 
 .active-routes {
@@ -451,4 +451,153 @@
   border-radius: var(--gm-radius-md, 0.5rem);
   padding: 2rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Rules extracted from former inline <style> tag ── */
+
+.economic-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.stat-card {
+  background: var(--gm-bg-subtle);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  border: 1px solid var(--gm-bg-subtle-strong);
+}
+
+.stat-card h4 {
+  margin: 0 0 0.5rem 0;
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: white;
+  margin-bottom: 0.5rem;
+}
+
+.stat-change {
+  font-size: 0.8rem;
+}
+
+.stat-change.positive {
+  color: #10b981;
+}
+
+.stat-change.negative {
+  color: #ef4444;
+}
+
+.stat-change.neutral {
+  color: #6b7280;
+}
+
+.trade-creation h3 {
+  margin: 0 0 1rem 0;
+  color: #f8fafc;
+}
+
+.trade-form input::placeholder {
+  color: #9ca3af;
+}
+
+.create-trade-btn:hover {
+  background: #2563eb;
+}
+
+.trade-routes h3 {
+  margin: 0 0 1rem 0;
+  color: #f8fafc;
+}
+
+.routes-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.route-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--gm-bg-subtle);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--gm-bg-subtle-strong);
+}
+
+.route-card.active {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.route-card.pending {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.route-info h4 {
+  margin: 0 0 0.25rem 0;
+  color: white;
+}
+
+.route-info p {
+  margin: 0;
+  color: #9ca3af;
+}
+
+.profit {
+  color: #10b981;
+  font-weight: bold;
+}
+
+.duration {
+  color: #9ca3af;
+}
+
+.status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.status.active {
+  background: #10b981;
+  color: white;
+}
+
+.status.pending {
+  background: #f59e0b;
+  color: white;
+}
+
+.prices-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.price-card {
+  background: var(--gm-bg-subtle);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--gm-bg-subtle-strong);
+  text-align: center;
+}
+
+.resource-name {
+  font-weight: bold;
+  color: white;
+  margin-bottom: 0.5rem;
+}
+
+.market-chart h3 {
+  margin: 0 0 1rem 0;
+  color: #f8fafc;
 }

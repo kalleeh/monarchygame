@@ -74,16 +74,16 @@
 }
 
 .error-retry-btn:hover {
-  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.35);
+  box-shadow: 0 4px 12px var(--gm-border-gold-stronger);
 }
 
 .error-refresh-btn {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gm-bg-subtle);
   border: 1px solid var(--gm-border, rgba(99, 102, 241, 0.3)) !important;
   color: var(--gm-text, #e2e8f0) !important;
 }
 
 .error-refresh-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--gm-bg-subtle-strong);
   border-color: var(--gm-border-gold, rgba(251, 191, 36, 0.3)) !important;
 }

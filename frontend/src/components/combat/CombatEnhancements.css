@@ -21,7 +21,7 @@
 }
 
 .terrain-option {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gm-bg-subtle);
   border: 2px solid rgba(139, 92, 246, 0.3);
   border-radius: 8px;
   padding: 0.75rem;
@@ -86,7 +86,7 @@
   display: flex;
   justify-content: space-between;
   padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gm-bg-subtle);
   border-radius: 6px;
 }
 
@@ -125,7 +125,7 @@
 }
 
 .formation-option {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gm-bg-subtle);
   border: 2px solid rgba(139, 92, 246, 0.3);
   border-radius: 8px;
   padding: 1rem;
@@ -272,7 +272,7 @@
 }
 
 .condition {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gm-bg-subtle);
   padding: 0.75rem;
   border-radius: 8px;
 }
@@ -317,7 +317,7 @@
 }
 
 .stat-group {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--gm-bg-subtle);
   padding: 1rem;
   border-radius: 8px;
 }
