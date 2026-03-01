@@ -1,5 +1,9 @@
 import { defineBackend } from '@aws-amplify/backend';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
+import * as cdk from 'aws-cdk-lib';
+import { turnTicker } from './functions/turn-ticker/resource';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
 import { combatProcessor } from './functions/combat-processor/resource';
@@ -37,7 +41,8 @@ export const backend = defineBackend({
   faithProcessor,
   bountyProcessor,
   allianceTreasury,
-  allianceManager
+  allianceManager,
+  turnTicker,
 });
 
 // Grant all Lambda functions permission to discover the AppSync endpoint at runtime.
@@ -61,6 +66,7 @@ const lambdaFunctions = [
   backend.bountyProcessor,
   backend.allianceTreasury,
   backend.allianceManager,
+  backend.turnTicker,
 ];
 
 for (const fn of lambdaFunctions) {
@@ -93,6 +99,45 @@ for (const fn of lambdaFunctions) {
     })
   );
 }
+
+// ── Scheduled EventBridge rules ──────────────────────────────────────────────
+
+// Season check — every hour.
+// Advances age (early→middle→late) and closes expired seasons automatically.
+const seasonStack = cdk.Stack.of(backend.seasonLifecycle.resources.lambda);
+
+const seasonCheckRule = new events.Rule(seasonStack, 'SeasonCheckSchedule', {
+  schedule: events.Schedule.rate(cdk.Duration.hours(1)),
+  description: 'Hourly: advance season ages and close expired seasons',
+  enabled: true,
+});
+seasonCheckRule.addTarget(
+  new targets.LambdaFunction(backend.seasonLifecycle.resources.lambda, {
+    event: events.RuleTargetInput.fromObject({
+      arguments: { action: 'check' },
+      identity: { sub: 'scheduler', username: 'scheduler' },
+      source: 'scheduler',
+      request: { headers: {} },
+    }),
+    retryAttempts: 2,
+  })
+);
+
+// Turn ticker — every 20 minutes (= 3 turns/hour, matching TURNS_PER_HOUR).
+// Grants +1 turn to every active kingdom so offline players accumulate turns.
+const tickerStack = cdk.Stack.of(backend.turnTicker.resources.lambda);
+
+const turnTickRule = new events.Rule(tickerStack, 'TurnTickSchedule', {
+  schedule: events.Schedule.rate(cdk.Duration.minutes(20)),
+  description: 'Every 20 min: +1 turn for all active kingdoms (3/hour)',
+  enabled: true,
+});
+turnTickRule.addTarget(
+  new targets.LambdaFunction(backend.turnTicker.resources.lambda, {
+    event: events.RuleTargetInput.fromObject({ source: 'scheduler' }),
+    retryAttempts: 1,
+  })
+);
 
 // CDK escape hatch: prevent the Cognito UserPool Schema from being updated.
 // Cognito does not allow changing attribute definitions (AttributeDataType,
