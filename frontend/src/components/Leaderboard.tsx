@@ -5,6 +5,7 @@ import type { Kingdom } from '../types/kingdom';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { GuildService } from '../services/GuildService';
 import { isDemoMode } from '../utils/authMode';
+import toast from 'react-hot-toast';
 import '../components/TerritoryExpansion.css';
 import '../components/Leaderboard.css';
 
@@ -117,6 +118,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
   const [isLive, setIsLive] = useState(false);
   // Ref for the 30-second demo-mode refresh interval so we can clear it cleanly.
   const demoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Ref to track previous previousSeasonNumber values per kingdom to detect season-end
+  const prevSeasonNumbersRef = useRef<Record<string, number | undefined>>({});
 
   // Auth-mode: subscribe to all Kingdom changes via observeQuery.
   useEffect(() => {
@@ -124,7 +127,27 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom }) =
 
     const sub = amplifyClient.models.Kingdom.observeQuery().subscribe({
       next: ({ items }) => {
-        setLiveKingdoms(items.map(transformSchemaKingdom));
+        const transformed = items.map(transformSchemaKingdom);
+
+        // Detect season-end: if any kingdom's previousSeasonNumber just changed
+        // (appeared for the first time or incremented), fire a one-time toast.
+        let seasonEndDetected = false;
+        for (const k of transformed) {
+          const newVal = k.stats.previousSeasonNumber;
+          const oldVal = prevSeasonNumbersRef.current[k.id];
+          if (newVal != null && newVal !== oldVal) {
+            seasonEndDetected = true;
+          }
+          prevSeasonNumbersRef.current[k.id] = newVal;
+        }
+        if (seasonEndDetected) {
+          toast('Season has ended — final rankings recorded!', {
+            icon: '🏆',
+            duration: 6000,
+          });
+        }
+
+        setLiveKingdoms(transformed);
         setIsLive(true);
       },
       error: (err: unknown) => {

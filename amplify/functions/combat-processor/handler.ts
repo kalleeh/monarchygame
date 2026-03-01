@@ -103,35 +103,26 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     }
 
     // Enforce war declaration requirement for repeated attacks
-    // After 3 attacks against the same defender in a season, a formal WarDeclaration is required
-    const seasonId = attacker.seasonId;
+    // After 3 attacks against the same defender (regardless of season), a formal WarDeclaration is required
+    const allBattleReports = await dbList<BattleReportType>('BattleReport');
+    const recentAttacks = allBattleReports.filter(
+      (r: BattleReportType) => (r as any).attackerId === attackerId && (r as any).defenderId === defenderId
+    );
+    const attackCount = recentAttacks.length;
 
-    if (seasonId) {
-      // Count recent battle reports between attacker and defender this season
-      const allBattleReports = await dbList<BattleReportType>('BattleReport');
-      const recentBattles = allBattleReports.filter(
-        (b: BattleReportType) => (b as any).attackerId === attackerId && (b as any).defenderId === defenderId
+    if (attackCount >= 3) {
+      const allWars = await dbList<WarDeclarationType>('WarDeclaration');
+      const activeWar = allWars.find(
+        (w: WarDeclarationType) => w.attackerId === attackerId && w.defenderId === defenderId && w.status === 'active'
       );
-
-      const attackCount = recentBattles.length;
-
-      if (attackCount >= 3) {
-        // Check for active war declaration
-        const allWarDeclarations = await dbList<WarDeclarationType>('WarDeclaration');
-        const warDeclarations = allWarDeclarations.filter(
-          (w: WarDeclarationType) => w.attackerId === attackerId && w.defenderId === defenderId && w.status === 'active'
-        );
-
-        if (!warDeclarations || warDeclarations.length === 0) {
-          return { success: false, error: 'War declaration required after 3 attacks', errorCode: ErrorCode.WAR_REQUIRED };
-        }
-
-        // Increment attack count on the war declaration
-        const warDecl = warDeclarations[0];
-        await dbUpdate('WarDeclaration', warDecl.id, {
-          attackCount: (warDecl.attackCount ?? 0) + 1
-        });
+      if (!activeWar) {
+        return JSON.stringify({ success: false, error: 'You must declare war before attacking this kingdom again', errorCode: 'WAR_REQUIRED' });
       }
+
+      // Increment attack count on the active war declaration
+      await dbUpdate('WarDeclaration', activeWar.id, {
+        attackCount: (activeWar.attackCount ?? 0) + 1
+      });
     }
 
     const defenderResources = (defender.resources ?? {}) as KingdomResources;
@@ -178,7 +169,29 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     );
 
     // -------------------------------------------------------------------------
-    // Step 4: Race defense bonus — scale defender unit counts before combat
+    // Step 4a: Combat Focus faith effect — applied after race/age bonuses
+    // Kingdom stats may contain activeFaithEffects array set by faith-processor
+    // -------------------------------------------------------------------------
+    try {
+      const statsObj = typeof attacker.stats === 'string'
+        ? JSON.parse(attacker.stats as string) as Record<string, unknown>
+        : ((attacker.stats ?? {}) as Record<string, unknown>);
+      const activeEffects = (statsObj.activeFaithEffects as Array<{ effectType: string; enhancedValue?: number; appliedAt?: string; duration?: number }>) ?? [];
+      const combatFocusEffect = activeEffects.find(e => e.effectType === 'COMBAT_FOCUS' || e.effectType === 'combat_focus');
+      if (combatFocusEffect) {
+        // Apply a 20% combat bonus from Combat Focus
+        const focusBonus = 1.20;
+        effectiveAttackerUnits = Object.fromEntries(
+          Object.entries(effectiveAttackerUnits).map(([k, v]) => [k, Math.floor(v * focusBonus)])
+        );
+        log.info('combat-processor', 'combat-focus-applied', { attackerId, bonus: focusBonus });
+      }
+    } catch {
+      // Non-fatal — skip faith bonus if stats parsing fails
+    }
+
+    // -------------------------------------------------------------------------
+    // Step 4b: Race defense bonus — scale defender unit counts before combat
     // -------------------------------------------------------------------------
     const defenderRace = defender.race as string ?? 'Human';
     const raceDefenseBonus = RACE_DEFENSE_BONUSES[defenderRace] ?? 1.0;

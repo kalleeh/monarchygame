@@ -7,7 +7,7 @@ import { dbGet, dbUpdate, dbList } from '../data-client';
 const RESOURCE_LIMITS = {
   gold: { min: 0, max: 1000000 },
   population: { min: 0, max: 100000 },
-  mana: { min: 0, max: 50000 },
+  elan: { min: 0, max: 50000 },
   land: { min: 1000, max: 100000 }
 } as const;
 
@@ -18,6 +18,7 @@ type KingdomType = {
   buildings?: KingdomBuildings | null;
   stats?: Record<string, unknown> | null;
   currentAge?: string | null;
+  race?: string | null;
 };
 
 type TerritoryType = {
@@ -65,7 +66,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
 
     const currentGold = resources.gold ?? 0;
     const currentPop = resources.population ?? 0;
-    const currentMana = resources.mana ?? 0;
+    const currentElan = resources.elan ?? 0;
     const currentLand = resources.land ?? 1000;
 
     // Tithe income from temples: tithe stat (0–10 scale) acts as a multiplier
@@ -83,7 +84,10 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     // Building-based income per turn (tithe is separated so it can be floored before age scaling)
     const baseGoldPerTurn = (buildings.mine ?? 0) * 20 + (buildings.farm ?? 0) * 8 + (buildings.tower ?? 0) * 50 + 100;
     const populationPerTurn = (buildings.farm ?? 0) * 10;
-    const manaPerTurn = (buildings.temple ?? 0) * 3;
+    // Race-specific elan generation per turn (matches shared/mechanics/elan-mechanics.ts)
+    const currentRace = (kingdom.race as string) ?? '';
+    const ELAN_RATE = (['Sidhe', 'Vampire'].includes(currentRace)) ? 0.005 : 0.003;
+    const elanPerTurn = Math.ceil((buildings.temple ?? 0) * ELAN_RATE);
 
     // Apply age multiplier to all gold income (base + tithe)
     const totalGoldPerTurn = Math.floor((baseGoldPerTurn + tithePerTurn) * ageMultiplier);
@@ -131,7 +135,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       gold: Math.min(currentGold + (totalGoldPerTurn + territoryGold) * turns, RESOURCE_LIMITS.gold.max),
       land: Math.max(currentLand + territoryLand * turns, RESOURCE_LIMITS.land.min),
       population: Math.min(currentPop + (populationPerTurn + territoryPop) * turns, RESOURCE_LIMITS.population.max),
-      mana: Math.min(currentMana + manaPerTurn * turns, RESOURCE_LIMITS.mana.max)
+      elan: Math.min(currentElan + elanPerTurn * turns, RESOURCE_LIMITS.elan.max)
     };
 
     await dbUpdate('Kingdom', kingdomId, {

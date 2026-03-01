@@ -301,6 +301,20 @@ export const useCombatStore = create(
                 defenderKingdomId: targetId,
                 landGained: combatData.landGained || 0,
               });
+
+              // Auto-complete bounty if the defender was the claimed bounty target
+              try {
+                const { useBountyStore } = await import('./bountyStore');
+                const bountyState = useBountyStore.getState();
+                const claimedBounty = bountyState.availableBounties.find(
+                  b => b.target.kingdomId === targetId && b.claimed
+                );
+                if (claimedBounty && (combatData.landGained ?? 0) > 0) {
+                  bountyState.completeBounty(targetId, combatData.landGained ?? 0);
+                }
+              } catch {
+                // Non-fatal — bounty completion is a reward, not blocking
+              }
             }
 
             set((state) => ({
@@ -405,6 +419,22 @@ export const useCombatStore = create(
             selectedUnits: [], // Clear selected units after battle
             loading: false
           }));
+
+          // Auto-complete bounty if the defender was the claimed bounty target (demo mode)
+          if (battleReport.result === 'victory') {
+            try {
+              const { useBountyStore } = await import('./bountyStore');
+              const bountyState = useBountyStore.getState();
+              const claimedBounty = bountyState.availableBounties.find(
+                b => b.target.kingdomId === targetId && b.claimed
+              );
+              if (claimedBounty && (battleReport.landGained ?? 0) > 0) {
+                bountyState.completeBounty(targetId, battleReport.landGained ?? 0);
+              }
+            } catch {
+              // Non-fatal — bounty completion is a reward, not blocking
+            }
+          }
 
           // Capture replay for demo-mode battle
           const demoActiveFormationId = state.activeFormation ?? undefined;

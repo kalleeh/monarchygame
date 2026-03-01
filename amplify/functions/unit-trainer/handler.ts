@@ -4,10 +4,21 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { dbGet, dbUpdate } from '../data-client';
 
-const VALID_UNIT_TYPES = ['infantry', 'archers', 'cavalry', 'siege', 'mages', 'scouts'] as const;
+const VALID_UNIT_TYPES = ['infantry', 'archers', 'cavalry', 'siege', 'mages', 'scouts', 'scum', 'elite_scum'] as const;
 type UnitType = typeof VALID_UNIT_TYPES[number];
 
 const UNIT_QUANTITY = { min: 1, max: 1000 } as const;
+
+const UNIT_GOLD_COST: Record<UnitType, number> = {
+  infantry: 100,
+  archers: 100,
+  cavalry: 100,
+  siege: 100,
+  mages: 100,
+  scouts: 100,
+  scum: 100,
+  elite_scum: 200,
+};
 
 type KingdomType = {
   id: string;
@@ -51,7 +62,7 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
     }
 
     const resources = (kingdom.resources ?? {}) as KingdomResources;
-    const goldCost = quantity * 100;
+    const goldCost = quantity * UNIT_GOLD_COST[unitType as UnitType];
     const currentGold = resources.gold ?? 0;
 
     if (currentGold < goldCost) {

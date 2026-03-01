@@ -4,7 +4,7 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { dbGet, dbUpdate } from '../data-client';
 
-const MANA_COST_PER_SPELL = 50;
+const ELAN_COST_PER_SPELL = 50;
 
 // Spell damage definitions duplicated here because Lambda functions cannot import
 // browser-targeted frontend modules. When updating spell values, also update:
@@ -65,10 +65,10 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     }
 
     const resources = (casterKingdom.resources ?? {}) as KingdomResources;
-    const currentMana = resources.mana ?? 0;
+    const currentElan = resources.elan ?? 0;
 
-    if (currentMana < MANA_COST_PER_SPELL) {
-      return { success: false, error: `Insufficient mana: need ${MANA_COST_PER_SPELL}, have ${currentMana}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
+    if (currentElan < ELAN_COST_PER_SPELL) {
+      return { success: false, error: `Insufficient elan: need ${ELAN_COST_PER_SPELL}, have ${currentElan}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
     // Check and deduct turns
@@ -80,7 +80,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
 
     const updatedResources: KingdomResources = {
       ...resources,
-      mana: currentMana - MANA_COST_PER_SPELL,
+      elan: currentElan - ELAN_COST_PER_SPELL,
       turns: Math.max(0, currentTurns - turnCost)
     };
 
@@ -96,7 +96,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       const targetKingdom = await dbGet<KingdomType>('Kingdom', targetId);
       if (!targetKingdom) {
         // Mana already spent but target disappeared — still return success with warning
-        return { success: true, result: JSON.stringify({ spellId, targetId, manaUsed: MANA_COST_PER_SPELL, remainingMana: updatedResources.mana, warning: 'Target kingdom not found, mana spent' }) };
+        return { success: true, result: JSON.stringify({ spellId, targetId, elanUsed: ELAN_COST_PER_SPELL, remainingElan: updatedResources.elan, warning: 'Target kingdom not found, elan spent' }) };
       }
 
       if (spellEffect.type === 'structure_damage') {
@@ -162,7 +162,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     }
 
     log.info('spell-caster', 'castSpell', { casterId, spellId, targetId });
-    return { success: true, result: JSON.stringify({ spellId, targetId, manaUsed: MANA_COST_PER_SPELL, remainingMana: updatedResources.mana, damageReport }) };
+    return { success: true, result: JSON.stringify({ spellId, targetId, elanUsed: ELAN_COST_PER_SPELL, remainingElan: updatedResources.elan, damageReport }) };
   } catch (error) {
     log.error('spell-caster', error, { casterId, spellId });
     return { success: false, error: 'Spell casting failed', errorCode: ErrorCode.INTERNAL_ERROR };

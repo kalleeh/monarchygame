@@ -117,6 +117,16 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
       reason: reason || 'Formal war declaration'
     });
 
+    // Notify the defender that war has been declared against them
+    await dbCreate('CombatNotification', {
+      recipientId: defenderId,
+      type: 'defense',
+      message: `War has been declared against your kingdom by ${attackerId}!`,
+      data: JSON.stringify({ warId: warDeclaration.id, attackerId, seasonId }),
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    });
+
     // Update diplomatic relation to war
     const allRelations = await dbList<DiplomaticRelationType>('DiplomaticRelation');
     const relations = allRelations.filter(r =>

@@ -218,6 +218,11 @@ function ActiveSeasonPanel() {
       const parsed = typeof result === 'string' ? JSON.parse(result) : result as { success?: boolean; error?: string };
       if (parsed?.success === false) throw new Error(parsed.error || 'End failed');
       toast.success(`Season #${season.seasonNumber} ended.`);
+      // Notify all players about season end (via a broadcast mechanism)
+      // For now, use a prominent toast on the admin's screen
+      toast.success(`Season #${season.seasonNumber} ended! Final rankings recorded. Check the Leaderboard.`, {
+        duration: 8000,
+      });
       setSeason(null);
     } catch (err) {
       toast.error(`End season failed: ${err instanceof Error ? err.message : 'Unknown error'}`);

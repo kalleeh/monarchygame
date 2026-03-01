@@ -191,6 +191,9 @@ function KingdomDashboard({
   const [resourceLoading, setResourceLoading] = useState(false);
   const [showBalanceTester, setShowBalanceTester] = useState(false);
 
+  // Season info for the age badge
+  const [seasonInfo, setSeasonInfo] = useState<{ seasonNumber: number; currentAge: 'early' | 'middle' | 'late' } | null>(null);
+
   // Tutorial state
   const { hasCompleted: tutorialCompleted, markComplete: completeTutorial } = useTutorial('kingdom-dashboard');
   
@@ -330,6 +333,36 @@ function KingdomDashboard({
   useEffect(() => {
     updateRestoration();
   }, [updateRestoration]);
+
+  // Fetch active season age once on mount
+  useEffect(() => {
+    const fetchSeason = async () => {
+      try {
+        const raw = await AmplifyFunctionService.callFunction('season-manager', {
+          kingdomId: kingdom.id,
+          action: 'getActiveSeason',
+        });
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        // Auth mode: parsed may be { data: { getActiveSeason: { ... } } }
+        // Demo mode: { success: true, season: { seasonNumber, currentAge, ... } }
+        const seasonData =
+          (parsed as any)?.season ??
+          (parsed as any)?.data?.getActiveSeason ??
+          (parsed as any)?.data ??
+          null;
+        if (seasonData && seasonData.currentAge) {
+          setSeasonInfo({
+            seasonNumber: seasonData.seasonNumber ?? 1,
+            currentAge: seasonData.currentAge as 'early' | 'middle' | 'late',
+          });
+        }
+      } catch {
+        // Non-fatal — season badge is informational only
+      }
+    };
+    void fetchSeason();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Track online presence — mark online on mount, offline on unmount/tab close
   useEffect(() => {
@@ -694,6 +727,40 @@ function KingdomDashboard({
           </div>
         }
       />
+
+      {/* Season Age Badge */}
+      {seasonInfo && (
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.4rem',
+          padding: '0.25rem 0.75rem',
+          marginBottom: '0.75rem',
+          borderRadius: '999px',
+          fontSize: '0.8rem',
+          fontWeight: 600,
+          letterSpacing: '0.03em',
+          background: seasonInfo.currentAge === 'early'
+            ? 'rgba(107, 114, 128, 0.2)'
+            : seasonInfo.currentAge === 'middle'
+            ? 'rgba(245, 158, 11, 0.15)'
+            : 'rgba(239, 68, 68, 0.15)',
+          border: `1px solid ${
+            seasonInfo.currentAge === 'early'
+              ? 'rgba(107, 114, 128, 0.4)'
+              : seasonInfo.currentAge === 'middle'
+              ? 'rgba(245, 158, 11, 0.5)'
+              : 'rgba(239, 68, 68, 0.5)'
+          }`,
+          color: seasonInfo.currentAge === 'early'
+            ? '#9ca3af'
+            : seasonInfo.currentAge === 'middle'
+            ? '#fbbf24'
+            : '#f87171',
+        }}>
+          Season {seasonInfo.seasonNumber} &middot; {seasonInfo.currentAge.charAt(0).toUpperCase() + seasonInfo.currentAge.slice(1)} Age
+        </div>
+      )}
 
       {/* Restoration Status Banner */}
       {isInRestoration && (

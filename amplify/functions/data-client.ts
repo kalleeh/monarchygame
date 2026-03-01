@@ -121,3 +121,20 @@ export async function dbDelete(modelName: string, id: string): Promise<void> {
   const TableName = await getTableName(modelName);
   await docClient.send(new DeleteCommand({ TableName, Key: { id } }));
 }
+
+/** Atomically increments (or decrements with negative delta) a top-level numeric field. */
+export async function dbAtomicAdd(
+  modelName: string,
+  id: string,
+  fieldName: string,
+  delta: number
+): Promise<void> {
+  const TableName = await getTableName(modelName);
+  await docClient.send(new UpdateCommand({
+    TableName,
+    Key: { id },
+    UpdateExpression: 'ADD #field :delta',
+    ExpressionAttributeNames: { '#field': fieldName },
+    ExpressionAttributeValues: { ':delta': delta },
+  }));
+}

@@ -6,7 +6,7 @@
 export interface KingdomResources {
   gold: number;
   population: number;
-  mana: number;
+  elan: number;
   land: number;
   turns?: number;
 }

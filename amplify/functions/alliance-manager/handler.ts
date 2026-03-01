@@ -113,6 +113,10 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
           }
         }
 
+        if (memberIds.length >= (alliance.maxMembers ?? 20)) {
+          return { success: false, error: 'Alliance is at maximum capacity', errorCode: ErrorCode.VALIDATION_FAILED };
+        }
+
         memberIds.push(kingdomId);
         await dbUpdate('Alliance', allianceId, { memberIds: JSON.stringify(memberIds) });
 

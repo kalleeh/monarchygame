@@ -7,7 +7,7 @@
  *
  * Turn rate: 3/hour (1 per 20 min), matching the game's TURNS_PER_HOUR constant.
  */
-import { dbList, dbUpdate } from '../data-client';
+import { dbList, dbAtomicAdd } from '../data-client';
 import { log } from '../logger';
 
 const MAX_STORED_TURNS = 100;
@@ -15,7 +15,7 @@ const MAX_STORED_TURNS = 100;
 interface KingdomRow {
   id: string;
   isActive?: boolean;
-  resources?: string | Record<string, unknown>;
+  turnsBalance?: number;
 }
 
 export const handler = async (_event: unknown): Promise<{ success: boolean; ticked: number; skipped: number }> => {
@@ -28,21 +28,17 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
 
     for (const kingdom of active) {
       try {
-        const resources: Record<string, number> = typeof kingdom.resources === 'string'
-          ? JSON.parse(kingdom.resources)
-          : { ...(kingdom.resources ?? {}) } as Record<string, number>;
+        // Skip kingdoms that have already accumulated the cap in turnsBalance.
+        // turnsBalance is a separate top-level Number attribute updated atomically,
+        // so this ADD never races with the action lambdas that write the resources JSON.
+        const currentBalance = kingdom.turnsBalance ?? 0;
 
-        const currentTurns = (resources.turns ?? 0) as number;
-
-        if (currentTurns >= MAX_STORED_TURNS) {
+        if (currentBalance >= MAX_STORED_TURNS) {
           skipped++;
           continue;
         }
 
-        const newTurns = Math.min(currentTurns + 1, MAX_STORED_TURNS);
-        const updatedResources = { ...resources, turns: newTurns };
-
-        await dbUpdate('Kingdom', kingdom.id, { resources: updatedResources });
+        await dbAtomicAdd('Kingdom', kingdom.id, 'turnsBalance', 1);
         ticked++;
       } catch (err) {
         log.error('turn-ticker', err, { kingdomId: kingdom.id });
