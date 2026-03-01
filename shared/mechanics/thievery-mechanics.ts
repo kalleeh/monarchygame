@@ -58,6 +58,8 @@ export const THIEVERY_MECHANICS = {
     INTERCEPT: 2,                // 2 turns per caravan intercept
     BURN: 4,                     // 4 turns per burning attempt
     DESECRATE: 3,                // 3 turns — destroy enemy temples (counters mage kingdoms)
+    SPREAD_DISSENTION: 3,        // 3 turns — kill ~3% of enemy population (counters pop-rich kingdoms)
+    SCUM_KILL: 4,                // 4 turns — Centaur-exclusive direct scout execution (7% kill rate)
   }
 }
 

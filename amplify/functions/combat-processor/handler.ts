@@ -10,6 +10,7 @@ import type { KingdomResources, CombatResultData } from '../../../shared/types/k
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { dbGet, dbCreate, dbUpdate, dbList, dbAtomicAdd } from '../data-client';
+import { isRacialAbilityActive } from '../../../shared/mechanics/age-mechanics';
 
 // Race offensive combat bonuses (based on warOffense stat 1-5)
 const RACE_OFFENSE_BONUSES: Record<string, number> = {
@@ -179,6 +180,15 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     effectiveAttackerUnits = Object.fromEntries(
       Object.entries(effectiveAttackerUnits).map(([k, v]) => [k, Math.floor(v * ageCombatBonus)])
     );
+
+    // Goblin Kobold Rage: +50% combat bonus in middle age
+    const attackerRaceForAbility = (attacker.race as string) ?? 'Human';
+    if (attackerRaceForAbility.toLowerCase() === 'goblin' && isRacialAbilityActive('goblin', 'kobold_rage', attackerAge as 'early' | 'middle' | 'late')) {
+      effectiveAttackerUnits = Object.fromEntries(
+        Object.entries(effectiveAttackerUnits).map(([k, v]) => [k, Math.floor(v * 1.5)])
+      );
+      log.info('combat-processor', 'kobold-rage-applied', { attackerId, bonus: 1.5 });
+    }
 
     // -------------------------------------------------------------------------
     // Step 3: Race offense bonus — applied multiplicatively after age bonus

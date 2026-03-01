@@ -3,8 +3,9 @@ import type { KingdomResources, KingdomUnits } from '../../../shared/types/kingd
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { dbGet, dbUpdate, dbList, dbAtomicAdd } from '../data-client';
+import { THIEVERY_MECHANICS } from '../../../shared/mechanics/thievery-mechanics';
 
-const VALID_OPERATIONS = ['scout', 'steal', 'sabotage', 'burn', 'desecrate'] as const;
+const VALID_OPERATIONS = ['scout', 'steal', 'sabotage', 'burn', 'desecrate', 'spread_dissention', 'intercept_caravans', 'scum_kill'] as const;
 const MIN_SCOUTS = 100;
 
 type KingdomType = Record<string, unknown> & { turnsBalance?: number | null };
@@ -61,7 +62,17 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     // Check turns from turnsBalance (server-side pool), falling back to resources.turns
     const attackerResources = (attackerKingdom.resources ?? {}) as KingdomResources;
     const currentTurns = attackerKingdom.turnsBalance ?? attackerResources.turns ?? 72;
-    const turnCost = 2;
+    const OPERATION_TURN_COSTS: Record<string, number> = {
+      scout:              THIEVERY_MECHANICS.OPERATION_COSTS.SCOUT,
+      steal:              THIEVERY_MECHANICS.OPERATION_COSTS.STEAL,
+      sabotage:           THIEVERY_MECHANICS.OPERATION_COSTS.SABOTAGE,
+      burn:               THIEVERY_MECHANICS.OPERATION_COSTS.BURN,
+      desecrate:          THIEVERY_MECHANICS.OPERATION_COSTS.DESECRATE,
+      intercept_caravans: THIEVERY_MECHANICS.OPERATION_COSTS.INTERCEPT,
+      spread_dissention:  THIEVERY_MECHANICS.OPERATION_COSTS.SABOTAGE,
+      scum_kill:          THIEVERY_MECHANICS.OPERATION_COSTS.SABOTAGE,
+    };
+    const turnCost = OPERATION_TURN_COSTS[operation ?? ''] ?? THIEVERY_MECHANICS.OPERATION_COSTS.SCOUT;
     if (currentTurns < turnCost) {
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
@@ -138,6 +149,40 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
           });
         }
         (intelligence as Record<string, unknown>).templesDestroyed = templesDestroyed;
+      } else if (operation === 'spread_dissention') {
+        // Spread Dissention: kill ~3% of target's population.
+        // Primary counter to population-rich kingdoms.
+        const populationKilled = Math.floor((targetResources.population ?? 0) * 0.03);
+        if (populationKilled > 0) {
+          await dbUpdate('Kingdom', targetKingdomId, {
+            resources: { ...targetResources, population: Math.max(0, (targetResources.population ?? 0) - populationKilled) },
+          });
+        }
+        (intelligence as Record<string, unknown>).populationKilled = populationKilled;
+      } else if (operation === 'intercept_caravans') {
+        // Intercept Caravans: steal 2% of target's gold (capped at 200k).
+        // Cheaper than Steal but targets income-in-transit.
+        const goldIntercepted = Math.min(200000, Math.floor((targetResources.gold ?? 0) * 0.02));
+        if (goldIntercepted > 0) {
+          attackerGoldDelta = goldIntercepted;
+          await dbUpdate('Kingdom', targetKingdomId, {
+            resources: { ...targetResources, gold: (targetResources.gold ?? 0) - goldIntercepted },
+          });
+        }
+        (intelligence as Record<string, unknown>).goldIntercepted = goldIntercepted;
+      } else if (operation === 'scum_kill') {
+        // Centaur-exclusive: directly execute enemy scouts at 7% kill rate.
+        const attackerKingdom = await dbGet<{ race?: string }>('Kingdom', kingdomId);
+        if (!attackerKingdom || (attackerKingdom.race ?? '').toLowerCase() !== 'centaur') {
+          return { success: false, error: 'Scum Kill is a Centaur-exclusive ability', errorCode: ErrorCode.FORBIDDEN };
+        }
+        const scoutsKilled = Math.floor((targetUnits.scouts ?? 0) * 0.07);
+        const updatedTargetUnits: KingdomUnits = {
+          ...(targetUnits as KingdomUnits),
+          scouts: Math.max(0, (targetUnits.scouts ?? 0) - scoutsKilled),
+        };
+        await dbUpdate('Kingdom', targetKingdomId, { totalUnits: updatedTargetUnits });
+        (intelligence as Record<string, unknown>).scoutsKilled = scoutsKilled;
       }
     }
 

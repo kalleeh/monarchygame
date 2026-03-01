@@ -75,7 +75,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
 
     // Age multipliers for income — kingdoms generate more in later ages
     const AGE_INCOME_MULTIPLIERS: Record<string, number> = {
-      'early': 1.0,    // Standard income
+      'early': 1.2,    // 20% bonus — growth phase (matches age-mechanics.ts incomeMultiplier: 1.2)
       'middle': 1.15,  // 15% bonus — kingdoms have developed
       'late': 1.30,    // 30% bonus — peak civilization
     };
@@ -89,8 +89,11 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     const ELAN_RATE = (['Sidhe', 'Vampire'].includes(currentRace)) ? 0.15 : 0.10;
     const elanPerTurn = Math.ceil((buildings.temple ?? 0) * ELAN_RATE);
 
-    // Apply age multiplier to all gold income (base + tithe)
-    const totalGoldPerTurn = Math.floor((baseGoldPerTurn + tithePerTurn) * ageMultiplier);
+    // Human caravan bonus: +20% gold income from double-frequency trade caravans
+    const caravan_bonus = currentRace === 'Human' ? Math.floor(baseGoldPerTurn * 0.20) : 0;
+
+    // Apply age multiplier to all gold income (base + tithe + caravan bonus)
+    const totalGoldPerTurn = Math.floor((baseGoldPerTurn + tithePerTurn + caravan_bonus) * ageMultiplier);
 
     // Territory-based income (Tier 2 production)
     const CATEGORY_PRODUCTION: Record<string, { gold: number; population: number; land: number }> = {

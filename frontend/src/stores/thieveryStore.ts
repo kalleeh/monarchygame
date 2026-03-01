@@ -16,7 +16,7 @@ import type { ThieveryResult } from '../../../shared/mechanics/thievery-mechanic
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 import { isDemoMode } from '../utils/authMode';
 
-export type OperationType = 'scout' | 'steal' | 'sabotage' | 'burn' | 'desecrate';
+export type OperationType = 'scout' | 'steal' | 'sabotage' | 'burn' | 'desecrate' | 'spread_dissention' | 'intercept_caravans' | 'scum_kill';
 
 export interface ThieveryOperation {
   id: string;
@@ -116,6 +116,9 @@ export const useThieveryStore = create(
           sabotage: THIEVERY_MECHANICS.OPERATION_COSTS.SABOTAGE,
           burn: THIEVERY_MECHANICS.OPERATION_COSTS.BURN,
           desecrate: THIEVERY_MECHANICS.OPERATION_COSTS.DESECRATE,
+          spread_dissention: THIEVERY_MECHANICS.OPERATION_COSTS.SPREAD_DISSENTION,
+          intercept_caravans: THIEVERY_MECHANICS.OPERATION_COSTS.INTERCEPT,
+          scum_kill: THIEVERY_MECHANICS.OPERATION_COSTS.SCUM_KILL,
         };
         const turnCost = turnCosts[type];
 

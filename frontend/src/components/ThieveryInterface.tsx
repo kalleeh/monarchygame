@@ -48,6 +48,24 @@ const OPERATION_CONFIG: Record<OperationType, { label: string; turnCost: number;
     description: 'Destroy ~10% of enemy temples, crippling their elan generation. The primary counter to Sidhe and Vampire mage kingdoms.',
     color: '#a855f7',
   },
+  spread_dissention: {
+    label: 'Spread Dissention',
+    turnCost: THIEVERY_MECHANICS.OPERATION_COSTS.SPREAD_DISSENTION,
+    description: 'Spread unrest through enemy lands, killing ~3% of their population and reducing their income.',
+    color: '#8b5cf6',
+  },
+  intercept_caravans: {
+    label: 'Intercept Caravans',
+    turnCost: THIEVERY_MECHANICS.OPERATION_COSTS.INTERCEPT,
+    description: 'Intercept enemy trade caravans, stealing 2% of their gold. Cheaper than direct theft.',
+    color: '#f59e0b',
+  },
+  scum_kill: {
+    label: 'Execute Scouts',
+    turnCost: THIEVERY_MECHANICS.OPERATION_COSTS.SCUM_KILL ?? 4,
+    description: 'CENTAUR ONLY: Directly execute enemy scouts with lethal efficiency. 7% kill rate.',
+    color: '#dc2626',
+  },
 };
 
 const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, onBack }) => {
@@ -153,6 +171,23 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, onBack
                 ? `Desecration successful! Destroyed ${result.result.templesDestroyed} temples in ${selectedKingdom.name}. Their elan generation is weakened.`
                 : `Desecration successful against ${selectedKingdom.name} (no temples to destroy).`;
               break;
+            case 'spread_dissention':
+              message = result.result.populationKilled > 0
+                ? `Dissention spread through ${selectedKingdom.name}! Killed ${result.result.populationKilled.toLocaleString()} peasants.`
+                : `Dissention spread through ${selectedKingdom.name} (no population to kill).`;
+              break;
+            case 'intercept_caravans':
+              message = result.result.goldIntercepted > 0
+                ? `Caravan intercepted! Seized ${result.result.goldIntercepted.toLocaleString()} gold from ${selectedKingdom.name}.`
+                : `Caravan interception against ${selectedKingdom.name} yielded no gold.`;
+              break;
+            case 'scum_kill':
+              message = result.result.scoutsKilled > 0
+                ? `Scout execution successful! Eliminated ${result.result.scoutsKilled} scouts in ${selectedKingdom.name}.`
+                : `Scout execution against ${selectedKingdom.name} — no scouts to eliminate.`;
+              break;
+            default:
+              message = `Operation successful against ${selectedKingdom.name}.`;
           }
         } else {
           message = `${OPERATION_CONFIG[type].label} operation against ${selectedKingdom.name} failed. Lost ${result.result.casualtiesSuffered} scum.`;
