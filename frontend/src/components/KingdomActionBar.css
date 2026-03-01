@@ -1,0 +1,231 @@
+/* ── Sticky action bar — sits directly below the 56px TopNavigation ── */
+
+.action-bar-sticky {
+  position: sticky;
+  top: 56px;
+  z-index: 99;
+  background: rgba(10, 10, 22, 0.98);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.22);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.action-bar-inner {
+  position: relative;
+}
+
+/* ── Minimized icon strip ── */
+
+.action-bar-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0 1rem;
+  height: 44px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.action-bar-strip::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .action-bar-strip {
+    padding: 0 1.5rem;
+    gap: 0.25rem;
+  }
+}
+
+/* Group emoji — non-interactive visual separator */
+.action-bar-group-label {
+  font-size: 0.95rem;
+  opacity: 0.65;
+  cursor: default;
+  flex-shrink: 0;
+  margin: 0 0.15rem 0 0.25rem;
+  user-select: none;
+  line-height: 1;
+}
+
+/* Vertical pipe divider between groups */
+.action-bar-divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(99, 102, 241, 0.28);
+  flex-shrink: 0;
+  margin: 0 0.35rem;
+}
+
+/* Individual icon button */
+.action-bar-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.13s ease, border-color 0.13s ease;
+  flex-shrink: 0;
+  padding: 0;
+  color: var(--gm-text, #e2e8f0);
+}
+
+.action-bar-icon-btn:hover {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+.action-bar-icon-btn:active {
+  transform: scale(0.9);
+}
+
+.action-bar-icon-btn--disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.action-bar-icon-btn--disabled:hover {
+  background: transparent;
+  border-color: transparent;
+}
+
+.action-bar-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.action-bar-emoji {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+/* ── Right-side controls (push to far right) ── */
+
+.action-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+  padding-left: 0.5rem;
+  flex-shrink: 0;
+}
+
+.action-bar-util-btn {
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.28);
+  border-radius: 5px;
+  color: #a78bfa;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  white-space: nowrap;
+  transition: background 0.13s ease;
+  height: 26px;
+  line-height: 1;
+}
+
+.action-bar-util-btn:hover {
+  background: rgba(139, 92, 246, 0.2);
+}
+
+.action-bar-util-btn--teal {
+  background: rgba(78, 205, 196, 0.1);
+  border-color: rgba(78, 205, 196, 0.28);
+  color: #4ecdc4;
+}
+
+.action-bar-util-btn--teal:hover {
+  background: rgba(78, 205, 196, 0.2);
+}
+
+/* Hide ? util buttons on very small screens */
+@media (max-width: 480px) {
+  .action-bar-util-btn {
+    display: none;
+  }
+}
+
+/* Expand/collapse toggle */
+.action-bar-expand-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  color: rgba(200, 200, 220, 0.75);
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  height: 26px;
+  white-space: nowrap;
+  transition: background 0.13s ease, border-color 0.13s ease, color 0.13s ease;
+}
+
+.action-bar-expand-btn:hover,
+.action-bar-expand-btn--open {
+  background: rgba(78, 205, 196, 0.1);
+  border-color: rgba(78, 205, 196, 0.35);
+  color: #4ecdc4;
+}
+
+.action-bar-chevron {
+  font-size: 0.55rem;
+  line-height: 1;
+}
+
+.action-bar-expand-label {
+  display: none;
+}
+
+@media (min-width: 560px) {
+  .action-bar-expand-label {
+    display: inline;
+  }
+}
+
+/* ── Expanded dropdown panel ── */
+
+.action-bar-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(11, 11, 24, 0.99);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.28);
+  padding: 1rem 1.5rem 1.25rem;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.65);
+  z-index: 97;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem 2rem;
+}
+
+@media (max-width: 767px) {
+  .action-bar-dropdown {
+    grid-template-columns: 1fr;
+    padding: 0.75rem 1rem 1rem;
+    gap: 0.75rem;
+  }
+}
+
+.action-bar-dropdown-group-header {
+  font-size: 0.75rem;
+  color: var(--gm-text-muted, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.action-bar-dropdown-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}

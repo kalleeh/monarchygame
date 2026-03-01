@@ -6,6 +6,7 @@ import type { KingdomResources } from '../types/amplify';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 import { ToastService } from '../services/toastService';
 import { TopNavigation } from './TopNavigation';
+import { KingdomActionBar } from './KingdomActionBar';
 import { LoadingButton } from './ui/loading/LoadingButton';
 import { useTerritoryStore } from '../stores/territoryStore';
 import { useKingdomStore } from '../stores/kingdomStore';
@@ -833,6 +834,24 @@ function KingdomDashboard({
         }
       />
 
+      <KingdomActionBar
+        kingdom={kingdom}
+        onManageCombat={onManageCombat}
+        onSummonUnits={onSummonUnits}
+        onCastSpells={onCastSpells}
+        onManageAlliance={onManageAlliance}
+        onManageTrade={onManageTrade}
+        onDiplomacy={onDiplomacy}
+        onManageTerritories={onManageTerritories}
+        onManageBuildings={onManageBuildings}
+        onViewWorldMap={onViewWorldMap}
+        onBattleReports={onBattleReports}
+        onViewLeaderboard={onViewLeaderboard}
+        isActionProhibited={isActionProhibited}
+        onShowUnitRoster={() => setShowUnitRoster(true)}
+        onShowHelp={() => setShowHelp(true)}
+      />
+
       {/* Season Age Badge */}
       {seasonInfo && (
         <div style={{
@@ -1078,186 +1097,6 @@ function KingdomDashboard({
               achievementTriggers.onPopulationChanged();
             }}
           />
-        </div>
-
-        {/* Row 2: Kingdom Actions (full width) */}
-        <div className="actions-panel">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <h2 style={{ margin: 0 }}>Kingdom Actions</h2>
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
-              <button
-                onClick={() => setShowUnitRoster(true)}
-                style={{
-                  background: 'rgba(139, 92, 246, 0.1)',
-                  border: '1px solid rgba(139, 92, 246, 0.35)',
-                  borderRadius: '6px',
-                  color: '#a78bfa',
-                  cursor: 'pointer',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  padding: '0.3rem 0.7rem',
-                }}
-                title="Unit tier reference panel"
-              >
-                ? Units
-              </button>
-              <button
-                onClick={() => setShowHelp(true)}
-                style={{
-                  background: 'rgba(78, 205, 196, 0.1)',
-                  border: '1px solid rgba(78, 205, 196, 0.35)',
-                  borderRadius: '6px',
-                  color: '#4ecdc4',
-                  cursor: 'pointer',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  padding: '0.3rem 0.7rem',
-                }}
-                title="Quick reference guide"
-              >
-                ? Help
-              </button>
-            </div>
-          </div>
-
-          {(() => {
-            const actionGroups: Record<string, React.ReactNode> = {
-              warfare: (
-                <div key="warfare" className="action-group">
-                  <h4 className="action-group-header">⚔️ Warfare</h4>
-                  <div className="action-buttons">
-                    <button
-                      className={`action-btn${isActionProhibited('combat_attacks') ? ' opacity-50 cursor-not-allowed' : ''}`}
-                      onClick={isActionProhibited('combat_attacks') ? undefined : onManageCombat}
-                      disabled={isActionProhibited('combat_attacks')}
-                      title={isActionProhibited('combat_attacks') ? 'In restoration — combat prohibited' : undefined}
-                    >
-                      <img src="/combat-icon.png" alt="Combat" className="action-icon" />
-                      Combat Operations
-                    </button>
-                    <button
-                      className={`action-btn${isActionProhibited('train') ? ' opacity-50 cursor-not-allowed' : ''}`}
-                      onClick={isActionProhibited('train') ? undefined : onSummonUnits}
-                      disabled={isActionProhibited('train')}
-                      title={isActionProhibited('train') ? 'In restoration — unit training prohibited' : undefined}
-                    >
-                      <img src="/train-units-icon.png" alt="Summon Units" className="action-icon" />
-                      Summon Units
-                    </button>
-                    <button
-                      className={`action-btn${isActionProhibited('sorcery_casting') ? ' opacity-50 cursor-not-allowed' : ''}`}
-                      onClick={isActionProhibited('sorcery_casting') ? undefined : onCastSpells}
-                      disabled={isActionProhibited('sorcery_casting')}
-                      title={isActionProhibited('sorcery_casting') ? 'In restoration — spellcasting prohibited' : undefined}
-                    >
-                      <img src="/magic-spells-icon.png" alt="Magic" className="action-icon" />
-                      Cast Spells
-                    </button>
-                    <button
-                      className={`action-btn${isActionProhibited('espionage_operations') ? ' opacity-50 cursor-not-allowed' : ''}`}
-                      onClick={isActionProhibited('espionage_operations') ? undefined : () => navigate(`/kingdom/${kingdom.id}/espionage`)}
-                      disabled={isActionProhibited('espionage_operations')}
-                      title={isActionProhibited('espionage_operations') ? 'In restoration — espionage prohibited' : 'Espionage operations'}
-                    >
-                      🕵️ Espionage
-                    </button>
-                    <button
-                      className="action-btn"
-                      onClick={onBattleReports}
-                      title="Battle history, reports & replays"
-                    >
-                      <img src="/battle-reports-icon.png" alt="Battle History" className="action-icon" />
-                      Battle History
-                    </button>
-                  </div>
-                </div>
-              ),
-              kingdom: (
-                <div key="kingdom" className="action-group">
-                  <h4 className="action-group-header">🏛️ Kingdom</h4>
-                  <div className="action-buttons">
-                    <button
-                      className="action-btn"
-                      onClick={onManageTerritories}
-                    >
-                      <img src="/territories-icon.png" alt="Territories" className="action-icon" />
-                      Manage Territories
-                    </button>
-                    <button
-                      className="action-btn"
-                      onClick={onManageBuildings}
-                      title="Construct buildings on your land"
-                    >
-                      <img src="/buildings-economy-icon.png" alt="Buildings" className="action-icon" />
-                      Construct Buildings
-                    </button>
-                    <button
-                      className="action-btn"
-                      onClick={onViewWorldMap}
-                    >
-                      <img src="/world-map-icon.png" alt="World Map" className="action-icon" />
-                      World Map
-                    </button>
-                    <button
-                      className="action-btn"
-                      onClick={() => navigate(`/kingdom/${kingdom.id}/bounties`)}
-                      title="Hunt bounties for rewards"
-                    >
-                      🎯 Bounty Board
-                    </button>
-                    <button
-                      className="action-btn"
-                      onClick={() => navigate(`/kingdom/${kingdom.id}/faith`)}
-                      title="Manage faith and focus"
-                    >
-                      🙏 Faith &amp; Focus
-                    </button>
-                  </div>
-                </div>
-              ),
-              social: (
-                <div key="social" className="action-group">
-                  <h4 className="action-group-header">🤝 Social</h4>
-                  <div className="action-buttons">
-                    <button
-                      className={`action-btn${isActionProhibited('alliance_changes') ? ' opacity-50 cursor-not-allowed' : ''}`}
-                      onClick={isActionProhibited('alliance_changes') ? undefined : onManageAlliance}
-                      disabled={isActionProhibited('alliance_changes')}
-                      title={isActionProhibited('alliance_changes') ? 'In restoration — alliance changes prohibited' : undefined}
-                    >
-                      <img src="/alliance-icon.png" alt="Alliance" className="action-icon" />
-                      Alliance Management
-                    </button>
-                    <button
-                      className={`action-btn${isActionProhibited('diplomatic_actions') ? ' opacity-50 cursor-not-allowed' : ''}`}
-                      onClick={isActionProhibited('diplomatic_actions') ? undefined : onManageTrade}
-                      disabled={isActionProhibited('diplomatic_actions')}
-                      title={isActionProhibited('diplomatic_actions') ? 'In restoration — trade prohibited' : undefined}
-                    >
-                      <img src="/trade-economy-icon.png" alt="Trade" className="action-icon" />
-                      Trade
-                    </button>
-                    <button
-                      className={`action-btn${isActionProhibited('diplomatic_actions') ? ' opacity-50 cursor-not-allowed' : ''}`}
-                      onClick={isActionProhibited('diplomatic_actions') ? undefined : onDiplomacy}
-                      disabled={isActionProhibited('diplomatic_actions')}
-                      title={isActionProhibited('diplomatic_actions') ? 'In restoration — diplomacy prohibited' : undefined}
-                    >
-                      <img src="/diplomacy-icon.png" alt="Diplomacy" className="action-icon" />
-                      Diplomacy
-                    </button>
-                    <button
-                      className="action-btn"
-                      onClick={onViewLeaderboard}
-                    >
-                      🏆 Kingdom Scrolls
-                    </button>
-                  </div>
-                </div>
-              ),
-            };
-            return groupOrder.map((key) => actionGroups[key] ?? null);
-          })()}
         </div>
 
         {/* Row 3: Territories (full width) */}
