@@ -172,9 +172,25 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         const existingStats = typeof alliance.stats === 'string'
           ? JSON.parse(alliance.stats as string)
           : (alliance.stats ?? {});
+        const previousBonus = (existingStats.compositionBonus?.combat ?? 1.0) as number;
         await dbUpdate('Alliance', allianceId, {
           stats: JSON.stringify({ ...existingStats, compositionBonus }),
         });
+
+        // Notify all members if full composition bonus was just unlocked
+        if (previousBonus < 1.05 && compositionBonus.combat >= 1.05) {
+          const now = new Date().toISOString();
+          await Promise.all(memberIds.map(memberId =>
+            dbCreate('CombatNotification', {
+              recipientId: memberId,
+              type: 'alliance',
+              message: `Your alliance now has full composition (mage + warrior + scum)! All members gain +5% income, +5% combat strength, and +5% espionage.`,
+              data: JSON.stringify({ allianceId, bonus: compositionBonus }),
+              isRead: false,
+              createdAt: now,
+            })
+          ));
+        }
 
         log.info('alliance-manager', 'joinAlliance', { kingdomId, allianceId });
         return { success: true, result: JSON.stringify({ allianceId, memberIds }) };
