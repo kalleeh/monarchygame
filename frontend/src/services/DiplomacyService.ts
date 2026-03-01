@@ -5,15 +5,81 @@ import type { Schema } from '../../../amplify/data/resource';
 
 const client = generateClient<Schema>();
 
+// ── Demo / mock data ────────────────────────────────────────────────────────
+
+const DEMO_KINGDOMS = [
+  { id: 'demo-kingdom-1', name: 'Iron Reach', race: 'Droben', power: 4200, reputation: 65, relationship: 'neutral' },
+  { id: 'demo-kingdom-2', name: 'The Thornwood', race: 'Elven', power: 3800, reputation: 80, relationship: 'trade_pact' },
+  { id: 'demo-kingdom-3', name: 'Golden Keep', race: 'Human', power: 5100, reputation: 55, relationship: 'neutral' },
+];
+
+const DEMO_RELATIONSHIPS: DiplomaticRelationship[] = [
+  {
+    id: 'demo-rel-1',
+    fromKingdom: { id: 'demo-kingdom-2', name: 'The Thornwood', race: 'Elven', reputation: 80 },
+    toKingdom: { id: 'player-kingdom', name: 'Your Kingdom', race: 'Human', reputation: 100 },
+    status: 'FRIENDLY',
+    treaties: [
+      {
+        id: 'demo-treaty-1',
+        type: 'TRADE_AGREEMENT',
+        terms: { tradeBonus: '10%', duration: '60 days' },
+        status: 'ACTIVE',
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 57 * 24 * 60 * 60 * 1000),
+      },
+    ],
+    reputation: 80,
+    lastAction: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: 'demo-rel-2',
+    fromKingdom: { id: 'demo-kingdom-1', name: 'Iron Reach', race: 'Droben', reputation: 65 },
+    toKingdom: { id: 'player-kingdom', name: 'Your Kingdom', race: 'Human', reputation: 100 },
+    status: 'NEUTRAL',
+    treaties: [],
+    reputation: 65,
+    lastAction: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+  },
+];
+
+const DEMO_PROPOSALS: TreatyProposal[] = [
+  {
+    id: 'demo-proposal-1',
+    fromKingdom: { id: 'demo-kingdom-3', name: 'Golden Keep', race: 'Human', reputation: 55 },
+    toKingdom: { id: 'player-kingdom', name: 'Your Kingdom', race: 'Human', reputation: 100 },
+    treatyType: 'NON_AGGRESSION',
+    terms: { duration: '30 days' },
+    status: 'PENDING',
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+  },
+];
+
+const DEMO_HISTORY: DiplomaticAction[] = [
+  {
+    id: 'demo-history-1',
+    type: 'PROPOSAL_ACCEPTED',
+    fromKingdom: { id: 'player-kingdom', name: 'Your Kingdom', race: 'Human', reputation: 100 },
+    toKingdom: { id: 'demo-kingdom-2', name: 'The Thornwood', race: 'Elven', reputation: 80 },
+    details: 'Accepted TRADE_AGREEMENT proposal',
+    timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+  },
+];
+
+// ────────────────────────────────────────────────────────────────────────────
+
 export class DiplomacyService {
   /**
    * Get diplomatic relationships for a kingdom
    */
-  static async getKingdomRelationships(kingdomId: string): Promise<DiplomaticRelationship[]> {
+  static async getKingdomRelationships(_kingdomId: string): Promise<DiplomaticRelationship[]> {
+    if (isDemoMode()) {
+      return DEMO_RELATIONSHIPS;
+    }
     try {
       const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
       const rawResponse = await queries.getDiplomaticRelationships({
-        kingdomId
+        kingdomId: _kingdomId
       });
       const response = rawResponse as Record<string, unknown>;
 
@@ -41,10 +107,13 @@ export class DiplomacyService {
   /**
    * Get active treaty proposals
    */
-  static async getActiveProposals(kingdomId: string): Promise<TreatyProposal[]> {
+  static async getActiveProposals(_kingdomId: string): Promise<TreatyProposal[]> {
+    if (isDemoMode()) {
+      return DEMO_PROPOSALS;
+    }
     try {
       const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
-      const rawResponse = await queries.getActiveProposals({ kingdomId });
+      const rawResponse = await queries.getActiveProposals({ kingdomId: _kingdomId });
       const response = rawResponse as Record<string, unknown>;
 
       if (!response.data) {
@@ -70,10 +139,13 @@ export class DiplomacyService {
   /**
    * Get available kingdoms for diplomacy
    */
-  static async getAvailableKingdoms(kingdomId: string): Promise<Record<string, unknown>[]> {
+  static async getAvailableKingdoms(_kingdomId: string): Promise<Record<string, unknown>[]> {
+    if (isDemoMode()) {
+      return DEMO_KINGDOMS;
+    }
     try {
       const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
-      const rawResponse = await queries.getAvailableKingdoms({ kingdomId });
+      const rawResponse = await queries.getAvailableKingdoms({ kingdomId: _kingdomId });
       const response = rawResponse as Record<string, unknown>;
 
       if (!response.data) {
@@ -97,10 +169,13 @@ export class DiplomacyService {
   /**
    * Get kingdom reputation
    */
-  static async getKingdomReputation(kingdomId: string): Promise<number> {
+  static async getKingdomReputation(_kingdomId: string): Promise<number> {
+    if (isDemoMode()) {
+      return 100;
+    }
     try {
       const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
-      const rawResponse = await queries.getKingdomReputation({ kingdomId });
+      const rawResponse = await queries.getKingdomReputation({ kingdomId: _kingdomId });
       const response = rawResponse as Record<string, unknown>;
       const data = response.data as Record<string, unknown>;
       return Number(data?.reputation) || 0;
@@ -113,10 +188,13 @@ export class DiplomacyService {
   /**
    * Get diplomatic history
    */
-  static async getDiplomaticHistory(kingdomId: string): Promise<DiplomaticAction[]> {
+  static async getDiplomaticHistory(_kingdomId: string): Promise<DiplomaticAction[]> {
+    if (isDemoMode()) {
+      return DEMO_HISTORY;
+    }
     try {
       const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
-      const rawResponse = await queries.getDiplomaticHistory({ kingdomId });
+      const rawResponse = await queries.getDiplomaticHistory({ kingdomId: _kingdomId });
       const response = rawResponse as Record<string, unknown>;
 
       if (!response.data) {
@@ -250,6 +328,10 @@ export class DiplomacyService {
    * Subscribe to treaty proposals
    */
   static subscribeToTreatyProposals(kingdomId: string, callback: (data: Record<string, unknown>) => void) {
+    // Demo mode: no real-time subscription needed
+    if (isDemoMode()) {
+      return { unsubscribe: () => {} };
+    }
     try {
       const queries = client.queries as Record<string, (args: unknown) => unknown>;
       const subscriptionResult = queries.onTreatyProposal({ kingdomId });

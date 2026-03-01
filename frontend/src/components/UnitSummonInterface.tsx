@@ -105,9 +105,13 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
 
       <div className="current-units">
         <h3>Current Units</h3>
-        {currentUnits.length === 0 ? (
-          <p className="empty-state">No units summoned yet. Summon troops to build your army!</p>
-        ) : (
+        {currentUnits.length === 0 && (
+          <div className="gm-empty-state">
+            <p>No units summoned yet</p>
+            <p>Switch to the <strong>Summon Units</strong> tab to recruit your first troops.</p>
+          </div>
+        )}
+        {currentUnits.length > 0 && (
           <div className="units-grid">
             {currentUnits.map(unit => {
               const unitData = availableUnits.find(u => u.id === unit.type);
