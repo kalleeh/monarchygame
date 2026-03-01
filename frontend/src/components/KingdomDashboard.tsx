@@ -362,12 +362,15 @@ function KingdomDashboard({
           action: 'getActiveSeason',
         });
         const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        // Auth mode: parsed may be { data: { getActiveSeason: { ... } } }
-        // Demo mode: { success: true, season: { seasonNumber, currentAge, ... } }
+        // AmplifyFunctionService wraps responses in { data: ... }; unwrap first
+        // Then look for the season object in the expected locations:
+        //   { success: true, season: { seasonNumber, currentAge, ... } }   <- Lambda direct
+        //   { data: { success: true, season: { ... } } }                   <- wrapped
+        //   { data: { getActiveSeason: { ... } } }                         <- GraphQL resolver
+        const payload = (parsed as any)?.data ?? parsed;
         const seasonData =
-          (parsed as any)?.season ??
-          (parsed as any)?.data?.getActiveSeason ??
-          (parsed as any)?.data ??
+          payload?.season ??
+          payload?.getActiveSeason ??
           null;
         if (seasonData && seasonData.currentAge) {
           setSeasonInfo({
