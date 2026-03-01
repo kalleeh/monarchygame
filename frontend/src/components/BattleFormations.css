@@ -337,19 +337,75 @@
   .formations-list {
     grid-template-columns: 1fr;
   }
-  
+
   .formation-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .stats-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .formation-controls,
   .battle-form {
     flex-direction: column;
     align-items: stretch;
+  }
+}
+
+/* ── Small phones (≤480px) ───────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .battle-formations {
+    padding: 1rem;
+  }
+
+  /* Stat cards: 2-col grid on small screens */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  /* Unit cards: touch-friendly height */
+  .unit-card {
+    min-height: 44px;
+    padding: 0.75rem;
+  }
+
+  /* Formation grid: single column on very small screens */
+  .formation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Sortable unit cards: bigger tap target */
+  .sortable-unit-card {
+    min-height: 44px;
+    padding: 0.625rem;
+  }
+
+  /* Formation cards: touch-friendly */
+  .formation-card {
+    min-height: 44px;
+    padding: 0.75rem;
+  }
+
+  /* Battle target input + button: full width on small phones */
+  .battle-target-input {
+    width: 100%;
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  .execute-battle-btn,
+  .create-formation-btn {
+    min-height: 44px;
+    width: 100%;
+  }
+
+  /* Formation name input: full width */
+  .formation-name-input {
+    width: 100%;
+    min-height: 44px;
+    font-size: 1rem;
   }
 }
 

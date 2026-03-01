@@ -58,6 +58,13 @@ body {
   width: 100%;
 }
 
+/* Prevent horizontal scroll on mobile */
+@media (max-width: 768px) {
+  body {
+    overflow-x: hidden;
+  }
+}
+
 main {
   width: 100%;
   padding: 0;

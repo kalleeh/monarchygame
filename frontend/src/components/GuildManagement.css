@@ -433,32 +433,124 @@
   .guild-management {
     padding: 1rem;
   }
-  
+
   .guild-nav {
     flex-wrap: wrap;
     gap: 0.5rem;
   }
-  
+
   .guild-nav button {
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
   }
-  
+
   .current-alliance {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .guild-stats {
     gap: 1rem;
   }
-  
+
   .guilds-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .chat-input {
     flex-direction: column;
     gap: 0.5rem;
+  }
+}
+
+/* ── Small phones (≤480px) ───────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .guild-management {
+    padding: 0.75rem;
+    /* Prevent any child from causing horizontal scroll */
+    overflow-x: hidden;
+  }
+
+  /* Header: stack back button and title vertically */
+  .guild-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .guild-header h2 {
+    font-size: 1.5rem;
+  }
+
+  /* Nav: horizontal scroll instead of wrapping onto many lines */
+  .guild-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0.75rem;
+    gap: 0.4rem;
+  }
+
+  .guild-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Nav buttons: minimum 44px height touch target, don't shrink */
+  .guild-nav button {
+    flex-shrink: 0;
+    min-height: 44px;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.85rem;
+  }
+
+  /* Content panel: reduce padding */
+  .guild-content {
+    padding: 1rem;
+    min-height: auto;
+  }
+
+  /* Guild cards: ensure single column (already set at 768px) + touch target */
+  .guild-card {
+    padding: 1rem;
+  }
+
+  /* Join/leave buttons: full width, 44px tall */
+  .join-btn,
+  .leave-btn,
+  .create-btn,
+  .back-btn {
+    min-height: 44px;
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* Guild stats badges: wrap freely */
+  .guild-stats {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  /* Guild chat: shorter on small phones */
+  .guild-chat {
+    height: auto;
+    min-height: 300px;
+  }
+
+  .chat-messages {
+    max-height: 250px;
+  }
+
+  /* Chat input button: full width */
+  .chat-input button {
+    min-height: 44px;
+  }
+
+  /* Form elements: large enough to tap */
+  .form-group input,
+  .form-group textarea {
+    min-height: 44px;
+    font-size: 1rem;
   }
 }

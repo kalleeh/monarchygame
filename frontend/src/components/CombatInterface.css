@@ -183,10 +183,42 @@
   .tab-button {
     font-size: 0.9rem;
     padding: var(--space-sm);
+    /* Ensure 44px touch target height */
+    min-height: 44px;
   }
-  
+
   .tab-icon {
     font-size: 1rem;
     margin-right: 0.25rem;
+  }
+
+  /* Prevent horizontal scroll from the fixed-width calc */
+  .combat-interface {
+    width: 100%;
+    margin: 0;
+    padding: var(--space-md);
+    box-sizing: border-box;
+  }
+
+  /* Content panel: reduce padding on small screens */
+  .combat-content {
+    padding: var(--space-md);
+  }
+
+  /* Tab bar: allow horizontal scroll if tabs overflow */
+  .combat-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    padding-bottom: 0.25rem;
+  }
+
+  .combat-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-button {
+    flex-shrink: 0;
   }
 }

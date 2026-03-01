@@ -261,3 +261,63 @@
     padding: 0.5rem 0.6rem;
   }
 }
+
+/* ── Mobile (≤768px): tab bar scrolls horizontally ───────────────────── */
+@media (max-width: 768px) {
+  .lb-tab-bar {
+    /* Scroll tabs horizontally instead of wrapping onto multiple lines */
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Hide scrollbar on webkit but keep scroll functionality */
+    scrollbar-width: none;
+    padding-bottom: 0.75rem;
+  }
+
+  .lb-tab-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Ensure each tab is always tappable (44px touch target) */
+  .lb-tab {
+    flex-shrink: 0;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* ── Small phones (≤480px): hide less-important table columns ─────────── */
+@media (max-width: 480px) {
+  /* Hide rank-delta column (the ▲/▼ movement indicator) */
+  .lb-rank-badge .lb-rank-up,
+  .lb-rank-badge .lb-rank-down,
+  .lb-rank-badge .lb-rank-new {
+    display: none;
+  }
+
+  /* Hide networth column in guilds table — class convention: --networth */
+  .lb-guilds-th--networth,
+  .lb-guilds-td--networth {
+    display: none;
+  }
+
+  /* Tighten table padding further */
+  .lb-guilds-td,
+  .lb-guilds-th {
+    padding: 0.5rem 0.4rem;
+    font-size: 0.8rem;
+  }
+
+  /* Make tab bar tabs slightly smaller so more fit in viewport */
+  .lb-tab {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+    min-height: 44px;
+  }
+
+  /* Section heading smaller */
+  .lb-section-heading {
+    font-size: 1rem;
+  }
+}

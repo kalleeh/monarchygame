@@ -237,3 +237,56 @@
     transform: scale(0.95);
   }
 }
+
+/* ── Small phones (≤480px) ───────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .top-navigation {
+    /* Allow nav to grow to two lines if content is wide */
+    height: auto;
+    min-height: 48px;
+    padding: 0.5rem 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .nav-left {
+    gap: 0.375rem;
+    /* Don't shrink so title/back stay on same row */
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* Back button: icon-only but keep 44px touch target */
+  .back-btn {
+    min-width: 36px;
+    min-height: 44px;
+    padding: 0 0.5rem;
+    justify-content: center;
+  }
+
+  /* Title: shrink font so it fits alongside back button */
+  .nav-title {
+    font-size: 0.875rem;
+  }
+
+  /* Subtitle: stay hidden (already hidden below 640px via display:none) */
+
+  /* Right side: keep tight */
+  .nav-right {
+    gap: 0.375rem;
+  }
+
+  /* Create-territory button: icon-only touch target */
+  .create-territory-btn {
+    min-width: 36px;
+    min-height: 44px;
+    padding: 0 0.5rem;
+    justify-content: center;
+    height: auto;
+  }
+
+  /* Logo slightly smaller */
+  .nav-logo {
+    width: 26px;
+    height: 26px;
+  }
+}
