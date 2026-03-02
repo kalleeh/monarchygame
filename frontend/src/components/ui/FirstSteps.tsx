@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { isDemoMode } from '../../utils/authMode';
 import './FirstSteps.css';
 
 interface StepDef {
@@ -16,6 +17,7 @@ interface FirstStepsProps {
   onViewWorldMap?: () => void;
   onManageCombat?: () => void;
   onGenerateIncome?: () => void;
+  onManageTerritories?: () => void;
 }
 
 const DISMISSED_KEY = 'firstSteps_dismissed';
@@ -56,27 +58,41 @@ export const FirstSteps: React.FC<FirstStepsProps> = ({
   onViewWorldMap,
   onManageCombat,
   onGenerateIncome,
+  onManageTerritories,
 }) => {
+  const demo = isDemoMode();
+
   const [dismissed, setDismissed] = useState<boolean>(() => isDismissed());
   const [completed, setCompleted] = useState<Record<string, boolean>>(() => ({
     income: isStepDone('income'),
+    territories: isStepDone('territories'),
     buildings: isStepDone('buildings'),
     units: isStepDone('units'),
     worldmap: isStepDone('worldmap'),
     combat: isStepDone('combat'),
   }));
 
+  // First step differs by mode:
+  // Demo — "Generate Income" (manual button exists, good teaching moment)
+  // Auth — "Claim a territory" (income is automatic; territories drive gold growth)
+  const firstStep: StepDef = demo
+    ? {
+        id: 'income',
+        title: 'Generate your first income',
+        description: 'Gold fuels everything. Click Generate Income in the Resources panel to collect your first earnings.',
+        actionLabel: 'Generate Income',
+        onAction: () => { handleComplete('income'); onGenerateIncome?.(); },
+      }
+    : {
+        id: 'territories',
+        title: 'Claim your first territory',
+        description: 'Territories expand your land and boost your gold income each turn. Go to Manage Territories to claim one.',
+        actionLabel: 'Manage Territories',
+        onAction: () => { handleComplete('territories'); onManageTerritories?.(); },
+      };
+
   const steps: StepDef[] = [
-    {
-      id: 'income',
-      title: 'Generate your first income',
-      description: 'Gold fuels everything. Click Generate Income in the Resources panel to collect your first earnings.',
-      actionLabel: 'Generate Income',
-      onAction: () => {
-        handleComplete('income');
-        onGenerateIncome?.();
-      },
-    },
+    firstStep,
     {
       id: 'buildings',
       title: 'Build your first structure',

@@ -772,6 +772,7 @@ function KingdomDashboard({
         onSummonUnits={onSummonUnits}
         onViewWorldMap={onViewWorldMap}
         onManageCombat={onManageCombat}
+        onManageTerritories={onManageTerritories}
         onGenerateIncome={() => handleGenerateResources('generate_income')}
       />
 
@@ -849,22 +850,26 @@ function KingdomDashboard({
             </div>
           </div>
 
-          <div className="resource-actions">
-            <LoadingButton
-              onClick={() => handleGenerateResources('generate_turns')}
-              loading={resourceLoading}
-              className="resource-btn"
-            >
-              Generate Turns
-            </LoadingButton>
-            <LoadingButton
-              onClick={() => handleGenerateResources('generate_income')}
-              loading={resourceLoading}
-              className="resource-btn"
-            >
-              Generate Income
-            </LoadingButton>
-          </div>
+          {/* Demo-only shortcuts — in auth mode turns/income are server-generated
+              on a 20-minute timer; manual buttons would bypass anti-cheat */}
+          {isDemoMode() && (
+            <div className="resource-actions">
+              <LoadingButton
+                onClick={() => handleGenerateResources('generate_turns')}
+                loading={resourceLoading}
+                className="resource-btn"
+              >
+                Generate Turns
+              </LoadingButton>
+              <LoadingButton
+                onClick={() => handleGenerateResources('generate_income')}
+                loading={resourceLoading}
+                className="resource-btn"
+              >
+                Generate Income
+              </LoadingButton>
+            </div>
+          )}
 
           <EncampPanel
             kingdomId={kingdom.id}
