@@ -360,29 +360,23 @@ function KingdomDashboard({
       return;
     }
 
-    // Auth mode: call Lambda with graceful fallback
+    // Auth mode: call Lambda then refresh from server so we get the actual
+    // server-calculated values (income varies by buildings, age, alliances).
     try {
       await AmplifyFunctionService.updateResources({
         kingdomId: kingdom.id,
         amount: action === 'generate_turns' ? 3 : undefined,
       });
-      if (action === 'generate_turns') {
-        addTurns(3);
-        ToastService.success('Turns generated successfully!');
-      } else if (action === 'generate_income') {
-        addGold(1000);
-        ToastService.success('Income generated successfully!');
-      }
+      // Re-fetch authoritative state — the Lambda may have calculated a different
+      // gold amount than any hardcoded local value.
+      await AmplifyFunctionService.refreshKingdomResources(kingdom.id);
+      ToastService.success(action === 'generate_turns' ? 'Turns generated!' : 'Income generated!');
     } catch (error) {
       console.error('Resource generation error:', error);
-      // Always apply locally even if Lambda fails (deployed schema mismatch)
-      if (action === 'generate_turns') {
-        addTurns(3);
-        ToastService.success('Turns generated!');
-      } else if (action === 'generate_income') {
-        addGold(1000);
-        ToastService.success('Income generated!');
-      }
+      // Fallback: apply a local estimate so the UI isn't stuck
+      if (action === 'generate_turns') addTurns(3);
+      else addGold(1000);
+      ToastService.success(action === 'generate_turns' ? 'Turns generated!' : 'Income generated!');
     } finally {
       setResourceLoading(false);
     }

@@ -91,7 +91,7 @@ export const useThieveryStore = create(
       /**
        * Execute an espionage operation against a target kingdom
        */
-      executeOperation: (
+      executeOperation: async (
         type: OperationType,
         targetId: string,
         targetName: string,
@@ -99,7 +99,7 @@ export const useThieveryStore = create(
         targetRace: string,
         targetGold: number,
         spendTurnsFn: (amount: number) => boolean
-      ): ThieveryOperation | null => {
+      ): Promise<ThieveryOperation | null> => {
         const state = get();
         const totalScum = state.scumCount + state.eliteScumCount;
 
@@ -213,7 +213,20 @@ export const useThieveryStore = create(
           result,
         };
 
-        // Update scum counts after casualties
+        // In auth mode, await Lambda confirmation before applying casualties —
+        // prevents permanent scum loss if the server rejects the operation.
+        if (!isDemoMode()) {
+          const { kingdomId } = get();
+          try {
+            await executeThievery({ kingdomId, action: type, targetId });
+          } catch (error) {
+            console.error('[thieveryStore] Lambda call failed, aborting operation:', error);
+            set({ loading: false, error: 'Operation failed — server unavailable' });
+            return operation;
+          }
+        }
+
+        // Apply casualties and record operation only after server confirms
         const newScumCount = Math.max(0, state.scumCount - greenCasualties);
         const newEliteScumCount = Math.max(0, state.eliteScumCount - eliteCasualties);
 
@@ -223,16 +236,6 @@ export const useThieveryStore = create(
           operations: [operation, ...prev.operations.slice(0, 49)],
           loading: false,
         }));
-
-        // In auth mode, persist the operation to the backend
-        if (!isDemoMode()) {
-          const { kingdomId } = get();
-          executeThievery({
-            kingdomId,
-            action: type,
-            targetId,
-          }).catch(error => console.error('[thieveryStore] Lambda call failed, using local result:', error));
-        }
 
         return operation;
       },

@@ -9,6 +9,9 @@ import { useKingdomStore } from './kingdomStore';
 import { calculateActionTurnCost } from '../../../shared/mechanics/turn-mechanics';
 import { isDemoMode } from '../utils/authMode';
 import { claimTerritory as claimTerritoryApi } from '../services/domain/TerritoryService';
+import { refreshKingdomResources } from '../services/domain/CombatService';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../../amplify/data/resource';
 
 interface Territory {
   id: string;
@@ -263,15 +266,22 @@ export const useTerritoryStore = create(
               loading: false
             }));
 
+            // Sync authoritative resource values from server — the Lambda
+            // deducts costs server-side; re-fetch to avoid local desync.
+            if (!isDemoMode()) {
+              const kingdomId = useKingdomStore.getState().kingdomId;
+              if (kingdomId) void refreshKingdomResources(kingdomId);
+            }
+
             return true;
           }
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Territory claim failed',
-            loading: false 
+            loading: false
           });
         }
-        
+
         return false;
       },
 
@@ -300,42 +310,45 @@ export const useTerritoryStore = create(
         }
         
         set({ loading: true, error: null });
-        
+
         try {
-          // Server-side upgrade logic would go here
-          const success = true; // Mock success
-          
-          if (success) {
-            const newLevel = currentLevel + 1;
-            
-            // Upgrading improves the territory's production capacity
-            // The territory itself doesn't store resources, it just generates them per turn
-            const upgradedTerritory = {
-              ...territory,
-              defenseLevel: newLevel
-            };
-            
-            // Deduct gold cost from centralized kingdom store
-            useKingdomStore.getState().updateResources({
-              gold: (kingdomResources.gold || 0) - upgradeCost
+          const newLevel = currentLevel + 1;
+
+          // Persist defense level upgrade to DynamoDB via the Territory model.
+          // No dedicated upgrade Lambda exists yet — owner can update their own records.
+          if (!isDemoMode()) {
+            const client = generateClient<Schema>();
+            const { errors } = await client.models.Territory.update({
+              id: territoryId,
+              defenseLevel: newLevel,
             });
-            
-            set(state => ({
-              territories: state.territories.map(t => 
-                t.id === territoryId ? upgradedTerritory : t
-              ),
-              ownedTerritories: state.ownedTerritories.map(t =>
-                t.id === territoryId ? upgradedTerritory : t
-              )
-            }));
+            if (errors && errors.length > 0) {
+              set({ error: errors[0].message || 'Territory upgrade failed', loading: false });
+              return false;
+            }
           }
-          
-          set({ loading: false });
-          return success;
+
+          // Deduct gold cost locally and update territory state
+          useKingdomStore.getState().updateResources({
+            gold: (kingdomResources.gold || 0) - upgradeCost,
+          });
+
+          const upgradedTerritory = { ...territory, defenseLevel: newLevel };
+          set(state => ({
+            territories: state.territories.map(t =>
+              t.id === territoryId ? upgradedTerritory : t
+            ),
+            ownedTerritories: state.ownedTerritories.map(t =>
+              t.id === territoryId ? upgradedTerritory : t
+            ),
+            loading: false,
+          }));
+
+          return true;
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Territory upgrade failed',
-            loading: false 
+            loading: false,
           });
           return false;
         }
