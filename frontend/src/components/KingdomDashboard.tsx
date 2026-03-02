@@ -360,20 +360,41 @@ function KingdomDashboard({
       return;
     }
 
-    // Auth mode: call Lambda then refresh from server so we get the actual
-    // server-calculated values (income varies by buildings, age, alliances).
+    // Auth mode: call Lambda and apply the server-returned values directly.
+    // DO NOT call refreshKingdomResources() here — DynamoDB eventual consistency
+    // means a read immediately after write can return stale data, which would
+    // overwrite the freshly-generated turns/gold with old values.
     try {
-      await AmplifyFunctionService.updateResources({
+      const raw = await AmplifyFunctionService.updateResources({
         kingdomId: kingdom.id,
         amount: action === 'generate_turns' ? 3 : undefined,
       });
-      // Re-fetch authoritative state — the Lambda may have calculated a different
-      // gold amount than any hardcoded local value.
-      await AmplifyFunctionService.refreshKingdomResources(kingdom.id);
+      // Lambda returns { success, resources: JSON.stringify({gold,land,population,elan}), newTurns }
+      // Unwrap potential { data: ... } envelope from Amplify client.
+      const payload = (raw as any)?.data ?? raw;
+      const serverResources = payload?.resources
+        ? (JSON.parse(payload.resources as string) as { gold?: number; population?: number; land?: number })
+        : null;
+
+      if (serverResources) {
+        // Apply only the income fields — do NOT touch turns here so we don't
+        // accidentally overwrite the player's action-turn count.
+        updateResources({
+          gold: serverResources.gold,
+          population: serverResources.population,
+          land: serverResources.land,
+        });
+      } else {
+        // Parsing failed — fall back to local estimate
+        if (action === 'generate_income') addGold(1000);
+      }
+
+      // Action turns are a separate counter; generate_turns always adds 3.
+      if (action === 'generate_turns') addTurns(3);
+
       ToastService.success(action === 'generate_turns' ? 'Turns generated!' : 'Income generated!');
     } catch (error) {
       console.error('Resource generation error:', error);
-      // Fallback: apply a local estimate so the UI isn't stuck
       if (action === 'generate_turns') addTurns(3);
       else addGold(1000);
       ToastService.success(action === 'generate_turns' ? 'Turns generated!' : 'Income generated!');
