@@ -134,11 +134,10 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
       }));
 
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : 'Failed to send proposal',
-        loading: false 
+        loading: false
       });
-      throw error;
     }
   },
 

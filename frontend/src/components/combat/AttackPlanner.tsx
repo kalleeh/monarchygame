@@ -17,6 +17,7 @@ import { ArmySelector } from './ArmySelector';
 import { AttackPreview } from './AttackPreview';
 import { useCombatStore } from '../../stores/combatStore';
 import { requiresWarDeclaration } from '../../../../shared/mechanics/combat-mechanics';
+import { ToastService } from '../../services/toastService';
 
 interface AttackPlannerProps {
   currentKingdom: Kingdom;
@@ -118,7 +119,7 @@ export function AttackPlanner({
 
     try {
       await onAttack(attackRequest);
-      // Reset form on success
+      // Reset form on success only
       setSelectedTarget(null);
       setSelectedTerritory(null);
       setSelectedArmy({
@@ -129,8 +130,9 @@ export function AttackPlanner({
       });
       setShowPreview(false);
     } catch (err) {
-      // Error handling is done in parent component
       console.error('Attack failed:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Attack failed';
+      ToastService.error('Attack failed: ' + errorMessage);
     }
   }, [canAttack, selectedTarget, selectedTerritory, attackType, selectedArmy, onAttack, currentKingdom.id]);
 

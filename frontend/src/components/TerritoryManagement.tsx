@@ -57,7 +57,7 @@ export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProp
   const handleCreateTerritory = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       const result = await ToastService.promise(
         claimTerritory({
@@ -75,13 +75,19 @@ export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProp
 
       if (result && result.success) {
         setShowCreateForm(false);
-        setFormData({ 
-          name: '', 
-          terrainType: 'plains', 
+        setFormData({
+          name: '',
+          terrainType: 'plains',
           coordinates: { x: 0, y: 0 },
           buildings: {}
         });
-        fetchTerritories();
+        setLoading(false);
+        try {
+          await fetchTerritories();
+        } catch (fetchError) {
+          console.error('Failed to refresh territories after claim:', fetchError);
+        }
+        return;
       }
     } catch (error) {
       console.error('Failed to create territory:', error);

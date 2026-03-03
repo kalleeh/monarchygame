@@ -63,11 +63,7 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
       setLoading(true);
       setError(null);
       await summonUnits(kingdomId, unitType, quantity);
-      
-      // Show success toast
-      if (!storeError) {
-        ToastService.success(`✅ Summoned ${quantity} ${unitType}!`);
-      }
+      ToastService.success(`✅ Summoned ${quantity} ${unitType}!`);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Summon failed';
       setError(errorMsg);
@@ -75,7 +71,7 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [summonUnits, kingdomId, storeError]);
+  }, [summonUnits, kingdomId]);
 
   const renderSummonDashboard = () => (
     <div className="summon-dashboard">

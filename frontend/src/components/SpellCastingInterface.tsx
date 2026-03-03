@@ -10,6 +10,7 @@ import { useSpellStore } from '../stores/spellStore';
 import { SPELLS, type Spell } from "../shared-spells";
 import { TopNavigation } from './TopNavigation';
 import { achievementTriggers } from '../utils/achievementTriggers';
+import { ToastService } from '../services/toastService';
 import './SpellCastingInterface.css';
 
 interface SpellCastingInterfaceProps {
@@ -76,7 +77,10 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
 
   // Initialize from server on mount
   useEffect(() => {
-    initializeFromServer(kingdomId);
+    initializeFromServer(kingdomId).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Failed to load spell data';
+      ToastService.error(msg);
+    });
   }, [kingdomId, initializeFromServer]);
 
   // Elan bar animation (renamed from mana)
@@ -135,6 +139,8 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
       }
     } catch (error) {
       console.error('Spell casting failed:', error);
+      const msg = error instanceof Error ? error.message : 'Spell casting failed';
+      ToastService.error(msg);
     }
   }, [canCastSpell, selectedTarget, castSpell, kingdomId, selectSpell]);
 

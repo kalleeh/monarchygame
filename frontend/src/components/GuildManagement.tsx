@@ -43,6 +43,7 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
   const [charterRules, setCharterRules] = useState('');
   const [charterAutoApprove, setCharterAutoApprove] = useState(false);
   const [pendingAllianceInvitations, setPendingAllianceInvitations] = useState<Schema['AllianceInvitation']['type'][]>([]);
+  const [chatSubscriptionError, setChatSubscriptionError] = useState<string | null>(null);
 
 
   const loadPendingInvitations = useCallback(async () => {
@@ -55,6 +56,7 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
       setPendingAllianceInvitations(data || []);
     } catch (error) {
       console.error('Failed to load pending invitations:', error);
+      ToastService.error('Failed to load pending invitations');
     }
   }, [kingdom?.id]);
 
@@ -78,6 +80,7 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
       setMessages(data.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
     } catch (error) {
       console.error('Failed to load messages:', error);
+      ToastService.error('Failed to load guild messages');
     }
   }, [kingdom.guildId]);
 
@@ -129,6 +132,7 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
             },
             error: (err) => {
               console.error('[GuildManagement] Chat subscription error:', err);
+              setChatSubscriptionError('Real-time chat is currently unavailable. Messages may not update automatically.');
             }
           });
           messageSubscription = { unsubscribe: () => sub.unsubscribe() };
@@ -549,13 +553,21 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
         )}
 
         {currentView === 'chat' && kingdom.guildId && (
-          <GuildChat
-            kingdom={kingdom}
-            guildTag={currentGuild?.tag}
-            messages={messages}
-            onMessageSent={(msg) => setMessages(prev => [...prev, msg])}
-            onMessageFailed={(msgId) => setMessages(prev => prev.filter(m => m.id !== msgId))}
-          />
+          <>
+            {chatSubscriptionError && (
+              <div className="gm-error-banner" role="alert" style={{ margin: '0.75rem 0' }}>
+                <span>⚠️ {chatSubscriptionError}</span>
+                <button onClick={() => setChatSubscriptionError(null)} aria-label="Dismiss">×</button>
+              </div>
+            )}
+            <GuildChat
+              kingdom={kingdom}
+              guildTag={currentGuild?.tag}
+              messages={messages}
+              onMessageSent={(msg) => setMessages(prev => [...prev, msg])}
+              onMessageFailed={(msgId) => setMessages(prev => prev.filter(m => m.id !== msgId))}
+            />
+          </>
         )}
       </main>
     </div>
