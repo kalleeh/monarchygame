@@ -108,7 +108,7 @@ async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: st
   }
 
   // Verify caller is the alliance leader
-  if (identity?.sub && alliance.owner !== identity.sub) {
+  if (identity?.sub && alliance.leaderId !== identity.sub) {
     return { success: false, error: 'Unauthorized: only the alliance leader can withdraw from the treasury', errorCode: ErrorCode.UNAUTHORIZED };
   }
 

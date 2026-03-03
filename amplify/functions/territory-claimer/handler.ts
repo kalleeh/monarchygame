@@ -117,6 +117,7 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
       buildings: JSON.stringify({}),
       defenseLevel: 0,
       kingdomId,
+      owner: identity.sub,
       ...(regionId ? { regionId } : {}),
       ...(category ? { category } : {})
     });

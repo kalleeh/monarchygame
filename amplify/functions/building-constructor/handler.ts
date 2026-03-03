@@ -100,6 +100,6 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
     return { success: true, buildings: JSON.stringify(updatedBuildings) };
   } catch (error) {
     log.error('building-constructor', error, { kingdomId, buildingType, quantity });
-    return { success: false, error: 'Construction failed', errorCode: ErrorCode.INTERNAL_ERROR };
+    return { success: false, error: error instanceof Error ? error.message : 'Construction failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };

@@ -316,6 +316,8 @@ export const useTerritoryStore = create(
 
           // Persist defense level upgrade to DynamoDB via the Territory model.
           // No dedicated upgrade Lambda exists yet — owner can update their own records.
+          // Territories created before the owner-field fix may return an auth error;
+          // in that case, fail gracefully with a clear explanation.
           if (!isDemoMode()) {
             const client = generateClient<Schema>();
             const { errors } = await client.models.Territory.update({
@@ -323,7 +325,12 @@ export const useTerritoryStore = create(
               defenseLevel: newLevel,
             });
             if (errors && errors.length > 0) {
-              set({ error: errors[0].message || 'Territory upgrade failed', loading: false });
+              const firstError = errors[0].message || '';
+              const isAuthError = /not authorized|unauthorized|owner/i.test(firstError);
+              const userMessage = isAuthError
+                ? 'Territory upgrade requires re-claiming this territory after a recent server update. New territories will upgrade correctly.'
+                : firstError || 'Territory upgrade failed';
+              set({ error: userMessage, loading: false });
               return false;
             }
           }
@@ -346,8 +353,12 @@ export const useTerritoryStore = create(
 
           return true;
         } catch (error) {
+          const message = error instanceof Error ? error.message : 'Territory upgrade failed';
+          const isAuthError = /not authorized|unauthorized|owner/i.test(message);
           set({
-            error: error instanceof Error ? error.message : 'Territory upgrade failed',
+            error: isAuthError
+              ? 'Territory upgrade requires re-claiming this territory after a recent server update. New territories will upgrade correctly.'
+              : message,
             loading: false,
           });
           return false;

@@ -18,6 +18,7 @@ import {
   FOCUS_MECHANICS,
 } from '../../../shared/mechanics/faith-focus-mechanics';
 import { updateFaith } from '../services/domain/FaithService';
+import { ToastService } from '../services/toastService';
 import { isDemoMode } from '../utils/authMode';
 
 type FaithAlignmentType = 'angelique' | 'neutral' | 'elemental' | null;
@@ -89,7 +90,7 @@ export const useFaithStore = create(
       /**
        * Select a faith alignment, validating it against the race's compatibility.
        */
-      selectAlignment: (alignment: FaithAlignmentType, race: string) => {
+      selectAlignment: async (alignment: FaithAlignmentType, race: string) => {
         if (alignment === null) {
           set({ alignment: null, error: null });
           return;
@@ -102,17 +103,24 @@ export const useFaithStore = create(
           return;
         }
 
-        set({ alignment, error: null });
-
-        // In auth mode, persist alignment selection to the backend
+        // In auth mode, persist alignment selection to the backend BEFORE updating local state
         const { kingdomId } = get();
         if (!isDemoMode() && kingdomId) {
-          updateFaith({
-            kingdomId,
-            action: 'selectAlignment',
-            alignment,
-          }).catch(err => console.error('[faithStore] selectAlignment Lambda failed:', err));
+          try {
+            await updateFaith({
+              kingdomId,
+              action: 'selectAlignment',
+              alignment,
+            });
+          } catch (err) {
+            console.error('[faithStore] selectAlignment Lambda failed:', err);
+            ToastService.error('Failed to save faith alignment. Please try again.');
+            return;
+          }
         }
+
+        // Only update local state after Lambda confirms success (or in demo mode)
+        set({ alignment, error: null });
       },
 
       /**
@@ -194,7 +202,10 @@ export const useFaithStore = create(
             kingdomId,
             action: 'useFocusAbility',
             abilityType,
-          }).catch(err => console.error('[faithStore] useFocusAbility Lambda failed:', err));
+          }).catch(err => {
+            console.error('[faithStore] useFocusAbility Lambda failed:', err);
+            ToastService.error('Failed to save focus ability usage. Your progress may not persist.');
+          });
         }
 
         return { success: true, effect };
