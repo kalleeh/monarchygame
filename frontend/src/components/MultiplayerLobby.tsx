@@ -89,7 +89,12 @@ const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({
       </div>
 
       {loading && <div className="lobby-loading">Loading season data...</div>}
-      {error && <div className="lobby-error">{error}</div>}
+      {error && (
+        <div className="lobby-error">
+          {error}
+          <button onClick={() => setError(null)} style={{ marginLeft: '0.75rem', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', lineHeight: 1 }} aria-label="Dismiss error">×</button>
+        </div>
+      )}
 
       {season && (
         <div className="season-banner">
