@@ -26,3 +26,18 @@ export interface TerritoryResult {
 export async function claimTerritory(payload: ClaimTerritoryPayload): Promise<TerritoryResult> {
   return AmplifyFunctionService.claimTerritory(payload) as Promise<TerritoryResult>;
 }
+
+export interface UpgradeTerritoryResult {
+  success: boolean;
+  defenseLevel?: number;
+  error?: string;
+}
+
+export async function upgradeTerritory(
+  kingdomId: string,
+  territoryId: string,
+  newDefenseLevel: number,
+  goldCost: number
+): Promise<UpgradeTerritoryResult> {
+  return AmplifyFunctionService.upgradeTerritory(kingdomId, territoryId, newDefenseLevel, goldCost) as Promise<UpgradeTerritoryResult>;
+}

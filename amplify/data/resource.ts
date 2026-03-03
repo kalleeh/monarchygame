@@ -398,6 +398,18 @@ const schema = a.schema({
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(territoryClaimer)),
 
+  upgradeTerritory: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
+      territoryId: a.string().required(),
+      newDefenseLevel: a.integer().required(),
+      goldCost: a.integer().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(territoryClaimer)),
+
   // Season Manager
   getActiveSeason: a
     .query()

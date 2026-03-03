@@ -399,6 +399,22 @@ export class AmplifyFunctionService {
     }
   }
 
+  static async upgradeTerritory(kingdomId: string, territoryId: string, newDefenseLevel: number, goldCost: number): Promise<unknown> {
+    if (isDemoMode()) {
+      return { success: true, defenseLevel: newDefenseLevel };
+    }
+    const { data, errors } = await client.mutations.upgradeTerritory({
+      kingdomId,
+      territoryId,
+      newDefenseLevel,
+      goldCost
+    });
+    if (errors && errors.length > 0) {
+      throw new Error('Territory upgrade failed: ' + errors.map((e: { message: string }) => e.message).join(', '));
+    }
+    return data;
+  }
+
   /**
    * Mock spell data for operations not yet implemented as mutations
    */

@@ -10,7 +10,60 @@ const COORDINATE_LIMITS = { min: -10000, max: 10000 } as const;
 type KingdomType = Record<string, unknown> & { turnsBalance?: number | null };
 type TerritoryType = { id: string; kingdomId?: string; regionId?: string; coordinates?: string };
 
-export const handler: Schema["claimTerritory"]["functionHandler"] = async (event) => {
+async function handleUpgrade(
+  args: { kingdomId: string; territoryId: string; newDefenseLevel: number; goldCost: number },
+  identity: { sub?: string; username?: string } | null
+) {
+  const { kingdomId, territoryId, newDefenseLevel, goldCost } = args;
+  try {
+    if (!identity?.sub) {
+      return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
+    }
+    if (!kingdomId || !territoryId) {
+      return { success: false, error: 'Missing kingdomId or territoryId', errorCode: ErrorCode.MISSING_PARAMS };
+    }
+
+    // Verify kingdom ownership
+    const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
+    if (!kingdom) {
+      return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+    }
+    const ownerField = kingdom.owner as string | null;
+    if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
+      return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
+    }
+
+    // Check gold
+    const resources = (kingdom.resources ?? {}) as KingdomResources;
+    const currentGold = resources.gold ?? 0;
+    if (currentGold < goldCost) {
+      return { success: false, error: `Insufficient gold: need ${goldCost}, have ${currentGold}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
+    }
+
+    // Deduct gold from kingdom
+    await dbUpdate('Kingdom', kingdomId, {
+      resources: { ...resources, gold: currentGold - goldCost }
+    });
+
+    // Update territory defense level directly via DynamoDB (bypasses AppSync owner check)
+    await dbUpdate('Territory', territoryId, { defenseLevel: newDefenseLevel });
+
+    log.info('territory-claimer', 'upgradeTerritory', { kingdomId, territoryId, newDefenseLevel });
+    return { success: true, defenseLevel: newDefenseLevel };
+  } catch (error) {
+    log.error('territory-claimer', error, { kingdomId, territoryId });
+    return { success: false, error: error instanceof Error ? error.message : 'Territory upgrade failed', errorCode: ErrorCode.INTERNAL_ERROR };
+  }
+}
+
+// Handles both claimTerritory and upgradeTerritory mutations (same Lambda, routed by fieldName)
+export const handler = async (event: Parameters<Schema["claimTerritory"]["functionHandler"]>[0] & { fieldName?: string }) => {
+  // Route upgrade requests to dedicated handler
+  if (event.fieldName === 'upgradeTerritory') {
+    const args = event.arguments as unknown as { kingdomId: string; territoryId: string; newDefenseLevel: number; goldCost: number };
+    return handleUpgrade(args, event.identity as { sub?: string; username?: string } | null);
+  }
+
   const { kingdomId, territoryName, territoryType, terrainType, coordinates, regionId, category } = event.arguments;
 
   try {
