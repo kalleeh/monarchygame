@@ -351,9 +351,6 @@ export const useTerritoryStore = create(
             loading: false,
           });
           return false;
-        
-          });
-          return false;
         }
       },
 
