@@ -352,3 +352,207 @@ export const useTerritoryStore = create(
           });
           return false;
         
+          });
+          return false;
+        }
+      },
+
+      // Resource generation
+      generateTerritoryResources: () => {
+        const state = get();
+        state.ownedTerritories.forEach(territory => {
+          if (territory) {
+            const baseGeneration = {
+              gold: 10 * territory.defenseLevel,
+              population: 5 * territory.defenseLevel,
+              land: 2 * territory.defenseLevel
+            };
+            
+            set(state => ({
+              territories: state.territories.map(t => 
+                t.id === territory.id 
+                  ? {
+                      ...t,
+                      resources: {
+                        gold: territory.resources.gold + baseGeneration.gold,
+                        population: territory.resources.population + baseGeneration.population,
+                        land: territory.resources.land + baseGeneration.land
+                      }
+                    }
+                  : t
+              )
+            }));
+          }
+        });
+      },
+
+      // Utility functions
+      getTerritoryById: (territoryId: string): Territory | undefined => {
+        return get().territories.find(t => t.id === territoryId);
+      },
+
+      getOwnedTerritories: (): Territory[] => {
+        const state = get();
+        return state.ownedTerritories;
+      },
+
+      canClaimTerritory: (territoryId: string): boolean => {
+        const state = get();
+        const expansion = state.availableExpansions.find(e => e.territoryId === territoryId);
+        if (!expansion || state.loading) return false;
+        
+        // Get resources from centralized kingdom store
+        const kingdomResources = useKingdomStore.getState().resources;
+        
+        // Check if player has enough gold and population (settlers)
+        return (
+          (kingdomResources.gold || 0) >= expansion.cost.gold &&
+          (kingdomResources.population || 0) >= expansion.cost.population
+        );
+      },
+      
+      getClaimCost: (territoryId: string) => {
+        const expansion = get().availableExpansions.find(e => e.territoryId === territoryId);
+        if (!expansion) return null;
+        
+        return {
+          gold: expansion.cost.gold,
+          population: expansion.cost.population
+        };
+      },
+      
+      getUpgradeCost: (territoryId: string) => {
+        const territory = get().territories.find(t => t.id === territoryId);
+        if (!territory) return null;
+        
+        const currentLevel = territory.defenseLevel || 0;
+        // Upgrade cost: Gold only (for construction, fortifications, workers)
+        // Cost scales exponentially to make higher levels more expensive
+        return {
+          gold: 200 * Math.pow(currentLevel + 1, 1.5)
+        };
+      },
+      
+      canAffordUpgrade: (territoryId: string): boolean => {
+        const territory = get().territories.find(t => t.id === territoryId);
+        if (!territory) return false;
+        
+        const currentLevel = territory.defenseLevel || 0;
+        const cost = { gold: 200 * Math.pow(currentLevel + 1, 1.5) };
+        
+        // Get resources from centralized kingdom store
+        const kingdomResources = useKingdomStore.getState().resources;
+        return (kingdomResources.gold || 0) >= cost.gold;
+      },
+
+      // UI actions
+      showExpansionDialog: (show: boolean) => {
+        set({ showExpansionDialog: show });
+      },
+
+      clearError: () => {
+        set({ error: null });
+      },
+
+      // Initialize with mock data (only once)
+      initializeTerritories: () => {
+        const state = get();
+
+        // Guard: Only initialize if not already initialized
+        if (state.initialized) {
+          return;
+        }
+
+        // Load any saved pending settlements from localStorage
+        const savedSettlements = localStorage.getItem('pendingSettlements');
+        if (savedSettlements) {
+          try {
+            const parsed = JSON.parse(savedSettlements) as PendingSettlement[];
+            set({ pendingSettlements: parsed });
+          } catch { /* ignore malformed data */ }
+        }
+        
+        const mockTerritories: Territory[] = [
+          {
+            id: 'capital-1',
+            name: 'Royal Capital',
+            type: 'capital',
+            position: { x: 0, y: 0 },
+            ownerId: 'current-player',
+            resources: { gold: 1000, population: 500, land: 100 },
+            buildings: { castle: 1, barracks: 2 },
+            defenseLevel: 3,
+            adjacentTerritories: ['settlement-1', 'settlement-2'],
+            regionId: 'wt-03',
+            category: 'farmland'
+          },
+          {
+            id: 'settlement-1',
+            name: 'Northern Outpost',
+            type: 'settlement',
+            position: { x: 100, y: -100 },
+            ownerId: '',
+            resources: { gold: 200, population: 100, land: 50 },
+            buildings: {},
+            defenseLevel: 1,
+            adjacentTerritories: ['capital-1', 'fortress-1'],
+            regionId: 'wt-02',
+            category: 'forest'
+          },
+          {
+            id: 'settlement-2',
+            name: 'Eastern Village',
+            type: 'settlement',
+            position: { x: 100, y: 100 },
+            ownerId: '',
+            resources: { gold: 150, population: 80, land: 40 },
+            buildings: {},
+            defenseLevel: 1,
+            adjacentTerritories: ['capital-1', 'outpost-1'],
+            regionId: 'wt-04',
+            category: 'farmland'
+          }
+        ];
+
+        const mockExpansions: TerritoryExpansion[] = [
+          {
+            territoryId: 'settlement-1',
+            cost: { gold: 500, turns: 3, population: 50 },
+            requirements: ['adjacent_territory'],
+            timestamp: Date.now()
+          },
+          {
+            territoryId: 'settlement-2',
+            cost: { gold: 400, turns: 2, population: 40 },
+            requirements: ['adjacent_territory'],
+            timestamp: Date.now()
+          }
+        ];
+
+        set({
+          territories: mockTerritories,
+          ownedTerritories: mockTerritories.filter(t => t.ownerId === 'current-player'),
+          availableExpansions: mockExpansions,
+          initialized: true
+        });
+      },
+
+      // Reset state
+      resetTerritoryState: () => {
+        set({
+          territories: [],
+          ownedTerritories: [] as Territory[],
+          selectedTerritory: null,
+          pendingSettlements: [] as PendingSettlement[],
+          availableExpansions: [],
+          pendingExpansions: [],
+          expansionHistory: [],
+          showExpansionDialog: false,
+          loading: false,
+          error: null,
+          initialized: false
+        });
+      }
+    })
+  )
+);
