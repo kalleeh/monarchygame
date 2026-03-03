@@ -6,7 +6,6 @@ import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 import { getActiveSeason } from '../services/domain/SeasonService';
 import { ToastService } from '../services/toastService';
 import { TopNavigation } from './TopNavigation';
-import { KingdomActionBar } from './KingdomActionBar';
 import { LoadingButton } from './ui/loading/LoadingButton';
 import { useTerritoryStore } from '../stores/territoryStore';
 import { useKingdomStore } from '../stores/kingdomStore';
@@ -258,11 +257,18 @@ function KingdomDashboard({
         //   { success: true, season: { seasonNumber, currentAge, ... } }   <- Lambda direct
         //   { data: { success: true, season: { ... } } }                   <- wrapped
         //   { data: { getActiveSeason: { ... } } }                         <- GraphQL resolver
+        // client.queries.getActiveSeason returns { data: { getActiveSeason: <Lambda result> } }
+        // The Lambda result is { success, season: { seasonNumber, currentAge, ... } }
+        // So we need to unwrap two levels: data -> getActiveSeason -> season
         const payload = (raw as any)?.data ?? raw;
-        const seasonData =
-          payload?.season ??
-          payload?.getActiveSeason ??
-          null;
+        const lambdaResult =
+          payload?.getActiveSeason ??   // GraphQL query shape: { getActiveSeason: { success, season } }
+          payload;                       // Direct Lambda shape: { success, season }
+        // Parse if AppSync returned AWSJSON as a string
+        const parsed = typeof lambdaResult === 'string'
+          ? (() => { try { return JSON.parse(lambdaResult); } catch { return null; } })()
+          : lambdaResult;
+        const seasonData = parsed?.season ?? null;
         if (seasonData && seasonData.currentAge) {
           setSeasonInfo({
             seasonNumber: seasonData.seasonNumber ?? 1,
@@ -716,24 +722,6 @@ function KingdomDashboard({
             <span className="race-badge">{kingdom.race}</span>
           </div>
         }
-      />
-
-      <KingdomActionBar
-        kingdom={kingdom}
-        onManageCombat={onManageCombat}
-        onSummonUnits={onSummonUnits}
-        onCastSpells={onCastSpells}
-        onManageAlliance={onManageAlliance}
-        onManageTrade={onManageTrade}
-        onDiplomacy={onDiplomacy}
-        onManageTerritories={onManageTerritories}
-        onManageBuildings={onManageBuildings}
-        onViewWorldMap={onViewWorldMap}
-        onBattleReports={onBattleReports}
-        onViewLeaderboard={onViewLeaderboard}
-        isActionProhibited={isActionProhibited}
-        onShowUnitRoster={() => setShowUnitRoster(true)}
-        onShowHelp={() => setShowHelp(true)}
       />
 
       {/* Season Age Badge */}

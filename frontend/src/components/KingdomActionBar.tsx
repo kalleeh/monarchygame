@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRestorationStore } from '../stores/restorationStore';
 import './KingdomActionBar.css';
 
 interface ActionItem {
@@ -217,5 +218,39 @@ export const KingdomActionBar: React.FC<KingdomActionBarProps> = ({
 
       </div>
     </div>
+  );
+};
+
+/**
+ * Self-contained action bar for use outside KingdomDashboard.
+ * Reads prohibited actions from restorationStore directly.
+ * All navigation uses the router — no callbacks needed.
+ */
+export const KingdomActionBarConnected: React.FC<{ kingdomId: string }> = ({ kingdomId }) => {
+  const navigate = useNavigate();
+  const isInRestoration = useRestorationStore((s) => s.isInRestoration);
+  const prohibitedActions = useRestorationStore((s) => s.prohibitedActions);
+
+  const isActionProhibited = (action: string) =>
+    isInRestoration && prohibitedActions.includes(action);
+
+  return (
+    <KingdomActionBar
+      kingdom={{ id: kingdomId }}
+      onManageTerritories={() => navigate(`/kingdom/${kingdomId}/territories`)}
+      onManageBuildings={() => navigate(`/kingdom/${kingdomId}/buildings`)}
+      onViewWorldMap={() => navigate(`/kingdom/${kingdomId}/worldmap`)}
+      onManageCombat={() => navigate(`/kingdom/${kingdomId}/combat`)}
+      onSummonUnits={() => navigate(`/kingdom/${kingdomId}/summon`)}
+      onCastSpells={() => navigate(`/kingdom/${kingdomId}/magic`)}
+      onManageAlliance={() => navigate(`/kingdom/${kingdomId}/alliance`)}
+      onManageTrade={() => navigate(`/kingdom/${kingdomId}/trade`)}
+      onDiplomacy={() => navigate(`/kingdom/${kingdomId}/diplomacy`)}
+      onBattleReports={() => navigate(`/kingdom/${kingdomId}/reports`)}
+      onViewLeaderboard={() => navigate(`/kingdom/${kingdomId}/leaderboard`)}
+      isActionProhibited={isActionProhibited}
+      onShowUnitRoster={() => {}}
+      onShowHelp={() => navigate(`/kingdom/${kingdomId}`)}
+    />
   );
 };

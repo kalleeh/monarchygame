@@ -1,8 +1,11 @@
 /* ── Sticky action bar — sits directly below the 56px TopNavigation ── */
 
 .action-bar-sticky {
-  position: sticky;
+  position: fixed;
   top: 56px;
+  left: 0;
+  right: 0;
+  width: 100%;
   z-index: 99;
   background: rgba(10, 10, 22, 0.98);
   border-bottom: 1px solid rgba(99, 102, 241, 0.22);

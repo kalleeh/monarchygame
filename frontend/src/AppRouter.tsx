@@ -40,6 +40,7 @@ const MultiplayerLobby = lazy(() => import('./components/MultiplayerLobby'));
 const KingdomBrowser = lazy(() => import('./components/KingdomBrowser'));
 const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard'));
 const BuildingManagement = lazy(() => import('./components/BuildingManagement'));
+import { KingdomActionBarConnected } from './components/KingdomActionBar';
 
 interface AppRouterProps {
   kingdoms: Schema['Kingdom']['type'][];
@@ -228,6 +229,8 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
         />
       )}
 
+      <KingdomActionBarConnected kingdomId={kingdom.id} />
+      <div style={{ paddingTop: '44px' }}>
       <Suspense fallback={<LoadingSkeleton type="dashboard" />}>
       <Routes>
         {/* Dashboard - default view */}
