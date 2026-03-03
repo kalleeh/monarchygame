@@ -144,6 +144,6 @@ export const handler = async (event: any) => {
     }
   } catch (error) {
     log.error('bounty-processor', error, { fieldName });
-    return { success: false, error: 'Bounty operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
+    return { success: false, error: error instanceof Error ? error.message : 'Bounty operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };

@@ -156,7 +156,7 @@ export const useFaithStore = create(
        * Use a focus ability, deducting focus points and applying the effect.
        * Returns the result of the ability usage.
        */
-      useFocusAbility: (
+      useFocusAbility: async (
         abilityType: keyof typeof FOCUS_MECHANICS.ABILITY_COSTS,
         baseValue: number = 1
       ) => {
@@ -180,7 +180,23 @@ export const useFaithStore = create(
         const effectType = abilityToEffect[abilityType] || 'RACIAL_ABILITY_BOOST';
         const effect = applyFocusEffect(effectType, baseValue);
 
-        // Deduct cost and track effect
+        // In auth mode, await Lambda before updating local state
+        const { kingdomId } = get();
+        if (!isDemoMode() && kingdomId) {
+          try {
+            await updateFaith({
+              kingdomId,
+              action: 'useFocusAbility',
+              abilityType,
+            });
+          } catch (err) {
+            console.error('[faithStore] useFocusAbility Lambda failed:', err);
+            ToastService.error('Failed to save focus ability usage. Please try again.');
+            return { success: false, reason: 'Backend save failed' };
+          }
+        }
+
+        // Only deduct cost and track effect after Lambda confirms success (or in demo mode)
         set((state) => ({
           focusPoints: state.focusPoints - check.cost,
           activeEffects: [
@@ -194,19 +210,6 @@ export const useFaithStore = create(
           ],
           error: null,
         }));
-
-        // In auth mode, persist focus ability usage to the backend
-        const { kingdomId } = get();
-        if (!isDemoMode() && kingdomId) {
-          updateFaith({
-            kingdomId,
-            action: 'useFocusAbility',
-            abilityType,
-          }).catch(err => {
-            console.error('[faithStore] useFocusAbility Lambda failed:', err);
-            ToastService.error('Failed to save focus ability usage. Your progress may not persist.');
-          });
-        }
 
         return { success: true, effect };
       },

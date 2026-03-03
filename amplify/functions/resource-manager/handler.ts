@@ -98,7 +98,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       return { success: true, encampEndTime, encampBonusTurns: bonusTurns };
     } catch (error) {
       log.error('resource-manager', error, { kingdomId, action: 'encamp' });
-      return { success: false, error: 'Encamp failed', errorCode: ErrorCode.INTERNAL_ERROR };
+      return { success: false, error: error instanceof Error ? error.message : 'Encamp failed', errorCode: ErrorCode.INTERNAL_ERROR };
     }
   }
 
@@ -244,6 +244,6 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     return { success: true, resources: JSON.stringify(updated), newTurns: turns };
   } catch (error) {
     log.error('resource-manager', error, { kingdomId });
-    return { success: false, error: 'Resource update failed', errorCode: ErrorCode.INTERNAL_ERROR };
+    return { success: false, error: error instanceof Error ? error.message : 'Resource update failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };

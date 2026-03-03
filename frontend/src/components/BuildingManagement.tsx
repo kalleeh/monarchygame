@@ -131,6 +131,7 @@ export default function BuildingManagement({
 
   const handleBuild = useCallback(
     async (building: BuildingDef) => {
+      if (loading[building.id]) return;
       const quantity = quantities[building.id] ?? 1;
       const totalCost = quantity * GOLD_PER_BUILDING;
 

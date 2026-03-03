@@ -15,6 +15,7 @@ import { isRacialAbilityActive } from "../../../shared/mechanics/age-mechanics";
 import { RACES } from '../../__mocks__/@game-data/races';
 import { useSummonStore } from './useSummonStore';
 import { isDemoMode } from '../utils/authMode';
+import { ToastService } from '../services/toastService';
 import { processCombat, declareWar as declareWarApi, refreshKingdomResources } from '../services/domain/CombatService';
 import { achievementTriggers } from '../utils/achievementTriggers';
 import { GuildService } from '../services/GuildService';
@@ -578,7 +579,10 @@ export const useCombatStore = create(
           defenderKingdomId: defenderId,
           seasonId: undefined,
           reason: 'Formal war declaration',
-        }).catch((err: unknown) => console.warn('[combatStore] war declaration persist failed:', err));
+        }).catch((err: unknown) => {
+          console.warn('[combatStore] war declaration persist failed:', err);
+          ToastService.warn('War declaration may not have saved — please try again if needed');
+        });
         set((state) => ({
           warDeclarations: [...state.warDeclarations, warDeclaration]
         }));

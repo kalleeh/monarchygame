@@ -119,7 +119,7 @@ export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event
     });
   } catch (error) {
     log.error('trade-processor', error);
-    return JSON.stringify({ success: false, error: 'Trade operation failed', errorCode: ErrorCode.INTERNAL_ERROR });
+    return JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Trade operation failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }
 };
 

@@ -34,6 +34,7 @@ type DiplomaticRelationType = {
   status: string;
   reputation: number;
   lastActionAt: string;
+  owner?: string;
 };
 
 export const handler: Schema["declareWar"]["functionHandler"] = async (event) => {
@@ -125,6 +126,7 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
       data: JSON.stringify({ warId: warDeclaration.id, attackerId, seasonId }),
       isRead: false,
       createdAt: new Date().toISOString(),
+      owner: identity.sub,
     });
 
     // Update diplomatic relation to war
@@ -146,7 +148,8 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
         targetKingdomId: defenderId,
         status: 'war',
         reputation: -50,
-        lastActionAt: new Date().toISOString()
+        lastActionAt: new Date().toISOString(),
+        owner: identity.sub
       });
     }
 
@@ -163,7 +166,7 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
     });
   } catch (error) {
     log.error('war-manager', error);
-    return JSON.stringify({ success: false, error: 'War operation failed', errorCode: ErrorCode.INTERNAL_ERROR });
+    return JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'War operation failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }
 };
 

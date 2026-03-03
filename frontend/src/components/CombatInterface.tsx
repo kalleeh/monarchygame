@@ -15,6 +15,7 @@ import type {
 import type { RaceType } from '../types/amplify';
 
 import { processCombat } from '../services/domain/CombatService';
+import { ToastService } from '../services/toastService';
 import { AttackPlanner } from './combat/AttackPlanner';
 import { BattleReports } from './combat/BattleReports';
 import { DefenseManager } from './combat/DefenseManager';
@@ -125,6 +126,7 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Attack failed';
       setError(errorMessage);
+      ToastService.error('Attack failed: ' + errorMessage);
       console.error('Attack failed:', err);
     } finally {
       setIsLoading(false);

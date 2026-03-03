@@ -87,6 +87,6 @@ export const handler: Schema["getActiveSeason"]["functionHandler"] = async (even
     });
   } catch (error) {
     log.error('season-manager', error);
-    return JSON.stringify({ success: false, error: 'Season query failed', errorCode: ErrorCode.INTERNAL_ERROR });
+    return JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Season query failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }
 };

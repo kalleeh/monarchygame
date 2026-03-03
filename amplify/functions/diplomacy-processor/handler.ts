@@ -23,6 +23,7 @@ type TreatyType = {
   proposedAt: string;
   expiresAt: string;
   respondedAt?: string;
+  owner?: string;
 };
 
 type DiplomaticRelationType = {
@@ -32,6 +33,7 @@ type DiplomaticRelationType = {
   status: string;
   reputation: number;
   lastActionAt: string;
+  owner?: string;
 };
 
 type WarDeclarationType = {
@@ -114,7 +116,8 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
       status: 'proposed',
       terms: terms ? JSON.stringify(terms) : '{}',
       proposedAt: new Date().toISOString(),
-      expiresAt
+      expiresAt,
+      owner: callerIdentity.sub
     });
 
     log.info('diplomacy-processor', 'sendTreatyProposal', { proposerId, recipientId, treatyType });
@@ -131,7 +134,7 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
     });
   } catch (error) {
     log.error('diplomacy-processor', error);
-    return JSON.stringify({ success: false, error: 'Diplomacy operation failed', errorCode: ErrorCode.INTERNAL_ERROR });
+    return JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Diplomacy operation failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }
 };
 
@@ -240,7 +243,8 @@ async function handleDeclareDiplomaticWar(args: { kingdomId: string; targetKingd
       targetKingdomId,
       status: 'war',
       reputation: -30,
-      lastActionAt: new Date().toISOString()
+      lastActionAt: new Date().toISOString(),
+      owner: callerIdentity.sub
     });
   }
 

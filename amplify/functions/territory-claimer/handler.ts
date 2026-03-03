@@ -126,6 +126,6 @@ export const handler: Schema["claimTerritory"]["functionHandler"] = async (event
     return { success: true, territory: territoryName, regionId: regionId ?? null, category: category ?? null };
   } catch (error) {
     log.error('territory-claimer', error, { kingdomId, territoryName });
-    return { success: false, error: 'Territory claim failed', errorCode: ErrorCode.INTERNAL_ERROR };
+    return { success: false, error: error instanceof Error ? error.message : 'Territory claim failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };

@@ -16,6 +16,7 @@ type SeasonType = {
   ageTransitions: string;
   endDate?: string;
   participantCount?: number;
+  owner?: string;
 };
 
 type KingdomType = {
@@ -192,7 +193,8 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
           startDate: new Date().toISOString(),
           currentAge: 'early',
           ageTransitions: JSON.stringify({ early: new Date().toISOString() }),
-          participantCount: 0
+          participantCount: 0,
+          owner: identity.sub
         });
 
         log.info('season-lifecycle', 'createSeason', { seasonNumber: maxNumber + 1 });
@@ -310,6 +312,6 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
     }
   } catch (error) {
     log.error('season-lifecycle', error, { action: args.action });
-    return JSON.stringify({ success: false, error: 'Season lifecycle operation failed', errorCode: ErrorCode.INTERNAL_ERROR });
+    return JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Season lifecycle operation failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }
 };

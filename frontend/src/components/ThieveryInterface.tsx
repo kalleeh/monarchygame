@@ -9,6 +9,7 @@ import { useThieveryStore, type OperationType } from '../stores/thieveryStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { TopNavigation } from './TopNavigation';
+import { ToastService } from '../services/toastService';
 import { THIEVERY_MECHANICS } from '../../../shared/mechanics/thievery-mechanics';
 import './ThieveryInterface.css';
 
@@ -71,6 +72,7 @@ const OPERATION_CONFIG: Record<OperationType, { label: string; turnCost: number;
 const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, onBack }) => {
   const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
+  const [operationLoading, setOperationLoading] = useState(false);
 
   const {
     scumCount,
@@ -126,77 +128,85 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, onBack
     : 0;
 
   const handleExecuteOperation = useCallback(
-    (type: OperationType) => {
+    async (type: OperationType) => {
       if (!selectedKingdom) return;
+      if (operationLoading) return;
 
       const estimatedEnemyScum = Math.floor(selectedKingdom.resources.land * 0.1);
-      const result = executeOperation(
-        type,
-        selectedKingdom.id,
-        selectedKingdom.name,
-        estimatedEnemyScum,
-        selectedKingdom.race,
-        selectedKingdom.resources.gold,
-        spendTurns
-      );
+      setOperationLoading(true);
+      try {
+        const result = await executeOperation(
+          type,
+          selectedKingdom.id,
+          selectedKingdom.name,
+          estimatedEnemyScum,
+          selectedKingdom.race,
+          selectedKingdom.resources.gold,
+          spendTurns
+        );
 
-      if (result) {
-        // If gold was stolen, add it to kingdom
-        if (result.result.goldStolen > 0) {
-          addGold(result.result.goldStolen);
-        }
-
-        // Build result message
-        let message: string;
-        if (result.success) {
-          switch (type) {
-            case 'scout':
-              message = `Scout successful! Intel gathered on ${selectedKingdom.name}.`;
-              if (result.result.informationGained) {
-                const info = result.result.informationGained;
-                message += ` Est. gold: ${info.estimatedGold?.toLocaleString()}, Est. scum: ${info.estimatedScum?.toLocaleString()}, Defense: ${info.defenseRating}`;
-              }
-              break;
-            case 'steal':
-              message = `Theft successful! Stole ${result.result.goldStolen.toLocaleString()} gold from ${selectedKingdom.name}.`;
-              break;
-            case 'sabotage':
-              message = `Sabotage successful! Eliminated ${result.result.casualtiesInflicted} enemy scum from ${selectedKingdom.name}.`;
-              break;
-            case 'burn':
-              message = `Burn successful! Destroyed ${result.result.casualtiesInflicted} enemy scum in ${selectedKingdom.name}.`;
-              break;
-            case 'desecrate':
-              message = result.result.templesDestroyed > 0
-                ? `Desecration successful! Destroyed ${result.result.templesDestroyed} temples in ${selectedKingdom.name}. Their elan generation is weakened.`
-                : `Desecration successful against ${selectedKingdom.name} (no temples to destroy).`;
-              break;
-            case 'spread_dissention':
-              message = result.result.populationKilled > 0
-                ? `Dissention spread through ${selectedKingdom.name}! Killed ${result.result.populationKilled.toLocaleString()} peasants.`
-                : `Dissention spread through ${selectedKingdom.name} (no population to kill).`;
-              break;
-            case 'intercept_caravans':
-              message = result.result.goldIntercepted > 0
-                ? `Caravan intercepted! Seized ${result.result.goldIntercepted.toLocaleString()} gold from ${selectedKingdom.name}.`
-                : `Caravan interception against ${selectedKingdom.name} yielded no gold.`;
-              break;
-            case 'scum_kill':
-              message = result.result.scoutsKilled > 0
-                ? `Scout execution successful! Eliminated ${result.result.scoutsKilled} scouts in ${selectedKingdom.name}.`
-                : `Scout execution against ${selectedKingdom.name} — no scouts to eliminate.`;
-              break;
-            default:
-              message = `Operation successful against ${selectedKingdom.name}.`;
+        if (result) {
+          // If gold was stolen, add it to kingdom
+          if (result.result.goldStolen > 0) {
+            addGold(result.result.goldStolen);
           }
-        } else {
-          message = `${OPERATION_CONFIG[type].label} operation against ${selectedKingdom.name} failed. Lost ${result.result.casualtiesSuffered} scum.`;
-        }
 
-        setLastResult(message);
+          // Build result message
+          let message: string;
+          if (result.success) {
+            switch (type) {
+              case 'scout':
+                message = `Scout successful! Intel gathered on ${selectedKingdom.name}.`;
+                if (result.result.informationGained) {
+                  const info = result.result.informationGained;
+                  message += ` Est. gold: ${info.estimatedGold?.toLocaleString()}, Est. scum: ${info.estimatedScum?.toLocaleString()}, Defense: ${info.defenseRating}`;
+                }
+                break;
+              case 'steal':
+                message = `Theft successful! Stole ${result.result.goldStolen.toLocaleString()} gold from ${selectedKingdom.name}.`;
+                break;
+              case 'sabotage':
+                message = `Sabotage successful! Eliminated ${result.result.casualtiesInflicted} enemy scum from ${selectedKingdom.name}.`;
+                break;
+              case 'burn':
+                message = `Burn successful! Destroyed ${result.result.casualtiesInflicted} enemy scum in ${selectedKingdom.name}.`;
+                break;
+              case 'desecrate':
+                message = result.result.templesDestroyed > 0
+                  ? `Desecration successful! Destroyed ${result.result.templesDestroyed} temples in ${selectedKingdom.name}. Their elan generation is weakened.`
+                  : `Desecration successful against ${selectedKingdom.name} (no temples to destroy).`;
+                break;
+              case 'spread_dissention':
+                message = result.result.populationKilled > 0
+                  ? `Dissention spread through ${selectedKingdom.name}! Killed ${result.result.populationKilled.toLocaleString()} peasants.`
+                  : `Dissention spread through ${selectedKingdom.name} (no population to kill).`;
+                break;
+              case 'intercept_caravans':
+                message = result.result.goldIntercepted > 0
+                  ? `Caravan intercepted! Seized ${result.result.goldIntercepted.toLocaleString()} gold from ${selectedKingdom.name}.`
+                  : `Caravan interception against ${selectedKingdom.name} yielded no gold.`;
+                break;
+              case 'scum_kill':
+                message = result.result.scoutsKilled > 0
+                  ? `Scout execution successful! Eliminated ${result.result.scoutsKilled} scouts in ${selectedKingdom.name}.`
+                  : `Scout execution against ${selectedKingdom.name} — no scouts to eliminate.`;
+                break;
+              default:
+                message = `Operation successful against ${selectedKingdom.name}.`;
+            }
+          } else {
+            message = `${OPERATION_CONFIG[type].label} operation against ${selectedKingdom.name} failed. Lost ${result.result.casualtiesSuffered} scum.`;
+          }
+
+          setLastResult(message);
+        }
+      } catch (err) {
+        ToastService.error('Operation failed: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      } finally {
+        setOperationLoading(false);
       }
     },
-    [selectedKingdom, executeOperation, spendTurns, addGold]
+    [selectedKingdom, operationLoading, executeOperation, spendTurns, addGold]
   );
 
   return (
@@ -295,6 +305,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, onBack
               ([type, config]) => {
                 const canExecute =
                   !loading &&
+                  !operationLoading &&
                   selectedTarget !== null &&
                   totalScum >= THIEVERY_MECHANICS.DETECTION.MINIMUM_SCUM &&
                   (resources.turns || 0) >= config.turnCost;

@@ -436,7 +436,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       }),
       casualties: JSON.stringify(combatResult.casualties),
       landGained: combatResult.landGained,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      owner: identity.sub
     });
 
     // Check if defender should enter restoration after severe damage
@@ -480,6 +481,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
               data: JSON.stringify({ defenderId, killerKingdomId: attackerId }),
               isRead: false,
               createdAt: new Date().toISOString(),
+              owner: identity.sub,
             });
           }
         }
@@ -576,6 +578,6 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     };
   } catch (error) {
     log.error('combat-processor', error, { attackerId, defenderId });
-    return { success: false, error: 'Combat processing failed', errorCode: ErrorCode.INTERNAL_ERROR };
+    return { success: false, error: error instanceof Error ? error.message : 'Combat processing failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };

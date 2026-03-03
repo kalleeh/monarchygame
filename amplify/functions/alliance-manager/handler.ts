@@ -98,6 +98,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
           memberIds: JSON.stringify([kingdomId]),
           maxMembers: 20,
           isPublic: isPublic ?? true,
+          owner: identity.sub,
         });
 
         if (!newAlliance) {
@@ -344,6 +345,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
           inviteeId: targetKingdomId,
           status: 'pending',
           createdAt: new Date().toISOString(),
+          owner: identity.sub,
         });
 
         if (!invitation) {
@@ -426,6 +428,6 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
     }
   } catch (error) {
     log.error('alliance-manager', error, { kingdomId, action, allianceId });
-    return { success: false, error: 'Alliance management operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
+    return { success: false, error: error instanceof Error ? error.message : 'Alliance management operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };

@@ -8,6 +8,7 @@ import { useSpring, useTransition, animated, config } from '@react-spring/web';
 import type { Resource, TradeOffer, TrendData, PriceHistoryEntry } from '../types';
 import { useTradeStore } from '../stores/tradeStore';
 import { TopNavigation } from './TopNavigation';
+import { ToastService } from '../services/toastService';
 import './TradeSystem.css';
 import {
   LineChart,
@@ -124,14 +125,30 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
 
   const handleCreateOffer = async () => {
     if (offerForm.resourceId && offerForm.quantity > 0 && offerForm.pricePerUnit > 0) {
-      await createOffer(offerForm as Partial<TradeOffer>);
-      setOfferForm({ resourceId: '', quantity: 0, pricePerUnit: 0 });
-      setShowCreateOffer(false);
+      try {
+        await createOffer(offerForm as Partial<TradeOffer>);
+        setOfferForm({ resourceId: '', quantity: 0, pricePerUnit: 0 });
+        setShowCreateOffer(false);
+      } catch {
+        ToastService.error('Failed to create offer — please try again');
+      }
     }
   };
 
   const handleAcceptOffer = async (offerId: string) => {
-    await acceptOffer(offerId);
+    try {
+      await acceptOffer(offerId);
+    } catch {
+      ToastService.error('Failed to accept offer — please try again');
+    }
+  };
+
+  const handleCancelOffer = async (offerId: string) => {
+    try {
+      await cancelOffer(offerId);
+    } catch {
+      ToastService.error('Failed to cancel offer — please try again');
+    }
   };
 
   return (
@@ -319,9 +336,9 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
                     Accept
                   </button>
                 ) : (
-                  <button 
+                  <button
                     className="cancel-btn"
-                    onClick={() => cancelOffer(offer.id)}
+                    onClick={() => handleCancelOffer(offer.id)}
                   >
                     Cancel
                   </button>

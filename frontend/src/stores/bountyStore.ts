@@ -11,6 +11,7 @@ import { useKingdomStore } from './kingdomStore';
 import type { AIKingdom } from './aiKingdomStore';
 import { claimBounty as claimBountyApi, completeBounty as completeBountyApi } from '../services/domain/BountyService';
 import { isDemoMode } from '../utils/authMode';
+import { ToastService } from '../services/toastService';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -224,7 +225,10 @@ export const useBountyStore = create<BountyState>((set, get) => ({
       claimBountyApi({
         kingdomId,
         targetId: bounty.target.kingdomId,
-      }).catch(err => console.error('[bountyStore] claimBounty Lambda failed:', err));
+      }).catch(err => {
+        console.error('[bountyStore] claimBounty Lambda failed:', err);
+        ToastService.error('Bounty claim may not have saved — please try again if needed.');
+      });
     }
   },
 
@@ -296,7 +300,10 @@ export const useBountyStore = create<BountyState>((set, get) => ({
         kingdomId,
         targetId,
         landGained,
-      }).catch(err => console.error('[bountyStore] completeBounty Lambda failed:', err));
+      }).catch(err => {
+        console.error('[bountyStore] completeBounty Lambda failed:', err);
+        ToastService.error('Bounty completion may not have saved — please try again if needed.');
+      });
     }
   },
 
