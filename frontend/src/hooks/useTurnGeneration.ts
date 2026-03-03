@@ -184,8 +184,10 @@ export const useTurnGeneration = ({
         turnsToGenerate
       }));
 
-      // Auto-generate if enabled and turns are available
-      if (state.autoGenerate && turnsToGenerate > 0 && !state.isGenerating) {
+      // Auto-generate if enabled and turns are available.
+      // Use inFlightRef (not state.isGenerating) so this check is synchronous —
+      // avoids re-creating the timer every time isGenerating flips.
+      if (state.autoGenerate && turnsToGenerate > 0 && !inFlightRef.current) {
         generateTurns();
       }
     };
@@ -199,7 +201,9 @@ export const useTurnGeneration = ({
         clearInterval(intervalRef.current);
       }
     };
-  }, [calculateAvailableTurns, state.autoGenerate, state.isGenerating, generateTurns]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit state.isGenerating;
+  // the inFlightRef check is synchronous so we don't need isGenerating in deps
+  }, [calculateAvailableTurns, state.autoGenerate, generateTurns]);
 
   // Toggle auto-generation
   const toggleAutoGenerate = useCallback(() => {
