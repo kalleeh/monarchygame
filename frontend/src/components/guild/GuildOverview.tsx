@@ -190,8 +190,8 @@ const GuildOverview: React.FC<GuildOverviewProps> = ({
         </div>
       ) : (
         <div className="no-guild">
-          <h3>You are not in an guild</h3>
-          <p>Join an guild to access shared resources, coordinate attacks, and chat with allies.</p>
+          <h3>You are not in a guild</h3>
+          <p>Join a guild to access shared resources, coordinate attacks, and chat with allies.</p>
           <div className="guild-benefits">
             <h4>Guild Benefits:</h4>
             <ul>

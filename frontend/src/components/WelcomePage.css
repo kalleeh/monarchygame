@@ -494,7 +494,7 @@
 .stat-fill.training { background: linear-gradient(90deg, #00cec9, #81ecec); }
 .stat-fill.building { background: linear-gradient(90deg, #0984e3, #74b9ff); }
 
-.stat-value {
+.race-stats .stat-value {
   font-weight: 600;
   color: #fff;
   text-align: right;

@@ -21,6 +21,13 @@ interface RaceAbilitiesPanelProps {
   raceData: RaceData | null | undefined;
 }
 
+function formatStatLabel(key: string): string {
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, (c) => c.toUpperCase())
+    .trim();
+}
+
 export function RaceAbilitiesPanel({ raceData }: RaceAbilitiesPanelProps) {
   return (
     <div className="race-stats-panel">
@@ -38,7 +45,7 @@ export function RaceAbilitiesPanel({ raceData }: RaceAbilitiesPanelProps) {
         <div className="stats-mini">
           {raceData && Object.entries(raceData.stats).slice(0, 4).map(([stat, value]) => (
             <div key={stat} className="stat-mini">
-              <span className="stat-name">{stat}</span>
+              <span className="stat-name">{formatStatLabel(stat)}</span>
               <div className="stat-bar-mini">
                 <div
                   className="stat-fill-mini"

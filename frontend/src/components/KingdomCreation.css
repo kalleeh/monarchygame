@@ -181,13 +181,13 @@
   line-height: 1;
 }
 
-.stat-value {
+.stat-bar-container .stat-value {
   color: var(--gm-text-gold, #fbbf24);
   font-weight: 400;
-  font-size: 0.5rem !important;
+  font-size: 0.5rem;
   font-family: monospace;
   line-height: 1;
-  opacity: 0.6 !important;
+  opacity: 0.6;
 }
 
 .stat-bar {

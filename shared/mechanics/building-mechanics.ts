@@ -136,7 +136,8 @@ export const RACE_BUILDING_NAMES: Record<string, Record<string, string>> = {
     troop: 'Barracks',
     buildrate: 'Quarries',
     magic: 'Temples',
-    fortress: 'Fortresses'
+    fortress: 'Fortresses',
+    castle: 'Castle'
   },
   ELVEN: {
     income: 'Markets',
@@ -144,7 +145,8 @@ export const RACE_BUILDING_NAMES: Record<string, Record<string, string>> = {
     troop: 'Garrisons',
     buildrate: 'Mills',
     magic: 'Groves',
-    fortress: 'Towers'
+    fortress: 'Towers',
+    castle: 'Castle'
   },
   GOBLIN: {
     income: 'Smithies',
@@ -152,7 +154,8 @@ export const RACE_BUILDING_NAMES: Record<string, Record<string, string>> = {
     troop: 'Barrak',
     buildrate: 'Mines',
     magic: 'Shrines',
-    fortress: 'Tunnels'
+    fortress: 'Tunnels',
+    castle: 'Castle'
   },
   DROBEN: {
     income: 'TimoTon',
@@ -160,7 +163,8 @@ export const RACE_BUILDING_NAMES: Record<string, Record<string, string>> = {
     troop: 'RumaNa',
     buildrate: 'Waterfalls',
     magic: 'Enclaves',
-    fortress: 'Arches'
+    fortress: 'Arches',
+    castle: 'Castle'
   },
   VAMPIRE: {
     income: 'Underwoods',
@@ -168,7 +172,8 @@ export const RACE_BUILDING_NAMES: Record<string, Record<string, string>> = {
     troop: 'Great Halls',
     buildrate: 'Bloodbaths',
     magic: 'Focus Points',
-    fortress: 'Centrocs'
+    fortress: 'Centrocs',
+    castle: 'Castle'
   },
   ELEMENTAL: {
     income: 'Slave Markets',
@@ -176,7 +181,8 @@ export const RACE_BUILDING_NAMES: Record<string, Record<string, string>> = {
     troop: 'Cages',
     buildrate: 'Spectral Mists',
     magic: 'Casting Pits',
-    fortress: 'Altars'
+    fortress: 'Altars',
+    castle: 'Castle'
   },
   CENTAUR: {
     income: 'Trinket Shops',
@@ -184,7 +190,8 @@ export const RACE_BUILDING_NAMES: Record<string, Record<string, string>> = {
     troop: 'Thickets',
     buildrate: 'Forges',
     magic: 'Fires',
-    fortress: 'Briars'
+    fortress: 'Briars',
+    castle: 'Castle'
   },
   SIDHE: {
     income: 'Wagons',
@@ -192,7 +199,8 @@ export const RACE_BUILDING_NAMES: Record<string, Record<string, string>> = {
     troop: 'Sacred Fields',
     buildrate: 'Looms',
     magic: 'Magick Circles',
-    fortress: 'Spires'
+    fortress: 'Spires',
+    castle: 'Castle'
   },
   DWARVEN: {
     income: 'Gem Mines',
@@ -200,7 +208,8 @@ export const RACE_BUILDING_NAMES: Record<string, Record<string, string>> = {
     troop: 'Caverns',
     buildrate: 'Ore Mines',
     magic: 'Sanctums',
-    fortress: 'Strongholds'
+    fortress: 'Strongholds',
+    castle: 'Castle'
   },
   FAE: {
     income: 'Dolmen',
@@ -208,7 +217,8 @@ export const RACE_BUILDING_NAMES: Record<string, Record<string, string>> = {
     troop: 'Henges',
     buildrate: 'Wishing Wells',
     magic: 'Cairns',
-    fortress: 'Ringforts'
+    fortress: 'Ringforts',
+    castle: 'Castle'
   }
 };
 

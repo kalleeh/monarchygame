@@ -76,7 +76,7 @@ const BUILDING_DEFS: BuildingDef[] = [
   },
   {
     id: 'castle',
-    category: 'fortress',
+    category: 'castle',
     description: 'A grand castle — prestige structure providing defense and leadership.',
     effect: '+Defense + prestige',
     goldCost: 250,
