@@ -228,11 +228,14 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       // Non-fatal — proceed without territory income
     }
 
+    // Spread existing resources first so turns (and any other fields) are preserved.
+    // Previous bug: not including turns caused it to be stripped on every income tick.
     const updated: KingdomResources = {
+      ...resources,
       gold: Math.min(currentGold + (totalGoldPerTurn + territoryGold) * turns, RESOURCE_LIMITS.gold.max),
       land: Math.max(currentLand + territoryLand * turns, RESOURCE_LIMITS.land.min),
       population: Math.min(currentPop + (populationPerTurn + territoryPop) * turns, RESOURCE_LIMITS.population.max),
-      elan: Math.min(currentElan + elanPerTurn * turns, RESOURCE_LIMITS.elan.max)
+      elan: Math.min(currentElan + elanPerTurn * turns, RESOURCE_LIMITS.elan.max),
     };
 
     await dbUpdate('Kingdom', kingdomId, {

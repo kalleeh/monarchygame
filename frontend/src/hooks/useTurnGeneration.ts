@@ -45,6 +45,10 @@ export const useTurnGeneration = ({
   });
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Ref-based in-flight guard: state updates are async so isGenerating state
+  // alone doesn't prevent the 1-second interval from firing multiple Lambda calls
+  // before the first one sets isGenerating=true. A ref flips synchronously.
+  const inFlightRef = useRef<boolean>(false);
   const lastGenerationRef = useRef<number>(
     parseInt(localStorage.getItem(`turnTimer-last-${kingdomId}`) || '') || Date.now()
   );
@@ -72,10 +76,13 @@ export const useTurnGeneration = ({
   // Generate turns (manual or automatic)
   const generateTurns = useCallback(async () => {
     const turnsAvailable = calculateAvailableTurns();
-    
-    if (turnsAvailable === 0 || state.isGenerating) {
+
+    // Ref guard prevents concurrent calls — state.isGenerating is async so
+    // the interval can fire a second call before the first flips it to true.
+    if (turnsAvailable === 0 || inFlightRef.current || state.isGenerating) {
       return { success: false, turns: 0 };
     }
+    inFlightRef.current = true;
 
     setState(prev => ({ ...prev, isGenerating: true }));
 
@@ -116,6 +123,7 @@ export const useTurnGeneration = ({
 
         const totalTurns = newTurns + bonusFromEncamp;
 
+        inFlightRef.current = false;
         setState(prev => ({
           ...prev,
           isGenerating: false,
@@ -151,10 +159,12 @@ export const useTurnGeneration = ({
         return { success: true, turns: totalTurns };
       }
 
+      inFlightRef.current = false;
       setState(prev => ({ ...prev, isGenerating: false }));
       return { success: false, turns: 0 };
     } catch (error) {
       console.error('Turn generation failed:', error);
+      inFlightRef.current = false;
       setState(prev => ({ ...prev, isGenerating: false }));
       return { success: false, turns: 0 };
     }
