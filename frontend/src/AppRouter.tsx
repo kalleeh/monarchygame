@@ -538,6 +538,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
         } />
       </Routes>
     </Suspense>
+    </div>
     </>
   );
 }
