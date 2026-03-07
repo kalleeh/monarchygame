@@ -716,6 +716,7 @@ function KingdomDashboard({
         subtitle={`${kingdom.race} Kingdom`}
         onBack={handleBack}
         backLabel="← Back to Kingdoms"
+        kingdomId={kingdom.id}
         actions={
           <div className="kingdom-race">
             <NotificationCenter kingdomId={kingdom.id} onReply={onComposeMessage} />

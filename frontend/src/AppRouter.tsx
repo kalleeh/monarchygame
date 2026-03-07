@@ -229,8 +229,6 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
         />
       )}
 
-      <KingdomActionBarConnected kingdomId={kingdom.id} />
-      <div style={{ paddingTop: '44px' }}>
       <Suspense fallback={<LoadingSkeleton type="dashboard" />}>
       <Routes>
         {/* Dashboard - default view */}
@@ -384,6 +382,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
                 onBack={handleBackToDashboard}
                 backLabel="← Back to Kingdom"
                 subtitle="Combat history & statistics"
+                kingdomId={kingdom.id}
               />
               <BattleReports battleHistory={[]} className="battle-reports-content" />
             </div>
@@ -481,6 +480,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
                 title={<><img src="/achievements-icon.png" style={{width:28,height:28,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Achievements</>}
                 onBack={handleBackToDashboard}
                 backLabel="← Back to Kingdom"
+                kingdomId={kingdom.id}
               />
               <AchievementList />
             </div>
@@ -522,6 +522,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
                 onBack={handleBackToDashboard}
                 backLabel="← Back to Kingdom"
                 subtitle="Review your recent battles"
+                kingdomId={kingdom.id}
               />
               <ReplaysListRoute
                 onNavigate={(replayId) => navigate(`/kingdom/${kingdomId}/replay/${replayId}`)}
@@ -538,7 +539,6 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
         } />
       </Routes>
     </Suspense>
-    </div>
     </>
   );
 }

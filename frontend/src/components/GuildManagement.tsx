@@ -368,6 +368,7 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
         subtitle={currentGuild ? `${currentGuild.name} [${currentGuild.tag}]` : 'Diplomatic Relations'}
         onBack={onBack}
         backLabel="← Back to Kingdom"
+        kingdomId={kingdom.id}
       />
 
       {pendingInvitations.length > 0 && (

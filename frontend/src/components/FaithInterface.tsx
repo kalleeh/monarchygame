@@ -162,6 +162,7 @@ const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, onBack }) =>
         onBack={onBack}
         backLabel="← Back to Kingdom"
         subtitle={alignment ? `${ALIGNMENT_CONFIG[alignment]?.label || alignment} Alignment` : 'No Alignment'}
+        kingdomId={kingdomId}
       />
 
       {/* Error Display */}

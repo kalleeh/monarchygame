@@ -184,6 +184,7 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
         onBack={onBack}
         backLabel="← Back to Kingdom"
         subtitle="Cast powerful spells to aid your kingdom"
+        kingdomId={kingdomId}
       />
 
       {/* Error Display */}

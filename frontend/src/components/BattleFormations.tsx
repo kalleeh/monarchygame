@@ -314,6 +314,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
         onBack={onBack}
         backLabel="← Back to Kingdom"
         subtitle="Manage units and execute attacks"
+        kingdomId={kingdomId}
       />
     <div className="battle-formations">
 

@@ -216,6 +216,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, onBack
         onBack={onBack}
         backLabel="← Back to Kingdom"
         subtitle={`${totalScum} Scum Available`}
+        kingdomId={kingdomId}
       />
 
       {/* Error Display */}

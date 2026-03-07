@@ -220,6 +220,7 @@ export default function BuildingManagement({
         onBack={onBack}
         backLabel="Back to Kingdom"
         subtitle="Build structures to strengthen your kingdom"
+        kingdomId={kingdomId}
       />
 
       <div className="bm-content">

@@ -268,6 +268,7 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
         onBack={onBack}
         backLabel="← Back to Kingdom"
         subtitle={`${race} Army`}
+        kingdomId={kingdomId}
       />
 
       <div className="unit-summon-interface">

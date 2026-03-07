@@ -22,7 +22,7 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   hard: '#ef4444',
 };
 
-const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId: _kingdomId, onBack }) => {
+const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId, onBack }) => {
   const {
     availableBounties,
     completedBounties,
@@ -66,6 +66,7 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId: _kingdomId, onBack
         onBack={onBack}
         backLabel="← Back to Kingdom"
         subtitle="Hunt rival kingdoms for glory and rewards"
+        kingdomId={kingdomId}
       />
 
       {error && (

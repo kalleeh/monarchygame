@@ -28,7 +28,7 @@ interface TradeSystemProps {
   onBack?: () => void;
 }
 
-const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
+const TradeSystem: React.FC<TradeSystemProps> = ({ kingdomId, onBack }) => {
   const {
     resources,
     activeOffers,
@@ -160,6 +160,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ onBack }) => {
         onBack={onBack}
         backLabel="← Back to Kingdom"
         subtitle="Market & Resource Exchange"
+        kingdomId={kingdomId}
       />
 
       {/* Error Display */}
