@@ -9,6 +9,8 @@ import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 import { ToastService } from '../services/toastService';
 import { isDemoMode } from '../utils/authMode';
 import { useTerritoryStore } from '../stores/territoryStore';
+import { useKingdomStore } from '../stores/kingdomStore';
+import { calculateGoldIncome, calculatePopulationGrowth } from '../utils/resourceCalculations';
 
 interface TurnGenerationState {
   nextTurnIn: number; // seconds until next turn
@@ -25,7 +27,7 @@ interface UseTurnGenerationOptions {
 }
 
 const TURN_INTERVAL = 20 * 60 * 1000; // 20 minutes in milliseconds
-const MAX_STORED_TURNS = 100; // Maximum turns that can be stored
+const MAX_STORED_TURNS = 72; // Maximum turns that can be stored
 
 /**
  * Hook for managing automatic turn generation
@@ -133,6 +135,29 @@ export const useTurnGeneration = ({
         }));
 
         onTurnGenerated?.(totalTurns);
+
+        // Apply passive resource income in demo mode (auth mode: server handles this via Lambda)
+        if (isDemoMode()) {
+          const ownedTerritories = useTerritoryStore.getState().ownedTerritories;
+          const aggregateBuildings = ownedTerritories.reduce(
+            (acc, t) => {
+              for (const [key, count] of Object.entries(t.buildings)) {
+                acc[key] = (acc[key] ?? 0) + (count as number);
+              }
+              return acc;
+            },
+            {} as Record<string, number>
+          );
+          const goldDelta = calculateGoldIncome(aggregateBuildings);
+          const popDelta = calculatePopulationGrowth(aggregateBuildings);
+          if (goldDelta > 0 || popDelta > 0) {
+            const { resources } = useKingdomStore.getState();
+            useKingdomStore.getState().updateResources({
+              gold: (resources?.gold ?? 0) + goldDelta,
+              population: (resources?.population ?? 0) + popDelta,
+            });
+          }
+        }
 
         // Tick pending settlements and complete any that finished
         const { tickSettlements, addTerritory } = useTerritoryStore.getState();

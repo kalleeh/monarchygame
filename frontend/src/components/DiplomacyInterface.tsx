@@ -38,6 +38,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
     loadDiplomacyData
   } = useDiplomacyStore();
 
+
   // Load initial diplomacy data
   useEffect(() => {
     loadDiplomacyData(kingdomId);
@@ -189,7 +190,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
   );
 
   const renderTreatyProposals = () => {
-    const incoming = activeProposals.filter(p => p.toKingdom?.id === kingdomId || p.toKingdom?.id === 'player-kingdom');
+    const incoming = activeProposals.filter(p => p.toKingdom?.id === kingdomId);
     const outgoing = activeProposals.filter(p => p.fromKingdom?.id === kingdomId);
     return (
       <div className="treaty-proposals">

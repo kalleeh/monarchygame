@@ -11,9 +11,11 @@ import type {
   BattleHistory,
   CombatNotification,
   DefenseSettings,
+  Army,
 } from '../types/combat';
-import type { RaceType } from '../types/amplify';
 
+import { useCombatStore, type Unit } from '../stores/combatStore';
+import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { processCombat } from '../services/domain/CombatService';
 import { ToastService } from '../services/toastService';
 import { AttackPlanner } from './combat/AttackPlanner';
@@ -40,69 +42,93 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock data - in real app this would come from props or context
-  const mockBattleHistory: BattleHistory[] = useMemo(() => [{
-      id: '1',
-      timestamp: new Date(Date.now() - 3600000),
-      attackerId: currentKingdom.id,
-      defenderId: 'enemy1',
-      attacker: {
-        kingdomName: currentKingdom.name,
-        race: currentKingdom.race,
-        armyBefore: { peasants: 100, militia: 50, knights: 20, cavalry: 10 },
-        armyAfter: { peasants: 85, militia: 42, knights: 18, cavalry: 9 },
-        casualties: { peasants: 15, militia: 8, knights: 2, cavalry: 1 }
-      },
-      defender: {
-        kingdomName: 'Enemy Kingdom',
-        race: 'Goblin' as RaceType,
-        armyBefore: { peasants: 80, militia: 40, knights: 15, cavalry: 5 },
-        armyAfter: { peasants: 60, militia: 25, knights: 10, cavalry: 3 },
-        casualties: { peasants: 20, militia: 15, knights: 5, cavalry: 2 },
-        fortificationLevel: 2
-      },
-      outcome: 'victory' as const,
-      result: {
-        outcome: 'victory' as const,
-        attacker: {
-          kingdomName: currentKingdom.name,
-          race: currentKingdom.race,
-          armyBefore: { peasants: 100, militia: 50, knights: 20, cavalry: 10 },
-          armyAfter: { peasants: 85, militia: 42, knights: 18, cavalry: 9 },
-          casualties: { peasants: 15, militia: 8, knights: 2, cavalry: 1 }
-        },
-        defender: {
-          kingdomName: 'Enemy Kingdom',
-          race: 'Goblin' as RaceType,
-          armyBefore: { peasants: 80, militia: 40, knights: 15, cavalry: 5 },
-          armyAfter: { peasants: 60, militia: 25, knights: 10, cavalry: 3 },
-          casualties: { peasants: 20, militia: 15, knights: 5, cavalry: 2 },
-          fortificationLevel: 2
-        },
-        attackType: 'raid' as const,
-        success: true,
-        spoils: { gold: 1500, population: 25, land: 5 },
-        battleReport: {
-          rounds: [],
-          duration: 45,
-          terrain: 'plains'
-        },
-        timestamp: new Date(Date.now() - 3600000),
-        landGained: 5
-      },
-      netGain: { gold: 1500, land: 5, population: 25 }
-    }] as unknown as BattleHistory[], [currentKingdom]);
+  const rawHistory = useCombatStore((state) => state.battleHistory);
+  const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
 
-  const mockNotifications: CombatNotification[] = useMemo(() => [{
-      id: '1',
-      type: 'incoming_attack',
-      message: 'Incoming raid from Dark Empire',
-      kingdomName: 'Dark Empire',
-      attackType: 'raid',
-      estimatedArrival: new Date(Date.now() + 1800000),
-      isRead: false,
-      timestamp: new Date(Date.now() - 300000)
-    }] as unknown as CombatNotification[], []);
+  const battleHistory: BattleHistory[] = useMemo(() => {
+    const unitsToArmy = (units: Unit[]): Army => {
+      const army: Army = {};
+      units.forEach(u => {
+        army[u.type] = (army[u.type] ?? 0) + u.count;
+      });
+      return army;
+    };
+
+    const casualtiesToArmy = (casualties: Record<string, number>, units: Unit[]): Army => {
+      const army: Army = {};
+      Object.entries(casualties).forEach(([unitId, count]) => {
+        const unit = units.find(u => u.id === unitId);
+        const type = unit?.type ?? unitId;
+        army[type] = (army[type] ?? 0) + count;
+      });
+      return army;
+    };
+
+    return rawHistory.map(report => {
+      const defenderAI = aiKingdoms.find(k => k.id === report.defender);
+      const defenderName = defenderAI?.name ?? report.defender;
+      const defenderRace = defenderAI?.race ?? 'Unknown';
+      const attackerName = currentKingdom.name ?? 'Your Kingdom';
+      const attackerRace = currentKingdom.race ?? 'Human';
+
+      const attackerArmyBefore = unitsToArmy(report.attackerUnits);
+      const attackerCasualties = casualtiesToArmy(report.casualties.attacker, report.attackerUnits);
+      const attackerArmyAfter: Army = { ...attackerArmyBefore };
+      Object.entries(attackerCasualties).forEach(([type, lost]) => {
+        attackerArmyAfter[type] = Math.max(0, (attackerArmyAfter[type] ?? 0) - (lost ?? 0));
+      });
+
+      const defenderArmyBefore = unitsToArmy(report.defenderUnits);
+      const defenderCasualties = casualtiesToArmy(report.casualties.defender, report.defenderUnits);
+
+      const attackerInfo = {
+        kingdomName: attackerName,
+        race: attackerRace,
+        armyBefore: attackerArmyBefore,
+        armyAfter: attackerArmyAfter,
+        casualties: attackerCasualties,
+      };
+      const defenderInfo = {
+        kingdomName: defenderName,
+        race: defenderRace,
+        armyBefore: Object.keys(defenderArmyBefore).length > 0 ? defenderArmyBefore : undefined,
+        casualties: Object.keys(defenderCasualties).length > 0 ? defenderCasualties : undefined,
+      };
+
+      return {
+        id: report.id,
+        timestamp: new Date(report.timestamp),
+        attackerId: report.attacker,
+        defenderId: report.defender,
+        attacker: attackerInfo,
+        defender: defenderInfo,
+        outcome: report.result,
+        result: {
+          outcome: report.result,
+          attacker: attackerInfo,
+          defender: defenderInfo,
+          attackType: 'full_attack' as const,
+          success: report.result === 'victory',
+          spoils: {
+            gold: report.resourcesGained?.gold ?? 0,
+            population: 0,
+            land: report.landGained ?? 0,
+          },
+          landGained: report.landGained,
+        },
+        casualties: { ...report.casualties.attacker, ...report.casualties.defender },
+        netGain: {
+          gold: report.resourcesGained?.gold ?? 0,
+          land: report.landGained ?? 0,
+          population: 0,
+        },
+        isAttacker: true,
+        attackType: 'full_attack' as const,
+      } satisfies BattleHistory;
+    });
+  }, [rawHistory, aiKingdoms, currentKingdom]);
+
+  const notifications: CombatNotification[] = [];
 
   const handleAttack = useCallback(async (request: AttackRequest) => {
     try {
@@ -155,9 +181,9 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
     setError(null);
   }, []);
 
-  const unreadNotifications = useMemo(() => 
-    mockNotifications.filter(n => !n.isRead).length
-  , [mockNotifications]);
+  const unreadNotifications = useMemo(() =>
+    notifications.filter(n => !n.isRead).length
+  , [notifications]);
 
   const renderTabContent = useMemo(() => {
     switch (activeTab) {
@@ -181,14 +207,14 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
       case 'reports':
         return (
           <BattleReports
-            battleHistory={mockBattleHistory}
+            battleHistory={battleHistory}
             currentKingdomId={currentKingdom.id}
           />
         );
       case 'notifications':
         return (
           <CombatNotifications
-            notifications={mockNotifications}
+            notifications={notifications}
             onMarkAsRead={() => {}}
             onMarkAllAsRead={() => {}}
           />
@@ -196,7 +222,7 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
       default:
         return null;
     }
-  }, [activeTab, currentKingdom, handleAttack, handleDefenseUpdate, isLoading, error, mockBattleHistory, mockNotifications]);
+  }, [activeTab, currentKingdom, handleAttack, handleDefenseUpdate, isLoading, error, battleHistory, notifications]);
 
   return (
     <div 

@@ -4,11 +4,14 @@
  * Implements code splitting with React.lazy and Suspense
  */
 
-import React, { Suspense, lazy, useEffect, useState, useCallback } from 'react';
+import React, { Suspense, lazy, useEffect, useState, useCallback, useMemo } from 'react';
 import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { generateClient } from 'aws-amplify/data';
 import { useKingdomStore } from './stores/kingdomStore';
 import { useCombatReplayStore } from './stores/combatReplayStore';
+import { useCombatStore, type Unit } from './stores/combatStore';
+import { useAIKingdomStore } from './stores/aiKingdomStore';
+import type { BattleHistory, Army } from './types/combat';
 import type { Schema } from '../../amplify/data/resource';
 import { LoadingSkeleton } from './components/ui/loading/LoadingSkeleton';
 import { TopNavigation } from './components/TopNavigation';
@@ -348,6 +351,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
           <Suspense fallback={<LoadingSkeleton type="card" className="m-8" />}>
             <ThieveryInterface
               kingdomId={kingdom.id}
+              race={kingdom.race || 'Human'}
               onBack={handleBackToDashboard}
             />
           </Suspense>
@@ -368,6 +372,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
           <Suspense fallback={<LoadingSkeleton type="card" className="m-8" />}>
             <FaithInterface
               kingdomId={kingdom.id}
+              race={kingdom.race || 'Human'}
               onBack={handleBackToDashboard}
             />
           </Suspense>
@@ -384,7 +389,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
                 subtitle="Combat history & statistics"
                 kingdomId={kingdom.id}
               />
-              <BattleReports battleHistory={[]} className="battle-reports-content" />
+              <BattleReportsRoute kingdom={kingdom} />
             </div>
           </Suspense>
         } />
@@ -592,6 +597,98 @@ function ReplaysListRoute({ onNavigate }: { onNavigate: (replayId: string) => vo
       ))}
     </div>
   );
+}
+
+// Reads live battle history from combatStore and transforms it to the BattleHistory
+// shape expected by the BattleReports component.
+function BattleReportsRoute({ kingdom }: { kingdom: Schema['Kingdom']['type'] }) {
+  const rawHistory = useCombatStore((state) => state.battleHistory);
+  const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
+
+  const battleHistory: BattleHistory[] = useMemo(() => {
+    const unitsToArmy = (units: Unit[]): Army => {
+      const army: Army = {};
+      units.forEach(u => {
+        army[u.type] = (army[u.type] ?? 0) + u.count;
+      });
+      return army;
+    };
+
+    const casualtiesToArmy = (casualties: Record<string, number>, units: Unit[]): Army => {
+      const army: Army = {};
+      Object.entries(casualties).forEach(([unitId, count]) => {
+        const unit = units.find(u => u.id === unitId);
+        const type = unit?.type ?? unitId;
+        army[type] = (army[type] ?? 0) + count;
+      });
+      return army;
+    };
+
+    return rawHistory.map(report => {
+      const defenderAI = aiKingdoms.find(k => k.id === report.defender);
+      const defenderName = defenderAI?.name ?? report.defender;
+      const defenderRace = defenderAI?.race ?? 'Unknown';
+      const attackerName = kingdom.name ?? 'Your Kingdom';
+      const attackerRace = kingdom.race ?? 'Human';
+
+      const attackerArmyBefore = unitsToArmy(report.attackerUnits);
+      const attackerCasualties = casualtiesToArmy(report.casualties.attacker, report.attackerUnits);
+      const attackerArmyAfter: Army = { ...attackerArmyBefore };
+      Object.entries(attackerCasualties).forEach(([type, lost]) => {
+        attackerArmyAfter[type] = Math.max(0, (attackerArmyAfter[type] ?? 0) - (lost ?? 0));
+      });
+
+      const defenderArmyBefore = unitsToArmy(report.defenderUnits);
+      const defenderCasualties = casualtiesToArmy(report.casualties.defender, report.defenderUnits);
+
+      const attackerInfo = {
+        kingdomName: attackerName,
+        race: attackerRace,
+        armyBefore: attackerArmyBefore,
+        armyAfter: attackerArmyAfter,
+        casualties: attackerCasualties,
+      };
+      const defenderInfo = {
+        kingdomName: defenderName,
+        race: defenderRace,
+        armyBefore: Object.keys(defenderArmyBefore).length > 0 ? defenderArmyBefore : undefined,
+        casualties: Object.keys(defenderCasualties).length > 0 ? defenderCasualties : undefined,
+      };
+
+      return {
+        id: report.id,
+        timestamp: new Date(report.timestamp),
+        attackerId: report.attacker,
+        defenderId: report.defender,
+        attacker: attackerInfo,
+        defender: defenderInfo,
+        outcome: report.result,
+        result: {
+          outcome: report.result,
+          attacker: attackerInfo,
+          defender: defenderInfo,
+          attackType: 'full_attack' as const,
+          success: report.result === 'victory',
+          spoils: {
+            gold: report.resourcesGained?.gold ?? 0,
+            population: 0,
+            land: report.landGained ?? 0,
+          },
+          landGained: report.landGained,
+        },
+        casualties: { ...report.casualties.attacker, ...report.casualties.defender },
+        netGain: {
+          gold: report.resourcesGained?.gold ?? 0,
+          land: report.landGained ?? 0,
+          population: 0,
+        },
+        isAttacker: true,
+        attackType: 'full_attack' as const,
+      } satisfies BattleHistory;
+    });
+  }, [rawHistory, aiKingdoms, kingdom]);
+
+  return <BattleReports battleHistory={battleHistory} className="battle-reports-content" currentKingdomId={kingdom.id} />;
 }
 
 // Wrapper component that looks up the replay from the store by replayId param

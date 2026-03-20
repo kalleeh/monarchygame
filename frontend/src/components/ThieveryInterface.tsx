@@ -15,6 +15,7 @@ import './ThieveryInterface.css';
 
 interface ThieveryInterfaceProps {
   kingdomId: string;
+  race: string;
   onBack: () => void;
 }
 
@@ -69,7 +70,7 @@ const OPERATION_CONFIG: Record<OperationType, { label: string; turnCost: number;
   },
 };
 
-const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, onBack }) => {
+const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, onBack }) => {
   const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [operationLoading, setOperationLoading] = useState(false);
@@ -95,17 +96,6 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, onBack
 
   // Initialize on mount
   useEffect(() => {
-    // Load stored kingdom data to figure out the race
-    const stored = localStorage.getItem(`kingdom-${kingdomId}`);
-    let race = 'Human';
-    if (stored) {
-      try {
-        const data = JSON.parse(stored);
-        race = data.race || 'Human';
-      } catch {
-        // default
-      }
-    }
     initializeThievery(kingdomId, race);
 
     // Generate AI kingdoms if none exist
@@ -113,7 +103,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, onBack
       const networth = (resources.gold || 0) + (resources.land || 0) * 50;
       generateAIKingdoms(5, networth);
     }
-  }, [kingdomId, initializeThievery, aiKingdoms.length, generateAIKingdoms, resources.gold, resources.land]);
+  }, [kingdomId, race, initializeThievery, aiKingdoms.length, generateAIKingdoms, resources.gold, resources.land]);
 
   const totalScum = scumCount + eliteScumCount;
 

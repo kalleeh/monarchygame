@@ -7,6 +7,7 @@
 import React, { useEffect, useCallback, useMemo } from 'react';
 import { useSpring, useTransition, animated, config } from '@react-spring/web';
 import { useSpellStore } from '../stores/spellStore';
+import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { SPELLS, type Spell } from "../shared-spells";
 import { TopNavigation } from './TopNavigation';
 import { achievementTriggers } from '../utils/achievementTriggers';
@@ -54,6 +55,8 @@ const TIER_LABELS: Record<number, string> = {
 };
 
 const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId, onBack }) => {
+  const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
+
   const {
     currentElan,
     maxElan,
@@ -289,8 +292,11 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
         <div className="target-selector">
           <h4>Select Target</h4>
           <div className="target-options">
-            <button onClick={() => selectTarget('enemy-1')}>Enemy Kingdom 1</button>
-            <button onClick={() => selectTarget('enemy-2')}>Enemy Kingdom 2</button>
+            {aiKingdoms.map((kingdom) => (
+              <button key={kingdom.id} onClick={() => selectTarget(kingdom.id)}>
+                {kingdom.name}
+              </button>
+            ))}
             <button onClick={() => selectTarget(null)}>Cancel</button>
           </div>
         </div>

@@ -8,6 +8,7 @@ import { DIPLOMACY } from '../constants/gameConfig';
 import { DiplomacyService } from '../services/DiplomacyService';
 import { isDemoMode } from '../utils/authMode';
 import { proposeTreaty, declareDiplomaticWar, makeDiplomaticPeace } from '../services/domain/DiplomacyService';
+import { useKingdomStore } from './kingdomStore';
 import type {
   DiplomaticRelationship,
   TreatyProposal,
@@ -229,7 +230,7 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
     try {
       if (!isDemoMode()) {
         const result = await declareDiplomaticWar({
-          kingdomId: 'default-kingdom',
+          kingdomId: useKingdomStore.getState().kingdomId ?? 'default-kingdom',
           defenderKingdomId: targetKingdomId,
           seasonId: 'current'
         }) as any;
@@ -239,7 +240,7 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
           throw new Error(parsed.error);
         }
       } else {
-        await DiplomacyService.declareWar("default-kingdom", targetKingdomId);
+        await DiplomacyService.declareWar(useKingdomStore.getState().kingdomId ?? 'default-kingdom', targetKingdomId);
       }
 
       // Update relationship status
@@ -273,7 +274,7 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
     try {
       if (!isDemoMode()) {
         const result = await makeDiplomaticPeace({
-          kingdomId: 'default-kingdom',
+          kingdomId: useKingdomStore.getState().kingdomId ?? 'default-kingdom',
           defenderKingdomId: targetKingdomId
         }) as any;
         const parsed = typeof result === 'string' ? JSON.parse(result) : result;
@@ -282,7 +283,7 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
           throw new Error(parsed.error);
         }
       } else {
-        await DiplomacyService.makePeace("default-kingdom", targetKingdomId);
+        await DiplomacyService.makePeace(useKingdomStore.getState().kingdomId ?? 'default-kingdom', targetKingdomId);
       }
 
       // Update relationship status

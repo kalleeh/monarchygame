@@ -253,15 +253,15 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
       owner: 'AI',
       resources: ai.resources,
       stats: {
-        warOffense: 0,
-        warDefense: 0,
+        warOffense: Math.min(5, Math.round((ai.units.tier3 * 4 + ai.units.tier4 * 5) / 100)),
+        warDefense: Math.min(5, Math.round((ai.units.tier1 * 1 + ai.units.tier2 * 2) / 100)),
         sorcery: 0,
         scum: 0,
         forts: 0,
         tithe: 0,
         training: 0,
         siege: 0,
-        economy: 0,
+        economy: Math.min(5, Math.round(ai.resources.gold / 50000)),
         building: 0
       },
       territories: [],

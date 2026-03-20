@@ -12,6 +12,7 @@ import './FaithInterface.css';
 
 interface FaithInterfaceProps {
   kingdomId: string;
+  race: string;
   onBack: () => void;
 }
 
@@ -58,7 +59,7 @@ const ABILITY_CONFIG: Array<{ key: AbilityKey; label: string; cost: number; desc
   },
 ];
 
-const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, onBack }) => {
+const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, race, onBack }) => {
   const [lastResult, setLastResult] = useState<string | null>(null);
 
   const {
@@ -77,29 +78,13 @@ const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, onBack }) =>
     clearError,
   } = useFaithStore();
 
-  // Get the kingdom race from localStorage
-  const getRace = useCallback((): string => {
-    const stored = localStorage.getItem(`kingdom-${kingdomId}`);
-    if (stored) {
-      try {
-        const data = JSON.parse(stored);
-        return data.race || 'Human';
-      } catch {
-        // default
-      }
-    }
-    return 'Human';
-  }, [kingdomId]);
-
   // Initialize on mount
   useEffect(() => {
-    const race = getRace();
     initializeFaith(race);
-  }, [kingdomId, initializeFaith, getRace]);
+  }, [kingdomId, race, initializeFaith]);
 
   // Periodically regenerate focus points
   useEffect(() => {
-    const race = getRace();
     generateFocusPoints(race);
 
     const interval = setInterval(() => {
@@ -107,14 +92,13 @@ const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, onBack }) =>
     }, 60000); // check every minute
 
     return () => clearInterval(interval);
-  }, [generateFocusPoints, getRace]);
+  }, [generateFocusPoints, race]);
 
   const handleAlignmentChange = useCallback(
     (newAlignment: AlignmentType) => {
-      const race = getRace();
       selectAlignment(newAlignment, race);
     },
-    [selectAlignment, getRace]
+    [selectAlignment, race]
   );
 
   const handleUseAbility = useCallback(
@@ -130,7 +114,6 @@ const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, onBack }) =>
   );
 
   // Check which alignments are compatible with this race
-  const race = getRace();
   const isAlignmentCompatible = (alignmentId: string): boolean => {
     const alignmentData = FAITH_ALIGNMENTS[alignmentId];
     if (!alignmentData) return false;
