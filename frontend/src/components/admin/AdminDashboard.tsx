@@ -12,7 +12,8 @@ import { isDemoMode } from '../../utils/authMode';
 import SeasonResults from '../SeasonResults';
 import './AdminDashboard.css';
 
-const client = generateClient<Schema>();
+let _client: ReturnType<typeof generateClient<Schema>> | null = null;
+const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -148,7 +149,7 @@ function ActiveSeasonPanel() {
       return;
     }
     try {
-      const { data } = await client.models.GameSeason.list({
+      const { data } = await getClient().models.GameSeason.list({
         filter: { status: { eq: 'active' } },
       });
       setSeason(data && data.length > 0 ? data[0] : null);
@@ -327,7 +328,7 @@ function KingdomOverviewPanel() {
     }
     setLoading(true);
     try {
-      const { data } = await client.models.Kingdom.list();
+      const { data } = await getClient().models.Kingdom.list();
       setKingdoms(data || []);
     } catch (err) {
       toast.error('Failed to load kingdoms.');
@@ -449,7 +450,7 @@ function TurnManagementPanel() {
     setLastResult(null);
 
     try {
-      const { data: kingdoms } = await client.models.Kingdom.list({
+      const { data: kingdoms } = await getClient().models.Kingdom.list({
         filter: { isActive: { eq: true } },
       });
       if (!kingdoms || kingdoms.length === 0) {
@@ -588,7 +589,7 @@ function SeasonHistoryPanel() {
       return;
     }
     setLoading(true);
-    client.models.GameSeason.list({ filter: { status: { eq: 'completed' } } })
+    getClient().models.GameSeason.list({ filter: { status: { eq: 'completed' } } })
       .then(({ data }) => {
         const sorted = (data || [])
           .sort((a, b) => (b.seasonNumber ?? 0) - (a.seasonNumber ?? 0))

@@ -16,7 +16,8 @@ type LambdaResponse<T = unknown> = {
 import type { Schema } from '../../../amplify/data/resource';
 import type { AttackRequest, CombatResult, DefenseSettings } from '../types/combat';
 
-const client = generateClient<Schema>();
+let _client: ReturnType<typeof generateClient<Schema>> | null = null;
+const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 export class CombatService {
   /**
@@ -42,7 +43,7 @@ export class CombatService {
       };
 
       // Store Lambda results in database (no client-side calculation)
-      const battleReport = await client.models.BattleReport.create({
+      const battleReport = await getClient().models.BattleReport.create({
         attackerId: request.attackerId,
         defenderId: request.defenderId,
         attackType: request.attackType,
@@ -249,7 +250,7 @@ export class CombatService {
   // Existing methods remain unchanged...
   static async getBattleReports(kingdomId: string): Promise<Schema['BattleReport']['type'][]> {
     try {
-      const { data } = await client.models.BattleReport.list({
+      const { data } = await getClient().models.BattleReport.list({
         filter: {
           or: [
             { attackerId: { eq: kingdomId } },
@@ -266,12 +267,12 @@ export class CombatService {
 
   static async updateDefenseSettings(kingdomId: string, settings: DefenseSettings): Promise<void> {
     try {
-      const existingSettings = await client.models.DefenseSettings.list({
+      const existingSettings = await getClient().models.DefenseSettings.list({
         filter: { kingdomId: { eq: kingdomId } }
       });
 
       if (existingSettings.data.length > 0) {
-        await client.models.DefenseSettings.update({
+        await getClient().models.DefenseSettings.update({
           id: existingSettings.data[0].id,
           kingdomId: kingdomId,
           autoDefend: settings.autoRetaliate ?? false,
@@ -279,7 +280,7 @@ export class CombatService {
           alertSettings: JSON.stringify({ alertAlliance: settings.alertAlliance })
         });
       } else {
-        await client.models.DefenseSettings.create({
+        await getClient().models.DefenseSettings.create({
           kingdomId: kingdomId,
           autoDefend: settings.autoRetaliate ?? false,
           defenseFormation: JSON.stringify(settings.unitDistribution),
@@ -294,7 +295,7 @@ export class CombatService {
 
   static async markNotificationAsRead(notificationId: string): Promise<void> {
     try {
-      await client.models.CombatNotification.update({
+      await getClient().models.CombatNotification.update({
         id: notificationId,
         isRead: true
       });

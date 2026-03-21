@@ -7,7 +7,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 
-const client = generateClient<Schema>();
+let _client: ReturnType<typeof generateClient<Schema>> | null = null;
+const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 interface Notification {
   id: string;
@@ -26,7 +27,7 @@ export function useRealtimeNotifications(kingdomId: string | null) {
   useEffect(() => {
     if (!kingdomId) return;
 
-    const sub = client.models.CombatNotification.observeQuery({
+    const sub = getClient().models.CombatNotification.observeQuery({
       filter: { recipientId: { eq: kingdomId } }
     }).subscribe({
       next: ({ items }) => {
@@ -57,7 +58,7 @@ export function useRealtimeNotifications(kingdomId: string | null) {
 
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
-      await client.models.CombatNotification.update({
+      await getClient().models.CombatNotification.update({
         id: notificationId,
         isRead: true,
       });
@@ -69,7 +70,7 @@ export function useRealtimeNotifications(kingdomId: string | null) {
   const markAllAsRead = useCallback(async () => {
     const unread = notifications.filter(n => !n.isRead);
     await Promise.allSettled(
-      unread.map(n => client.models.CombatNotification.update({ id: n.id, isRead: true }))
+      unread.map(n => getClient().models.CombatNotification.update({ id: n.id, isRead: true }))
     );
   }, [notifications]);
 

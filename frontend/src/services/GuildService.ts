@@ -8,7 +8,8 @@ import type { Schema } from '../../../amplify/data/resource';
 import { isDemoMode } from '../utils/authMode';
 import { AmplifyFunctionService } from './amplifyFunctionService';
 
-const client = generateClient<Schema>();
+let _client: ReturnType<typeof generateClient<Schema>> | null = null;
+const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 export interface AllianceUpgradeRecord {
   key: string;
@@ -269,7 +270,7 @@ export class GuildService {
     }
 
     try {
-      const response = await client.models.Alliance.list({
+      const response = await getClient().models.Alliance.list({
         filter: { isPublic: { eq: true } }
       });
 
@@ -477,7 +478,7 @@ export class GuildService {
       };
       const appSyncType = typeMap[data.messageType ?? 'CHAT'] ?? 'general';
 
-      const response = await client.models.AllianceMessage.create({
+      const response = await getClient().models.AllianceMessage.create({
         guildId: data.guildId,
         senderId: data.senderId ?? 'unknown',
         content: data.content,
@@ -517,7 +518,7 @@ export class GuildService {
 
     // Auth mode: fetch from AllianceMessage in AppSync
     try {
-      const response = await client.models.AllianceMessage.list({
+      const response = await getClient().models.AllianceMessage.list({
         filter: { guildId: { eq: guildId } }
       });
 
@@ -555,7 +556,7 @@ export class GuildService {
     }
 
     // Auth mode: subscribe via AllianceMessage.onCreate
-    const sub = client.models.AllianceMessage.onCreate({
+    const sub = getClient().models.AllianceMessage.onCreate({
       filter: { guildId: { eq: guildId } }
     }).subscribe({
       next: (item) => {
@@ -643,10 +644,10 @@ export class GuildService {
     // Auth mode: persist to Amplify backend
     try {
       // Check no active war already exists
-      const checkAttacking = await client.models.GuildWar.list({
+      const checkAttacking = await getClient().models.GuildWar.list({
         filter: { attackingGuildId: { eq: attackingGuildId }, status: { eq: 'ACTIVE' } }
       });
-      const checkDefending = await client.models.GuildWar.list({
+      const checkDefending = await getClient().models.GuildWar.list({
         filter: { defendingGuildId: { eq: attackingGuildId }, status: { eq: 'ACTIVE' } }
       });
       const allActive = [
@@ -662,7 +663,7 @@ export class GuildService {
         throw new Error('Already in an active war between these guilds');
       }
 
-      const response = await client.models.GuildWar.create({
+      const response = await getClient().models.GuildWar.create({
         attackingGuildId,
         defendingGuildId,
         attackingGuildName,
@@ -731,7 +732,7 @@ export class GuildService {
 
     // Auth mode: fetch war, determine winner, update via Amplify
     try {
-      const getResponse = await client.models.GuildWar.get({ id: warId });
+      const getResponse = await getClient().models.GuildWar.get({ id: warId });
       if (getResponse.errors) {
         throw new Error(`Failed to fetch guild war: ${getResponse.errors[0].message}`);
       }
@@ -747,7 +748,7 @@ export class GuildService {
         winnerId = item.defendingGuildId;
       }
 
-      const updateResponse = await client.models.GuildWar.update({
+      const updateResponse = await getClient().models.GuildWar.update({
         id: warId,
         status: 'ENDED',
         winnerId: winnerId ?? null,
@@ -853,7 +854,7 @@ export class GuildService {
   }): Promise<void> {
     const { warId, kingdomId, kingdomName, guildId, points } = params;
 
-    const getResponse = await client.models.GuildWar.get({ id: warId });
+    const getResponse = await getClient().models.GuildWar.get({ id: warId });
     if (getResponse.errors || !getResponse.data) return;
 
     const item = getResponse.data;
@@ -886,7 +887,7 @@ export class GuildService {
       };
     }
 
-    await client.models.GuildWar.update({
+    await getClient().models.GuildWar.update({
       id: warId,
       attackingScore,
       defendingScore,
@@ -920,7 +921,7 @@ export class GuildService {
 
     // Auth mode: fetch war, set winner to opposite guild, update via Amplify
     try {
-      const getResponse = await client.models.GuildWar.get({ id: warId });
+      const getResponse = await getClient().models.GuildWar.get({ id: warId });
       if (getResponse.errors) {
         throw new Error(`Failed to fetch guild war: ${getResponse.errors[0].message}`);
       }
@@ -933,7 +934,7 @@ export class GuildService {
           ? item.defendingGuildId
           : item.attackingGuildId;
 
-      const updateResponse = await client.models.GuildWar.update({
+      const updateResponse = await getClient().models.GuildWar.update({
         id: warId,
         status: 'ENDED',
         winnerId,
@@ -1015,8 +1016,8 @@ export class GuildService {
     // Auth mode: query Amplify for wars where this guild is attacker or defender
     try {
       const [attackingRes, defendingRes] = await Promise.all([
-        client.models.GuildWar.list({ filter: { attackingGuildId: { eq: guildId } } }),
-        client.models.GuildWar.list({ filter: { defendingGuildId: { eq: guildId } } }),
+        getClient().models.GuildWar.list({ filter: { attackingGuildId: { eq: guildId } } }),
+        getClient().models.GuildWar.list({ filter: { defendingGuildId: { eq: guildId } } }),
       ]);
 
       const allItems = [
@@ -1122,10 +1123,10 @@ export class GuildService {
 
     try {
       const [resA, resB] = await Promise.all([
-        client.models.GuildWar.list({
+        getClient().models.GuildWar.list({
           filter: { attackingGuildId: { eq: guildIdA }, status: { eq: 'ACTIVE' } }
         }),
-        client.models.GuildWar.list({
+        getClient().models.GuildWar.list({
           filter: { attackingGuildId: { eq: guildIdB }, status: { eq: 'ACTIVE' } }
         }),
       ]);
@@ -1196,7 +1197,7 @@ export class GuildService {
     }
 
     try {
-      const response = await client.models.Alliance.get({ id: allianceId });
+      const response = await getClient().models.Alliance.get({ id: allianceId });
       if (response.errors || !response.data) return defaultBonus;
 
       const rawStats = response.data.stats as unknown;
@@ -1261,7 +1262,7 @@ export class GuildService {
     }
 
     try {
-      const response = await client.models.Alliance.get({ id: allianceId });
+      const response = await getClient().models.Alliance.get({ id: allianceId });
       if (response.errors || !response.data) return [];
 
       const rawStats = response.data.stats as unknown;

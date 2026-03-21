@@ -8,8 +8,8 @@ import type { Schema } from '../../../amplify/data/resource';
 import { rateLimiter } from '../utils/rateLimiter';
 import { isDemoMode } from '../utils/authMode';
 
-// Generate the typed client
-const client = generateClient<Schema>();
+let _client: ReturnType<typeof generateClient<Schema>> | null = null;
+const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 // Type definitions for service payloads
 interface BaseSpellPayload {
@@ -470,7 +470,7 @@ export class AmplifyFunctionService {
   static async refreshKingdomResources(kingdomId: string): Promise<void> {
     if (isDemoMode()) return;
     try {
-      const { data } = await client.models.Kingdom.get({ id: kingdomId });
+      const { data } = await getClient().models.Kingdom.get({ id: kingdomId });
       if (data?.resources) {
         const resources = typeof data.resources === 'string'
           ? JSON.parse(data.resources)

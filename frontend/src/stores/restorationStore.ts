@@ -15,7 +15,8 @@ import { isDemoMode } from '../utils/authMode';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 
-const client = generateClient<Schema>();
+let _client: ReturnType<typeof generateClient<Schema>> | null = null;
+const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 type RestorationType = 'damage_based' | 'death_based' | 'none';
 
@@ -150,7 +151,7 @@ export const useRestorationStore = create(
         if (isDemoMode()) return;
 
         try {
-          const { data } = await client.models.RestorationStatus.list({
+          const { data } = await getClient().models.RestorationStatus.list({
             filter: { kingdomId: { eq: kingdomId } }
           });
 
@@ -161,7 +162,7 @@ export const useRestorationStore = create(
             // Check if restoration has already ended
             if (new Date() >= endTime) {
               // Clean up expired restoration
-              await client.models.RestorationStatus.delete({ id: status.id });
+              await getClient().models.RestorationStatus.delete({ id: status.id });
               set({
                 isInRestoration: false,
                 restorationType: 'none',

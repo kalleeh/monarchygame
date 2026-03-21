@@ -20,7 +20,8 @@ import { isDemoMode } from '../utils/authMode';
 import { TopNavigation } from './TopNavigation';
 import './BattleFormations.css';
 
-const amplifyClient = generateClient<Schema>();
+let _amplifyClient: ReturnType<typeof generateClient<Schema>> | null = null;
+const getAmplifyClient = () => { if (!_amplifyClient) _amplifyClient = generateClient<Schema>(); return _amplifyClient; };
 
 const FORMATION_DESCRIPTIONS: Record<string, string> = {
   'Defensive Wall': 'Minimizes casualties when defending',
@@ -289,12 +290,12 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
       void (async () => {
         try {
           // Read current stats from the server, merge, and write back
-          const result = await amplifyClient.models.Kingdom.get({ id: kingdomId });
+          const result = await getAmplifyClient().models.Kingdom.get({ id: kingdomId });
           if (result.data) {
             const currentStats = typeof result.data.stats === 'string'
               ? JSON.parse(result.data.stats as string)
               : (result.data.stats ?? {});
-            await amplifyClient.models.Kingdom.update({
+            await getAmplifyClient().models.Kingdom.update({
               id: kingdomId,
               stats: JSON.stringify({ ...(currentStats as Record<string, unknown>), defensiveFormation: formationId }),
             });

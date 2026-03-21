@@ -8,7 +8,8 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { isDemoMode } from '../utils/authMode';
 
-const client = generateClient<Schema>();
+let _client: ReturnType<typeof generateClient<Schema>> | null = null;
+const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 export interface WorldStateData {
   seasonId: string;
@@ -73,7 +74,7 @@ export class WorldStateService {
 
     try {
       // Find existing world state
-      const { data: existing } = await client.models.WorldState.list({
+      const { data: existing } = await getClient().models.WorldState.list({
         filter: {
           kingdomId: { eq: kingdomId },
           seasonId: { eq: seasonId }
@@ -86,13 +87,13 @@ export class WorldStateService {
       const merged = [...new Set([...currentVisible, ...newVisibleKingdoms])];
 
       if (existing && existing.length > 0) {
-        await client.models.WorldState.update({
+        await getClient().models.WorldState.update({
           id: existing[0].id,
           visibleKingdoms: JSON.stringify(merged),
           lastUpdated: new Date().toISOString()
         });
       } else {
-        await client.models.WorldState.create({
+        await getClient().models.WorldState.create({
           kingdomId,
           seasonId,
           visibleKingdoms: JSON.stringify(merged),

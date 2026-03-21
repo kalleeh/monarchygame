@@ -8,7 +8,8 @@ import type { Schema } from '../../../amplify/data/resource';
 import { ToastService } from './toastService';
 import { isDemoMode } from '../utils/authMode';
 
-const client = generateClient<Schema>();
+let _client: ReturnType<typeof generateClient<Schema>> | null = null;
+const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 interface Subscription {
   key: string;
@@ -104,7 +105,7 @@ export class SubscriptionManager {
     const key = `kingdom:${kingdomId}`;
     this.unsubscribe(key);
 
-    const sub = client.models.CombatNotification.observeQuery({
+    const sub = getClient().models.CombatNotification.observeQuery({
       filter: { recipientId: { eq: kingdomId } }
     }).subscribe({
       next: ({ items }) => {
@@ -133,7 +134,7 @@ export class SubscriptionManager {
     const key = `guild:${guildId}`;
     this.unsubscribe(key);
 
-    const sub = client.models.AllianceMessage.observeQuery({
+    const sub = getClient().models.AllianceMessage.observeQuery({
       filter: { guildId: { eq: guildId } }
     }).subscribe({
       next: ({ items }) => {
@@ -160,9 +161,9 @@ export class SubscriptionManager {
   subscribeToTradeOffers(seasonId: string): void {
     const key = `trade:${seasonId}`;
     this.unsubscribe(key);
-    if (!client.models.TradeOffer) return;
+    if (!getClient().models.TradeOffer) return;
 
-    const sub = client.models.TradeOffer.observeQuery({
+    const sub = getClient().models.TradeOffer.observeQuery({
       filter: { seasonId: { eq: seasonId }, status: { eq: 'open' } }
     }).subscribe({
       next: ({ items }) => {
@@ -191,9 +192,9 @@ export class SubscriptionManager {
   subscribeToWarDeclarations(kingdomId: string): void {
     const key = `war:${kingdomId}`;
     this.unsubscribe(key);
-    if (!client.models.WarDeclaration) return;
+    if (!getClient().models.WarDeclaration) return;
 
-    const sub = client.models.WarDeclaration.observeQuery({
+    const sub = getClient().models.WarDeclaration.observeQuery({
       filter: {
         or: [
           { attackerId: { eq: kingdomId } },
@@ -224,9 +225,9 @@ export class SubscriptionManager {
   subscribeToTreaties(kingdomId: string): void {
     const key = `treaty:${kingdomId}`;
     this.unsubscribe(key);
-    if (!client.models.Treaty) return;
+    if (!getClient().models.Treaty) return;
 
-    const sub = client.models.Treaty.observeQuery({
+    const sub = getClient().models.Treaty.observeQuery({
       filter: {
         or: [
           { proposerId: { eq: kingdomId } },
@@ -301,7 +302,7 @@ export class SubscriptionManager {
     // --- BattleReport: notify when this kingdom is attacked ---
     const battleKey = `battle:${kingdomId}`;
     let firstBattleSyncDone = false;
-    const battleSub = client.models.BattleReport.observeQuery({
+    const battleSub = getClient().models.BattleReport.observeQuery({
       filter: { defenderId: { eq: kingdomId } }
     }).subscribe({
       next: ({ items, isSynced }) => {
@@ -340,11 +341,11 @@ export class SubscriptionManager {
 
     // --- TradeOffer: notify when a new open trade offer appears ---
     const tradeKey = `tradeAlert:${kingdomId}`;
-    if (client.models.TradeOffer) {
+    if (getClient().models.TradeOffer) {
     let firstTradeSyncDone = false;
     let lastKnownTradeCount = 0;
     const seasonId = ''; // season-agnostic — watch all open offers
-    const tradeSub = client.models.TradeOffer.observeQuery({
+    const tradeSub = getClient().models.TradeOffer.observeQuery({
       filter: { status: { eq: 'open' } }
     }).subscribe({
       next: ({ items, isSynced }) => {
@@ -389,10 +390,10 @@ export class SubscriptionManager {
 
     // --- WarDeclaration: notify when war is declared against this kingdom ---
     const warAlertKey = `warAlert:${kingdomId}`;
-    if (client.models.WarDeclaration) {
+    if (getClient().models.WarDeclaration) {
     let firstWarSyncDone = false;
     let lastKnownWarCount = 0;
-    const warSub = client.models.WarDeclaration.observeQuery({
+    const warSub = getClient().models.WarDeclaration.observeQuery({
       filter: { defenderId: { eq: kingdomId } }
     }).subscribe({
       next: ({ items, isSynced }) => {

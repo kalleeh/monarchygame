@@ -19,7 +19,8 @@ import { getBuildingName } from '../utils/buildingMechanics';
 import { isDemoMode } from '../utils/authMode';
 import './BuildingManagement.css';
 
-const amplifyClient = generateClient<Schema>();
+let _amplifyClient: ReturnType<typeof generateClient<Schema>> | null = null;
+const getAmplifyClient = () => { if (!_amplifyClient) _amplifyClient = generateClient<Schema>(); return _amplifyClient; };
 
 interface BuildingManagementProps {
   kingdomId: string;
@@ -128,7 +129,7 @@ export default function BuildingManagement({
 
       // Auth mode: fetch from Amplify, fall back to localStorage
       try {
-        const result = await amplifyClient.models.Kingdom.get({ id: kingdomId });
+        const result = await getAmplifyClient().models.Kingdom.get({ id: kingdomId });
         if (cancelled) return;
         if (result.data?.buildings) {
           const raw = result.data.buildings;
@@ -215,7 +216,7 @@ export default function BuildingManagement({
             }
             // In auth mode, persist the authoritative buildings value to Amplify
             if (!isDemoMode()) {
-              amplifyClient.models.Kingdom.update({
+              getAmplifyClient().models.Kingdom.update({
                 id: kingdomId,
                 buildings: buildingsStr,
               }).catch((err: unknown) => {

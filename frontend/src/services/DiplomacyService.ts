@@ -3,7 +3,8 @@ import type { DiplomaticRelationship, TreatyProposal, DiplomaticAction } from '.
 import { isDemoMode } from '../utils/authMode';
 import type { Schema } from '../../../amplify/data/resource';
 
-const client = generateClient<Schema>();
+let _client: ReturnType<typeof generateClient<Schema>> | null = null;
+const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 // ── Demo / mock data ────────────────────────────────────────────────────────
 

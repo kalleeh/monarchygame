@@ -2,7 +2,8 @@ import { generateClient } from 'aws-amplify/data';
 // @ts-expect-error Schema import
 import type { Schema } from '../../amplify/data/resource';
 
-const client = generateClient<Schema>();
+let _client: ReturnType<typeof generateClient<Schema>> | null = null;
+const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 export interface TrainableUnit {
   id: string;

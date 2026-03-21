@@ -7,7 +7,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 
-const client = generateClient<Schema>();
+let _client: ReturnType<typeof generateClient<Schema>> | null = null;
+const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 interface ChatMessage {
   id: string;
@@ -25,7 +26,7 @@ export function useRealtimeChat(guildId: string | null) {
   useEffect(() => {
     if (!guildId) return;
 
-    const sub = client.models.AllianceMessage.observeQuery({
+    const sub = getClient().models.AllianceMessage.observeQuery({
       filter: { guildId: { eq: guildId } }
     }).subscribe({
       next: ({ items }) => {
@@ -62,7 +63,7 @@ export function useRealtimeChat(guildId: string | null) {
   ) => {
     if (!guildId) throw new Error('No guild ID');
 
-    await client.models.AllianceMessage.create({
+    await getClient().models.AllianceMessage.create({
       guildId,
       senderId,
       content,

@@ -33,7 +33,8 @@ import { useInitializeAchievements } from './hooks/useInitializeAchievements';
 const AuthProvider = lazy(() => import('./AuthProvider'));
 
 Amplify.configure(outputs);
-const client = generateClient<Schema>();
+let _client: ReturnType<typeof generateClient<Schema>> | null = null;
+const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 function AppContent() {
   const navigate = useNavigate();
@@ -71,7 +72,7 @@ function AppContent() {
         return;
       }
       
-      const { data } = await client.models.Kingdom.list();
+      const { data } = await getClient().models.Kingdom.list();
       setKingdoms(data);
       
       // Only navigate if we're on the root path
@@ -259,7 +260,7 @@ function AppContent() {
           // Non-fatal — kingdom can exist without a season
         }
 
-        const newKingdom = await client.models.Kingdom.create({
+        const newKingdom = await getClient().models.Kingdom.create({
           name: kingdomName || 'New Kingdom',
           race: raceName as "Human" | "Elven" | "Goblin" | "Droben" | "Vampire" | "Elemental" | "Centaur" | "Sidhe" | "Dwarven" | "Fae",
           resources: JSON.stringify(startingResources),
