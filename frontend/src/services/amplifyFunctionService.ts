@@ -391,19 +391,22 @@ export class AmplifyFunctionService {
         };
       }
 
+      const rawCoords = territoryData.coordinates || { x: 0, y: 0 };
+      const coordsArg = typeof rawCoords === 'string' ? rawCoords : JSON.stringify(rawCoords);
+
       const { data, errors } = await getClient().mutations.claimTerritory({
         kingdomId: territoryData.kingdomId,
         territoryName: territoryData.name,
         territoryType: (territoryData as any).territoryType || 'settlement',
         terrainType: (territoryData.terrainType || 'plains') as 'plains' | 'forest' | 'mountains' | 'desert' | 'swamp' | 'coastal',
-        coordinates: territoryData.coordinates || { x: 0, y: 0 }
+        coordinates: coordsArg
       });
 
       if (errors && errors.length > 0) {
         throw new Error(`Territory claim failed: ${errors.map(e => e.message).join(', ')}`);
       }
 
-      return data;
+      return parseResult(data);
     } catch (error) {
       console.error('Territory claim error:', error);
       throw error;
@@ -423,7 +426,7 @@ export class AmplifyFunctionService {
     if (errors && errors.length > 0) {
       throw new Error('Territory upgrade failed: ' + errors.map((e: { message: string }) => e.message).join(', '));
     }
-    return data;
+    return parseResult(data);
   }
 
   /**

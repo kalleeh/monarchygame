@@ -81,7 +81,7 @@ export class SpellService {
     try {
       const response = await AmplifyFunctionService.castSpell({
         kingdomId,
-        action: 'cast_spell',
+        action: 'cast',
         spellId: spellId
       });
 

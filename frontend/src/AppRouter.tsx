@@ -610,11 +610,53 @@ function ReplaysListRoute({ onNavigate }: { onNavigate: (replayId: string) => vo
   );
 }
 
-// Reads live battle history from combatStore and transforms it to the BattleHistory
-// shape expected by the BattleReports component.
+// Reads live battle history from combatStore + server (in auth mode) and transforms
+// to the BattleHistory shape expected by the BattleReports component.
 function BattleReportsRoute({ kingdom }: { kingdom: Schema['Kingdom']['type'] }) {
   const rawHistory = useCombatStore((state) => state.battleHistory);
   const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
+  const [serverHistory, setServerHistory] = useState<BattleHistory[]>([]);
+
+  // In auth mode, fetch persisted battle reports from DynamoDB on mount
+  useEffect(() => {
+    if (isDemoMode()) return;
+    const fetchServerHistory = async () => {
+      try {
+        const client = generateClient<Schema>();
+        const { data } = await client.models.BattleReport.list({
+          filter: { attackerId: { eq: kingdom.id } },
+          limit: 50,
+        });
+        if (!data || data.length === 0) return;
+        const parsed: BattleHistory[] = data.map(r => {
+          const result = typeof r.result === 'string' ? JSON.parse(r.result) : (r.result ?? {});
+          const outcome: 'victory' | 'defeat' | 'draw' =
+            result.result === 'with_ease' || result.result === 'good_fight' || result.result === 'victory' ? 'victory'
+            : result.result === 'failed' || result.result === 'defeat' ? 'defeat' : 'draw';
+          const attackerInfo = { kingdomName: kingdom.name ?? 'Your Kingdom', race: kingdom.race ?? 'Human' };
+          const defenderInfo = { kingdomName: r.defenderId };
+          return {
+            id: r.id,
+            timestamp: new Date(r.timestamp),
+            attackerId: r.attackerId,
+            defenderId: r.defenderId,
+            attacker: attackerInfo,
+            defender: defenderInfo,
+            outcome,
+            result: { outcome, attacker: attackerInfo, defender: defenderInfo, attackType: (r.attackType as any) ?? 'full_attack', success: outcome === 'victory', landGained: r.landGained ?? 0 },
+            casualties: {},
+            netGain: { gold: result.goldLooted ?? 0, land: r.landGained ?? 0, population: 0 },
+            isAttacker: true,
+            attackType: (r.attackType as any) ?? 'full_attack',
+          } satisfies BattleHistory;
+        });
+        setServerHistory(parsed);
+      } catch (err) {
+        console.warn('[BattleReportsRoute] Server fetch failed:', err);
+      }
+    };
+    void fetchServerHistory();
+  }, [kingdom.id, kingdom.name, kingdom.race]);
 
   const battleHistory: BattleHistory[] = useMemo(() => {
     const unitsToArmy = (units: Unit[]): Army => {
@@ -699,7 +741,14 @@ function BattleReportsRoute({ kingdom }: { kingdom: Schema['Kingdom']['type'] })
     });
   }, [rawHistory, aiKingdoms, kingdom]);
 
-  return <BattleReports battleHistory={battleHistory} className="battle-reports-content" currentKingdomId={kingdom.id} />;
+  // Merge local session history with server-persisted history (dedup by id)
+  const mergedHistory = useMemo(() => {
+    const localIds = new Set(battleHistory.map(b => b.id));
+    const serverOnly = serverHistory.filter(b => !localIds.has(b.id));
+    return [...battleHistory, ...serverOnly].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }, [battleHistory, serverHistory]);
+
+  return <BattleReports battleHistory={mergedHistory} className="battle-reports-content" currentKingdomId={kingdom.id} />;
 }
 
 // Wrapper component that looks up the replay from the store by replayId param
