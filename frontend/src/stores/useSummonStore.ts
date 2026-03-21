@@ -114,16 +114,27 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
   // Calculate total upkeep cost for all units
   getTotalUpkeep: () => {
     const kingdomStore = useKingdomStore.getState();
-    const { availableUnits } = get();
-    
+    const { availableUnits, currentRace } = get();
+
+    // If availableUnits isn't loaded yet (e.g. dashboard before Summon page opened),
+    // fall back to deriving upkeep directly from race definition.
+    const raceUnits = availableUnits.length > 0
+      ? availableUnits
+      : getUnitsForRace(currentRace || 'Human').map(u => ({
+          id: u.id, name: u.name, tier: u.tier,
+          cost: u.stats.cost.gold, population: u.stats.cost.population,
+          upkeep: u.stats.upkeep, attack: u.stats.offense, defense: u.stats.defense,
+          health: u.stats.hitPoints,
+        }));
+
     let totalUpkeep = 0;
     kingdomStore.units.forEach(unit => {
-      const unitData = availableUnits.find(u => u.id === unit.type);
+      const unitData = raceUnits.find(u => u.id === unit.type);
       if (unitData && unitData.upkeep) {
         totalUpkeep += unitData.upkeep * unit.count;
       }
     });
-    
+
     return totalUpkeep;
   },
 

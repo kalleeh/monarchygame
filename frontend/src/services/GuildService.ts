@@ -1362,17 +1362,22 @@ export class GuildService {
       };
     }
 
-    return (getClient().models as unknown as Record<string, { onCreate: (options: unknown) => { subscribe: (handlers: { next: (data: unknown) => void; error: (error: unknown) => void }) => { unsubscribe: () => void } } }>).GuildInvitation.onCreate({
-      filter: { inviteeId: { eq: kingdomId } }
-    }).subscribe({
-      next: (data: unknown) => {
-        if (data) {
-          onInvitation(data as unknown as GuildInvitation);
+    try {
+      return (getClient().models as unknown as Record<string, { onCreate: (options: unknown) => { subscribe: (handlers: { next: (data: unknown) => void; error: (error: unknown) => void }) => { unsubscribe: () => void } } }>).GuildInvitation.onCreate({
+        filter: { inviteeId: { eq: kingdomId } }
+      }).subscribe({
+        next: (data: unknown) => {
+          if (data) {
+            onInvitation(data as unknown as GuildInvitation);
+          }
+        },
+        error: (error: unknown) => {
+          console.error('Alliance invitation subscription error:', error);
         }
-      },
-      error: (error: unknown) => {
-        console.error('Alliance invitation subscription error:', error);
-      }
-    });
+      });
+    } catch {
+      // Subscription not available (schema may not include GuildInvitation onCreate)
+      return { unsubscribe: () => {} };
+    }
   }
 }
