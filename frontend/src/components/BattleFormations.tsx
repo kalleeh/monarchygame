@@ -249,8 +249,8 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
   };
 
   const handleExecuteBattle = async () => {
-    if (selectedUnits.length > 0) {
-      const result = await executeBattle('enemy-territory');
+    if (selectedUnits.length > 0 && selectedTarget) {
+      const result = await executeBattle(selectedTarget);
       if (result) {
         setShowBattleResult(true);
       }
