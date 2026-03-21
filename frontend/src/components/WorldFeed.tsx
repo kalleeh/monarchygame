@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { isDemoMode } from '../utils/authMode';
+import { useCombatStore } from '../stores/combatStore';
+import { useThieveryStore } from '../stores/thieveryStore';
+import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import './WorldFeed.css';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -38,42 +41,80 @@ const EVENT_ICONS: Record<EventType, string> = {
   alliance: '\uD83C\uDFF0', // 🏰
 };
 
-// ── Demo / mock data ───────────────────────────────────────────────────────
+// ── Demo data builder — reads real stores + synthesises AI world events ────
 
-function buildMockEvents(): WorldEvent[] {
+/**
+ * Build demo-mode feed events from three sources:
+ *  1. Player's real battle history (combatStore)
+ *  2. Player's real thievery operations (thieveryStore)
+ *  3. Synthetic AI vs AI background events seeded by 5-minute time buckets
+ *     so they change each refresh cycle without being random on every render.
+ */
+function buildDemoEvents(aiKingdomNames: string[]): WorldEvent[] {
+  const events: WorldEvent[] = [];
   const now = Date.now();
-  return [
-    {
-      id: 'mock-1',
+
+  // 1. Real player battles
+  const aiKingdoms = useAIKingdomStore.getState().aiKingdoms;
+  const battles = useCombatStore.getState().battleHistory;
+  for (const b of battles.slice(0, 10)) {
+    const landPart = b.landGained && b.landGained > 0 ? ` — gained ${b.landGained} acres` : '';
+    const defAI = aiKingdoms.find(k => k.id === b.defender);
+    const defName = defAI?.name ?? (b.defender === 'current-player' ? 'Unknown' : b.defender.slice(0, 8));
+    events.push({
+      id: `player-battle-${b.id}`,
       type: 'combat',
-      message: 'Iron Reach attacked The Thornwood — Iron Reach gained 47 acres',
-      timestamp: new Date(now - 4 * 60 * 1000),
-    },
-    {
-      id: 'mock-2',
-      type: 'war',
-      message: 'Order of the Veil declared war on The Goblin Horde',
-      timestamp: new Date(now - 22 * 60 * 1000),
-    },
-    {
-      id: 'mock-3',
+      message: `You ${b.result === 'victory' ? 'attacked' : 'attacked'} ${defName}${landPart}`,
+      timestamp: new Date(b.timestamp),
+    });
+  }
+
+  // 2. Real player thievery operations
+  const ops = useThieveryStore.getState().operations;
+  for (const op of ops.slice(0, 5)) {
+    const verb = op.success ? 'successfully ran' : 'failed';
+    events.push({
+      id: `player-thiev-${op.id}`,
       type: 'thievery',
-      message: 'Shadow Fang completed a steal operation against Golden Keep',
-      timestamp: new Date(now - 45 * 60 * 1000),
-    },
-    {
-      id: 'mock-4',
-      type: 'alliance',
-      message: 'Crimson Council achieved full alliance composition bonus',
-      timestamp: new Date(now - 1.5 * 60 * 60 * 1000),
-    },
-    {
-      id: 'mock-5',
-      type: 'combat',
-      message: 'Ember Throne attacked Stonewall — Ember Throne gained 31 acres',
-      timestamp: new Date(now - 2 * 60 * 60 * 1000),
-    },
+      message: `You ${verb} a ${op.type.replace(/_/g, ' ')} operation against ${op.targetName}`,
+      timestamp: new Date(op.timestamp),
+    });
+  }
+
+  // 3. Synthetic AI vs AI background events (change each 5-minute bucket)
+  const names = aiKingdomNames.length >= 4
+    ? aiKingdomNames
+    : ['Iron Reach', 'The Thornwood', 'Ember Throne', 'Stonewall', 'Crimson Veil', 'Golden Keep'];
+
+  // Seed with the current 5-minute bucket so events are stable within a window
+  const bucket = Math.floor(now / (5 * 60 * 1000));
+  const seededRand = (n: number, offset: number) => ((bucket * 2654435761 + offset * 1234567) >>> 0) % n;
+
+  const syntheticTemplates: Array<{ type: EventType; make: (a: string, b: string, seed: number) => string }> = [
+    { type: 'combat', make: (a, b, s) => `${a} attacked ${b} — ${a} gained ${20 + (s % 60)} acres` },
+    { type: 'combat', make: (a, b, s) => `${a} launched a guerrilla raid against ${b} — ${a} gained ${10 + (s % 30)} acres` },
+    { type: 'war',    make: (a, b) => `${a} declared war on ${b}` },
+    { type: 'thievery', make: (a, b) => `${a} completed a steal operation against ${b}` },
+    { type: 'alliance', make: (a) => `${a} achieved full alliance composition bonus` },
   ];
+
+  const numSynthetic = Math.max(0, 8 - events.length);
+  for (let i = 0; i < numSynthetic; i++) {
+    const tplIdx = seededRand(syntheticTemplates.length, i * 7);
+    const aIdx = seededRand(names.length, i * 13);
+    let bIdx = seededRand(names.length, i * 17);
+    if (bIdx === aIdx) bIdx = (bIdx + 1) % names.length;
+    const tpl = syntheticTemplates[tplIdx];
+    const ageMins = 5 + seededRand(240, i * 19); // 5m–4h ago
+    events.push({
+      id: `synth-${bucket}-${i}`,
+      type: tpl.type,
+      message: tpl.make(names[aIdx], names[bIdx], seededRand(100, i * 23)),
+      timestamp: new Date(now - ageMins * 60 * 1000),
+    });
+  }
+
+  return events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 20);
 }
 
 // ── Amplify client (module-level singleton) ────────────────────────────────
@@ -97,19 +138,6 @@ async function fetchKingdomName(id: string): Promise<string> {
   }
 }
 
-async function fetchAllianceName(id: string): Promise<string> {
-  if (nameCache.has(`alliance:${id}`)) return nameCache.get(`alliance:${id}`)!;
-  try {
-    const { data } = await amplifyClient.models.Alliance.get({ id });
-    const name = data?.name ?? `Alliance ${id.slice(0, 6)}`;
-    nameCache.set(`alliance:${id}`, name);
-    return name;
-  } catch {
-    const fallback = `Alliance ${id.slice(0, 6)}`;
-    nameCache.set(`alliance:${id}`, fallback);
-    return fallback;
-  }
-}
 
 // ── Data fetchers ──────────────────────────────────────────────────────────
 
@@ -236,7 +264,8 @@ const WorldFeed: React.FC<WorldFeedProps> = ({ defaultCollapsed = false }) => {
     setIsLoading(true);
     try {
       if (isDemoMode()) {
-        setEvents(buildMockEvents());
+        const aiNames = useAIKingdomStore.getState().aiKingdoms.map(k => k.name);
+        setEvents(buildDemoEvents(aiNames));
         setIsLoading(false);
         return;
       }
@@ -253,10 +282,10 @@ const WorldFeed: React.FC<WorldFeedProps> = ({ defaultCollapsed = false }) => {
         .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
         .slice(0, 20);
 
-      setEvents(merged.length > 0 ? merged : buildMockEvents());
+      setEvents(merged.length > 0 ? merged : buildDemoEvents(useAIKingdomStore.getState().aiKingdoms.map(k => k.name)));
     } catch (err) {
       console.error('[WorldFeed] Failed to load events:', err);
-      setEvents(buildMockEvents());
+      setEvents(buildDemoEvents(useAIKingdomStore.getState().aiKingdoms.map(k => k.name)));
     } finally {
       setIsLoading(false);
     }
