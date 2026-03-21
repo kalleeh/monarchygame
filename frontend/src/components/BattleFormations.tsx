@@ -110,6 +110,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
   // Get available units from kingdom store (single source of truth)
   const availableUnits = useKingdomStore((state) => state.units);
   const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
+  const generateAIKingdoms = useAIKingdomStore((state) => state.generateAIKingdoms);
 
   const [unitOrder, setUnitOrder] = useState<string[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<string>('');
@@ -181,6 +182,15 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
   useEffect(() => {
     initializeCombatData();
   }, [initializeCombatData]);
+
+  // Generate AI kingdoms if none exist (needed in auth mode where the store starts empty)
+  const resources = useKingdomStore((state) => state.resources);
+  useEffect(() => {
+    if (aiKingdoms.length === 0) {
+      const networth = (resources.gold || 0) + (resources.land || 0) * 1000;
+      generateAIKingdoms(5, networth);
+    }
+  }, [aiKingdoms.length, generateAIKingdoms, resources.gold, resources.land]);
 
   // Pre-select target when navigated from KingdomBrowser with a target id
   useEffect(() => {
@@ -370,7 +380,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
         <h3 style={{ color: '#fff', marginBottom: '1rem' }}>🎯 Select Target</h3>
         {aiKingdoms.length === 0 && !preselectedTargetId ? (
           <p style={{ color: '#a0a0a0' }}>
-            No targets available. Use Time Travel on the dashboard to generate AI kingdoms.
+            Loading targets…
           </p>
         ) : (
           <select
