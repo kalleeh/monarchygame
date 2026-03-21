@@ -23,6 +23,7 @@ import { TurnTimer } from './ui/TurnTimer';
 import { DemoTimeControl } from './ui/DemoTimeControl';
 import { calculateTimeTravel, calculateGoldIncome, calculatePopulationGrowth, type BuildingCounts } from '../utils/resourceCalculations';
 import { calculateBRT, getBuildingName } from '../utils/buildingMechanics';
+import { getUnitsForRace } from '../utils/units';
 import { RESOURCE_GENERATION } from '../constants/gameConfig';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { BalanceTestRunner } from './BalanceTestRunner';
@@ -138,7 +139,18 @@ function KingdomDashboard({
   const { hasCompleted: tutorialCompleted, markComplete: completeTutorial } = useTutorial('kingdom-dashboard');
   
   // Calculate BRT and upkeep
-  const { getTotalUpkeep, accumulatedGoldSpent, calculateRemainingCapacity } = useSummonStore();
+  const { getTotalUpkeep: _getTotalUpkeep, accumulatedGoldSpent, calculateRemainingCapacity } = useSummonStore();
+
+  // Compute upkeep directly from kingdomStore.units + race definition so it works
+  // even before the Summon page has been opened (when summonStore.availableUnits is empty).
+  const getTotalUpkeep = useCallback(() => {
+    const raceKey = kingdom.race ? kingdom.race.charAt(0).toUpperCase() + kingdom.race.slice(1).toLowerCase() : 'Human';
+    const raceUnits = getUnitsForRace(raceKey);
+    return units.reduce((sum, unit) => {
+      const def = raceUnits.find(u => u.id === unit.type);
+      return sum + (def?.stats.upkeep ?? 0) * unit.count;
+    }, 0);
+  }, [kingdom.race, units]);
   
   const buildingStats = useMemo(() => {
     const totalLand = resources.land || 0;
