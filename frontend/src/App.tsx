@@ -27,6 +27,7 @@ import './styles/game-pages.css';
 import type { Schema } from '../../amplify/data/resource';
 import { TutorialOverlay } from './components/tutorial/TutorialOverlay';
 import { useInitializeAchievements } from './hooks/useInitializeAchievements';
+import { useAITick } from './hooks/useAITick';
 
 // @aws-amplify/ui-react (Authenticator + ThemeProvider + CSS) is lazy-loaded
 // so it doesn't ship in the initial bundle for the welcome / demo-mode pages.
@@ -39,6 +40,7 @@ const getClient = () => { if (!_client) _client = generateClient<Schema>(); retu
 function AppContent() {
   const navigate = useNavigate();
   useInitializeAchievements();
+  useAITick();
   const [kingdoms, setKingdoms] = useState<Schema['Kingdom']['type'][]>([]);
   const [loading, setLoading] = useState(true);
   const [showAuth, setShowAuth] = useState(false);
