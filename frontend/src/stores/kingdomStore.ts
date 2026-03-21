@@ -5,6 +5,7 @@ import type { KingdomResources } from '../types/amplify';
 import { calculateCurrentAge } from '../../../shared/mechanics/age-mechanics';
 import type { AgeStatus } from '../../../shared/mechanics/age-mechanics';
 import { isDemoMode } from '../utils/authMode';
+import { getUnitsForRace } from '../utils/units';
 
 let _client: ReturnType<typeof generateClient<Schema>> | null = null;
 const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
@@ -94,13 +95,22 @@ export const useKingdomStore = create<KingdomState>((set, get) => {
             const serverResources = typeof result.data.resources === 'string'
               ? JSON.parse(result.data.resources)
               : (result.data.resources ?? localData.resources);
+            const raceKey = result.data.race || 'Human';
+            const raceUnits = getUnitsForRace(raceKey);
             const serverUnits = typeof result.data.totalUnits === 'string'
-              ? Object.entries(JSON.parse(result.data.totalUnits)).map(([type, count]) => ({
-                  id: `${type}-server`,
-                  type,
-                  count: count as number,
-                  attack: 1, defense: 1, health: 1
-                }))
+              ? Object.entries(JSON.parse(result.data.totalUnits) as Record<string, number>)
+                  .filter(([, count]) => count > 0)
+                  .map(([type, count]) => {
+                    const def = raceUnits.find(u => u.id === type);
+                    return {
+                      id: `${type}-server`,
+                      type,
+                      count,
+                      attack: def?.stats.offense ?? 1,
+                      defense: def?.stats.defense ?? 1,
+                      health: def?.stats.hitPoints ?? 10,
+                    };
+                  })
               : localData.units;
             saveKingdomData(id, { resources: serverResources, units: serverUnits });
             set({ resources: serverResources, units: serverUnits });
@@ -124,13 +134,22 @@ export const useKingdomStore = create<KingdomState>((set, get) => {
             const serverResources = typeof result.data.resources === 'string'
               ? JSON.parse(result.data.resources)
               : (result.data.resources ?? localData.resources);
+            const raceKey = result.data.race || 'Human';
+            const raceUnits = getUnitsForRace(raceKey);
             const serverUnits = typeof result.data.totalUnits === 'string'
-              ? Object.entries(JSON.parse(result.data.totalUnits)).map(([type, count]) => ({
-                  id: `${type}-server`,
-                  type,
-                  count: count as number,
-                  attack: 1, defense: 1, health: 1
-                }))
+              ? Object.entries(JSON.parse(result.data.totalUnits) as Record<string, number>)
+                  .filter(([, count]) => count > 0)
+                  .map(([type, count]) => {
+                    const def = raceUnits.find(u => u.id === type);
+                    return {
+                      id: `${type}-server`,
+                      type,
+                      count,
+                      attack: def?.stats.offense ?? 1,
+                      defense: def?.stats.defense ?? 1,
+                      health: def?.stats.hitPoints ?? 10,
+                    };
+                  })
               : localData.units;
             // Sync server state to local store and localStorage
             saveKingdomData(id, { resources: serverResources, units: serverUnits });
