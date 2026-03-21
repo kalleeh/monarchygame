@@ -171,7 +171,7 @@ function ActiveSeasonPanel() {
     }
     setActionLoading('create');
     try {
-      const raw = await client.mutations.manageSeason({ action: 'create' });
+      const raw = await getClient().mutations.manageSeason({ action: 'create' });
       const result = typeof raw === 'string' ? JSON.parse(raw) : (raw as { data?: unknown }).data ?? raw;
       const parsed = typeof result === 'string' ? JSON.parse(result) : result as { success?: boolean; error?: string };
       if (parsed?.success === false) throw new Error(parsed.error || 'Create failed');
@@ -191,7 +191,7 @@ function ActiveSeasonPanel() {
     }
     setActionLoading('check');
     try {
-      const raw = await client.mutations.manageSeason({ action: 'check' });
+      const raw = await getClient().mutations.manageSeason({ action: 'check' });
       const result = typeof raw === 'string' ? JSON.parse(raw) : (raw as { data?: unknown }).data ?? raw;
       const parsed = typeof result === 'string' ? JSON.parse(result) : result as { success?: boolean; error?: string; processed?: unknown[] };
       if (parsed?.success === false) throw new Error(parsed.error || 'Check failed');
@@ -214,7 +214,7 @@ function ActiveSeasonPanel() {
     }
     setActionLoading('end');
     try {
-      const raw = await client.mutations.manageSeason({ action: 'end', seasonId: season.id });
+      const raw = await getClient().mutations.manageSeason({ action: 'end', seasonId: season.id });
       const result = typeof raw === 'string' ? JSON.parse(raw) : (raw as { data?: unknown }).data ?? raw;
       const parsed = typeof result === 'string' ? JSON.parse(result) : result as { success?: boolean; error?: string };
       if (parsed?.success === false) throw new Error(parsed.error || 'End failed');
@@ -464,7 +464,7 @@ function TurnManagementPanel() {
 
       for (const kingdom of kingdoms) {
         try {
-          await client.mutations.updateResources({ kingdomId: kingdom.id, turns });
+          await getClient().mutations.updateResources({ kingdomId: kingdom.id, turns });
           successCount++;
           setProgress(`Ticked ${successCount} / ${kingdoms.length} kingdoms…`);
         } catch (err) {

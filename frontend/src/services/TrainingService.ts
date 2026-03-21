@@ -45,7 +45,7 @@ export class TrainingService {
    */
   static async getAvailableUnits(kingdomId: string): Promise<TrainableUnit[]> {
     try {
-      const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
+      const queries = getClient().queries as Record<string, (args: unknown) => Promise<unknown>>;
       const rawResponse = await queries.getAvailableUnits({ kingdomId });
       const response = rawResponse as Record<string, unknown>;
       
@@ -74,7 +74,7 @@ export class TrainingService {
    */
   static async trainUnit(kingdomId: string, unitType: string, quantity: number = 1): Promise<boolean> {
     try {
-      const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
+      const queries = getClient().queries as Record<string, (args: unknown) => Promise<unknown>>;
       const rawResponse = await queries.trainUnit({
         kingdomId,
         unitType,
@@ -94,7 +94,7 @@ export class TrainingService {
    */
   static async getTrainedUnits(kingdomId: string): Promise<TrainedUnit[]> {
     try {
-      const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
+      const queries = getClient().queries as Record<string, (args: unknown) => Promise<unknown>>;
       const rawResponse = await queries.getTrainedUnits({ kingdomId });
       const response = rawResponse as Record<string, unknown>;
       
@@ -121,7 +121,7 @@ export class TrainingService {
    */
   static async cancelTraining(queueId: string): Promise<boolean> {
     try {
-      const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
+      const queries = getClient().queries as Record<string, (args: unknown) => Promise<unknown>>;
       const rawResponse = await queries.cancelTraining({ queueId });
       const response = rawResponse as Record<string, unknown>;
       return Boolean(response.success) || false;
@@ -136,7 +136,7 @@ export class TrainingService {
    */
   static async upgradeUnit(unitId: string, upgradeType: string): Promise<TrainedUnit> {
     try {
-      const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
+      const queries = getClient().queries as Record<string, (args: unknown) => Promise<unknown>>;
       const rawResponse = await queries.upgradeUnit({ unitId, upgradeType });
       const response = rawResponse as Record<string, unknown>;
       
@@ -159,7 +159,7 @@ export class TrainingService {
    */
   static async completeTraining(kingdomId: string): Promise<TrainedUnit[]> {
     try {
-      const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
+      const queries = getClient().queries as Record<string, (args: unknown) => Promise<unknown>>;
       const rawResponse = await queries.completeTraining({ kingdomId });
       const response = rawResponse as Record<string, unknown>;
       return (response.completedUnits as TrainedUnit[]) || [];

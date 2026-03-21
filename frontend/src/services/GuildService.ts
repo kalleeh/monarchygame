@@ -424,7 +424,7 @@ export class GuildService {
     }
 
     try {
-      const updateResponse = await (client.models as unknown as Record<string, { update: (data: unknown) => Promise<{ errors?: { message: string }[] }> }>).GuildInvitation.update({
+      const updateResponse = await (getClient().models as unknown as Record<string, { update: (data: unknown) => Promise<{ errors?: { message: string }[] }> }>).GuildInvitation.update({
         id: invitationId,
         status: response,
       });
@@ -1362,7 +1362,7 @@ export class GuildService {
       };
     }
 
-    return (client.models as unknown as Record<string, { onCreate: (options: unknown) => { subscribe: (handlers: { next: (data: unknown) => void; error: (error: unknown) => void }) => { unsubscribe: () => void } } }>).GuildInvitation.onCreate({
+    return (getClient().models as unknown as Record<string, { onCreate: (options: unknown) => { subscribe: (handlers: { next: (data: unknown) => void; error: (error: unknown) => void }) => { unsubscribe: () => void } } }>).GuildInvitation.onCreate({
       filter: { inviteeId: { eq: kingdomId } }
     }).subscribe({
       next: (data: unknown) => {

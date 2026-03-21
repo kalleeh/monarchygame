@@ -78,7 +78,7 @@ export class DiplomacyService {
       return DEMO_RELATIONSHIPS;
     }
     try {
-      const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
+      const queries = getClient().queries as Record<string, (args: unknown) => Promise<unknown>>;
       const rawResponse = await queries.getDiplomaticRelationships({
         kingdomId: _kingdomId
       });
@@ -113,7 +113,7 @@ export class DiplomacyService {
       return DEMO_PROPOSALS;
     }
     try {
-      const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
+      const queries = getClient().queries as Record<string, (args: unknown) => Promise<unknown>>;
       const rawResponse = await queries.getActiveProposals({ kingdomId: _kingdomId });
       const response = rawResponse as Record<string, unknown>;
 
@@ -145,7 +145,7 @@ export class DiplomacyService {
       return DEMO_KINGDOMS;
     }
     try {
-      const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
+      const queries = getClient().queries as Record<string, (args: unknown) => Promise<unknown>>;
       const rawResponse = await queries.getAvailableKingdoms({ kingdomId: _kingdomId });
       const response = rawResponse as Record<string, unknown>;
 
@@ -175,7 +175,7 @@ export class DiplomacyService {
       return 100;
     }
     try {
-      const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
+      const queries = getClient().queries as Record<string, (args: unknown) => Promise<unknown>>;
       const rawResponse = await queries.getKingdomReputation({ kingdomId: _kingdomId });
       const response = rawResponse as Record<string, unknown>;
       const data = response.data as Record<string, unknown>;
@@ -194,7 +194,7 @@ export class DiplomacyService {
       return DEMO_HISTORY;
     }
     try {
-      const queries = client.queries as Record<string, (args: unknown) => Promise<unknown>>;
+      const queries = getClient().queries as Record<string, (args: unknown) => Promise<unknown>>;
       const rawResponse = await queries.getDiplomaticHistory({ kingdomId: _kingdomId });
       const response = rawResponse as Record<string, unknown>;
 
@@ -227,7 +227,7 @@ export class DiplomacyService {
   }): Promise<boolean> {
     try {
       if (!isDemoMode()) {
-        await client.mutations.sendTreatyProposal({
+        await getClient().mutations.sendTreatyProposal({
           proposerId: data.fromKingdomId,
           recipientId: data.toKingdomId,
           seasonId: 'current',
@@ -250,7 +250,7 @@ export class DiplomacyService {
   static async acceptTreatyProposal(proposalId: string): Promise<boolean> {
     try {
       if (!isDemoMode()) {
-        await client.mutations.respondToTreaty({
+        await getClient().mutations.respondToTreaty({
           treatyId: proposalId,
           accepted: true
         });
@@ -270,7 +270,7 @@ export class DiplomacyService {
   static async rejectTreatyProposal(proposalId: string): Promise<boolean> {
     try {
       if (!isDemoMode()) {
-        await client.mutations.respondToTreaty({
+        await getClient().mutations.respondToTreaty({
           treatyId: proposalId,
           accepted: false
         });
@@ -290,7 +290,7 @@ export class DiplomacyService {
   static async declareWar(fromKingdomId: string, toKingdomId: string): Promise<boolean> {
     try {
       if (!isDemoMode()) {
-        await client.mutations.declareDiplomaticWar({
+        await getClient().mutations.declareDiplomaticWar({
           kingdomId: fromKingdomId,
           targetKingdomId: toKingdomId,
           seasonId: 'current'
@@ -311,7 +311,7 @@ export class DiplomacyService {
   static async makePeace(fromKingdomId: string, toKingdomId: string): Promise<boolean> {
     try {
       if (!isDemoMode()) {
-        await client.mutations.makeDiplomaticPeace({
+        await getClient().mutations.makeDiplomaticPeace({
           kingdomId: fromKingdomId,
           targetKingdomId: toKingdomId
         });
@@ -334,7 +334,7 @@ export class DiplomacyService {
       return { unsubscribe: () => {} };
     }
     try {
-      const queries = client.queries as Record<string, (args: unknown) => unknown>;
+      const queries = getClient().queries as Record<string, (args: unknown) => unknown>;
       const subscriptionResult = queries.onTreatyProposal({ kingdomId });
       const subscription = (subscriptionResult as unknown as { subscribe: (handlers: { next: (data: unknown) => void; error: (error: Error) => void }) => { unsubscribe: () => void } }).subscribe({
         next: (data: unknown) => callback(data as Record<string, unknown>),
