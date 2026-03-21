@@ -141,6 +141,13 @@ export class AmplifyFunctionService {
         throw new Error(`Rate limited: ${functionName}. Try again in ${Math.ceil(waitTime / 1000)}s.`);
       }
 
+      // Helper: Amplify Gen 2 custom mutations with .returns(a.json()) return the
+      // Lambda result as a JSON string. Parse it so callers get a plain object.
+      const parseResult = (raw: unknown): unknown => {
+        if (typeof raw === 'string') { try { return JSON.parse(raw); } catch { /* not JSON */ } }
+        return raw;
+      };
+
       // Map function names to actual GraphQL operations
       switch (functionName) {
         case 'spell-processor':
@@ -148,133 +155,133 @@ export class AmplifyFunctionService {
         case 'resource-manager':
           // Route encamp action to the dedicated encampKingdom mutation
           if (payload.action === 'encamp') {
-            return await getClient().mutations.encampKingdom({
+            return parseResult(await getClient().mutations.encampKingdom({
               kingdomId: payload.kingdomId,
               duration: (payload.amount as number) ?? 24,
-            });
+            }));
           }
-          return await getClient().mutations.updateResources({
+          return parseResult(await getClient().mutations.updateResources({
             kingdomId: payload.kingdomId,
             turns: payload.amount ?? 1
-          });
+          }));
         case 'building-constructor':
-          return await getClient().mutations.constructBuildings({
+          return parseResult(await getClient().mutations.constructBuildings({
             kingdomId: payload.kingdomId,
             buildingType: payload.buildingType || '',
             quantity: payload.quantity || 1
-          });
+          }));
         case 'unit-trainer':
-          return await getClient().mutations.trainUnits({
+          return parseResult(await getClient().mutations.trainUnits({
             kingdomId: payload.kingdomId,
             unitType: payload.unitType || '',
             quantity: payload.quantity || 1,
             goldCost: typeof payload.goldCost === 'number' ? payload.goldCost : undefined
-          });
+          }));
         case 'combat-processor':
-          return await getClient().mutations.processCombat({
+          return parseResult(await getClient().mutations.processCombat({
             attackerId: payload.attackerKingdomId || '',
             defenderId: payload.defenderKingdomId || '',
             attackType: ({ controlled_strike: 'standard', guerilla_raid: 'raid', mob_assault: 'pillage', full_attack: 'siege', ambush: 'standard', raid: 'raid', siege: 'siege', pillage: 'pillage', standard: 'standard' } as Record<string, 'standard' | 'raid' | 'siege' | 'pillage'>)[payload.attackType as string] ?? 'raid',
             units: payload.units || {},
             formationId: payload.formationId as string | undefined,
             terrainId: payload.terrainId as string | undefined,
-          });
+          }));
         case 'season-manager':
-          return await getClient().queries.getActiveSeason({});
+          return parseResult(await getClient().queries.getActiveSeason({}));
         case 'war-manager':
-          return await getClient().mutations.declareWar({
+          return parseResult(await getClient().mutations.declareWar({
             attackerId: payload.attackerId || payload.kingdomId,
             defenderId: payload.defenderKingdomId || '',
             seasonId: payload.seasonId || '',
             reason: payload.reason as string | undefined
-          });
+          }));
         case 'trade-processor':
           if (payload.action === 'accept') {
-            return await getClient().mutations.buyTradeOffer({
+            return parseResult(await getClient().mutations.buyTradeOffer({
               offerId: payload.offerId || '',
               buyerId: payload.kingdomId
-            });
+            }));
           }
           if (payload.action === 'cancel') {
-            return await getClient().mutations.revokeTradeOffer({
+            return parseResult(await getClient().mutations.revokeTradeOffer({
               offerId: payload.offerId || '',
               sellerId: payload.kingdomId
-            });
+            }));
           }
-          return await getClient().mutations.postTradeOffer({
+          return parseResult(await getClient().mutations.postTradeOffer({
             sellerId: payload.kingdomId,
             seasonId: payload.seasonId || '',
             resourceType: payload.resourceType || '',
             quantity: payload.quantity || 0,
             pricePerUnit: payload.pricePerUnit || 0
-          });
+          }));
         case 'diplomacy-processor':
           if (payload.action === 'respond') {
-            return await getClient().mutations.respondToTreaty({
+            return parseResult(await getClient().mutations.respondToTreaty({
               treatyId: payload.treatyId || '',
               accepted: payload.accepted as boolean
-            });
+            }));
           }
           if (payload.action === 'declare-war') {
-            return await getClient().mutations.declareDiplomaticWar({
+            return parseResult(await getClient().mutations.declareDiplomaticWar({
               kingdomId: payload.kingdomId,
               targetKingdomId: payload.defenderKingdomId || '',
               seasonId: payload.seasonId || ''
-            });
+            }));
           }
           if (payload.action === 'peace') {
-            return await getClient().mutations.makeDiplomaticPeace({
+            return parseResult(await getClient().mutations.makeDiplomaticPeace({
               kingdomId: payload.kingdomId,
               targetKingdomId: payload.defenderKingdomId || ''
-            });
+            }));
           }
-          return await getClient().mutations.sendTreatyProposal({
+          return parseResult(await getClient().mutations.sendTreatyProposal({
             proposerId: payload.kingdomId,
             recipientId: payload.defenderKingdomId || '',
             seasonId: payload.seasonId || '',
             treatyType: payload.treatyType as string || '',
             terms: payload.terms || {}
-          });
+          }));
         case 'season-lifecycle':
-          return await getClient().mutations.manageSeason({
+          return parseResult(await getClient().mutations.manageSeason({
             action: payload.action || 'check',
             seasonId: payload.seasonId
-          });
+          }));
         case 'thievery-processor':
-          return await getClient().mutations.executeThievery({
+          return parseResult(await getClient().mutations.executeThievery({
             kingdomId: payload.kingdomId,
             operation: (payload.action as string) || 'scout',
             targetKingdomId: (payload.targetId as string) || ''
-          });
+          }));
         case 'faith-processor':
-          return await getClient().mutations.updateFaith({
+          return parseResult(await getClient().mutations.updateFaith({
             kingdomId: payload.kingdomId,
             action: (payload.action as string) || 'selectAlignment',
             alignment: payload.alignment as string | undefined,
             abilityType: payload.abilityType as string | undefined
-          });
+          }));
         case 'bounty-processor':
           if (payload.action === 'complete') {
-            return await getClient().mutations.completeBounty({
+            return parseResult(await getClient().mutations.completeBounty({
               kingdomId: payload.kingdomId,
               targetId: (payload.targetId as string) || '',
               landGained: (payload.amount as number) ?? 0
-            });
+            }));
           }
-          return await getClient().mutations.claimBounty({
+          return parseResult(await getClient().mutations.claimBounty({
             kingdomId: payload.kingdomId,
             targetId: (payload.targetId as string) || ''
-          });
+          }));
         case 'alliance-treasury':
-          return await getClient().mutations.manageAllianceTreasury({
+          return parseResult(await getClient().mutations.manageAllianceTreasury({
             allianceId: payload.allianceId || '',
             kingdomId: payload.kingdomId,
             action: payload.action || 'contribute',
             amount: payload.amount as number | undefined,
             upgradeType: payload.upgradeType as string | undefined,
-          });
+          }));
         case 'alliance-manager':
-          return await getClient().mutations.manageAlliance({
+          return parseResult(await getClient().mutations.manageAlliance({
             kingdomId: payload.kingdomId,
             action: payload.action || 'create',
             allianceId: payload.allianceId as string | undefined,
@@ -284,7 +291,7 @@ export class AmplifyFunctionService {
             targetKingdomId: (payload.targetKingdomId ?? payload.targetId) as string | undefined,
             targetAllianceId: payload.targetAllianceId as string | undefined,
             relationship: payload.relationship as string | undefined,
-          });
+          }));
         default:
           throw new Error(`Unknown function: ${functionName}`);
       }
@@ -347,11 +354,11 @@ export class AmplifyFunctionService {
 
     switch (action) {
       case 'cast':
-        return await getClient().mutations.castSpell({
+        return parseResult(await getClient().mutations.castSpell({
           casterId: kingdomId,
           spellId,
           targetId: targetId || ''
-        });
+        }));
       
       case 'validate':
       case 'status':
