@@ -146,11 +146,11 @@ function KingdomDashboard({
   const getTotalUpkeep = useCallback(() => {
     const raceKey = kingdom.race ? kingdom.race.charAt(0).toUpperCase() + kingdom.race.slice(1).toLowerCase() : 'Human';
     const raceUnits = getUnitsForRace(raceKey);
-    return units.reduce((sum, unit) => {
+    return liveUnits.reduce((sum, unit) => {
       const def = raceUnits.find(u => u.id === unit.type);
       return sum + (def?.stats.upkeep ?? 0) * unit.count;
     }, 0);
-  }, [kingdom.race, units]);
+  }, [kingdom.race, liveUnits]);
   
   const buildingStats = useMemo(() => {
     const totalLand = resources.land || 0;
