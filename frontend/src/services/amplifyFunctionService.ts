@@ -76,6 +76,15 @@ type TerritoryPayload = FunctionPayload & BaseTerritoryPayload;
 type SpellPayload = FunctionPayload & BaseSpellPayload;
 
 export class AmplifyFunctionService {
+  /** Unwrap Amplify {data:string} envelope and parse JSON if needed. */
+  private static parseResult(raw: unknown): unknown {
+    if (raw && typeof raw === 'object' && 'data' in (raw as object)) {
+      raw = (raw as { data: unknown }).data;
+    }
+    if (typeof raw === 'string') { try { return JSON.parse(raw); } catch { /* not JSON */ } }
+    return raw;
+  }
+
   /**
    * Call a custom function through GraphQL mutations
    */
@@ -141,16 +150,8 @@ export class AmplifyFunctionService {
         throw new Error(`Rate limited: ${functionName}. Try again in ${Math.ceil(waitTime / 1000)}s.`);
       }
 
-      // Helper: Amplify Gen 2 custom mutations with .returns(a.json()) wrap the
-      // Lambda result in { data: string }. Unwrap and parse so callers get a plain object.
-      const parseResult = (raw: unknown): unknown => {
-        // Unwrap Amplify envelope: { data: string | object, errors?: [...] }
-        if (raw && typeof raw === 'object' && 'data' in (raw as object)) {
-          raw = (raw as { data: unknown }).data;
-        }
-        if (typeof raw === 'string') { try { return JSON.parse(raw); } catch { /* not JSON */ } }
-        return raw;
-      };
+      // Use the static parseResult helper to unwrap Amplify envelopes.
+      const parseResult = (raw: unknown) => AmplifyFunctionService.parseResult(raw);
 
       // Map function names to actual GraphQL operations
       switch (functionName) {
@@ -358,7 +359,7 @@ export class AmplifyFunctionService {
 
     switch (action) {
       case 'cast':
-        return parseResult(await getClient().mutations.castSpell({
+        return AmplifyFunctionService.parseResult(await getClient().mutations.castSpell({
           casterId: kingdomId,
           spellId,
           targetId: targetId || ''
