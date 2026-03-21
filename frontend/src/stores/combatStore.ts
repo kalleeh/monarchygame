@@ -195,9 +195,11 @@ export const useCombatStore = create(
             const parsed = typeof result === 'string' ? JSON.parse(result) : result;
 
             if (!parsed) {
-              set({ error: 'Combat failed — defender kingdom not found on server. Only real kingdoms can be attacked in auth mode.', loading: false });
-              return null;
-            }
+              // Lambda couldn't find the defender — target is likely a client-side AI
+              // kingdom. Fall through to client-side simulateBattle below.
+              console.log('[combatStore] Lambda returned null for defender, falling back to client-side combat');
+              // Don't return — let execution fall through to the demo-mode path
+            } else {
 
             if (!parsed.success) {
               set({ error: parsed.error || 'Combat failed', loading: false });
@@ -289,9 +291,10 @@ export const useCombatStore = create(
             });
 
             return battleReport;
+            } // end else (parsed !== null)
           }
 
-          // Demo mode: existing client-side battle logic below
+          // Demo mode / AI target: existing client-side battle logic below
           // Get defender kingdom data from AI store
           const aiKingdoms = useAIKingdomStore.getState().aiKingdoms;
           const defenderKingdom = aiKingdoms.find(k => k.id === targetId);
