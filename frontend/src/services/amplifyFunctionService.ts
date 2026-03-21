@@ -141,9 +141,13 @@ export class AmplifyFunctionService {
         throw new Error(`Rate limited: ${functionName}. Try again in ${Math.ceil(waitTime / 1000)}s.`);
       }
 
-      // Helper: Amplify Gen 2 custom mutations with .returns(a.json()) return the
-      // Lambda result as a JSON string. Parse it so callers get a plain object.
+      // Helper: Amplify Gen 2 custom mutations with .returns(a.json()) wrap the
+      // Lambda result in { data: string }. Unwrap and parse so callers get a plain object.
       const parseResult = (raw: unknown): unknown => {
+        // Unwrap Amplify envelope: { data: string | object, errors?: [...] }
+        if (raw && typeof raw === 'object' && 'data' in (raw as object)) {
+          raw = (raw as { data: unknown }).data;
+        }
         if (typeof raw === 'string') { try { return JSON.parse(raw); } catch { /* not JSON */ } }
         return raw;
       };
