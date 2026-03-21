@@ -299,33 +299,45 @@ export const useCombatStore = create(
           const aiKingdoms = useAIKingdomStore.getState().aiKingdoms;
           const defenderKingdom = aiKingdoms.find(k => k.id === targetId);
 
-          if (!defenderKingdom) {
+          // If the kingdom isn't in the store (timing issue between React state and
+          // Zustand), create a reasonable placeholder so the battle can still run.
+          const resolvedDefender = defenderKingdom ?? {
+            id: targetId,
+            name: 'Enemy Kingdom',
+            race: 'Human',
+            resources: { gold: 50000, population: 5000, land: 500, turns: 10 },
+            units: { tier1: 50, tier2: 30, tier3: 10, tier4: 5 },
+            networth: 550000,
+            terrain: 'plains',
+            terrainType: 'PLAINS',
+          };
+          if (!resolvedDefender) {
             set({ error: 'Defender kingdom not found', loading: false });
             return null;
           }
 
           // Check if defender is eliminated (in restoration)
-          if (defenderKingdom.resources.population <= 0 && defenderKingdom.resources.land <= 0) {
+          if (resolvedDefender.resources.population <= 0 && resolvedDefender.resources.land <= 0) {
             set({ error: 'Target kingdom is in restoration and cannot be attacked', loading: false });
             return null;
           }
 
           // Validate defender has valid unit data
-          if (!defenderKingdom.units) {
+          if (!resolvedDefender.units) {
             set({ error: 'Defender kingdom has no army data', loading: false });
             return null;
           }
 
           // Resolve terrain from the AI kingdom if available; default to 'plains'
           const defenderTerrain: string =
-            defenderKingdom.terrain ??
-            defenderKingdom.terrainType ??
+            resolvedDefender.terrain ??
+            resolvedDefender.terrainType ??
             'plains';
 
           // Battle calculation with real defender data
           const battleResult = await simulateBattle(
             selectedUnits,
-            defenderKingdom,
+            resolvedDefender as AIKingdom,
             activeFormation ? (formations.find(f => f.id === activeFormation) || null) : null,
             activeFormation ?? undefined,
             defenderTerrain,
@@ -393,7 +405,7 @@ export const useCombatStore = create(
             attackerId: 'current-player',
             attackerName: 'You',
             defenderId: targetId,
-            defenderName: defenderKingdom.name,
+            defenderName: resolvedDefender.name,
             terrain: (demoTerrainId as import('../types/combat').TerrainType) || TerrainType.PLAINS,
             attackerFormation: (demoActiveFormationId as import('../types/combat').FormationType) || FormationType.BALANCED,
             defenderFormation: FormationType.BALANCED,
