@@ -27,7 +27,7 @@ interface UseTurnGenerationOptions {
 }
 
 const TURN_INTERVAL = 20 * 60 * 1000; // 20 minutes in milliseconds
-const MAX_STORED_TURNS = 72; // Maximum turns that can be stored
+const MAX_STORED_TURNS = 100; // Maximum turns that can be stored
 
 /**
  * Hook for managing automatic turn generation
