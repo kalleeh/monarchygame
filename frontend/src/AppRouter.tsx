@@ -339,8 +339,10 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
         {/* Diplomacy */}
         <Route path="diplomacy" element={
           <Suspense fallback={<LoadingSkeleton type="card" className="m-8" />}>
-            <DiplomacyInterface 
+            <DiplomacyInterface
               kingdomId={kingdom.id}
+              kingdomName={kingdom.name || 'Your Kingdom'}
+              kingdomRace={kingdom.race || 'Human'}
               onBack={handleBackToDashboard}
             />
           </Suspense>
@@ -511,7 +513,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
             <KingdomBrowser
               kingdomId={kingdom.id}
               onBack={handleBackToDashboard}
-              onAttack={(_targetId) => navigate(`/kingdom/${kingdomId}/combat`)}
+              onAttack={(targetId) => navigate(`/kingdom/${kingdomId}/combat`, { state: { targetKingdomId: targetId } })}
               onTrade={(_targetId) => navigate(`/kingdom/${kingdomId}/trade`)}
               onDiplomacy={(_targetId) => navigate(`/kingdom/${kingdomId}/diplomacy`)}
             />

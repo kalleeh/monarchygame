@@ -11,14 +11,18 @@ import './DiplomacyInterface.css';
 
 interface DiplomacyInterfaceProps {
   kingdomId: string;
+  kingdomName?: string;
+  kingdomRace?: string;
   onBack: () => void;
 }
 
 type DiplomacyView = 'dashboard' | 'relations' | 'proposals' | 'negotiate' | 'history';
 
-const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({ 
-  kingdomId, 
-  onBack 
+const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
+  kingdomId,
+  kingdomName = 'Your Kingdom',
+  kingdomRace = 'Human',
+  onBack
 }) => {
   const [currentView, setCurrentView] = useState<DiplomacyView>('dashboard');
   const [selectedKingdom, setSelectedKingdom] = useState<Kingdom | null>(null);
@@ -266,7 +270,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
           <button
             className="treaty-type-btn gm-btn gm-btn--ghost"
             onClick={() => handleSendProposal({
-              fromKingdom: { id: kingdomId, name: 'Your Kingdom', race: 'Human', reputation: 0 },
+              fromKingdom: { id: kingdomId, name: kingdomName, race: kingdomRace, reputation: 0 },
               toKingdom: selectedKingdom,
               treatyType: 'NON_AGGRESSION',
               terms: { duration: '30 days' },
@@ -279,7 +283,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
           <button
             className="treaty-type-btn gm-btn gm-btn--ghost"
             onClick={() => handleSendProposal({
-              fromKingdom: { id: kingdomId, name: 'Your Kingdom', race: 'Human', reputation: 0 },
+              fromKingdom: { id: kingdomId, name: kingdomName, race: kingdomRace, reputation: 0 },
               toKingdom: selectedKingdom,
               treatyType: 'TRADE_AGREEMENT',
               terms: { tradeBonus: '10%', duration: '60 days' },
@@ -292,7 +296,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
           <button
             className="treaty-type-btn gm-btn gm-btn--ghost"
             onClick={() => handleSendProposal({
-              fromKingdom: { id: kingdomId, name: 'Your Kingdom', race: 'Human', reputation: 0 },
+              fromKingdom: { id: kingdomId, name: kingdomName, race: kingdomRace, reputation: 0 },
               toKingdom: selectedKingdom,
               treatyType: 'MILITARY_ALLIANCE',
               terms: { mutualDefense: true, duration: '90 days' },

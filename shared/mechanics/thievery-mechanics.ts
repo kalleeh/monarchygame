@@ -25,6 +25,10 @@ export interface ThieveryResult {
   casualtiesInflicted: number
   casualtiesSuffered: number
   detectionLevel: number
+  templesDestroyed?: number
+  populationKilled?: number
+  goldIntercepted?: number
+  scoutsKilled?: number
 }
 
 // Core thievery mechanics that create natural strategic balance

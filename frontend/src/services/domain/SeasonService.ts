@@ -24,3 +24,10 @@ export async function getActiveSeason(kingdomId: string): Promise<ActiveSeasonRe
     action: 'getActiveSeason',
   }) as Promise<ActiveSeasonResult>;
 }
+
+export async function startSeason(kingdomId: string): Promise<ActiveSeasonResult> {
+  return AmplifyFunctionService.callFunction('season-lifecycle', {
+    kingdomId,
+    action: 'create',
+  }) as Promise<ActiveSeasonResult>;
+}

@@ -32,6 +32,7 @@ dev.log
 
 # Test artifacts
 playwright-report/
+.playwright-mcp/
 test-results/
 coverage/
 .nyc_output/

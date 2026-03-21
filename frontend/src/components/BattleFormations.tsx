@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
@@ -84,6 +84,8 @@ const SortableUnit: React.FC<SortableUnitProps> = ({ id, unit, isSelected, onTog
 
 const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const preselectedTargetId = (location.state as { targetKingdomId?: string } | null)?.targetKingdomId;
   const {
     selectedUnits,
     formations,
@@ -178,6 +180,13 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
   useEffect(() => {
     initializeCombatData();
   }, [initializeCombatData]);
+
+  // Pre-select target when navigated from KingdomBrowser with a target id
+  useEffect(() => {
+    if (preselectedTargetId) {
+      setSelectedTarget(preselectedTargetId);
+    }
+  }, [preselectedTargetId]);
 
   // Update unit order when available units change
   useEffect(() => {
@@ -358,12 +367,12 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
         marginBottom: '1.5rem'
       }}>
         <h3 style={{ color: '#fff', marginBottom: '1rem' }}>🎯 Select Target</h3>
-        {aiKingdoms.length === 0 ? (
+        {aiKingdoms.length === 0 && !preselectedTargetId ? (
           <p style={{ color: '#a0a0a0' }}>
             No targets available. Use Time Travel on the dashboard to generate AI kingdoms.
           </p>
         ) : (
-          <select 
+          <select
             value={selectedTarget}
             onChange={(e) => setSelectedTarget(e.target.value)}
             style={{
@@ -382,6 +391,11 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
                 {kingdom.name} ({kingdom.race}) - Land: {kingdom.resources.land}
               </option>
             ))}
+            {preselectedTargetId && !aiKingdoms.some(k => k.id === preselectedTargetId) && (
+              <option key={preselectedTargetId} value={preselectedTargetId}>
+                Real Kingdom (ID: {preselectedTargetId})
+              </option>
+            )}
           </select>
         )}
       </div>

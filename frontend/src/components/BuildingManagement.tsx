@@ -8,13 +8,18 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../../amplify/data/resource';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { TopNavigation } from './TopNavigation';
 import { constructBuildings } from '../services/domain/BuildingService';
 import { refreshKingdomResources } from '../services/domain/CombatService';
 import { ToastService } from '../services/toastService';
 import { getBuildingName } from '../utils/buildingMechanics';
+import { isDemoMode } from '../utils/authMode';
 import './BuildingManagement.css';
+
+const amplifyClient = generateClient<Schema>();
 
 interface BuildingManagementProps {
   kingdomId: string;
@@ -97,19 +102,50 @@ export default function BuildingManagement({
   // Store the raw kingdom buildings so we can display current counts
   const [kingdomBuildings, setKingdomBuildings] = useState<Record<string, number>>({});
 
-  // Load initial building counts from store (kingdom.buildings is on the schema type,
-  // but not in kingdomStore — read from localStorage in demo mode)
+  // Load initial building counts — from Amplify in auth mode, localStorage in demo mode
   React.useEffect(() => {
-    const stored = localStorage.getItem(`kingdom-${kingdomId}`);
-    if (stored) {
-      const data = JSON.parse(stored);
-      const b = data.buildings
-        ? typeof data.buildings === 'string'
-          ? JSON.parse(data.buildings)
-          : data.buildings
-        : {};
-      setKingdomBuildings(b);
-    }
+    let cancelled = false;
+
+    const loadBuildings = async () => {
+      // Helper: parse buildings from a stored localStorage entry
+      const getLocalBuildings = (): Record<string, number> => {
+        const stored = localStorage.getItem(`kingdom-${kingdomId}`);
+        if (!stored) return {};
+        try {
+          const data = JSON.parse(stored) as Record<string, unknown>;
+          const b = data.buildings;
+          if (!b) return {};
+          return typeof b === 'string' ? (JSON.parse(b) as Record<string, number>) : (b as Record<string, number>);
+        } catch {
+          return {};
+        }
+      };
+
+      if (isDemoMode()) {
+        setKingdomBuildings(getLocalBuildings());
+        return;
+      }
+
+      // Auth mode: fetch from Amplify, fall back to localStorage
+      try {
+        const result = await amplifyClient.models.Kingdom.get({ id: kingdomId });
+        if (cancelled) return;
+        if (result.data?.buildings) {
+          const raw = result.data.buildings;
+          const parsed: Record<string, number> =
+            typeof raw === 'string' ? (JSON.parse(raw) as Record<string, number>) : (raw as Record<string, number>);
+          setKingdomBuildings(parsed);
+        } else {
+          setKingdomBuildings(getLocalBuildings());
+        }
+      } catch (err) {
+        console.warn('[BuildingManagement] Failed to load buildings from server, using local cache:', err);
+        if (!cancelled) setKingdomBuildings(getLocalBuildings());
+      }
+    };
+
+    void loadBuildings();
+    return () => { cancelled = true; };
   }, [kingdomId]);
 
   // Per-building loading state
@@ -170,12 +206,21 @@ export default function BuildingManagement({
           try {
             const updated = JSON.parse(buildingsStr) as Record<string, number>;
             setKingdomBuildings(updated);
-            // Also persist to localStorage for demo mode consistency
+            // Always write to localStorage as a fast local cache
             const stored = localStorage.getItem(`kingdom-${kingdomId}`);
             if (stored) {
-              const data = JSON.parse(stored);
+              const data = JSON.parse(stored) as Record<string, unknown>;
               data.buildings = updated;
               localStorage.setItem(`kingdom-${kingdomId}`, JSON.stringify(data));
+            }
+            // In auth mode, persist the authoritative buildings value to Amplify
+            if (!isDemoMode()) {
+              amplifyClient.models.Kingdom.update({
+                id: kingdomId,
+                buildings: buildingsStr,
+              }).catch((err: unknown) => {
+                console.warn('[BuildingManagement] Failed to persist buildings to Amplify:', err);
+              });
             }
           } catch {
             // non-fatal — store update was already done

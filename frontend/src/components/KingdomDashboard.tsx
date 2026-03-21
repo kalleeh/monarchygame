@@ -3,7 +3,7 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import type { KingdomResources } from '../types/amplify';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
-import { getActiveSeason } from '../services/domain/SeasonService';
+import { getActiveSeason, startSeason } from '../services/domain/SeasonService';
 import { ToastService } from '../services/toastService';
 import { TopNavigation } from './TopNavigation';
 import { LoadingButton } from './ui/loading/LoadingButton';
@@ -247,35 +247,38 @@ function KingdomDashboard({
     updateRestoration();
   }, [updateRestoration]);
 
+  // Unwrap the season payload returned by getActiveSeason / startSeason.
+  // Handles three possible shapes:
+  //   { success, season: { ... } }                        <- Lambda direct / SeasonService
+  //   { data: { success, season: { ... } } }              <- Amplify envelope
+  //   { data: { getActiveSeason: { success, season } } }  <- GraphQL query shape
+  const applySeasonResult = useCallback((raw: unknown) => {
+    const payload = (raw as any)?.data ?? raw;
+    const lambdaResult =
+      (payload as any)?.getActiveSeason ??
+      payload;
+    const parsed = typeof lambdaResult === 'string'
+      ? (() => { try { return JSON.parse(lambdaResult); } catch { return null; } })()
+      : lambdaResult;
+    const seasonData = parsed?.season ?? null;
+    if (seasonData && seasonData.currentAge) {
+      setSeasonInfo({
+        seasonNumber: seasonData.seasonNumber ?? 1,
+        currentAge: seasonData.currentAge as 'early' | 'middle' | 'late',
+      });
+      setNoActiveSeason(false);
+      return true;
+    }
+    return false;
+  }, []);
+
   // Fetch active season age once on mount
   useEffect(() => {
     const fetchSeason = async () => {
       try {
         const raw = await getActiveSeason(kingdom.id);
-        // AmplifyFunctionService wraps responses in { data: ... }; unwrap first
-        // Then look for the season object in the expected locations:
-        //   { success: true, season: { seasonNumber, currentAge, ... } }   <- Lambda direct
-        //   { data: { success: true, season: { ... } } }                   <- wrapped
-        //   { data: { getActiveSeason: { ... } } }                         <- GraphQL resolver
-        // client.queries.getActiveSeason returns { data: { getActiveSeason: <Lambda result> } }
-        // The Lambda result is { success, season: { seasonNumber, currentAge, ... } }
-        // So we need to unwrap two levels: data -> getActiveSeason -> season
-        const payload = (raw as any)?.data ?? raw;
-        const lambdaResult =
-          payload?.getActiveSeason ??   // GraphQL query shape: { getActiveSeason: { success, season } }
-          payload;                       // Direct Lambda shape: { success, season }
-        // Parse if AppSync returned AWSJSON as a string
-        const parsed = typeof lambdaResult === 'string'
-          ? (() => { try { return JSON.parse(lambdaResult); } catch { return null; } })()
-          : lambdaResult;
-        const seasonData = parsed?.season ?? null;
-        if (seasonData && seasonData.currentAge) {
-          setSeasonInfo({
-            seasonNumber: seasonData.seasonNumber ?? 1,
-            currentAge: seasonData.currentAge as 'early' | 'middle' | 'late',
-          });
-          setNoActiveSeason(false);
-        } else if (!isDemoMode()) {
+        const found = applySeasonResult(raw);
+        if (!found && !isDemoMode()) {
           // No active season found in auth mode — show start prompt
           setNoActiveSeason(true);
         }
@@ -284,25 +287,21 @@ function KingdomDashboard({
       }
     };
     void fetchSeason();
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally run once on mount; fetchSeason is defined inside the effect
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally run once on mount
   }, []);
 
   const handleStartSeason = async () => {
     setStartingSeasonLoading(true);
     try {
-      const raw = await AmplifyFunctionService.callFunction('season-lifecycle', {
-        kingdomId: kingdom.id,
-        action: 'create',
-      });
-      const parsed = typeof raw === 'string' ? JSON.parse(raw) : (raw as Record<string, unknown>);
-      const result = parsed as Record<string, unknown>;
-      if (result.success) {
-        const s = result.season as Record<string, unknown> | undefined;
-        setSeasonInfo({
-          seasonNumber: (s?.seasonNumber as number) ?? 1,
-          currentAge: (s?.currentAge as 'early' | 'middle' | 'late') ?? 'early',
-        });
-        setNoActiveSeason(false);
+      const raw = await startSeason(kingdom.id);
+      const found = applySeasonResult(raw);
+      if (!found) {
+        // Lambda succeeded but returned no season data — re-fetch to confirm
+        const refetch = await getActiveSeason(kingdom.id);
+        const confirmed = applySeasonResult(refetch);
+        if (!confirmed && !isDemoMode()) {
+          setNoActiveSeason(true);
+        }
       }
     } catch (err) {
       console.error('[KingdomDashboard] Failed to start season:', err);
