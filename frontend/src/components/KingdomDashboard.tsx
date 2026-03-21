@@ -895,6 +895,45 @@ function KingdomDashboard({
               // Fire achievement triggers after each turn generation
               achievementTriggers.onGoldChanged();
               achievementTriggers.onPopulationChanged();
+
+              // AI kingdoms take a proportional action tick each time the player's
+              // turn generates — this makes the world evolve even while idle.
+              const freshAIKingdoms = useAIKingdomStore.getState().aiKingdoms;
+              const updateAIKingdom = useAIKingdomStore.getState().updateAIKingdom;
+              freshAIKingdoms.forEach(ai => {
+                const updatedAI = {
+                  ...ai,
+                  resources: {
+                    ...ai.resources,
+                    gold: ai.resources.gold + RESOURCE_GENERATION.BASE_INCOME_PER_TICK * newTurns,
+                    population: ai.resources.population + RESOURCE_GENERATION.BASE_POPULATION_GROWTH * newTurns,
+                    turns: Math.min(ai.resources.turns + newTurns, 100),
+                  }
+                };
+                const actions = AIActionService.decideActions(updatedAI, freshAIKingdoms);
+                actions.forEach(action => {
+                  if (action.type === 'build') {
+                    const result = AIActionService.executeBuild(updatedAI);
+                    if (result.resources) updatedAI.resources = result.resources;
+                  } else if (action.type === 'train') {
+                    const result = AIActionService.executeTrain(updatedAI);
+                    if (result.resources) updatedAI.resources = result.resources;
+                    if (result.units) updatedAI.units = result.units;
+                  } else if (action.type === 'attack') {
+                    const target = freshAIKingdoms.find(t => t.id !== ai.id && t.networth < ai.networth * 1.5);
+                    if (target) {
+                      const result = AIActionService.executeAttack(updatedAI, target);
+                      if (result.attacker.resources) updatedAI.resources = result.attacker.resources;
+                      if (result.defender.resources) updateAIKingdom(target.id, result.defender);
+                    }
+                  }
+                });
+                const newNetworth =
+                  updatedAI.resources.land * 1000 +
+                  updatedAI.resources.gold +
+                  Object.values(updatedAI.units).reduce((sum, c) => sum + (c as number) * 100, 0);
+                updateAIKingdom(ai.id, { resources: updatedAI.resources, units: updatedAI.units, networth: newNetworth });
+              });
             }}
           />
         </div>

@@ -81,7 +81,6 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
     upgradeTerritory,
     canClaimTerritory,
     getTerritoryById,
-    getOwnedTerritories,
     getUpgradeCost,
     getClaimCost,
     canAffordUpgrade,
@@ -109,7 +108,10 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
     config: config.gentle
   });
 
-  const ownedTerritoriesData = useMemo(() => getOwnedTerritories(), [getOwnedTerritories]);
+  // Use ownedTerritories directly so the component re-renders when defenseLevel changes.
+  // Previously used useMemo with getOwnedTerritories (a stable fn ref) which meant
+  // the cached value never updated after an upgrade.
+  const ownedTerritoriesData = ownedTerritories;
 
   // Group owned territories by regionId for the management view
   const territoriesByRegion = useMemo(() => {
