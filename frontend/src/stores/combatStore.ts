@@ -155,8 +155,11 @@ export const useCombatStore = create(
         set({ loading: true, error: null });
 
         try {
-          // Auth mode: call Lambda for server-authoritative combat
-          if (!isDemoMode()) {
+          // Auth mode: call Lambda only for real kingdom targets (not AI kingdoms).
+          // AI kingdoms are client-side only and don't exist in the DB, so the Lambda
+          // can't look them up — fall through to demo-mode combat for those targets.
+          const isAITarget = useAIKingdomStore.getState().aiKingdoms.some(k => k.id === targetId);
+          if (!isDemoMode() && !isAITarget) {
             const kingdomId = useKingdomStore.getState().kingdomId;
             if (!kingdomId) {
               set({ error: 'No kingdom selected', loading: false });
@@ -190,6 +193,11 @@ export const useCombatStore = create(
             }) as any;
 
             const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+
+            if (!parsed) {
+              set({ error: 'Combat failed — defender kingdom not found on server. Only real kingdoms can be attacked in auth mode.', loading: false });
+              return null;
+            }
 
             if (!parsed.success) {
               set({ error: parsed.error || 'Combat failed', loading: false });
