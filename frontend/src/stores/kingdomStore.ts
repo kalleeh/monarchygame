@@ -6,7 +6,8 @@ import { calculateCurrentAge } from '../../../shared/mechanics/age-mechanics';
 import type { AgeStatus } from '../../../shared/mechanics/age-mechanics';
 import { isDemoMode } from '../utils/authMode';
 
-const client = generateClient<Schema>();
+let _client: ReturnType<typeof generateClient<Schema>> | null = null;
+const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 export interface KingdomUnit {
   id: string;
@@ -88,7 +89,7 @@ export const useKingdomStore = create<KingdomState>((set, get) => {
 
       if (!isDemoMode()) {
         try {
-          const result = await client.models.Kingdom.get({ id });
+          const result = await getClient().models.Kingdom.get({ id });
           if (result.data) {
             const serverResources = typeof result.data.resources === 'string'
               ? JSON.parse(result.data.resources)
@@ -118,7 +119,7 @@ export const useKingdomStore = create<KingdomState>((set, get) => {
       // In auth mode, fetch authoritative state from server
       if (!isDemoMode()) {
         try {
-          const result = await client.models.Kingdom.get({ id });
+          const result = await getClient().models.Kingdom.get({ id });
           if (result.data) {
             const serverResources = typeof result.data.resources === 'string'
               ? JSON.parse(result.data.resources)
@@ -277,7 +278,7 @@ export const useKingdomStore = create<KingdomState>((set, get) => {
       }
 
       try {
-        await client.models.Kingdom.update({
+        await getClient().models.Kingdom.update({
           id: kingdomId,
           resources: JSON.stringify(resources),
           totalUnits: JSON.stringify(totalUnitsRecord),

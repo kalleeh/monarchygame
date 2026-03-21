@@ -16,9 +16,8 @@ import GuildRankingsTable from './leaderboard/GuildRankingsTable';
 import '../components/TerritoryExpansion.css';
 import '../components/Leaderboard.css';
 
-// Module-level Amplify client — only instantiated once, avoids re-creation on
-// every render. This is the same pattern used by useRealtimeNotifications.ts.
-const amplifyClient = generateClient<Schema>();
+let _amplifyClient: ReturnType<typeof generateClient<Schema>> | null = null;
+const getAmplifyClient = () => { if (!_amplifyClient) _amplifyClient = generateClient<Schema>(); return _amplifyClient; };
 
 // Transform a raw Amplify Kingdom record into the local Kingdom shape.
 function transformSchemaKingdom(k: Schema['Kingdom']['type']): Kingdom {
@@ -113,7 +112,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
   useEffect(() => {
     if (isDemoMode()) return; // no Amplify queries in demo mode
 
-    const sub = amplifyClient.models.Kingdom.observeQuery().subscribe({
+    const sub = getAmplifyClient().models.Kingdom.observeQuery().subscribe({
       next: ({ items }) => {
         const transformed = items.map(transformSchemaKingdom);
 

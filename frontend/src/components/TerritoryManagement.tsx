@@ -11,7 +11,8 @@ import { LoadingButton } from './ui/loading/LoadingButton';
 import { SkeletonCard } from './ui/loading/Skeleton';
 import { getBuildingName } from '../../../shared/mechanics/building-mechanics';
 
-const client = generateClient<Schema>();
+let _client: ReturnType<typeof generateClient<Schema>> | null = null;
+const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 interface TerritoryManagementProps {
   kingdom: Schema['Kingdom']['type'];
@@ -39,7 +40,7 @@ export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProp
 
   const fetchTerritories = useCallback(async () => {
     try {
-      const { data } = await client.models.Territory.list({
+      const { data } = await getClient().models.Territory.list({
         filter: { kingdomId: { eq: kingdom.id } }
       });
       setTerritories(data);

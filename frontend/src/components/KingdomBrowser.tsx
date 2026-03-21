@@ -5,7 +5,8 @@ import { isDemoMode } from '../utils/authMode';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import './KingdomBrowser.css';
 
-const client = generateClient<Schema>();
+let _client: ReturnType<typeof generateClient<Schema>> | null = null;
+const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 interface BrowsableKingdom {
   id: string;
@@ -56,7 +57,7 @@ const KingdomBrowser: React.FC<KingdomBrowserProps> = ({
         setKingdoms(mapped);
       } else {
         // Auth mode: query real kingdoms
-        const { data } = await client.models.Kingdom.list({
+        const { data } = await getClient().models.Kingdom.list({
           filter: { isActive: { eq: true } }
         });
 

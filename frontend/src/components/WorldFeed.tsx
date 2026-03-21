@@ -117,9 +117,10 @@ function buildDemoEvents(aiKingdomNames: string[]): WorldEvent[] {
   return events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 20);
 }
 
-// ── Amplify client (module-level singleton) ────────────────────────────────
+// ── Amplify client (lazy — only created in auth mode on first API call) ─────
 
-const amplifyClient = generateClient<Schema>();
+let _amplifyClient: ReturnType<typeof generateClient<Schema>> | null = null;
+const getAmplifyClient = () => { if (!_amplifyClient) _amplifyClient = generateClient<Schema>(); return _amplifyClient; };
 
 // Name lookup cache to avoid repeated fetches per ID
 const nameCache = new Map<string, string>();
@@ -127,7 +128,7 @@ const nameCache = new Map<string, string>();
 async function fetchKingdomName(id: string): Promise<string> {
   if (nameCache.has(id)) return nameCache.get(id)!;
   try {
-    const { data } = await amplifyClient.models.Kingdom.get({ id });
+    const { data } = await getAmplifyClient().models.Kingdom.get({ id });
     const name = data?.name ?? `Kingdom ${id.slice(0, 6)}`;
     nameCache.set(id, name);
     return name;
@@ -143,7 +144,7 @@ async function fetchKingdomName(id: string): Promise<string> {
 
 async function fetchBattleReportEvents(): Promise<WorldEvent[]> {
   try {
-    const { data: reports } = await amplifyClient.models.BattleReport.list({
+    const { data: reports } = await getAmplifyClient().models.BattleReport.list({
       limit: 10,
     });
 
@@ -184,7 +185,7 @@ async function fetchBattleReportEvents(): Promise<WorldEvent[]> {
 
 async function fetchWarDeclarationEvents(): Promise<WorldEvent[]> {
   try {
-    const { data: wars } = await amplifyClient.models.WarDeclaration.list({
+    const { data: wars } = await getAmplifyClient().models.WarDeclaration.list({
       limit: 5,
     });
 
@@ -220,7 +221,7 @@ async function fetchWarDeclarationEvents(): Promise<WorldEvent[]> {
 
 async function fetchGuildWarEvents(): Promise<WorldEvent[]> {
   try {
-    const { data: guildWars } = await amplifyClient.models.GuildWar.list({
+    const { data: guildWars } = await getAmplifyClient().models.GuildWar.list({
       limit: 5,
     });
 
