@@ -85,12 +85,13 @@ export class SpellService {
         spellId: spellId
       });
 
+      const r = (response ?? {}) as Record<string, unknown>;
       return {
-        success: Boolean((response as Record<string, unknown>).success) || false,
-        message: String((response as Record<string, unknown>).message) || '',
-        newMana: Number((response as Record<string, unknown>).newMana) || 0,
-        newElan: Number((response as Record<string, unknown>).newElan) || 0,
-        effects: Array.isArray((response as Record<string, unknown>).effects) ? (response as Record<string, unknown>).effects as string[] : []
+        success: Boolean(r.success),
+        message: (typeof r.message === 'string' && r.message) ? r.message : '',
+        newMana: Number(r.newMana) || 0,
+        newElan: Number(r.newElan) || 0,
+        effects: Array.isArray(r.effects) ? r.effects as string[] : []
       };
     } catch (error) {
       console.error('Failed to cast spell:', error);

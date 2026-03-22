@@ -407,7 +407,7 @@ export class AmplifyFunctionService {
         throw new Error(`Territory claim failed: ${errors.map(e => e.message).join(', ')}`);
       }
 
-      return parseResult(data);
+      return AmplifyFunctionService.parseResult(data);
     } catch (error) {
       console.error('Territory claim error:', error);
       throw error;
@@ -427,7 +427,7 @@ export class AmplifyFunctionService {
     if (errors && errors.length > 0) {
       throw new Error('Territory upgrade failed: ' + errors.map((e: { message: string }) => e.message).join(', '));
     }
-    return parseResult(data);
+    return AmplifyFunctionService.parseResult(data);
   }
 
   /**
