@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRestorationStore } from '../stores/restorationStore';
+import UnitRoster from './UnitRoster';
+import { HelpModal } from './ui/HelpModal';
 import './KingdomActionBar.css';
 
 interface ActionItem {
@@ -230,27 +232,33 @@ export const KingdomActionBarConnected: React.FC<{ kingdomId: string }> = ({ kin
   const navigate = useNavigate();
   const isInRestoration = useRestorationStore((s) => s.isInRestoration);
   const prohibitedActions = useRestorationStore((s) => s.prohibitedActions);
+  const [showUnitRoster, setShowUnitRoster] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const isActionProhibited = (action: string) =>
     isInRestoration && prohibitedActions.includes(action);
 
   return (
-    <KingdomActionBar
-      kingdom={{ id: kingdomId }}
-      onManageTerritories={() => navigate(`/kingdom/${kingdomId}/territories`)}
-      onManageBuildings={() => navigate(`/kingdom/${kingdomId}/buildings`)}
-      onViewWorldMap={() => navigate(`/kingdom/${kingdomId}/worldmap`)}
-      onManageCombat={() => navigate(`/kingdom/${kingdomId}/combat`)}
-      onSummonUnits={() => navigate(`/kingdom/${kingdomId}/summon`)}
-      onCastSpells={() => navigate(`/kingdom/${kingdomId}/magic`)}
-      onManageAlliance={() => navigate(`/kingdom/${kingdomId}/alliance`)}
-      onManageTrade={() => navigate(`/kingdom/${kingdomId}/trade`)}
-      onDiplomacy={() => navigate(`/kingdom/${kingdomId}/diplomacy`)}
-      onBattleReports={() => navigate(`/kingdom/${kingdomId}/reports`)}
-      onViewLeaderboard={() => navigate(`/kingdom/${kingdomId}/leaderboard`)}
-      isActionProhibited={isActionProhibited}
-      onShowUnitRoster={() => {}}
-      onShowHelp={() => navigate(`/kingdom/${kingdomId}`)}
-    />
+    <>
+      <KingdomActionBar
+        kingdom={{ id: kingdomId }}
+        onManageTerritories={() => navigate(`/kingdom/${kingdomId}/territories`)}
+        onManageBuildings={() => navigate(`/kingdom/${kingdomId}/buildings`)}
+        onViewWorldMap={() => navigate(`/kingdom/${kingdomId}/worldmap`)}
+        onManageCombat={() => navigate(`/kingdom/${kingdomId}/combat`)}
+        onSummonUnits={() => navigate(`/kingdom/${kingdomId}/summon`)}
+        onCastSpells={() => navigate(`/kingdom/${kingdomId}/magic`)}
+        onManageAlliance={() => navigate(`/kingdom/${kingdomId}/alliance`)}
+        onManageTrade={() => navigate(`/kingdom/${kingdomId}/trade`)}
+        onDiplomacy={() => navigate(`/kingdom/${kingdomId}/diplomacy`)}
+        onBattleReports={() => navigate(`/kingdom/${kingdomId}/reports`)}
+        onViewLeaderboard={() => navigate(`/kingdom/${kingdomId}/leaderboard`)}
+        isActionProhibited={isActionProhibited}
+        onShowUnitRoster={() => setShowUnitRoster(true)}
+        onShowHelp={() => setShowHelp(true)}
+      />
+      {showUnitRoster && <UnitRoster onClose={() => setShowUnitRoster(false)} />}
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+    </>
   );
 };

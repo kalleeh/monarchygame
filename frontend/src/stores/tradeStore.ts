@@ -17,6 +17,8 @@ import { postTradeOffer, acceptTradeOffer, cancelTradeOffer } from '../services/
 const STORAGE_KEY_OFFERS = 'trade-offers';
 const STORAGE_KEY_HISTORY = 'trade-price-history';
 const PLAYER_ID = 'current-player';
+/** Returns the real kingdom ID in auth mode, falls back to PLAYER_ID in demo mode */
+const getKingdomId = () => useKingdomStore.getState().kingdomId || PLAYER_ID;
 
 /** Base price configuration for the four core resources */
 const BASE_RESOURCES: Omit<Resource, 'currentPrice' | 'supply' | 'demand'>[] = [
@@ -320,7 +322,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
       set({ loading: true, error: null });
       try {
         const result = await acceptTradeOffer({
-          kingdomId: PLAYER_ID,
+          kingdomId: getKingdomId(),
           offerId
         }) as any;
 
