@@ -207,6 +207,7 @@ export const useSpellStore = create(
 
             set((state) => ({
               castingSpell: null,
+              error: null,
               selectedTarget: null,
               showTargetSelector: false,
               currentElan: serverNewElan != null
@@ -225,7 +226,7 @@ export const useSpellStore = create(
           } else {
             set({ 
               castingSpell: null,
-              error: String((result as unknown as Record<string, unknown>).error) || 'Spell casting failed'
+              error: (result as unknown as { message?: string; error?: string }).message || (result as unknown as { error?: string }).error || 'Spell casting failed'
             });
           }
 
