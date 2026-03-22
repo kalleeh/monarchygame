@@ -400,7 +400,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
       set({ loading: true, error: null });
       try {
         const result = await cancelTradeOffer({
-          kingdomId: PLAYER_ID,
+          kingdomId: getKingdomId(),
           offerId
         }) as any;
 

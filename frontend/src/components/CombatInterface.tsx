@@ -19,7 +19,7 @@ import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { processCombat } from '../services/domain/CombatService';
 import { ToastService } from '../services/toastService';
 import { AttackPlanner } from './combat/AttackPlanner';
-import { BattleReports } from './combat/BattleReports';
+import BattleReports from './combat/BattleReports';
 import { DefenseManager } from './combat/DefenseManager';
 import { CombatNotifications } from './combat/CombatNotifications';
 

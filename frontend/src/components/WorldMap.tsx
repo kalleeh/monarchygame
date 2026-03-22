@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ReactFlow,
   useNodesState,
@@ -57,6 +58,7 @@ interface Edge {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
+  const navigate = useNavigate();
   const ownedTerritories = useTerritoryStore((s) => s.ownedTerritories);
   const pendingSettlements = useTerritoryStore((s) => s.pendingSettlements);
   const aiKingdoms = useAIKingdomStore((s) => s.aiKingdoms);
@@ -371,7 +373,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
       useTerritoryStore.getState().startSettlement({
         regionId: region.id,
         regionName: region.name,
-        kingdomId: 'current-player',
+        kingdomId: kingdom.id,
         turnsRemaining: cost.settlingTurns,
         totalTurns: cost.settlingTurns,
         goldRefund: Math.floor(cost.gold * 0.5),
@@ -418,6 +420,10 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
     setSelectedTerritoryNode(null);
     setSelectedTerritory(null);
   }, []);
+
+  const handleAttackTerritory = useCallback((_territoryId: string) => {
+    navigate(`/kingdom/${kingdom.id}/combat`);
+  }, [navigate, kingdom.id]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -491,6 +497,7 @@ const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           handleClaimTerritory={handleClaimTerritory}
           handleRaidSettlers={handleRaidSettlers}
           onClose={handleClosePanel}
+          onAttack={handleAttackTerritory}
         />
       </div>
     </div>

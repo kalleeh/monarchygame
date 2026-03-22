@@ -33,6 +33,7 @@ interface MapControlsProps {
   handleClaimTerritory: () => Promise<void>;
   handleRaidSettlers: () => void;
   onClose: () => void;
+  onAttack?: (territoryId: string) => void;
 }
 
 function ownershipBadge(ownership: 'player' | 'enemy' | 'neutral') {
@@ -95,6 +96,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
   handleClaimTerritory,
   handleRaidSettlers,
   onClose,
+  onAttack,
 }) => {
   return (
     <>
@@ -374,7 +376,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
           {!selectedTerritoryNode.data.isOwned && (
             <div className="territory-actions">
               <button
-                onClick={handleClaimTerritory}
+                onPointerDown={(e) => { e.stopPropagation(); handleClaimTerritory(); }}
                 className="claim-button"
                 disabled={selectedTerritoryNode.data.ownership === 'enemy'}
                 style={
@@ -385,7 +387,13 @@ export const MapControls: React.FC<MapControlsProps> = ({
               >
                 Claim Territory
               </button>
-              <button className="attack-button">Attack</button>
+              <button
+                className="attack-button"
+                onPointerDown={(e) => { e.stopPropagation(); selectedTerritoryNode && onAttack?.(selectedTerritoryNode.id); }}
+                disabled={!onAttack}
+              >
+                Attack
+              </button>
             </div>
           )}
 

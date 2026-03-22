@@ -8,10 +8,12 @@ import React, { useEffect, useCallback, useMemo } from 'react';
 import { useSpring, useTransition, animated, config } from '@react-spring/web';
 import { useSpellStore } from '../stores/spellStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
+import { useKingdomStore } from '../stores/kingdomStore';
 import { SPELLS, type Spell } from "../shared-spells";
 import { TopNavigation } from './TopNavigation';
 import { achievementTriggers } from '../utils/achievementTriggers';
 import { ToastService } from '../services/toastService';
+import { isDemoMode } from '../utils/authMode';
 import './SpellCastingInterface.css';
 
 interface SpellCastingInterfaceProps {
@@ -56,6 +58,7 @@ const TIER_LABELS: Record<number, string> = {
 
 const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId, onBack }) => {
   const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
+  const kingdomResources = useKingdomStore((state) => state.resources);
 
   const {
     currentElan,
@@ -75,6 +78,7 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
     canCastSpell,
     getSpellCooldown,
     initializeFromServer,
+    updateTemples,
     clearError
   } = useSpellStore();
 
@@ -85,6 +89,22 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
       ToastService.error(msg);
     });
   }, [kingdomId, initializeFromServer]);
+
+  // In demo mode the server call above won't populate temple data — seed it from
+  // localStorage building counts so temple-threshold checks work correctly.
+  useEffect(() => {
+    if (!isDemoMode()) return;
+    try {
+      const stored = localStorage.getItem(`kingdom-${kingdomId}`);
+      const data = stored ? (JSON.parse(stored) as Record<string, unknown>) : {};
+      const b = data.buildings as Record<string, number> | undefined;
+      const templeCount = b?.temples ?? b?.magic ?? 12; // fallback to a typical starter count
+      const land = (kingdomResources.land || (data.resources as Record<string,number>)?.land) ?? 100;
+      updateTemples(templeCount, land);
+    } catch {
+      // non-fatal
+    }
+  }, [kingdomId, updateTemples, kingdomResources.land]);
 
   // Elan bar animation (renamed from mana)
   const elanSpring = useSpring({

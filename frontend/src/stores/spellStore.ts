@@ -130,13 +130,15 @@ export const useSpellStore = create(
         const spell = spellId ? SPELLS[spellId] : null;
         
         // Validate temple requirements
+        // templeThreshold is stored as a decimal (e.g. 0.02 = 2%); templePercentage is 0–100.
         const state = get();
-        const canCast = spell ? state.templePercentage >= (spell.cost.templeThreshold || 0) : false;
-        
+        const thresholdPct = (spell?.cost.templeThreshold || 0) * 100;
+        const canCast = spell ? state.templePercentage >= thresholdPct : false;
+
         set({
           selectedSpell: spellId,
           showTargetSelector: spell?.targetType.includes('enemy') || false,
-          error: !canCast && spell ? `Requires ${spell.cost.templeThreshold}% temples` : null
+          error: !canCast && spell ? `Requires ${thresholdPct.toFixed(0)}% temples` : null
         });
       },
 
@@ -173,7 +175,7 @@ export const useSpellStore = create(
 
         try {
           // Server-side casting
-          const result = await SpellService.castSpell(kingdomId, spellId);
+          const result = await SpellService.castSpell(kingdomId, spellId, targetId);
 
           // Update state based on server response
           if ((result as unknown as Record<string, unknown>).success) {
@@ -208,6 +210,7 @@ export const useSpellStore = create(
             set((state) => ({
               castingSpell: null,
               error: null,
+              selectedSpell: null,
               selectedTarget: null,
               showTargetSelector: false,
               currentElan: serverNewElan != null

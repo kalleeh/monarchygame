@@ -7,6 +7,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useSpring, useTransition, animated, config } from '@react-spring/web';
 import type { Resource, TradeOffer, TrendData, PriceHistoryEntry } from '../types';
 import { useTradeStore } from '../stores/tradeStore';
+import { useKingdomStore } from '../stores/kingdomStore';
 import { TopNavigation } from './TopNavigation';
 import { ToastService } from '../services/toastService';
 import './TradeSystem.css';
@@ -29,6 +30,8 @@ interface TradeSystemProps {
 }
 
 const TradeSystem: React.FC<TradeSystemProps> = ({ kingdomId, onBack }) => {
+  const myKingdomId = useKingdomStore((state) => state.kingdomId) || 'current-player';
+
   const {
     resources,
     activeOffers,
@@ -328,7 +331,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ kingdomId, onBack }) => {
                 <div className="offer-total">Total: {offer.totalPrice}💰</div>
               </div>
               <div className="offer-actions">
-                {offer.sellerId !== 'current-player' ? (
+                {offer.sellerId !== myKingdomId ? (
                   <button 
                     className="accept-btn"
                     onClick={() => handleAcceptOffer(offer.id)}
