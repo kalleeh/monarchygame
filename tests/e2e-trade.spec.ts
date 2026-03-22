@@ -6,15 +6,21 @@ async function setup(page: Page) {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
   try { await page.getByRole('button', { name: 'Skip Tutorial' }).click({ timeout: 3000 }); } catch {}
-  const createBtn = page.getByRole('button', { name: /Create.*(Kingdom|First)/i }).first();
-  await createBtn.click();
-  await page.waitForURL('**/creation');
-  await page.getByRole('button', { name: '🎲' }).click();
+  // App may land on /creation directly (no kingdoms) or /kingdoms
+  if (!page.url().includes('/creation')) {
+    await page.getByRole('button', { name: /Create.*(Kingdom|First)/i }).first().click();
+    await page.waitForURL('**/creation');
+  }
+  await page.getByRole('button', { name: /generate random|🎲/i }).click();
   await page.getByRole('button', { name: /Conqueror/ }).click();
   await page.getByRole('button', { name: 'Create Kingdom', exact: true }).click();
   await page.waitForURL('**/kingdoms');
   await page.getByRole('button', { name: 'Enter Kingdom' }).first().click();
   await page.waitForURL('**/kingdom/**');
+  // Wait for dashboard to render
+  await page.waitForSelector('img[alt="Turns"]', { timeout: 10000 }).catch(() => {});
+  // Dismiss kingdom-level tutorial if present
+  try { await page.getByRole('button', { name: /Close tutorial/i }).click({ timeout: 3000 }); await page.waitForTimeout(300); } catch {}
 }
 
 async function nav(page: Page, section: string) {
@@ -45,10 +51,10 @@ test.describe('Trade System', () => {
   });
 
   test('shows 4 resource price cards', async ({ page }) => {
-    await expect(page.getByText('Gold')).toBeVisible();
-    await expect(page.getByText('Mana')).toBeVisible();
-    await expect(page.getByText('Population')).toBeVisible();
-    await expect(page.getByText('Land')).toBeVisible();
+    await expect(page.getByText('Gold').first()).toBeVisible();
+    await expect(page.getByText('Mana').first()).toBeVisible();
+    await expect(page.getByText('Population').first()).toBeVisible();
+    await expect(page.getByText('Land').first()).toBeVisible();
   });
 
   test('Active Offers section shows demo offers', async ({ page }) => {

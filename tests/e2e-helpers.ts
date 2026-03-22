@@ -69,6 +69,13 @@ export async function createKingdomAndEnter(
   // Enter the kingdom
   await page.getByRole('button', { name: 'Enter Kingdom' }).first().click();
   await page.waitForURL('**/kingdom/**');
+  // Wait for the dashboard to actually render (not just URL change)
+  await page.waitForSelector('img[alt="Turns"]', { timeout: 10000 });
+  // Dismiss kingdom-level tutorial overlay if present
+  try {
+    await page.getByRole('button', { name: /Close tutorial/i }).click({ timeout: 3000 });
+    await page.waitForTimeout(300);
+  } catch { /* no tutorial */ }
 
   return getKingdomIdFromUrl(page.url());
 }

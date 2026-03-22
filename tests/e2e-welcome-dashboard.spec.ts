@@ -74,10 +74,10 @@ test.describe('Dashboard', () => {
   });
 
   test('shows all four resource cards', async ({ page }) => {
-    await expect(page.getByText('Gold')).toBeVisible();
-    await expect(page.getByText('Population')).toBeVisible();
-    await expect(page.getByText('Land')).toBeVisible();
-    await expect(page.getByText('Turns')).toBeVisible();
+    await expect(page.getByText('Gold').first()).toBeVisible();
+    await expect(page.getByText('Population').first()).toBeVisible();
+    await expect(page.getByText('Land').first()).toBeVisible();
+    await expect(page.getByText('Turns').first()).toBeVisible();
   });
 
   test('displays kingdom networth score', async ({ page }) => {
@@ -100,22 +100,20 @@ test.describe('Dashboard', () => {
   });
 
   test('Generate Turns adds 3 turns', async ({ page }) => {
-    const turnsBefore = parseInt(
-      (await page.locator('img[alt="Turns"]').locator('..').textContent()) ?? '0'
-    );
-    await page.getByRole('button', { name: 'Generate Turns' }).click();
+    const turnsEl = page.locator('img[alt="Turns"]').first().locator('..');
+    const turnsBefore = parseInt((await turnsEl.textContent()) ?? '0');
+    await page.getByRole('button', { name: 'Generate Turns' }).first().click();
     await page.waitForTimeout(400);
-    const turnsAfter = parseInt(
-      (await page.locator('img[alt="Turns"]').locator('..').textContent()) ?? '0'
-    );
+    const turnsAfter = parseInt((await turnsEl.textContent()) ?? '0');
     expect(turnsAfter).toBeGreaterThan(turnsBefore);
   });
 
   test('Generate Income increases gold', async ({ page }) => {
-    const goldBefore = await page.locator('img[alt="Gold"]').locator('..').textContent() ?? '0';
-    await page.getByRole('button', { name: 'Generate Income' }).click();
+    const goldEl = page.locator('img[alt="Gold"]').first().locator('..');
+    const goldBefore = await goldEl.textContent() ?? '0';
+    await page.getByRole('button', { name: 'Generate Income' }).first().click();
     await page.waitForTimeout(400);
-    const goldAfter = await page.locator('img[alt="Gold"]').locator('..').textContent() ?? '0';
+    const goldAfter = await goldEl.textContent() ?? '0';
     expect(goldAfter).not.toEqual(goldBefore);
   });
 
@@ -136,21 +134,22 @@ test.describe('Dashboard', () => {
 
   test('+1 Hour time travel increases turns', async ({ page }) => {
     await page.getByRole('button', { name: /Time Travel/i }).click();
-    const turnsBefore = await page.locator('img[alt="Turns"]').locator('..').textContent() ?? '0';
+    const turnsEl = page.locator('img[alt="Turns"]').first().locator('..');
+    const turnsBefore = parseInt((await turnsEl.textContent()) ?? '0');
     await page.getByRole('button', { name: '+1 Hour' }).click();
     await page.waitForTimeout(400);
-    const turnsAfter = await page.locator('img[alt="Turns"]').locator('..').textContent() ?? '0';
-    expect(parseInt(turnsAfter)).toBeGreaterThanOrEqual(parseInt(turnsBefore));
+    const turnsAfter = parseInt((await turnsEl.textContent()) ?? '0');
+    expect(turnsAfter).toBeGreaterThanOrEqual(turnsBefore);
   });
 
   test('View All Achievements button navigates to achievements page', async ({ page }) => {
     await page.getByRole('button', { name: /View All Achievements/i }).click();
     await expect(page).toHaveURL(/\/achievements/);
-    await expect(page.getByRole('heading', { name: /Achievements/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Achievements/i }).first()).toBeVisible();
   });
 
   test('World Activity Feed can be collapsed and expanded', async ({ page }) => {
-    const feedBtn = page.getByRole('button', { name: /World Activity Feed/i });
+    const feedBtn = page.getByRole('button', { name: /World Activity Feed/i }).first();
     await expect(feedBtn).toBeVisible();
     const isExpanded = (await feedBtn.getAttribute('aria-expanded')) !== 'false';
     await feedBtn.click();
@@ -163,14 +162,14 @@ test.describe('Dashboard', () => {
   });
 
   test('action bar Expand shows grouped menu', async ({ page }) => {
-    await page.getByRole('button', { name: /Expand/i }).click();
+    await page.getByRole('button', { name: /▼ Expand/i }).click();
     await expect(page.getByRole('heading', { name: /Kingdom/i, level: 4 })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Warfare/i, level: 4 })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Social/i, level: 4 })).toBeVisible();
   });
 
   test('action bar Expand navigates when a button is clicked', async ({ page }) => {
-    await page.getByRole('button', { name: /Expand/i }).click();
+    await page.getByRole('button', { name: /▼ Expand/i }).click();
     await page.getByRole('button', { name: /Trade Trade/i }).click();
     await expect(page).toHaveURL(/\/trade/);
   });
@@ -178,15 +177,15 @@ test.describe('Dashboard', () => {
   test('? Units modal opens with tier information', async ({ page }) => {
     await page.getByRole('button', { name: '? Units' }).click();
     await expect(page.getByRole('dialog', { name: /Unit Roster/i })).toBeVisible();
-    await expect(page.getByText(/T1|Tier 1|T1 Basic/i)).toBeVisible();
+    await expect(page.getByText(/T1 Basic|T1|Tier 1/i).first()).toBeVisible();
     await page.getByRole('button', { name: /Close/i }).first().click();
     await expect(page.getByRole('dialog', { name: /Unit Roster/i })).not.toBeVisible({ timeout: 2000 });
   });
 
   test('? Help modal opens with quick reference', async ({ page }) => {
     await page.getByRole('button', { name: '? Help' }).click();
-    await expect(page.getByText(/QUICK REFERENCE|quick reference|Turns|Combat/i)).toBeVisible({ timeout: 3000 });
-    await page.getByRole('button', { name: /Got it|Close/i }).click();
+    await expect(page.getByText(/MONARCHY QUICK REFERENCE|QUICK REFERENCE/i).first()).toBeVisible({ timeout: 3000 });
+    await page.getByRole('button', { name: /Got it|Close/i }).first().click();
   });
 
   test('Getting Started panel dismiss button removes it', async ({ page }) => {
@@ -212,12 +211,12 @@ test.describe('Multi-Kingdom Management', () => {
 
     // Back to kingdoms list
     await page.getByRole('button', { name: /← Back to Kingdoms/i }).click();
-    await expect(page).toHaveURL('**/kingdoms');
+    await expect(page).toHaveURL(/\/kingdoms/);
 
     // Two Enter Kingdom buttons should not exist yet — create Goblin
     await page.getByRole('button', { name: 'Create New Kingdom' }).click();
     await page.waitForURL('**/creation');
-    await page.getByRole('button', { name: '🎲' }).click();
+    await page.getByRole('button', { name: /generate random|🎲/i }).click();
     await page.getByRole('button', { name: /^Goblin/ }).first().click();
     await page.getByRole('button', { name: /Conqueror/i }).click();
     await page.getByRole('button', { name: 'Create Kingdom', exact: true }).click();
@@ -238,7 +237,7 @@ test.describe('Multi-Kingdom Management', () => {
     // Create Goblin kingdom directly
     await createKingdomAndEnter(page, { race: 'Goblin' });
     // Goblin buildings: Mines instead of Quarries/Mills
-    await expect(page.getByText(/Mines|Mine/i)).toBeVisible();
+    await expect(page.getByText(/Mines|Mine/i).first()).toBeVisible();
     // Goblin race label
     await expect(page.getByText('Goblin Kingdom')).toBeVisible();
   });

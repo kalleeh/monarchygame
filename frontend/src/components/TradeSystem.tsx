@@ -331,7 +331,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ kingdomId, onBack }) => {
                 <div className="offer-total">Total: {offer.totalPrice}💰</div>
               </div>
               <div className="offer-actions">
-                {offer.sellerId !== myKingdomId ? (
+                {offer.sellerId !== myKingdomId && offer.sellerId !== 'current-player' ? (
                   <button 
                     className="accept-btn"
                     onClick={() => handleAcceptOffer(offer.id)}
