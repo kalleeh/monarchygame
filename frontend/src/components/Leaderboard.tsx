@@ -22,16 +22,20 @@ const getAmplifyClient = () => { if (!_amplifyClient) _amplifyClient = generateC
 // Transform a raw Amplify Kingdom record into the local Kingdom shape.
 function transformSchemaKingdom(k: Schema['Kingdom']['type']): Kingdom {
   const rawStats = (k.stats ?? {}) as Record<string, unknown>;
+  const res: Record<string, number> =
+    typeof k.resources === 'string' ? JSON.parse(k.resources) : (k.resources ?? {});
+  const units: Record<string, number> =
+    typeof k.totalUnits === 'string' ? JSON.parse(k.totalUnits) : (k.totalUnits ?? {});
   return {
     id: k.id,
     name: k.name || 'Unknown',
     race: k.race || 'Human',
     owner: k.owner || undefined,
     resources: {
-      gold:       (k.resources as Record<string, number> | null)?.gold       ?? 0,
-      population: (k.resources as Record<string, number> | null)?.population ?? 0,
-      land:       (k.resources as Record<string, number> | null)?.land       ?? 0,
-      turns:      (k.resources as Record<string, number> | null)?.turns      ?? 0,
+      gold:       res.gold       ?? 0,
+      population: res.population ?? 0,
+      land:       res.land       ?? 0,
+      turns:      res.turns      ?? 0,
     },
     stats: {
       warOffense:  Number(rawStats.warOffense  ?? 0),
@@ -48,9 +52,7 @@ function transformSchemaKingdom(k: Schema['Kingdom']['type']): Kingdom {
       previousSeasonNetworth:  rawStats.previousSeasonNetworth  != null ? Number(rawStats.previousSeasonNetworth)  : undefined,
       previousSeasonNumber:    rawStats.previousSeasonNumber    != null ? Number(rawStats.previousSeasonNumber)    : undefined,
     },
-    totalUnits: ((k.totalUnits as Record<string, number> | null) || { peasants: 0, militia: 0, knights: 0, cavalry: 0 }) as {
-      peasants: number; militia: number; knights: number; cavalry: number;
-    },
+    totalUnits: { peasants: units.peasants || 0, militia: units.militia || 0, knights: units.knights || 0, cavalry: units.cavalry || 0 },
     isOnline:   k.isOnline  ?? false,
     lastActive: k.lastActive ? new Date(k.lastActive) : undefined,
     guildId:    k.guildId   || undefined,
