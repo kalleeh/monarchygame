@@ -21,6 +21,34 @@ import { updateFaith } from '../services/domain/FaithService';
 import { ToastService } from '../services/toastService';
 import { isDemoMode } from '../utils/authMode';
 
+// --- localStorage helpers for FP persistence ---
+const FP_STORAGE_KEY = (kingdomId: string) => `faith-fp-${kingdomId}`;
+
+interface PersistedFP {
+  focusPoints: number;
+  lastFocusRegenTime: string; // ISO string
+}
+
+function loadPersistedFP(kingdomId: string): PersistedFP | null {
+  if (!kingdomId) return null;
+  try {
+    const raw = localStorage.getItem(FP_STORAGE_KEY(kingdomId));
+    return raw ? (JSON.parse(raw) as PersistedFP) : null;
+  } catch {
+    return null;
+  }
+}
+
+function savePersistedFP(kingdomId: string, fp: number, regenTime: Date) {
+  if (!kingdomId) return;
+  try {
+    const data: PersistedFP = { focusPoints: fp, lastFocusRegenTime: regenTime.toISOString() };
+    localStorage.setItem(FP_STORAGE_KEY(kingdomId), JSON.stringify(data));
+  } catch {
+    // ignore storage errors
+  }
+}
+
 type FaithAlignmentType = 'angelique' | 'neutral' | 'elemental' | null;
 
 export const useFaithStore = create(
@@ -72,16 +100,22 @@ export const useFaithStore = create(
 
         const maxFocus = calculateMaxFocusPoints(race);
         const regenRate = calculateFocusGeneration(race);
+        const resolvedKingdomId = kingdomId ?? '';
+
+        // Restore persisted FP so progress survives page reloads
+        const persisted = loadPersistedFP(resolvedKingdomId);
+        const restoredFP = persisted ? Math.min(maxFocus, persisted.focusPoints) : 0;
+        const restoredRegenTime = persisted ? new Date(persisted.lastFocusRegenTime) : new Date();
 
         set({
-          kingdomId: kingdomId ?? '',
+          kingdomId: resolvedKingdomId,
           alignment: defaultAlignment,
           faithLevel: 0,
           faithPoints: 0,
-          focusPoints: 0,
+          focusPoints: restoredFP,
           maxFocusPoints: maxFocus,
           focusRegenRate: regenRate,
-          lastFocusRegenTime: new Date(),
+          lastFocusRegenTime: restoredRegenTime,
           activeEffects: [],
           error: null,
         });
@@ -125,9 +159,10 @@ export const useFaithStore = create(
 
       /**
        * Generate focus points based on race and time elapsed since last regeneration.
+       * Persists updated FP to localStorage so progress survives page reloads.
        */
       generateFocusPoints: (race: string) => {
-        const { lastFocusRegenTime, focusPoints, maxFocusPoints } = get();
+        const { lastFocusRegenTime, focusPoints, maxFocusPoints, kingdomId } = get();
         const now = new Date();
 
         if (!lastFocusRegenTime) {
@@ -149,7 +184,20 @@ export const useFaithStore = create(
             lastFocusRegenTime: now,
             focusRegenRate: regenRate,
           });
+          savePersistedFP(kingdomId, newPoints, now);
         }
+      },
+
+      /**
+       * Grant focus points immediately (e.g., on turn/income generation in demo mode).
+       * Persists to localStorage.
+       */
+      grantFocusPoints: (amount: number) => {
+        const { focusPoints, maxFocusPoints, kingdomId } = get();
+        const newPoints = Math.min(maxFocusPoints, focusPoints + amount);
+        const now = new Date();
+        set({ focusPoints: newPoints, lastFocusRegenTime: now });
+        savePersistedFP(kingdomId, newPoints, now);
       },
 
       /**
@@ -182,12 +230,22 @@ export const useFaithStore = create(
 
         // In auth mode, await Lambda before updating local state
         const { kingdomId } = get();
+        // Map frontend SCREAMING_SNAKE_CASE ability keys to the Lambda's expected snake_case values
+        const abilityTypeMap: Record<string, string> = {
+          ENHANCED_RACIAL_ABILITY: 'racial_ability',
+          SPELL_POWER_BOOST: 'spell_power',
+          COMBAT_FOCUS: 'combat_focus',
+          ECONOMIC_FOCUS: 'economic_focus',
+          EMERGENCY_ACTION: 'emergency',
+        };
+        const lambdaAbilityType = abilityTypeMap[abilityType as string] ?? (abilityType as string).toLowerCase();
+
         if (!isDemoMode() && kingdomId) {
           try {
             await updateFaith({
               kingdomId,
               action: 'useFocusAbility',
-              abilityType,
+              abilityType: lambdaAbilityType,
             });
           } catch (err) {
             console.error('[faithStore] useFocusAbility Lambda failed:', err);
@@ -210,6 +268,10 @@ export const useFaithStore = create(
           ],
           error: null,
         }));
+
+        // Persist updated FP to localStorage
+        const afterState = get();
+        savePersistedFP(afterState.kingdomId, afterState.focusPoints, new Date());
 
         return { success: true, effect };
       },

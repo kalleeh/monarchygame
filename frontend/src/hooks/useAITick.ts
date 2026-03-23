@@ -5,8 +5,15 @@
  * regardless of which page the player is on. On mount it catches up any
  * missed ticks since the last session; afterwards it ticks every 20 min.
  *
- * Intentionally decoupled from user actions so the behaviour is the same
- * whether there are 1 or 1000 concurrent players.
+ * NOTE: AI kingdoms live entirely in client-side Zustand memory and are NOT
+ * stored in DynamoDB. This means each browser session generates its own
+ * independent AI kingdoms. For true multiplayer consistency, AI kingdoms need
+ * to be persisted as Kingdom rows in DynamoDB and ticked server-side by the
+ * turn-ticker Lambda. See amplify/functions/turn-ticker/handler.ts.
+ *
+ * Multi-tab safety: a localStorage leader-election mutex ensures only one tab
+ * processes ticks at a time. The leader writes its heartbeat every tick cycle;
+ * other tabs observe the heartbeat and skip processing while a leader is active.
  */
 
 import { useEffect } from 'react';
@@ -17,6 +24,37 @@ import { RESOURCE_GENERATION } from '../constants/gameConfig';
 const TICK_INTERVAL_MS = 20 * 60 * 1000; // 20 minutes — one turn
 const STORAGE_KEY = 'ai-last-tick';
 const MAX_CATCHUP_TICKS = 72; // cap catch-up at ~24 h of missed ticks
+
+// ── Tab-leader mutex ──────────────────────────────────────────────────────────
+// Only the elected leader tab runs AI ticks. Leadership is re-confirmed on
+// every tick cycle; if the leader tab closes, the next tab to run takes over.
+const LEADER_KEY = 'ai-tick-leader';
+const LEADER_TTL_MS = TICK_INTERVAL_MS + 60_000; // leader must renew within 21 min
+
+// Stable per-tab ID generated once at module load.
+const TAB_ID = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+/**
+ * Returns true if this tab is the elected leader (or can claim leadership).
+ * Writes the heartbeat on success so other tabs see an up-to-date timestamp.
+ */
+function claimLeadership(): boolean {
+  try {
+    const raw = localStorage.getItem(LEADER_KEY);
+    if (raw) {
+      const { tabId, ts } = JSON.parse(raw) as { tabId: string; ts: number };
+      const age = Date.now() - ts;
+      // Another tab holds a fresh lease — yield.
+      if (tabId !== TAB_ID && age < LEADER_TTL_MS) return false;
+    }
+    // Either no leader, our own lease, or a stale lease — claim it.
+    localStorage.setItem(LEADER_KEY, JSON.stringify({ tabId: TAB_ID, ts: Date.now() }));
+    return true;
+  } catch {
+    // localStorage unavailable (private browsing quota) — allow ticking.
+    return true;
+  }
+}
 
 function applyAITicks(tickCount: number): void {
   if (tickCount <= 0) return;
@@ -73,6 +111,9 @@ function applyAITicks(tickCount: number): void {
 export function useAITick(): void {
   useEffect(() => {
     function tick(): void {
+      // Yield to another tab if it holds a fresh leadership lease.
+      if (!claimLeadership()) return;
+
       const now = Date.now();
       const lastRaw = localStorage.getItem(STORAGE_KEY);
       const lastTick = lastRaw ? parseInt(lastRaw, 10) : now - TICK_INTERVAL_MS;

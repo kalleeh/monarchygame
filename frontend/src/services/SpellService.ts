@@ -74,7 +74,6 @@ export class SpellService {
   static async castSpell(
     kingdomId: string,
     spellId: string,
-    // @ts-expect-error unused parameter  
     targetId?: string,
     _repeatCount: number = 1
   ): Promise<SpellCastResponse> {
@@ -82,7 +81,8 @@ export class SpellService {
       const response = await AmplifyFunctionService.castSpell({
         kingdomId,
         action: 'cast',
-        spellId: spellId
+        spellId: spellId,
+        targetId: targetId || undefined
       });
 
       const r = (response ?? {}) as Record<string, unknown>;

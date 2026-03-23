@@ -97,6 +97,45 @@
   margin-bottom: 1rem;
 }
 
+/* ── FP progress bar ──────────────────────────────────────────────── */
+.fp-progress-row {
+  background: var(--gm-bg-overlay);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius-md);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fp-progress-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gm-text-muted);
+}
+
+.fp-progress-track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.fp-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+  min-width: 2px;
+}
+
+.fp-progress-hint {
+  font-size: 0.8rem;
+  color: var(--gm-text-muted);
+}
+
 /* ── Alignment cards ──────────────────────────────────────────────── */
 .alignment-cards {
   display: grid;

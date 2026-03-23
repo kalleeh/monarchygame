@@ -158,7 +158,7 @@ const GuildOverview: React.FC<GuildOverviewProps> = ({
             <p>{currentGuild.description}</p>
             <div className="guild-stats">
               <span>Members: {currentGuild.memberCount}/{currentGuild.maxMembers}</span>
-              <span>Power: {currentGuild.totalPower.toLocaleString()}</span>
+              <span>Power: {(currentGuild.totalPower ?? 0).toLocaleString()}</span>
               <span>Leader: {currentGuild.leaderName}</span>
               {(() => {
                 const rawStats = currentGuild.stats as unknown;

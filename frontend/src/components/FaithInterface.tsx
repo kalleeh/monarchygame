@@ -80,7 +80,7 @@ const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, race, onBack
 
   // Initialize on mount
   useEffect(() => {
-    initializeFaith(race);
+    initializeFaith(race, kingdomId);
   }, [kingdomId, race, initializeFaith]);
 
   // Periodically regenerate focus points
@@ -102,8 +102,8 @@ const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, race, onBack
   );
 
   const handleUseAbility = useCallback(
-    (abilityKey: AbilityKey) => {
-      const result = useFocusAbility(abilityKey);
+    async (abilityKey: AbilityKey) => {
+      const result = await useFocusAbility(abilityKey);
       if (result?.success) {
         setLastResult(
           `${ABILITY_CONFIG.find((a) => a.key === abilityKey)?.label || abilityKey} activated successfully!`
@@ -129,6 +129,20 @@ const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, race, onBack
     const durationMs = effect.duration * 60 * 1000; // approximate turn-to-ms
     const remainingMs = durationMs - elapsedMs;
     return Math.max(0, Math.ceil(remainingMs / (60 * 1000)));
+  };
+
+  // Compute the lowest-cost ability the player can't yet afford, for the progress bar
+  const nextAbilityCost = ABILITY_CONFIG.map((a) => a.cost)
+    .filter((c) => c > focusPoints)
+    .sort((a, b) => a - b)[0] ?? null;
+
+  // Build tooltip for a locked ability button
+  const getLockedTooltip = (cost: number): string => {
+    const needed = cost - focusPoints;
+    const hoursFloat = focusRegenRate > 0 ? needed / focusRegenRate : Infinity;
+    const hours = Math.ceil(hoursFloat);
+    const timeStr = hours === 1 ? '~1 hour' : `~${hours} hours`;
+    return `Need ${cost} FP — you have ${focusPoints}. Gain ${focusRegenRate} FP/hr, so ${needed} more FP in ${timeStr}.`;
   };
 
   const formatAbilityName = (effectType: string): string => {
@@ -194,6 +208,27 @@ const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, race, onBack
           </div>
         </section>
 
+        {/* FP Progress toward next usable ability */}
+        {nextAbilityCost !== null && (
+          <div className="fp-progress-row">
+            <div className="fp-progress-label">
+              Progress toward next ability ({nextAbilityCost} FP needed)
+            </div>
+            <div className="fp-progress-track">
+              <div
+                className="fp-progress-fill"
+                style={{ width: `${Math.min(100, (focusPoints / nextAbilityCost) * 100).toFixed(1)}%` }}
+              />
+            </div>
+            <div className="fp-progress-hint">
+              {focusPoints} / {nextAbilityCost} FP &mdash; {nextAbilityCost - focusPoints} more needed
+              {focusRegenRate > 0 && (
+                <> (~{Math.ceil((nextAbilityCost - focusPoints) / focusRegenRate)}h at {focusRegenRate} FP/hr)</>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Alignment Selection */}
         <section className="faith-alignment">
           <h3>Faith Alignment</h3>
@@ -254,6 +289,7 @@ const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, race, onBack
                     className="use-ability-btn"
                     onClick={() => handleUseAbility(ability.key)}
                     disabled={!canUse}
+                    title={canUse ? undefined : getLockedTooltip(ability.cost)}
                   >
                     {canUse ? 'Use Ability' : `Need ${ability.cost} FP`}
                   </button>

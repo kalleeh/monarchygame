@@ -9,6 +9,7 @@ import { TopNavigation } from './TopNavigation';
 import { LoadingButton } from './ui/loading/LoadingButton';
 import { useTerritoryStore } from '../stores/territoryStore';
 import { useKingdomStore } from '../stores/kingdomStore';
+import { useFaithStore } from '../stores/faithStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { useSummonStore } from '../stores/useSummonStore';
 import { AIActionService } from '../services/aiActionService';
@@ -373,6 +374,8 @@ function KingdomDashboard({
         addGold(1000);
         ToastService.success('Income generated successfully!');
       }
+      // Grant 1 FP per action so demo players can experience Focus abilities
+      useFaithStore.getState().grantFocusPoints(1);
       setResourceLoading(false);
       return;
     }

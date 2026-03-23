@@ -487,7 +487,9 @@ function TurnManagementPanel() {
     <section className="admin-panel">
       <h2 className="admin-panel-title">Turn Management</h2>
       <p className="admin-muted admin-turn-note">
-        Turns are generated client-side (20 min intervals). Use this to manually tick turns for all active kingdoms.
+        Player kingdom turns are generated server-side by the turn-ticker Lambda (EventBridge, every 20 min).
+        Use this to manually credit additional turns to all active kingdoms.
+        Note: AI kingdoms are simulated client-side only and are not affected here.
       </p>
 
       <div className="admin-turn-controls">

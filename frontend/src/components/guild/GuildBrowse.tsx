@@ -27,7 +27,7 @@ const GuildBrowse: React.FC<GuildBrowseProps> = ({ guilds, loading, onJoinGuild 
                 {guild.description || 'No description provided'}
               </p>
               <div className="guild-stats">
-                <span>Power: {guild.totalPower.toLocaleString()}</span>
+                <span>Power: {(guild.totalPower ?? 0).toLocaleString()}</span>
                 <span>Leader: {guild.leaderName}</span>
                 {(() => {
                   const rawStats = guild.stats as unknown;

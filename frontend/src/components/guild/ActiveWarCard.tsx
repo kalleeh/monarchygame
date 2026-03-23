@@ -28,7 +28,7 @@ const ActiveWarCard: React.FC<ActiveWarCardProps> = ({
   const minutesLeft = Math.max(0, Math.floor((msLeft % 3600000) / 60000));
   const isExpired = msLeft <= 0;
 
-  const ourContribs = war.contributions
+  const ourContribs = (war.contributions ?? [])
     .filter(c => c.guildId === kingdom.guildId)
     .sort((a, b) => b.score - a.score);
 

@@ -16,6 +16,8 @@ import { useCombatStore } from '../stores/combatStore';
 import { useFormationStore } from '../stores/formationStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
+import { useSummonStore } from '../stores/useSummonStore';
+import { RACES } from '../../__mocks__/@game-data/races';
 import { isDemoMode } from '../utils/authMode';
 import { TopNavigation } from './TopNavigation';
 import './BattleFormations.css';
@@ -111,6 +113,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
   const availableUnits = useKingdomStore((state) => state.units);
   const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
   const generateAIKingdoms = useAIKingdomStore((state) => state.generateAIKingdoms);
+  const attackerRace = useSummonStore((state) => state.currentRace) || 'Human';
 
   const [unitOrder, setUnitOrder] = useState<string[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<string>('');
@@ -127,29 +130,53 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
   const [defensiveFormationSaved, setDefensiveFormationSaved] = useState(false);
 
   // Battle preview calculation (useMemo for performance)
+  // Mirrors the simulateBattle logic in combatStore.ts so the prediction
+  // matches the actual combat outcome for AI/demo targets.
   const battlePreview = useMemo(() => {
     if (selectedUnits.length === 0 || !selectedTarget) {
       return null;
     }
 
-    // Calculate attacker power
-    const attackerPower = selectedUnits.reduce((sum, u) => sum + (u.attack * u.count), 0);
+    // Attacker race scaling: matches simulateBattle's attackerOffenseScale.
+    // Units in the kingdom store already have race-scaled .attack stats, but
+    // simulateBattle multiplies by the raw warOffense rating a second time.
+    const attackerRaceStats = RACES[attackerRace as keyof typeof RACES]?.stats;
+    const attackerOffenseScale = attackerRaceStats ? attackerRaceStats.warOffense : 3;
 
-    // Calculate defender power from selected target's units
+    // Calculate attacker power with race offense scaling applied (matches simulateBattle)
+    const attackerPower = selectedUnits.reduce((sum, u) => sum + (u.attack * u.count * attackerOffenseScale), 0);
+
+    // Calculate defender power matching simulateBattle's per-tier defense values
+    // scaled by the defender's race warDefense rating.
+    // simulateBattle builds defender units as:
+    //   tier1 → defense = 1 * defenseScale
+    //   tier2 → defense = 3 * defenseScale
+    //   tier3 → defense = 4 * defenseScale
+    //   tier4 → defense = 2 * defenseScale
     const targetKingdom = aiKingdoms.find(k => k.id === selectedTarget);
-    const defenderPower = targetKingdom
-      ? Object.entries(targetKingdom.units || {}).reduce((sum, [, count]) => sum + (count as number) * 3, 0)
-      : 200;
-    
+    let defenderPower: number;
+    if (targetKingdom) {
+      const defRaceStats = RACES[targetKingdom.race as keyof typeof RACES]?.stats;
+      const defenseScale = defRaceStats ? defRaceStats.warDefense : 3;
+      const units = targetKingdom.units || { tier1: 0, tier2: 0, tier3: 0, tier4: 0 };
+      defenderPower =
+        (units.tier1 || 0) * 1 * defenseScale +
+        (units.tier2 || 0) * 3 * defenseScale +
+        (units.tier3 || 0) * 4 * defenseScale +
+        (units.tier4 || 0) * 2 * defenseScale;
+    } else {
+      defenderPower = 200;
+    }
+
     // Calculate offense ratio
-    const offenseRatio = attackerPower / defenderPower;
-    
-    // Determine expected result
+    const offenseRatio = defenderPower === 0 ? 999 : attackerPower / defenderPower;
+
+    // Determine expected result — thresholds match combatCache.ts getBattleResult
     let resultType: 'with_ease' | 'good_fight' | 'failed';
     let attackerCasualtyRate: number;
     let defenderCasualtyRate: number;
     let landGainPercent: string;
-    
+
     if (offenseRatio >= 2.0) {
       resultType = 'with_ease';
       attackerCasualtyRate = 0.05;
@@ -166,7 +193,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
       defenderCasualtyRate = 0.05;
       landGainPercent = '0%';
     }
-    
+
     return {
       attackerPower,
       defenderPower,
@@ -176,7 +203,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
       defenderCasualtyRate,
       landGainPercent
     };
-  }, [selectedUnits, selectedTarget, aiKingdoms]);
+  }, [selectedUnits, selectedTarget, aiKingdoms, attackerRace]);
 
   // Initialize combat data on mount (also initializes formations via formationStore)
   useEffect(() => {

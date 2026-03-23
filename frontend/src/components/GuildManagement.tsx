@@ -519,7 +519,7 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
                   </span>
                 </div>
                 <small style={{ color: '#a0a0a0', display: 'block', marginTop: '0.5rem' }}>
-                  Total Power: {currentGuild?.totalPower.toLocaleString() || 0}
+                  Total Power: {(currentGuild?.totalPower ?? 0).toLocaleString()}
                 </small>
               </div>
               <p style={{ color: '#a0a0a0', textAlign: 'center' }}>
