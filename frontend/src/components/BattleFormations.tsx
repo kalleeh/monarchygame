@@ -26,7 +26,10 @@ const RACE_DEFENSE: Record<string, number> = {
   Elemental: 3, Centaur: 2, Sidhe: 3, Dwarven: 5, Fae: 3,
 };
 import { isDemoMode } from '../utils/authMode';
-import { useKingdomTargets } from '../hooks/useKingdomTargets';
+// NOTE: useKingdomTargets is intentionally NOT imported here — it pulls in
+// KingdomSearchService → aws-amplify/data which creates a Vite TDZ crash in
+// this lazy chunk. Combat targeting uses the aiKingdomStore directly instead.
+// Server-side target loading for combat is handled via aiKingdomStore.loadAIKingdomsFromServer.
 import { TopNavigation } from './TopNavigation';
 import './BattleFormations.css';
 
@@ -125,13 +128,11 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
   const loadAIKingdomsFromServer = useAIKingdomStore((state) => state.loadAIKingdomsFromServer);
   const attackerRace = race;
 
-  const { targets: kingdomTargets, loading: targetsLoading, hasMore: targetsHasMore, loadMore: loadMoreTargets } = useKingdomTargets({ nameSearch: debouncedSearch });
+  // Combat targeting uses AI kingdoms from the store (loaded from server in auth mode via loadAIKingdomsFromServer)
+  const kingdomTargets = aiKingdoms;
 
   const [unitOrder, setUnitOrder] = useState<string[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<string>('');
-  const [targetSearch, setTargetSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showBattleResult, setShowBattleResult] = useState(false);
   const [ambushActive, setAmbushActive] = useState(false);
   const [defensiveFormation, setDefensiveFormation] = useState<string>(() => {
@@ -167,7 +168,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     //   tier2 → defense = 3 * defenseScale
     //   tier3 → defense = 4 * defenseScale
     //   tier4 → defense = 2 * defenseScale
-    const targetKingdom = kingdomTargets.find(k => k.id === selectedTarget) ?? aiKingdoms.find(k => k.id === selectedTarget);
+    const targetKingdom = aiKingdoms.find(k => k.id === selectedTarget);
     let defenderPower: number;
     if (targetKingdom) {
       const defenseScale = RACE_DEFENSE[targetKingdom.race] ?? 3;
@@ -222,7 +223,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
       defenderCasualtyRate,
       landGainPercent
     };
-  }, [selectedUnits, selectedTarget, kingdomTargets, aiKingdoms, attackerRace]);
+  }, [selectedUnits, selectedTarget, aiKingdoms, attackerRace]);
 
   // Initialize combat data on mount (also initializes formations via formationStore)
   useEffect(() => {
@@ -244,13 +245,6 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
       setSelectedTarget(preselectedTargetId);
     }
   }, [preselectedTargetId]);
-
-  // Debounce name search input (300ms)
-  useEffect(() => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => setDebouncedSearch(targetSearch), 300);
-    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
-  }, [targetSearch]);
 
   // Update unit order when available units change
   useEffect(() => {
@@ -424,75 +418,34 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
         marginBottom: '1.5rem'
       }}>
         <h3 style={{ color: '#fff', marginBottom: '1rem' }}>🎯 Select Target</h3>
-        <input
-          type="text"
-          placeholder="Search kingdoms by name..."
-          value={targetSearch}
-          onChange={(e) => setTargetSearch(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '0.5rem 0.75rem',
-            background: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid rgba(139, 92, 246, 0.2)',
-            borderRadius: '6px',
-            color: '#fff',
-            fontSize: '0.9rem',
-            marginBottom: '0.75rem',
-            boxSizing: 'border-box',
-          }}
-        />
-        {targetsLoading && kingdomTargets.length === 0 ? (
-          <p style={{ color: '#a0a0a0' }}>Loading targets...</p>
+        {kingdomTargets.length === 0 && !preselectedTargetId ? (
+          <p style={{ color: '#a0a0a0' }}>Loading targets…</p>
         ) : (
-          <>
-            {kingdomTargets.length === 0 && !targetsLoading ? (
-              <p style={{ color: '#a0a0a0', fontSize: '0.9rem' }}>No kingdoms found matching your search.</p>
-            ) : (
-              <select
-                value={selectedTarget}
-                onChange={(e) => setSelectedTarget(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(139, 92, 246, 0.3)',
-                  borderRadius: '8px',
-                  color: '#fff',
-                  fontSize: '1rem',
-                }}
-              >
-                <option value="">-- Select a target kingdom --</option>
-                {kingdomTargets.map(kingdom => (
-                  <option key={kingdom.id} value={kingdom.id}>
-                    {kingdom.name} ({kingdom.race}) — Land: {kingdom.resources.land}
-                  </option>
-                ))}
-                {preselectedTargetId && !kingdomTargets.some(k => k.id === preselectedTargetId) && (
-                  <option key={preselectedTargetId} value={preselectedTargetId}>
-                    Real Kingdom (ID: {preselectedTargetId})
-                  </option>
-                )}
-              </select>
+          <select
+            value={selectedTarget}
+            onChange={(e) => setSelectedTarget(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(139, 92, 246, 0.3)',
+              borderRadius: '8px',
+              color: '#fff',
+              fontSize: '1rem',
+            }}
+          >
+            <option value="">-- Select a target kingdom --</option>
+            {kingdomTargets.map(kingdom => (
+              <option key={kingdom.id} value={kingdom.id}>
+                {kingdom.name} ({kingdom.race}) - Land: {kingdom.resources.land}
+              </option>
+            ))}
+            {preselectedTargetId && !kingdomTargets.some(k => k.id === preselectedTargetId) && (
+              <option key={preselectedTargetId} value={preselectedTargetId}>
+                Real Kingdom (ID: {preselectedTargetId})
+              </option>
             )}
-            {targetsHasMore && (
-              <button
-                onClick={loadMoreTargets}
-                disabled={targetsLoading}
-                style={{
-                  marginTop: '0.75rem',
-                  padding: '0.4rem 1rem',
-                  background: 'rgba(139, 92, 246, 0.15)',
-                  border: '1px solid rgba(139, 92, 246, 0.4)',
-                  borderRadius: '6px',
-                  color: '#a78bfa',
-                  fontSize: '0.85rem',
-                  cursor: targetsLoading ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {targetsLoading ? 'Loading...' : 'Load more targets'}
-              </button>
-            )}
-          </>
+          </select>
         )}
       </div>
 
