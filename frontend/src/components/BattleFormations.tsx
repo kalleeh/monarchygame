@@ -17,7 +17,16 @@ import { useFormationStore } from '../stores/formationStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { useSummonStore } from '../stores/useSummonStore';
-import { RACES } from '../../__mocks__/@game-data/races';
+
+// Inline race offense/defense scales to avoid circular import via __mocks__
+const RACE_OFFENSE: Record<string, number> = {
+  Human: 3, Elven: 2, Goblin: 4, Droben: 5, Vampire: 3,
+  Elemental: 4, Centaur: 2, Sidhe: 2, Dwarven: 3, Fae: 3,
+};
+const RACE_DEFENSE: Record<string, number> = {
+  Human: 3, Elven: 4, Goblin: 3, Droben: 3, Vampire: 4,
+  Elemental: 3, Centaur: 2, Sidhe: 3, Dwarven: 5, Fae: 3,
+};
 import { isDemoMode } from '../utils/authMode';
 import { useKingdomTargets } from '../hooks/useKingdomTargets';
 import { TopNavigation } from './TopNavigation';
@@ -147,8 +156,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
     // Attacker race scaling: matches simulateBattle's attackerOffenseScale.
     // Units in the kingdom store already have race-scaled .attack stats, but
     // simulateBattle multiplies by the raw warOffense rating a second time.
-    const attackerRaceStats = RACES[attackerRace as keyof typeof RACES]?.stats;
-    const attackerOffenseScale = attackerRaceStats ? attackerRaceStats.warOffense : 3;
+    const attackerOffenseScale = RACE_OFFENSE[attackerRace] ?? 3;
 
     // Calculate attacker power with race offense scaling applied (matches simulateBattle)
     const attackerPower = selectedUnits.reduce((sum, u) => sum + (u.attack * u.count * attackerOffenseScale), 0);
@@ -163,8 +171,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
     const targetKingdom = kingdomTargets.find(k => k.id === selectedTarget) ?? aiKingdoms.find(k => k.id === selectedTarget);
     let defenderPower: number;
     if (targetKingdom) {
-      const defRaceStats = RACES[targetKingdom.race as keyof typeof RACES]?.stats;
-      const defenseScale = defRaceStats ? defRaceStats.warDefense : 3;
+      const defenseScale = RACE_DEFENSE[targetKingdom.race] ?? 3;
       const aiTarget = aiKingdoms.find(k => k.id === selectedTarget);
       if (aiTarget) {
         const units = aiTarget.units || { tier1: 0, tier2: 0, tier3: 0, tier4: 0 };
