@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRestorationStore } from '../stores/restorationStore';
 import UnitRoster from './UnitRoster';
 import { HelpModal } from './ui/HelpModal';
+import { MobileBottomNav } from './MobileBottomNav';
 import './KingdomActionBar.css';
 
 interface ActionItem {
@@ -253,6 +254,12 @@ export const KingdomActionBarConnected: React.FC<{ kingdomId: string }> = ({ kin
         onDiplomacy={() => navigate(`/kingdom/${kingdomId}/diplomacy`)}
         onBattleReports={() => navigate(`/kingdom/${kingdomId}/reports`)}
         onViewLeaderboard={() => navigate(`/kingdom/${kingdomId}/leaderboard`)}
+        isActionProhibited={isActionProhibited}
+        onShowUnitRoster={() => setShowUnitRoster(true)}
+        onShowHelp={() => setShowHelp(true)}
+      />
+      <MobileBottomNav
+        kingdomId={kingdomId}
         isActionProhibited={isActionProhibited}
         onShowUnitRoster={() => setShowUnitRoster(true)}
         onShowHelp={() => setShowHelp(true)}

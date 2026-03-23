@@ -333,3 +333,10 @@
     right: -8px;
   }
 }
+
+@media (max-width: 767px) {
+  .notification-bell {
+    width: 36px;
+    height: 36px;
+  }
+}

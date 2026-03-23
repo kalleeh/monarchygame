@@ -665,3 +665,23 @@
     padding: 0.75rem;
   }
 }
+
+/* Mobile touch targets — minimum 44px as per Apple/Google HIG */
+@media (max-width: 767px) {
+  button,
+  [role="button"],
+  .action-btn,
+  .lb-tab,
+  .tab-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Improve tap area for small interactive elements */
+  input[type="checkbox"] + label,
+  input[type="radio"] + label {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+}

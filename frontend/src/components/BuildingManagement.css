@@ -151,6 +151,36 @@
 .bm-cost-value          { color: var(--gm-text-gold, #fbbf24); font-weight: 600; }
 .bm-cost--unaffordable  { color: var(--gm-text-danger, #ef4444); }
 
+@media (max-width: 767px) {
+  /* Building grid: single column */
+  .bm-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  /* Each building card */
+  .bm-card {
+    padding: 0.75rem;
+  }
+
+  /* Quantity stepper: touch-friendly */
+  .bm-qty-btn {
+    min-height: 44px;
+    min-width: 36px;
+  }
+
+  .bm-qty-input {
+    height: 44px;
+    text-align: center;
+    font-size: 1rem;
+  }
+
+  /* Build button: full width (already is), taller touch target */
+  .bm-build-btn {
+    min-height: 44px;
+  }
+}
+
 /* ── Build button ────────────────────────────────────────────────────── */
 .bm-build-btn {
   background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;

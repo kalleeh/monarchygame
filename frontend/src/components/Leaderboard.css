@@ -287,6 +287,31 @@
   }
 }
 
+/* ── Mobile (≤767px): heading size + tab bar refinements ─────────────── */
+@media (max-width: 767px) {
+  .leaderboard-header h1 {
+    font-size: 1.4rem;
+  }
+
+  .leaderboard-page .leaderboard-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .lb-tab-bar {
+    -webkit-overflow-scrolling: touch;
+    padding: 0.5rem 0.75rem;
+    gap: 0.4rem;
+  }
+
+  .lb-tab {
+    min-height: 36px;
+    font-size: 0.8rem;
+    padding: 0.3rem 0.65rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+}
+
 /* ── Small phones (≤480px): hide less-important table columns ─────────── */
 @media (max-width: 480px) {
   /* Hide rank-delta column (the ▲/▼ movement indicator) */

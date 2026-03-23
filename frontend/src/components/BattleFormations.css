@@ -732,3 +732,43 @@
     transform: none;
   }
 }
+
+@media (max-width: 767px) {
+  .unit-card {
+    min-height: 56px;
+    padding: 0.75rem;
+  }
+
+  .unit-grid {
+    gap: 0.5rem;
+  }
+
+  .formation-card {
+    padding: 0.75rem;
+  }
+
+  .formations-list {
+    grid-template-columns: 1fr;
+  }
+
+  .execute-battle-btn,
+  .create-formation-btn {
+    min-height: 52px;
+    font-size: 1rem;
+  }
+
+  .battle-stats .stats-grid {
+    gap: 0.5rem;
+  }
+
+  .defensive-stance-option {
+    padding: 0.6rem 0.75rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .defensive-stance-btn {
+    min-height: 44px;
+    min-width: 80px;
+  }
+}

@@ -197,6 +197,30 @@
   .history-time   { margin-left: 0; }
 }
 
+@media (max-width: 767px) {
+  /* Target grid: 2 columns on mobile */
+  .target-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  /* Operations grid: single column */
+  .operations-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .operation-btn {
+    min-height: 52px;
+    text-align: left;
+    padding: 0.75rem 1rem;
+  }
+
+  /* Stats row: 2x2 grid */
+  .thievery-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 @media (max-width: 480px) {
   .thievery-interface { padding: 0.75rem; overflow-x: hidden; }
   .thievery-stats     { gap: 0.75rem; }

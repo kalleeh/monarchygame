@@ -131,3 +131,29 @@ h1 {
 main, .page-content {
   min-height: 0;
 }
+
+/* Mobile: add bottom padding so content isn't hidden by bottom nav */
+@media (max-width: 767px) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  /* All main page wrappers get bottom padding for bottom nav (64px) */
+  .leaderboard-page,
+  .battle-formations,
+  .spell-casting-interface,
+  .achievement-list-container,
+  .bounty-board-container,
+  .trade-system-container,
+  .territory-grid,
+  .thievery-interface,
+  .diplomacy-container {
+    padding-bottom: 80px !important;
+  }
+
+  /* Kingdom dashboard */
+  .kingdom-main-content,
+  [class*="dashboard"] {
+    padding-bottom: 80px;
+  }
+}

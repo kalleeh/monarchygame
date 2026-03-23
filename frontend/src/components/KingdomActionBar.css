@@ -229,3 +229,10 @@
   flex-direction: column;
   gap: 0.35rem;
 }
+
+/* Hide the desktop action bar on mobile — replaced by MobileBottomNav */
+@media (max-width: 767px) {
+  .action-bar-sticky {
+    display: none;
+  }
+}

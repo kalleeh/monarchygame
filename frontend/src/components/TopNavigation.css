@@ -225,6 +225,62 @@
   }
 }
 
+/* ── Mobile (≤767px) refinements ─────────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* Tighter nav on mobile */
+  .top-navigation {
+    height: 52px;
+    padding: 0 0.75rem;
+  }
+
+  /* Smaller logo */
+  .nav-logo {
+    width: 26px;
+    height: 26px;
+  }
+
+  /* Back button smaller */
+  .back-btn {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.5rem;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Title smaller */
+  .nav-title {
+    font-size: 0.9rem;
+    max-width: 140px;
+  }
+
+  /* Hide subtitle on very small screens */
+  .nav-subtitle {
+    display: none;
+  }
+
+  /* Resources: show only icons + numbers, no labels */
+  .nav-resources {
+    gap: 0.4rem;
+  }
+
+  .nav-resource {
+    font-size: 0.75rem;
+    gap: 0.2rem;
+  }
+
+  .nav-resource-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Race badge hidden on mobile */
+  .nav-race-badge {
+    display: none;
+  }
+}
+
 /* Touch improvements */
 @media (hover: none) and (pointer: coarse) {
   .back-btn:hover,

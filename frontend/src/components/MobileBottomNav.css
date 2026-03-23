@@ -1,0 +1,204 @@
+/* MobileBottomNav — only visible on mobile (< 768px) */
+
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  /* ── Wrapper ── */
+  .mobile-bottom-nav {
+    display: block;
+  }
+
+  /* ── Backdrop ── */
+  .mobile-bottom-nav__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 198;
+    background: rgba(0, 0, 0, 0.55);
+  }
+
+  /* ── Sub-tray ── */
+  .mobile-bottom-nav__tray {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    z-index: 199;
+    background: rgba(10, 10, 22, 0.99);
+    border-top: 1px solid rgba(99, 102, 241, 0.35);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.6);
+    transform: translateY(100%);
+    transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+    will-change: transform;
+    max-height: 70vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobile-bottom-nav__tray--open {
+    transform: translateY(0);
+  }
+
+  .mobile-bottom-nav__tray-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1.25rem 0.5rem;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.18);
+  }
+
+  .mobile-bottom-nav__tray-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: rgba(200, 200, 220, 0.9);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .mobile-bottom-nav__tray-close {
+    background: transparent;
+    border: none;
+    color: rgba(160, 160, 180, 0.7);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    line-height: 1;
+    border-radius: 4px;
+    transition: color 0.13s ease;
+  }
+
+  .mobile-bottom-nav__tray-close:active {
+    color: #fff;
+  }
+
+  /* ── Tray grid ── */
+  .mobile-bottom-nav__tray-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    padding: 0.75rem 1rem 1rem;
+  }
+
+  /* ── Individual tray item ── */
+  .mobile-bottom-nav__tray-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-height: 68px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 10px;
+    cursor: pointer;
+    padding: 0.75rem 0.5rem;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-bottom-nav__tray-item:active {
+    background: rgba(251, 191, 36, 0.12);
+    border-color: rgba(251, 191, 36, 0.4);
+    transform: scale(0.97);
+  }
+
+  .mobile-bottom-nav__tray-item--prohibited {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .mobile-bottom-nav__tray-item--prohibited:active {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(99, 102, 241, 0.2);
+    transform: none;
+  }
+
+  .mobile-bottom-nav__tray-item-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+
+  .mobile-bottom-nav__tray-item-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(220, 220, 235, 0.85);
+    text-align: center;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+  }
+
+  .mobile-bottom-nav__tray-item-lock {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    font-size: 0.65rem;
+    opacity: 0.7;
+  }
+
+  /* ── Tab bar ── */
+  .mobile-bottom-nav__bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    display: flex;
+    align-items: stretch;
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: rgba(10, 10, 22, 0.98);
+    border-top: 1px solid rgba(99, 102, 241, 0.35);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.5);
+  }
+
+  /* ── Individual tab ── */
+  .mobile-bottom-nav__tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    min-height: 44px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem 0;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 0.13s ease;
+  }
+
+  .mobile-bottom-nav__tab:active {
+    opacity: 0.7;
+  }
+
+  .mobile-bottom-nav__tab-icon {
+    font-size: 1.35rem;
+    line-height: 1;
+    color: rgba(160, 160, 180, 0.7);
+    transition: color 0.15s ease;
+  }
+
+  .mobile-bottom-nav__tab-label {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: rgba(160, 160, 180, 0.7);
+    letter-spacing: 0.02em;
+    transition: color 0.15s ease;
+  }
+
+  /* Active tab — gold */
+  .mobile-bottom-nav__tab--active .mobile-bottom-nav__tab-icon,
+  .mobile-bottom-nav__tab--active .mobile-bottom-nav__tab-label {
+    color: #fbbf24;
+  }
+
+  /* Open tray tab — lighter gold accent */
+  .mobile-bottom-nav__tab--open .mobile-bottom-nav__tab-icon,
+  .mobile-bottom-nav__tab--open .mobile-bottom-nav__tab-label {
+    color: #f0c040;
+  }
+}

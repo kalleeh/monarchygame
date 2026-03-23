@@ -337,6 +337,17 @@
   }
 }
 
+@media (max-width: 767px) {
+  .race-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .race-card {
+    padding: 0.6rem;
+  }
+}
+
 /* Starting Resources Section */
 .starting-resources {
   background: rgba(78, 205, 196, 0.05);

@@ -625,6 +625,20 @@
   }
 }
 
+@media (max-width: 767px) {
+  /* Spell cards: ensure full width, comfortable padding */
+  .spell-card {
+    padding: 1rem;
+  }
+
+  /* Stats row inside spell card: wrap on mobile */
+  .spell-stats,
+  [class*="spell-cost"] {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+
 /* ── Reduced motion ─────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
