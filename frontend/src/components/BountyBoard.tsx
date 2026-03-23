@@ -4,11 +4,12 @@
  * allows players to claim bounties, and shows completed bounty history.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useBountyStore } from '../stores/bountyStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { isDemoMode } from '../utils/authMode';
+import { useKingdomTargets } from '../hooks/useKingdomTargets';
 import { TopNavigation } from './TopNavigation';
 import './BountyBoard.css';
 
@@ -34,23 +35,51 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId, onBack }) => {
     clearError,
   } = useBountyStore();
 
-  const { aiKingdoms, generateAIKingdoms, loadAIKingdomsFromServer } = useAIKingdomStore();
+  const { aiKingdoms, generateAIKingdoms } = useAIKingdomStore();
   const resources = useKingdomStore((state) => state.resources);
 
-  // Generate bounties on mount from current AI kingdoms.
-  // If none exist yet (user landed here before visiting Espionage), seed them now.
+  const [targetSearch, setTargetSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { targets: kingdomTargets, loading: targetsLoading, hasMore: targetsHasMore, loadMore: loadMoreTargets } =
+    useKingdomTargets({ range: [0.3, 3.0], nameSearch: debouncedSearch });
+
+  // Debounce name search input (300ms)
   useEffect(() => {
-    if (aiKingdoms.length === 0) {
-      if (isDemoMode()) {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(targetSearch), 300);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [targetSearch]);
+
+  // Seed AI kingdoms in demo mode, then generate bounties from them.
+  // In auth mode, generate bounties from server-fetched kingdomTargets.
+  useEffect(() => {
+    if (isDemoMode()) {
+      if (aiKingdoms.length === 0) {
         const networth = (resources.gold || 0) + (resources.land || 0) * 50;
         generateAIKingdoms(5, networth);
       } else {
-        void loadAIKingdomsFromServer();
+        generateBounties(aiKingdoms);
       }
-    } else {
-      generateBounties(aiKingdoms);
     }
-  }, [aiKingdoms, generateBounties, generateAIKingdoms, loadAIKingdomsFromServer, resources.gold, resources.land]);
+  }, [aiKingdoms, generateBounties, generateAIKingdoms, resources.gold, resources.land]);
+
+  useEffect(() => {
+    if (!isDemoMode() && kingdomTargets.length > 0) {
+      // Adapt TargetKingdom[] to AIKingdom[] shape for the bounty mechanics
+      const adapted = kingdomTargets.map(k => ({
+        id: k.id,
+        name: k.name,
+        race: k.race,
+        resources: k.resources,
+        units: { tier1: 0, tier2: 0, tier3: 0, tier4: 0 },
+        difficulty: (k.difficulty as 'easy' | 'medium' | 'hard') ?? 'medium',
+        networth: k.networth,
+      }));
+      generateBounties(adapted);
+    }
+  }, [kingdomTargets, generateBounties]);
 
   // Auto-clear errors after 5 seconds
   useEffect(() => {
@@ -86,17 +115,38 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId, onBack }) => {
         <section className="bounty-section">
           <h2 className="section-title">Available Bounties</h2>
 
-          {loading && (
+          <input
+            type="text"
+            placeholder="Search kingdoms by name..."
+            value={targetSearch}
+            onChange={(e) => setTargetSearch(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.5rem 0.75rem',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(139,92,246,0.2)',
+              borderRadius: '6px',
+              color: '#fff',
+              fontSize: '0.9rem',
+              marginBottom: '1rem',
+              boxSizing: 'border-box',
+            }}
+          />
+
+          {(loading || targetsLoading) && (
             <div className="bounty-loading gm-loading">Scanning rival kingdoms...</div>
           )}
 
-          {!loading && availableBounties.length === 0 && (
+          {!loading && !targetsLoading && availableBounties.length === 0 && (
             <div className="bounty-empty gm-empty-state">
-              No bounties available yet. Rival kingdoms are being scouted — check back shortly.
+              {debouncedSearch ? 'No kingdoms found matching your search.' : 'No bounties available yet. Rival kingdoms are being scouted — check back shortly.'}
             </div>
           )}
 
-          <div className="bounty-grid">
+          <div
+            className="bounty-grid"
+            style={{ maxHeight: '600px', overflowY: 'auto' }}
+          >
             {availableBounties.map((bounty) => (
               <div
                 key={bounty.target.kingdomId}
@@ -169,6 +219,24 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId, onBack }) => {
               </div>
             ))}
           </div>
+          {targetsHasMore && (
+            <button
+              onClick={loadMoreTargets}
+              disabled={targetsLoading}
+              style={{
+                marginTop: '1rem',
+                padding: '0.5rem 1.25rem',
+                background: 'rgba(139,92,246,0.15)',
+                border: '1px solid rgba(139,92,246,0.4)',
+                borderRadius: '6px',
+                color: '#a78bfa',
+                fontSize: '0.9rem',
+                cursor: targetsLoading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {targetsLoading ? 'Loading...' : 'Load more'}
+            </button>
+          )}
         </section>
 
         {/* Completed Bounties */}

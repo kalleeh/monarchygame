@@ -78,11 +78,16 @@ const schema = a.schema({
       // Encamp fields — set by resource-manager Lambda, cleared by turn-ticker after expiry
       encampEndTime: a.string(),
       encampBonusTurns: a.integer(),
+      // Denormalized score field — updated whenever resources/units change
+      networth: a.integer().default(0),
       // Private fields - owner only
       guildId: a.id()
         .authorization((allow) => [allow.owner().to(['read', 'update'])]),
       seasonId: a.id()
     })
+    .secondaryIndexes((index) => [
+      index('seasonId').sortKeys(['networth']).queryField('listKingdomsBySeasonNetworth'),
+    ])
     .authorization((allow) => [
       allow.owner(),
       allow.authenticated().to(['read'])

@@ -4,11 +4,12 @@
  * Follows existing component patterns (SpellCastingInterface, UnitSummonInterface)
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useThieveryStore, type OperationType } from '../stores/thieveryStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { isDemoMode } from '../utils/authMode';
+import { useKingdomTargets } from '../hooks/useKingdomTargets';
 import { TopNavigation } from './TopNavigation';
 import { ToastService } from '../services/toastService';
 import { THIEVERY_MECHANICS } from '../../../shared/mechanics/thievery-mechanics';
@@ -75,6 +76,9 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
   const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [operationLoading, setOperationLoading] = useState(false);
+  const [targetSearch, setTargetSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     scumCount,
@@ -94,26 +98,29 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
 
   const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
   const generateAIKingdoms = useAIKingdomStore((state) => state.generateAIKingdoms);
-  const loadAIKingdomsFromServer = useAIKingdomStore((state) => state.loadAIKingdomsFromServer);
+
+  const { targets: kingdomTargets, loading: targetsLoading, hasMore: targetsHasMore, loadMore: loadMoreTargets } = useKingdomTargets({ nameSearch: debouncedSearch });
 
   // Initialize on mount
   useEffect(() => {
     initializeThievery(kingdomId, race);
-
-    // Generate AI kingdoms if none exist
-    if (aiKingdoms.length === 0) {
-      if (isDemoMode()) {
-        const networth = (resources.gold || 0) + (resources.land || 0) * 50;
-        generateAIKingdoms(5, networth);
-      } else {
-        void loadAIKingdomsFromServer();
-      }
+    // Demo mode: seed AI kingdoms if none exist
+    if (isDemoMode() && aiKingdoms.length === 0) {
+      const networth = (resources.gold || 0) + (resources.land || 0) * 50;
+      generateAIKingdoms(5, networth);
     }
-  }, [kingdomId, race, initializeThievery, aiKingdoms.length, generateAIKingdoms, loadAIKingdomsFromServer, resources.gold, resources.land]);
+  }, [kingdomId, race, initializeThievery, aiKingdoms.length, generateAIKingdoms, resources.gold, resources.land]);
+
+  // Debounce name search input (300ms)
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(targetSearch), 300);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [targetSearch]);
 
   const totalScum = scumCount + eliteScumCount;
 
-  const selectedKingdom = aiKingdoms.find((k) => k.id === selectedTarget);
+  const selectedKingdom = kingdomTargets.find((k) => k.id === selectedTarget);
 
   // Calculate detection rate for selected target
   const currentDetection = selectedKingdom
@@ -268,11 +275,33 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
         {/* Target Selection */}
         <section className="thievery-targets">
           <h3>Select Target</h3>
-          {aiKingdoms.length === 0 ? (
-            <p className="gm-empty-state">No kingdoms available to target.</p>
+          <input
+            type="text"
+            placeholder="Search kingdoms by name..."
+            value={targetSearch}
+            onChange={(e) => setTargetSearch(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.5rem 0.75rem',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(139,92,246,0.2)',
+              borderRadius: '6px',
+              color: '#fff',
+              fontSize: '0.9rem',
+              marginBottom: '0.75rem',
+              boxSizing: 'border-box',
+            }}
+          />
+          {targetsLoading && kingdomTargets.length === 0 ? (
+            <p className="gm-empty-state">Loading targets...</p>
+          ) : kingdomTargets.length === 0 ? (
+            <p className="gm-empty-state">No kingdoms found matching your search.</p>
           ) : (
-            <div className="target-grid">
-              {aiKingdoms.map((kingdom) => (
+            <div
+              className="target-grid"
+              style={{ maxHeight: '300px', overflowY: 'auto' }}
+            >
+              {kingdomTargets.map((kingdom) => (
                 <button
                   key={kingdom.id}
                   className={`target-card ${selectedTarget === kingdom.id ? 'selected' : ''}`}
@@ -280,11 +309,29 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
                 >
                   <h4>{kingdom.name}</h4>
                   <p className="target-race">{kingdom.race}</p>
-                  <p className="target-difficulty">{kingdom.difficulty}</p>
+                  {kingdom.difficulty && <p className="target-difficulty">{kingdom.difficulty}</p>}
                   <p className="target-land">{kingdom.resources.land.toLocaleString()} acres</p>
                 </button>
               ))}
             </div>
+          )}
+          {targetsHasMore && (
+            <button
+              onClick={loadMoreTargets}
+              disabled={targetsLoading}
+              style={{
+                marginTop: '0.75rem',
+                padding: '0.4rem 1rem',
+                background: 'rgba(139,92,246,0.15)',
+                border: '1px solid rgba(139,92,246,0.4)',
+                borderRadius: '6px',
+                color: '#a78bfa',
+                fontSize: '0.85rem',
+                cursor: targetsLoading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {targetsLoading ? 'Loading...' : 'Load more'}
+            </button>
           )}
         </section>
 

@@ -17,6 +17,7 @@ import {
   UpdateCommand,
   DeleteCommand,
   ScanCommand,
+  BatchWriteCommand,
 } from '@aws-sdk/lib-dynamodb';
 
 const REGION = process.env.AWS_REGION ?? 'eu-west-1';
@@ -31,7 +32,7 @@ export const docClient = _docClient as any;
 let _tableSuffix: string | undefined;
 
 /** Discovers the Amplify table suffix (API_ID-NONE) from the existing Kingdom table. */
-async function getTableSuffix(): Promise<string> {
+export async function getTableSuffix(): Promise<string> {
   if (_tableSuffix) return _tableSuffix;
   const result = await ddb.send(new ListTablesCommand({}));
   const tableNames: string[] = result.TableNames ?? [];
@@ -120,6 +121,20 @@ export async function dbUpdate(
 export async function dbDelete(modelName: string, id: string): Promise<void> {
   const TableName = await getTableName(modelName);
   await docClient.send(new DeleteCommand({ TableName, Key: { id } }));
+}
+
+/**
+ * Writes up to 25 items to the given DynamoDB table name using BatchWriteItem.
+ * Caller is responsible for chunking into batches of ≤25 before calling.
+ */
+export async function dbBatchWrite(
+  tableName: string,
+  items: Record<string, unknown>[]
+): Promise<void> {
+  const requestItems = {
+    [tableName]: items.map(item => ({ PutRequest: { Item: item } })),
+  };
+  await docClient.send(new BatchWriteCommand({ RequestItems: requestItems }));
 }
 
 /** Atomically increments (or decrements with negative delta) a top-level numeric field. */

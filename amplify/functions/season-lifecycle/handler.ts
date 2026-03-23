@@ -1,5 +1,5 @@
 import type { Schema } from '../../data/resource';
-import { dbList, dbGet, dbCreate, dbUpdate } from '../data-client';
+import { dbList, dbGet, dbCreate, dbUpdate, dbBatchWrite, getTableSuffix } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 
@@ -146,25 +146,56 @@ async function computeSeasonVictory(seasonId: string): Promise<{
 // AI Kingdom seeding
 // ---------------------------------------------------------------------------
 
-const AI_KINGDOM_NAMES = [
-  'Northern Empire',
-  'Shadow Realm',
-  'Golden Dynasty',
-  'Iron Fortress',
-  'Crystal Kingdom',
+const NAME_PREFIXES = [
+  'Iron', 'Golden', 'Shadow', 'Crystal', 'Silver', 'Storm', 'Dark', 'Blood',
+  'Frost', 'Ember', 'Stone', 'Thunder', 'Ash', 'Jade', 'Obsidian', 'Crimson',
+  'Azure', 'Gilded', 'Ancient', 'Twilight', 'Blessed', 'Cursed', 'Eternal',
+  'Savage', 'Noble', 'Hollow', 'Sunken', 'Rising', 'Fallen', 'Burning',
 ];
 
-const AI_KINGDOM_RACES = ['Vampire', 'Vampire', 'Dwarven', 'Human', 'Fae'] as const;
+const NAME_SUFFIXES = [
+  'Empire', 'Kingdom', 'Realm', 'Dynasty', 'Fortress', 'Citadel', 'Domain',
+  'Throne', 'Crown', 'Dominion', 'Sovereignty', 'Principality', 'Hold',
+  'Bastion', 'Stronghold', 'March', 'Keep', 'Tower', 'Hall', 'Lodge',
+];
+
+const ALL_RACES = [
+  'Human', 'Elven', 'Goblin', 'Droben', 'Vampire',
+  'Elemental', 'Centaur', 'Sidhe', 'Dwarven', 'Fae',
+] as const;
 
 /** Race-based offense/defense multipliers (relative to base of 1.0). */
 const RACE_STATS: Record<string, { warOffense: number; warDefense: number }> = {
-  Vampire: { warOffense: 1.4, warDefense: 1.1 },
-  Dwarven: { warOffense: 1.0, warDefense: 1.5 },
-  Human:   { warOffense: 1.1, warDefense: 1.1 },
-  Fae:     { warOffense: 1.2, warDefense: 1.3 },
+  Human:     { warOffense: 1.1, warDefense: 1.1 },
+  Elven:     { warOffense: 1.2, warDefense: 1.2 },
+  Goblin:    { warOffense: 1.3, warDefense: 0.9 },
+  Droben:    { warOffense: 1.4, warDefense: 1.0 },
+  Vampire:   { warOffense: 1.4, warDefense: 1.1 },
+  Elemental: { warOffense: 1.3, warDefense: 1.3 },
+  Centaur:   { warOffense: 1.2, warDefense: 1.1 },
+  Sidhe:     { warOffense: 1.1, warDefense: 1.4 },
+  Dwarven:   { warOffense: 1.0, warDefense: 1.5 },
+  Fae:       { warOffense: 1.2, warDefense: 1.3 },
 };
 
-/** Creates 5 AI kingdoms for the given season. No-ops if they already exist. */
+/** Simple seeded pseudo-random number generator (mulberry32). */
+function makeRng(seed: number) {
+  let s = seed >>> 0;
+  return function (): number {
+    s += 0x6d2b79f5;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Returns a random integer in [min, max] inclusive using the provided rng. */
+function randInt(rng: () => number, min: number, max: number): number {
+  return Math.floor(rng() * (max - min + 1)) + min;
+}
+
+/** Creates 500 AI kingdoms for the given season in batches of 25. No-ops if they already exist. */
 async function seedAIKingdoms(seasonId: string): Promise<{ created: number }> {
   // Check if AI kingdoms already exist for this season
   const allKingdoms = await dbList<{ id: string; isAI?: boolean; seasonId?: string }>('Kingdom');
@@ -173,44 +204,80 @@ async function seedAIKingdoms(seasonId: string): Promise<{ created: number }> {
     return { created: 0 };
   }
 
-  let created = 0;
-  for (let i = 0; i < AI_KINGDOM_NAMES.length; i++) {
-    const name = AI_KINGDOM_NAMES[i];
-    const race = AI_KINGDOM_RACES[i];
-    const raceStats = RACE_STATS[race] ?? { warOffense: 1.0, warDefense: 1.0 };
+  const rng = makeRng(0xdeadbeef);
+  const now = new Date().toISOString();
+  const tableSuffix = await getTableSuffix();
+  const tableName = `Kingdom-${tableSuffix}-NONE`;
 
-    await dbCreate('Kingdom', {
-      id: crypto.randomUUID(),
-      name,
-      race,
-      resources: JSON.stringify({
-        gold: 50000,
-        population: 10000,
-        land: 800,
-        turns: 100,
-      }),
-      stats: JSON.stringify({
-        warOffense: raceStats.warOffense,
-        warDefense: raceStats.warDefense,
-      }),
-      buildings: JSON.stringify({}),
-      totalUnits: JSON.stringify({
-        peasants: 200,
-        militia: 100,
-        knights: 50,
-        cavalry: 20,
-      }),
-      currentAge: 'early',
-      isAI: true,
-      isActive: true,
-      isOnline: false,
-      seasonId,
-      owner: 'system',
-    });
-    created++;
+  // Build tier distribution: 100 small, 200 medium, 150 large, 50 huge
+  const tiers: Array<{ count: number; goldMin: number; goldMax: number; landMin: number; landMax: number }> = [
+    { count: 100, goldMin: 5000,    goldMax: 20000,   landMin: 100,  landMax: 300   },
+    { count: 200, goldMin: 50000,   goldMax: 200000,  landMin: 500,  landMax: 1500  },
+    { count: 150, goldMin: 200000,  goldMax: 500000,  landMin: 2000, landMax: 5000  },
+    { count: 50,  goldMin: 500000,  goldMax: 2000000, landMin: 5000, landMax: 15000 },
+  ];
+
+  // Pre-generate all kingdom items
+  const items: Record<string, unknown>[] = [];
+  let nameIndex = 0;
+  let tierKingdomIndex = 0;
+
+  for (const tier of tiers) {
+    for (let t = 0; t < tier.count; t++) {
+      const prefix = NAME_PREFIXES[nameIndex % NAME_PREFIXES.length];
+      const suffix = NAME_SUFFIXES[(nameIndex + Math.floor(nameIndex / NAME_PREFIXES.length)) % NAME_SUFFIXES.length];
+      const disambiguator = Math.floor(tierKingdomIndex / (NAME_PREFIXES.length * NAME_SUFFIXES.length));
+      const name = disambiguator > 0 ? `${prefix} ${suffix} ${disambiguator + 1}` : `${prefix} ${suffix}`;
+      nameIndex++;
+      tierKingdomIndex++;
+
+      const race = ALL_RACES[nameIndex % ALL_RACES.length];
+      const raceStats = RACE_STATS[race] ?? { warOffense: 1.0, warDefense: 1.0 };
+
+      const gold = randInt(rng, tier.goldMin, tier.goldMax);
+      const land = randInt(rng, tier.landMin, tier.landMax);
+      const population = randInt(rng, 1000, 50000);
+
+      const peasants = randInt(rng, 50, 300);
+      const militia  = randInt(rng, 20, 150);
+      const knights  = randInt(rng, 10, 80);
+      const cavalry  = randInt(rng, 5,  40);
+      const totalUnitsCount = peasants + militia + knights + cavalry;
+      const networth = land * 1000 + gold + totalUnitsCount * 100;
+
+      const warOffense = raceStats.warOffense + (rng() * 3 + 2) / 10; // 2–5 range contribution
+      const warDefense = raceStats.warDefense + (rng() * 3 + 2) / 10;
+
+      items.push({
+        id: crypto.randomUUID(),
+        name,
+        race,
+        resources: JSON.stringify({ gold, population, land, turns: 100 }),
+        stats: JSON.stringify({ warOffense, warDefense }),
+        buildings: JSON.stringify({}),
+        totalUnits: JSON.stringify({ peasants, militia, knights, cavalry }),
+        currentAge: 'early',
+        isAI: true,
+        isActive: true,
+        isOnline: false,
+        seasonId,
+        owner: 'system',
+        networth,
+        createdAt: now,
+        updatedAt: now,
+        __typename: 'Kingdom',
+      });
+    }
   }
 
-  return { created };
+  // Batch write in groups of 25
+  const BATCH_SIZE = 25;
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const batch = items.slice(i, i + BATCH_SIZE);
+    await dbBatchWrite(tableName, batch);
+  }
+
+  return { created: items.length };
 }
 
 type GameAge = 'early' | 'middle' | 'late';

@@ -238,8 +238,16 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       elan: Math.min(currentElan + elanPerTurn * turns, RESOURCE_LIMITS.elan.max),
     };
 
+    const totalUnitsObj = (kingdom as Record<string, unknown>).totalUnits;
+    const totalUnitsMap = typeof totalUnitsObj === 'string'
+      ? (JSON.parse(totalUnitsObj) as Record<string, number>)
+      : ((totalUnitsObj ?? {}) as Record<string, number>);
+    const totalUnits = Object.values(totalUnitsMap).reduce((sum, n) => sum + (n ?? 0), 0);
+    const networth = (updated.land ?? 0) * 1000 + (updated.gold ?? 0) + totalUnits * 100;
+
     await dbUpdate('Kingdom', kingdomId, {
       resources: updated,
+      networth,
       lastResourceTick: new Date().toISOString()
     });
 

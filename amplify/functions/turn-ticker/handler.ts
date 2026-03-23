@@ -25,6 +25,7 @@ interface KingdomRow {
   encampEndTime?: string | null;
   encampBonusTurns?: number | null;
   resources?: string | Record<string, number>;
+  totalUnits?: string | Record<string, number>;
 }
 
 export const handler = async (_event: unknown): Promise<{ success: boolean; ticked: number; skipped: number }> => {
@@ -89,8 +90,16 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
         const landDelta = Math.floor(Math.random() * (AI_LAND_VARIANCE * 2 + 1)) - AI_LAND_VARIANCE;
         const newLand = Math.max(100, (resources.land ?? 800) + landDelta);
 
+        const rawTotalUnits = (kingdom as Record<string, unknown>).totalUnits;
+        const totalUnitsMap = typeof rawTotalUnits === 'string'
+          ? (JSON.parse(rawTotalUnits) as Record<string, number>)
+          : ((rawTotalUnits ?? {}) as Record<string, number>);
+        const totalUnits = Object.values(totalUnitsMap).reduce((sum, n) => sum + (n ?? 0), 0);
+        const networth = newLand * 1000 + newGold + totalUnits * 100;
+
         await dbUpdate('Kingdom', kingdom.id, {
           resources: JSON.stringify({ ...resources, gold: newGold, population: newPopulation, land: newLand }),
+          networth,
         });
         aiTicked++;
       } catch (err) {
