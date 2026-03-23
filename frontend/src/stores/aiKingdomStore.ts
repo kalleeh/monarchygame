@@ -6,8 +6,11 @@
  */
 
 import { create } from 'zustand';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../../amplify/data/resource';
 import { NETWORTH, AI_KINGDOM } from '../constants/gameConfig';
 import { RACES } from '../../__mocks__/@game-data/races';
+import { isDemoMode } from '../utils/authMode';
 
 export interface AIKingdom {
   id: string;
@@ -34,6 +37,7 @@ export interface AIKingdom {
 interface AIKingdomState {
   aiKingdoms: AIKingdom[];
   generateAIKingdoms: (count: number, playerNetworth: number) => void;
+  loadAIKingdomsFromServer: () => Promise<void>;
   updateAIKingdom: (id: string, updates: Partial<AIKingdom>) => void;
   removeAIKingdom: (id: string) => void;
   reset: () => void;
@@ -113,15 +117,57 @@ export const useAIKingdomStore = create<AIKingdomState>((set) => ({
   generateAIKingdoms: (count: number, playerNetworth: number) => {
     const kingdoms: AIKingdom[] = [];
     const difficulties: Array<'easy' | 'medium' | 'hard'> = ['easy', 'easy', 'medium', 'medium', 'hard'];
-    
+
     for (let i = 0; i < count; i++) {
       const difficulty = difficulties[i % difficulties.length];
       kingdoms.push(generateAIKingdom(i, difficulty, playerNetworth));
     }
-    
+
     set({ aiKingdoms: kingdoms });
   },
-  
+
+  loadAIKingdomsFromServer: async () => {
+    if (isDemoMode()) return; // demo mode uses generated kingdoms
+    try {
+      const client = generateClient<Schema>();
+      // @ts-ignore — isAI field is being added by the backend agent
+      const { data } = await client.models.Kingdom.list({
+        // @ts-ignore
+        filter: { isAI: { eq: true } },
+        limit: 20,
+      });
+      if (!data || data.length === 0) return;
+      const transformed = data.map(k => {
+        const res = typeof k.resources === 'string' ? JSON.parse(k.resources) : (k.resources ?? {});
+        const units = typeof k.totalUnits === 'string' ? JSON.parse(k.totalUnits) : (k.totalUnits ?? {});
+        return {
+          id: k.id,
+          name: k.name ?? 'Unknown',
+          race: k.race ?? 'Human',
+          resources: {
+            gold: res.gold ?? 50000,
+            population: res.population ?? 10000,
+            land: res.land ?? 800,
+            turns: res.turns ?? 100,
+          },
+          units: {
+            tier1: units.peasants ?? units.tier1 ?? 200,
+            tier2: units.militia ?? units.tier2 ?? 100,
+            tier3: units.knights ?? units.tier3 ?? 50,
+            tier4: units.cavalry ?? units.tier4 ?? 20,
+          },
+          difficulty: 'medium' as const,
+          networth: (res.land ?? 800) * 1000 + (res.gold ?? 50000),
+          isOnline: true,
+          lastActive: new Date(),
+        } as AIKingdom;
+      });
+      set({ aiKingdoms: transformed });
+    } catch (err) {
+      console.warn('[aiKingdomStore] Failed to load AI kingdoms from server:', err);
+    }
+  },
+
   updateAIKingdom: (id: string, updates: Partial<AIKingdom>) =>
     set((state) => ({
       aiKingdoms: state.aiKingdoms.map((kingdom) =>

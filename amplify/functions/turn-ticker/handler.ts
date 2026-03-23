@@ -11,13 +11,20 @@ import { dbList, dbAtomicAdd, dbUpdate } from '../data-client';
 import { log } from '../logger';
 
 const MAX_STORED_TURNS = 100;
+const AI_GOLD_PER_TICK = 5000;
+const AI_POPULATION_PER_TICK = 500;
+const AI_GOLD_CAP = 500000;
+const AI_POPULATION_CAP = 100000;
+const AI_LAND_VARIANCE = 10; // ±10 land per tick
 
 interface KingdomRow {
   id: string;
   isActive?: boolean;
+  isAI?: boolean;
   turnsBalance?: number;
   encampEndTime?: string | null;
   encampBonusTurns?: number | null;
+  resources?: string | Record<string, number>;
 }
 
 export const handler = async (_event: unknown): Promise<{ success: boolean; ticked: number; skipped: number }> => {
@@ -67,7 +74,31 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
       }
     }
 
-    log.info('turn-ticker', 'tick', { ticked, skipped, total: active.length });
+    // Process AI kingdoms: apply income and slight land variance each tick
+    const aiKingdoms = kingdoms.filter(k => k.isAI === true && k.isActive === true);
+    let aiTicked = 0;
+    for (const kingdom of aiKingdoms) {
+      try {
+        const rawResources = kingdom.resources;
+        const resources: Record<string, number> = typeof rawResources === 'string'
+          ? (JSON.parse(rawResources) as Record<string, number>)
+          : ((rawResources ?? {}) as Record<string, number>);
+
+        const newGold = Math.min(AI_GOLD_CAP, (resources.gold ?? 0) + AI_GOLD_PER_TICK);
+        const newPopulation = Math.min(AI_POPULATION_CAP, (resources.population ?? 0) + AI_POPULATION_PER_TICK);
+        const landDelta = Math.floor(Math.random() * (AI_LAND_VARIANCE * 2 + 1)) - AI_LAND_VARIANCE;
+        const newLand = Math.max(100, (resources.land ?? 800) + landDelta);
+
+        await dbUpdate('Kingdom', kingdom.id, {
+          resources: JSON.stringify({ ...resources, gold: newGold, population: newPopulation, land: newLand }),
+        });
+        aiTicked++;
+      } catch (err) {
+        log.error('turn-ticker', err, { kingdomId: kingdom.id, context: 'ai-tick' });
+      }
+    }
+
+    log.info('turn-ticker', 'tick', { ticked, skipped, total: active.length, aiTicked });
     return { success: true, ticked, skipped };
   } catch (err) {
     log.error('turn-ticker', err);

@@ -68,6 +68,7 @@ const schema = a.schema({
       buildings: a.json().required(),
       totalUnits: a.json().required(),
       currentAge: a.ref('GameAge').required(),
+      isAI: a.boolean().default(false),
       isActive: a.boolean().default(true),
       isOnline: a.boolean().default(false),
       createdAt: a.datetime(),

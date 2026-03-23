@@ -142,6 +142,77 @@ async function computeSeasonVictory(seasonId: string): Promise<{
   };
 }
 
+// ---------------------------------------------------------------------------
+// AI Kingdom seeding
+// ---------------------------------------------------------------------------
+
+const AI_KINGDOM_NAMES = [
+  'Northern Empire',
+  'Shadow Realm',
+  'Golden Dynasty',
+  'Iron Fortress',
+  'Crystal Kingdom',
+];
+
+const AI_KINGDOM_RACES = ['Vampire', 'Vampire', 'Dwarven', 'Human', 'Fae'] as const;
+
+/** Race-based offense/defense multipliers (relative to base of 1.0). */
+const RACE_STATS: Record<string, { warOffense: number; warDefense: number }> = {
+  Vampire: { warOffense: 1.4, warDefense: 1.1 },
+  Dwarven: { warOffense: 1.0, warDefense: 1.5 },
+  Human:   { warOffense: 1.1, warDefense: 1.1 },
+  Fae:     { warOffense: 1.2, warDefense: 1.3 },
+};
+
+/** Creates 5 AI kingdoms for the given season. No-ops if they already exist. */
+async function seedAIKingdoms(seasonId: string): Promise<{ created: number }> {
+  // Check if AI kingdoms already exist for this season
+  const allKingdoms = await dbList<{ id: string; isAI?: boolean; seasonId?: string }>('Kingdom');
+  const existing = allKingdoms.filter(k => k.isAI === true && k.seasonId === seasonId);
+  if (existing.length > 0) {
+    return { created: 0 };
+  }
+
+  let created = 0;
+  for (let i = 0; i < AI_KINGDOM_NAMES.length; i++) {
+    const name = AI_KINGDOM_NAMES[i];
+    const race = AI_KINGDOM_RACES[i];
+    const raceStats = RACE_STATS[race] ?? { warOffense: 1.0, warDefense: 1.0 };
+
+    await dbCreate('Kingdom', {
+      id: crypto.randomUUID(),
+      name,
+      race,
+      resources: JSON.stringify({
+        gold: 50000,
+        population: 10000,
+        land: 800,
+        turns: 100,
+      }),
+      stats: JSON.stringify({
+        warOffense: raceStats.warOffense,
+        warDefense: raceStats.warDefense,
+      }),
+      buildings: JSON.stringify({}),
+      totalUnits: JSON.stringify({
+        peasants: 200,
+        militia: 100,
+        knights: 50,
+        cavalry: 20,
+      }),
+      currentAge: 'early',
+      isAI: true,
+      isActive: true,
+      isOnline: false,
+      seasonId,
+      owner: 'system',
+    });
+    created++;
+  }
+
+  return { created };
+}
+
 type GameAge = 'early' | 'middle' | 'late';
 
 function calculateCurrentAge(startDate: Date): GameAge {
@@ -197,7 +268,10 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
           owner: identity.sub
         });
 
-        log.info('season-lifecycle', 'createSeason', { seasonNumber: maxNumber + 1 });
+        // Seed AI kingdoms for the new season
+        const { created: aiCreated } = await seedAIKingdoms(season.id);
+
+        log.info('season-lifecycle', 'createSeason', { seasonNumber: maxNumber + 1, aiKingdomsSeeded: aiCreated });
         return JSON.stringify({
           success: true,
           season: {
@@ -205,7 +279,8 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
             seasonNumber: maxNumber + 1,
             status: 'active',
             currentAge: 'early'
-          }
+          },
+          aiKingdomsSeeded: aiCreated
         });
       }
 
@@ -305,6 +380,16 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
 
         log.info('season-lifecycle', 'endSeason', { seasonId });
         return JSON.stringify({ success: true, seasonId, action: 'force_ended' });
+      }
+
+      case 'seed_ai_kingdoms': {
+        const seasonId = args.seasonId;
+        if (!seasonId) {
+          return JSON.stringify({ success: false, error: 'seasonId required for seed_ai_kingdoms action', errorCode: ErrorCode.MISSING_PARAMS });
+        }
+        const { created } = await seedAIKingdoms(seasonId);
+        log.info('season-lifecycle', 'seedAIKingdoms', { seasonId, created });
+        return JSON.stringify({ success: true, created });
       }
 
       default:

@@ -113,6 +113,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
   const availableUnits = useKingdomStore((state) => state.units);
   const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
   const generateAIKingdoms = useAIKingdomStore((state) => state.generateAIKingdoms);
+  const loadAIKingdomsFromServer = useAIKingdomStore((state) => state.loadAIKingdomsFromServer);
   const attackerRace = useSummonStore((state) => state.currentRace) || 'Human';
 
   const [unitOrder, setUnitOrder] = useState<string[]>([]);
@@ -210,14 +211,18 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
     initializeCombatData();
   }, [initializeCombatData]);
 
-  // Generate AI kingdoms if none exist (needed in auth mode where the store starts empty)
+  // Generate AI kingdoms if none exist (demo mode) or load from server (auth mode)
   const resources = useKingdomStore((state) => state.resources);
   useEffect(() => {
     if (aiKingdoms.length === 0) {
-      const networth = (resources.gold || 0) + (resources.land || 0) * 1000;
-      generateAIKingdoms(5, networth);
+      if (isDemoMode()) {
+        const networth = (resources.gold || 0) + (resources.land || 0) * 1000;
+        generateAIKingdoms(5, networth);
+      } else {
+        void loadAIKingdomsFromServer();
+      }
     }
-  }, [aiKingdoms.length, generateAIKingdoms, resources.gold, resources.land]);
+  }, [aiKingdoms.length, generateAIKingdoms, loadAIKingdomsFromServer, resources.gold, resources.land]);
 
   // Pre-select target when navigated from KingdomBrowser with a target id
   useEffect(() => {

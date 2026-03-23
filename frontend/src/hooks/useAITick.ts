@@ -20,6 +20,7 @@ import { useEffect } from 'react';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { AIActionService } from '../services/aiActionService';
 import { RESOURCE_GENERATION } from '../constants/gameConfig';
+import { isDemoMode } from '../utils/authMode';
 
 const TICK_INTERVAL_MS = 20 * 60 * 1000; // 20 minutes — one turn
 const STORAGE_KEY = 'ai-last-tick';
@@ -110,6 +111,8 @@ function applyAITicks(tickCount: number): void {
 
 export function useAITick(): void {
   useEffect(() => {
+    if (!isDemoMode()) return; // AI ticks are server-side in auth mode
+
     function tick(): void {
       // Yield to another tab if it holds a fresh leadership lease.
       if (!claimLeadership()) return;

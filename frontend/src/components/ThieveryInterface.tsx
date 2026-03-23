@@ -8,6 +8,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useThieveryStore, type OperationType } from '../stores/thieveryStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
+import { isDemoMode } from '../utils/authMode';
 import { TopNavigation } from './TopNavigation';
 import { ToastService } from '../services/toastService';
 import { THIEVERY_MECHANICS } from '../../../shared/mechanics/thievery-mechanics';
@@ -93,6 +94,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
 
   const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
   const generateAIKingdoms = useAIKingdomStore((state) => state.generateAIKingdoms);
+  const loadAIKingdomsFromServer = useAIKingdomStore((state) => state.loadAIKingdomsFromServer);
 
   // Initialize on mount
   useEffect(() => {
@@ -100,10 +102,14 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
 
     // Generate AI kingdoms if none exist
     if (aiKingdoms.length === 0) {
-      const networth = (resources.gold || 0) + (resources.land || 0) * 50;
-      generateAIKingdoms(5, networth);
+      if (isDemoMode()) {
+        const networth = (resources.gold || 0) + (resources.land || 0) * 50;
+        generateAIKingdoms(5, networth);
+      } else {
+        void loadAIKingdomsFromServer();
+      }
     }
-  }, [kingdomId, race, initializeThievery, aiKingdoms.length, generateAIKingdoms, resources.gold, resources.land]);
+  }, [kingdomId, race, initializeThievery, aiKingdoms.length, generateAIKingdoms, loadAIKingdomsFromServer, resources.gold, resources.land]);
 
   const totalScum = scumCount + eliteScumCount;
 

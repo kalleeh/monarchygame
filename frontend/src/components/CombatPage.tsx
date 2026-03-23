@@ -31,14 +31,19 @@ export const CombatPage: React.FC<CombatPageProps> = ({ kingdom, onBack }) => {
   // Get AI kingdoms
   const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
   const generateAIKingdoms = useAIKingdomStore((state) => state.generateAIKingdoms);
-  
-  // Generate AI kingdoms on mount (demo mode only)
+  const loadAIKingdomsFromServer = useAIKingdomStore((state) => state.loadAIKingdomsFromServer);
+
+  // Generate AI kingdoms on mount (demo mode) or load from server (auth mode)
   useEffect(() => {
-    if (isDemoMode() && aiKingdoms.length === 0) {
-      const playerNetworth = (resources.land || 0) * 1000 + (resources.gold || 0);
-      generateAIKingdoms(5, playerNetworth);
+    if (aiKingdoms.length === 0) {
+      if (isDemoMode()) {
+        const playerNetworth = (resources.land || 0) * 1000 + (resources.gold || 0);
+        generateAIKingdoms(5, playerNetworth);
+      } else {
+        void loadAIKingdomsFromServer();
+      }
     }
-  }, [aiKingdoms.length, resources.land, resources.gold, generateAIKingdoms]);
+  }, [aiKingdoms.length, resources.land, resources.gold, generateAIKingdoms, loadAIKingdomsFromServer]);
 
   // Convert Schema Kingdom to Combat Kingdom type
   const combatKingdom: Kingdom = {

@@ -96,6 +96,7 @@ function KingdomDashboard({
   // AI kingdoms
   const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
   const generateAIKingdoms = useAIKingdomStore((state) => state.generateAIKingdoms);
+  const loadAIKingdomsFromServer = useAIKingdomStore((state) => state.loadAIKingdomsFromServer);
   
   // Restoration store
   const isInRestoration = useRestorationStore((state) => state.isInRestoration);
@@ -232,13 +233,17 @@ function KingdomDashboard({
     }
   }, [kingdom.id]); // Only run when kingdom ID changes
   
-  // Generate AI kingdoms on mount (demo mode only)
+  // Generate AI kingdoms on mount (demo mode) or load from server (auth mode)
   useEffect(() => {
-    if (isDemoMode() && aiKingdoms.length === 0) {
-      const playerNetworth = (resources.land || 0) * 1000 + (resources.gold || 0);
-      generateAIKingdoms(5, playerNetworth);
+    if (aiKingdoms.length === 0) {
+      if (isDemoMode()) {
+        const playerNetworth = (resources.land || 0) * 1000 + (resources.gold || 0);
+        generateAIKingdoms(5, playerNetworth);
+      } else {
+        void loadAIKingdomsFromServer();
+      }
     }
-  }, [aiKingdoms.length, resources.land, resources.gold, generateAIKingdoms]);
+  }, [aiKingdoms.length, resources.land, resources.gold, generateAIKingdoms, loadAIKingdomsFromServer]);
 
   // Initialize territory store on mount
   useEffect(() => {

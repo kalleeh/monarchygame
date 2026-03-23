@@ -191,6 +191,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
   const { kingdomId } = useParams<{ kingdomId: string }>();
   const navigate = useNavigate();
   const loadKingdom = useKingdomStore((state) => state.loadKingdom);
+  const loadAIKingdomsFromServer = useAIKingdomStore((state) => state.loadAIKingdomsFromServer);
 
   const kingdom = kingdoms.find(k => k.id === kingdomId);
 
@@ -205,6 +206,13 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
       loadKingdom(kingdomId);
     }
   }, [kingdomId, loadKingdom]);
+
+  // In auth mode, pre-load AI kingdoms so they are available on all kingdom pages
+  React.useEffect(() => {
+    if (!isDemoMode()) {
+      void loadAIKingdomsFromServer();
+    }
+  }, [loadAIKingdomsFromServer]);
 
   // Redirect to kingdoms list if kingdom not found
   if (!kingdom) {

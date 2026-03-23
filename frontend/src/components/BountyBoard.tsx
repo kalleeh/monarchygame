@@ -8,6 +8,7 @@ import React, { useEffect } from 'react';
 import { useBountyStore } from '../stores/bountyStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { useKingdomStore } from '../stores/kingdomStore';
+import { isDemoMode } from '../utils/authMode';
 import { TopNavigation } from './TopNavigation';
 import './BountyBoard.css';
 
@@ -33,19 +34,23 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId, onBack }) => {
     clearError,
   } = useBountyStore();
 
-  const { aiKingdoms, generateAIKingdoms } = useAIKingdomStore();
+  const { aiKingdoms, generateAIKingdoms, loadAIKingdomsFromServer } = useAIKingdomStore();
   const resources = useKingdomStore((state) => state.resources);
 
   // Generate bounties on mount from current AI kingdoms.
   // If none exist yet (user landed here before visiting Espionage), seed them now.
   useEffect(() => {
     if (aiKingdoms.length === 0) {
-      const networth = (resources.gold || 0) + (resources.land || 0) * 50;
-      generateAIKingdoms(5, networth);
+      if (isDemoMode()) {
+        const networth = (resources.gold || 0) + (resources.land || 0) * 50;
+        generateAIKingdoms(5, networth);
+      } else {
+        void loadAIKingdomsFromServer();
+      }
     } else {
       generateBounties(aiKingdoms);
     }
-  }, [aiKingdoms, generateBounties, generateAIKingdoms, resources.gold, resources.land]);
+  }, [aiKingdoms, generateBounties, generateAIKingdoms, loadAIKingdomsFromServer, resources.gold, resources.land]);
 
   // Auto-clear errors after 5 seconds
   useEffect(() => {
