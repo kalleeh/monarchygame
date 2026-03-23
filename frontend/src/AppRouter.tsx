@@ -286,8 +286,9 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
         {/* Combat */}
         <Route path="combat" element={
           <Suspense fallback={<LoadingSkeleton type="card" className="m-8" />}>
-            <BattleFormations 
+            <BattleFormations
               kingdomId={kingdom.id}
+              race={kingdom.race || 'Human'}
               onBack={handleBackToDashboard}
             />
           </Suspense>

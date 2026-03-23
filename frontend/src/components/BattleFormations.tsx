@@ -16,8 +16,6 @@ import { useCombatStore } from '../stores/combatStore';
 import { useFormationStore } from '../stores/formationStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
-import { useSummonStore } from '../stores/useSummonStore';
-
 // Inline race offense/defense scales to avoid circular import via __mocks__
 const RACE_OFFENSE: Record<string, number> = {
   Human: 3, Elven: 2, Goblin: 4, Droben: 5, Vampire: 3,
@@ -43,6 +41,7 @@ const FORMATION_DESCRIPTIONS: Record<string, string> = {
 
 interface BattleFormationsProps {
   kingdomId: string;
+  race?: string;
   onBack?: () => void;
 }
 
@@ -95,7 +94,7 @@ const SortableUnit: React.FC<SortableUnitProps> = ({ id, unit, isSelected, onTog
   );
 };
 
-const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }) => {
+const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = 'Human', onBack }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const preselectedTargetId = (location.state as { targetKingdomId?: string } | null)?.targetKingdomId;
@@ -124,7 +123,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
   const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
   const generateAIKingdoms = useAIKingdomStore((state) => state.generateAIKingdoms);
   const loadAIKingdomsFromServer = useAIKingdomStore((state) => state.loadAIKingdomsFromServer);
-  const attackerRace = useSummonStore((state) => state.currentRace) || 'Human';
+  const attackerRace = race;
 
   const { targets: kingdomTargets, loading: targetsLoading, hasMore: targetsHasMore, loadMore: loadMoreTargets } = useKingdomTargets({ nameSearch: debouncedSearch });
 
