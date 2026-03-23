@@ -90,7 +90,7 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
         const landDelta = Math.floor(Math.random() * (AI_LAND_VARIANCE * 2 + 1)) - AI_LAND_VARIANCE;
         const newLand = Math.max(100, (resources.land ?? 800) + landDelta);
 
-        const rawTotalUnits = (kingdom as Record<string, unknown>).totalUnits;
+        const rawTotalUnits = (kingdom as unknown as Record<string, unknown>).totalUnits;
         const totalUnitsMap = typeof rawTotalUnits === 'string'
           ? (JSON.parse(rawTotalUnits) as Record<string, number>)
           : ((rawTotalUnits ?? {}) as Record<string, number>);

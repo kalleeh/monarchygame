@@ -97,24 +97,8 @@ const schema = a.schema({
       allow.owner().to(['read', 'create']),
       // All authenticated players can read all kingdoms (leaderboard, combat targets, etc.)
       allow.authenticated().to(['read']),
-      // Lambda functions that update Kingdom records:
-      allow.resource(resourceManager),
-      allow.resource(combatProcessor),
-      allow.resource(buildingConstructor),
-      allow.resource(unitTrainer),
-      allow.resource(spellCaster),
-      allow.resource(territoryClaimer),
-      allow.resource(seasonManager),
-      allow.resource(seasonLifecycle),
-      allow.resource(warManager),
-      allow.resource(tradeProcessor),
-      allow.resource(diplomacyProcessor),
-      allow.resource(thieveryProcessor),
-      allow.resource(faithProcessor),
-      allow.resource(bountyProcessor),
-      allow.resource(allianceTreasury),
-      allow.resource(allianceManager),
-      allow.resource(turnTicker),
+      // Lambda resource grants are applied at the schema level below (allow.resource()
+      // is only available on AllowModifier, not BaseAllowModifier used here)
     ]),
 
   Territory: a
@@ -674,7 +658,30 @@ const schema = a.schema({
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(resourceManager)),
-});
+})
+// Schema-level resource grants — allow.resource() requires AllowModifier (available
+// here) not BaseAllowModifier (available on model-level .authorization() callbacks).
+// All Lambda functions that need to read/write Kingdom or other model records are
+// listed here so they bypass the owner/authenticated model-level rules.
+.authorization((allow) => [
+  allow.resource(resourceManager),
+  allow.resource(combatProcessor),
+  allow.resource(buildingConstructor),
+  allow.resource(unitTrainer),
+  allow.resource(spellCaster),
+  allow.resource(territoryClaimer),
+  allow.resource(seasonManager),
+  allow.resource(seasonLifecycle),
+  allow.resource(warManager),
+  allow.resource(tradeProcessor),
+  allow.resource(diplomacyProcessor),
+  allow.resource(thieveryProcessor),
+  allow.resource(faithProcessor),
+  allow.resource(bountyProcessor),
+  allow.resource(allianceTreasury),
+  allow.resource(allianceManager),
+  allow.resource(turnTicker),
+]);
 
 export type Schema = ClientSchema<typeof schema>;
 
