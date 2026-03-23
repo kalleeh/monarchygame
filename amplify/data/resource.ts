@@ -15,6 +15,7 @@ import { faithProcessor } from '../functions/faith-processor/resource';
 import { bountyProcessor } from '../functions/bounty-processor/resource';
 import { allianceTreasury } from '../functions/alliance-treasury/resource';
 import { allianceManager } from '../functions/alliance-manager/resource';
+import { turnTicker } from '../functions/turn-ticker/resource';
 
 /**
  * Monarchy Game Data Schema - Enhanced with Field-Level Authorization & Input Validation
@@ -70,9 +71,12 @@ const schema = a.schema({
       currentAge: a.ref('GameAge').required(),
       isAI: a.boolean().default(false),
       isActive: a.boolean().default(true),
-      isOnline: a.boolean().default(false),
+      // Presence fields — owner may update directly (safe, no game-balance impact)
+      isOnline: a.boolean().default(false)
+        .authorization((allow) => [allow.owner().to(['read', 'update'])]),
       createdAt: a.datetime(),
-      lastActive: a.datetime(),
+      lastActive: a.datetime()
+        .authorization((allow) => [allow.owner().to(['read', 'update'])]),
       ageStartTime: a.datetime(),
       lastResourceTick: a.datetime(),
       // Encamp fields — set by resource-manager Lambda, cleared by turn-ticker after expiry
@@ -89,8 +93,28 @@ const schema = a.schema({
       index('seasonId').sortKeys(['networth']).queryField('listKingdomsBySeasonNetworth'),
     ])
     .authorization((allow) => [
-      allow.owner(),
-      allow.authenticated().to(['read'])
+      // Players can create their kingdom and read it; all writes go through Lambda
+      allow.owner().to(['read', 'create']),
+      // All authenticated players can read all kingdoms (leaderboard, combat targets, etc.)
+      allow.authenticated().to(['read']),
+      // Lambda functions that update Kingdom records:
+      allow.resource(resourceManager),
+      allow.resource(combatProcessor),
+      allow.resource(buildingConstructor),
+      allow.resource(unitTrainer),
+      allow.resource(spellCaster),
+      allow.resource(territoryClaimer),
+      allow.resource(seasonManager),
+      allow.resource(seasonLifecycle),
+      allow.resource(warManager),
+      allow.resource(tradeProcessor),
+      allow.resource(diplomacyProcessor),
+      allow.resource(thieveryProcessor),
+      allow.resource(faithProcessor),
+      allow.resource(bountyProcessor),
+      allow.resource(allianceTreasury),
+      allow.resource(allianceManager),
+      allow.resource(turnTicker),
     ]),
 
   Territory: a
@@ -626,6 +650,30 @@ const schema = a.schema({
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(allianceManager)),
+
+  // Save defensive formation — routes through resourceManager so the write
+  // goes through a Lambda rather than a direct client Kingdom.update({ stats })
+  saveDefensiveFormation: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
+      formationId: a.string().required(),
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(resourceManager)),
+
+  // Save unlocked achievements — routes through resourceManager so the stats
+  // write goes through a Lambda rather than a direct client Kingdom.update({ stats })
+  saveAchievements: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
+      achievementIds: a.string().required(),
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(resourceManager)),
 });
 
 export type Schema = ClientSchema<typeof schema>;

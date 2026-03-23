@@ -342,21 +342,14 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, onBack }
       // Non-fatal
     }
 
-    // Persist defensive formation to DynamoDB so combat-processor reads it from kingdom.stats
+    // Persist defensive formation to DynamoDB via Lambda so auth rules are enforced
     if (!isDemoMode() && kingdomId) {
       void (async () => {
         try {
-          // Read current stats from the server, merge, and write back
-          const result = await getAmplifyClient().models.Kingdom.get({ id: kingdomId });
-          if (result.data) {
-            const currentStats = typeof result.data.stats === 'string'
-              ? JSON.parse(result.data.stats as string)
-              : (result.data.stats ?? {});
-            await getAmplifyClient().models.Kingdom.update({
-              id: kingdomId,
-              stats: JSON.stringify({ ...(currentStats as Record<string, unknown>), defensiveFormation: formationId }),
-            });
-          }
+          await getAmplifyClient().mutations.saveDefensiveFormation({
+            kingdomId,
+            formationId,
+          });
         } catch {
           // Non-fatal — localStorage version used as fallback
         }

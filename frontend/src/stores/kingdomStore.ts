@@ -280,27 +280,20 @@ export const useKingdomStore = create<KingdomState>((set, get) => {
     },
 
     /**
-     * Persist kingdom resources and units to AppSync in authenticated mode.
-     * Called automatically via 3-second debounce after any state mutation.
-     * Converts the internal units array to the flat Record<type, count> the DB expects.
+     * Update the safe presence fields (lastActive) on the Kingdom record.
+     * Sensitive fields (resources, totalUnits) are written only by Lambda functions —
+     * direct client writes are blocked by the Kingdom authorization model.
      */
     syncToDatabase: async () => {
       if (isDemoMode()) return;
 
-      const { kingdomId, resources, units } = get();
+      const { kingdomId } = get();
       if (!kingdomId) return;
 
-      // Convert KingdomUnit[] → Record<unitType, count> for the totalUnits JSON field
-      const totalUnitsRecord: Record<string, number> = {};
-      for (const unit of units) {
-        totalUnitsRecord[unit.type] = unit.count;
-      }
-
       try {
+        // Only lastActive is safe for the owner to write directly
         await getClient().models.Kingdom.update({
           id: kingdomId,
-          resources: JSON.stringify(resources),
-          totalUnits: JSON.stringify(totalUnitsRecord),
           lastActive: new Date().toISOString()
         });
       } catch (error) {

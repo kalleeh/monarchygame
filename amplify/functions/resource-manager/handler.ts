@@ -31,20 +31,106 @@ type TerritoryType = {
   terrainType?: string | null;
 };
 
-// The handler is invoked for both updateResources and encampKingdom mutations.
-// We use a loose event type to handle both argument shapes.
+// The handler is invoked for updateResources, encampKingdom, and saveDefensiveFormation mutations.
+// We use a loose event type to handle all argument shapes.
 type ResourceManagerEvent = {
   arguments: {
     kingdomId?: string;
     turns?: number | null;
     duration?: number | null;
+    formationId?: string | null;
+    achievementIds?: string | null;
   };
-  identity?: { sub?: string; username?: string } | null;
+  identity?: { sub?: string; username?: string; } | null;
 };
 
 export const handler: Schema["updateResources"]["functionHandler"] = async (event) => {
   const rawEvent = event as unknown as ResourceManagerEvent;
   const kingdomId = rawEvent.arguments.kingdomId;
+
+  // --- Save defensive formation branch: triggered by saveDefensiveFormation mutation ---
+  if (rawEvent.arguments.formationId != null) {
+    const formationId = rawEvent.arguments.formationId as string;
+    try {
+      if (!kingdomId) {
+        return { success: false, error: 'Missing kingdomId', errorCode: ErrorCode.MISSING_PARAMS };
+      }
+      if (typeof kingdomId !== 'string' || kingdomId.length > 128) {
+        return { success: false, error: 'Invalid kingdomId format', errorCode: ErrorCode.INVALID_PARAM };
+      }
+      if (typeof formationId !== 'string' || formationId.length > 64) {
+        return { success: false, error: 'Invalid formationId', errorCode: ErrorCode.INVALID_PARAM };
+      }
+      const identity = rawEvent.identity;
+      if (!identity?.sub) {
+        return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
+      }
+      const kingdom = await dbGet<{ id: string; owner?: string; stats?: unknown }>('Kingdom', kingdomId);
+      if (!kingdom) {
+        return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+      }
+      const ownerField = kingdom.owner as string | null;
+      if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
+        return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
+      }
+      const currentStats: Record<string, unknown> = typeof kingdom.stats === 'string'
+        ? (JSON.parse(kingdom.stats as string) as Record<string, unknown>)
+        : ((kingdom.stats ?? {}) as Record<string, unknown>);
+      await dbUpdate('Kingdom', kingdomId, {
+        stats: JSON.stringify({ ...currentStats, defensiveFormation: formationId }),
+      });
+      log.info('resource-manager', 'defensive-formation-saved', { kingdomId, formationId });
+      return { success: true };
+    } catch (err) {
+      log.error('resource-manager', err, { kingdomId, context: 'saveDefensiveFormation' });
+      return { success: false, error: 'Failed to save defensive formation', errorCode: ErrorCode.INTERNAL_ERROR };
+    }
+  }
+
+  // --- Save achievements branch: triggered by saveAchievements mutation ---
+  if (rawEvent.arguments.achievementIds != null) {
+    const achievementIds = rawEvent.arguments.achievementIds as string;
+    try {
+      if (!kingdomId) {
+        return { success: false, error: 'Missing kingdomId', errorCode: ErrorCode.MISSING_PARAMS };
+      }
+      if (typeof kingdomId !== 'string' || kingdomId.length > 128) {
+        return { success: false, error: 'Invalid kingdomId format', errorCode: ErrorCode.INVALID_PARAM };
+      }
+      let parsedIds: unknown;
+      try {
+        parsedIds = JSON.parse(achievementIds);
+      } catch {
+        return { success: false, error: 'Invalid achievementIds: must be a JSON array', errorCode: ErrorCode.INVALID_PARAM };
+      }
+      if (!Array.isArray(parsedIds) || parsedIds.some(id => typeof id !== 'string')) {
+        return { success: false, error: 'Invalid achievementIds: must be an array of strings', errorCode: ErrorCode.INVALID_PARAM };
+      }
+      const identity = rawEvent.identity;
+      if (!identity?.sub) {
+        return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
+      }
+      const kingdom = await dbGet<{ id: string; owner?: string; stats?: unknown }>('Kingdom', kingdomId);
+      if (!kingdom) {
+        return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+      }
+      const ownerField = kingdom.owner as string | null;
+      if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
+        return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
+      }
+      const currentStats: Record<string, unknown> = typeof kingdom.stats === 'string'
+        ? (JSON.parse(kingdom.stats as string) as Record<string, unknown>)
+        : ((kingdom.stats ?? {}) as Record<string, unknown>);
+      await dbUpdate('Kingdom', kingdomId, {
+        stats: JSON.stringify({ ...currentStats, unlockedAchievements: parsedIds }),
+      });
+      log.info('resource-manager', 'achievements-saved', { kingdomId, count: (parsedIds as string[]).length });
+      return { success: true };
+    } catch (err) {
+      log.error('resource-manager', err, { kingdomId, context: 'saveAchievements' });
+      return { success: false, error: 'Failed to save achievements', errorCode: ErrorCode.INTERNAL_ERROR };
+    }
+  }
 
   // --- Encamp branch: triggered by encampKingdom mutation (duration arg present, no turns arg) ---
   if (rawEvent.arguments.duration != null && rawEvent.arguments.turns == null) {

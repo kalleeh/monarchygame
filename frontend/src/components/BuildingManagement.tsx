@@ -214,15 +214,8 @@ export default function BuildingManagement({
               data.buildings = updated;
               localStorage.setItem(`kingdom-${kingdomId}`, JSON.stringify(data));
             }
-            // In auth mode, persist the authoritative buildings value to Amplify
-            if (!isDemoMode()) {
-              getAmplifyClient().models.Kingdom.update({
-                id: kingdomId,
-                buildings: buildingsStr,
-              }).catch((err: unknown) => {
-                console.warn('[BuildingManagement] Failed to persist buildings to Amplify:', err);
-              });
-            }
+            // The building-constructor Lambda already wrote the authoritative buildings
+            // value to DynamoDB — no redundant client-side Kingdom.update needed.
           } catch {
             // non-fatal — store update was already done
           }

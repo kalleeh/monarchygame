@@ -137,18 +137,9 @@ export const useAchievementStore = create<AchievementStore>()(
           .map((p) => p.achievementId);
 
         try {
-          const result = await client.models.Kingdom.get({ id: kingdomId });
-          if (!result.data) return;
-
-          const rawStats = result.data.stats;
-          const currentStats: Record<string, unknown> =
-            typeof rawStats === 'string'
-              ? (JSON.parse(rawStats) as Record<string, unknown>)
-              : ((rawStats ?? {}) as Record<string, unknown>);
-
-          await client.models.Kingdom.update({
-            id: kingdomId,
-            stats: JSON.stringify({ ...currentStats, unlockedAchievements: unlockedIds }),
+          await client.mutations.saveAchievements({
+            kingdomId,
+            achievementIds: JSON.stringify(unlockedIds),
           });
         } catch (err) {
           console.error('[achievementStore] persistToDatabase failed:', err);
