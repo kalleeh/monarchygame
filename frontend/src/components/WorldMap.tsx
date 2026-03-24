@@ -41,6 +41,7 @@ import {
 } from './worldmap/KingdomNode';
 import { MapLegend } from './worldmap/MapLegend';
 import { MapControls } from './worldmap/MapControls';
+import { WorldMapMobile } from './WorldMapMobile';
 
 interface WorldMapProps {
   kingdom: Schema['Kingdom']['type'];
@@ -55,9 +56,26 @@ interface Edge {
   animated?: boolean;
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Mobile router — picks desktop or mobile view ────────────────────────────
 
 const WorldMapContent: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  if (isMobile) {
+    return <WorldMapMobile kingdom={kingdom} onBack={onBack} />;
+  }
+  return <WorldMapDesktop kingdom={kingdom} onBack={onBack} />;
+};
+
+// ─── Desktop (ReactFlow) component ───────────────────────────────────────────
+
+const WorldMapDesktop: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
   const navigate = useNavigate();
   const ownedTerritories = useTerritoryStore((s) => s.ownedTerritories);
   const pendingSettlements = useTerritoryStore((s) => s.pendingSettlements);

@@ -1,0 +1,241 @@
+/* WorldMapMobile — card-list territory view for screens < 768px */
+
+/* ── Outer container ──────────────────────────────────────────────── */
+.wm-mobile {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--gm-bg-page);
+  color: var(--gm-text);
+  overflow: hidden;
+}
+
+/* ── Sticky header ────────────────────────────────────────────────── */
+.wm-mobile-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--gm-bg-panel);
+  border-bottom: 1px solid var(--gm-border-gold);
+  flex-shrink: 0;
+}
+
+.wm-mobile-header h1 {
+  flex: 1;
+  margin: 0;
+  color: var(--gm-text-gold);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Scrollable body ──────────────────────────────────────────────── */
+.wm-mobile-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.75rem 0.75rem 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Section ──────────────────────────────────────────────────────── */
+.wm-mobile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.wm-mobile-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.25rem;
+  border-bottom: 1px solid var(--gm-border);
+}
+
+.wm-mobile-section-heading.yours   { color: #4ade80; border-color: rgba(74,222,128,0.3); }
+.wm-mobile-section-heading.available { color: #22d3ee; border-color: rgba(34,211,238,0.3); }
+.wm-mobile-section-heading.contested { color: #f97316; border-color: rgba(249,115,22,0.3); }
+.wm-mobile-section-heading.fog      { color: #6b7280; border-color: rgba(107,114,128,0.3); }
+
+.wm-mobile-section-count {
+  font-size: 0.7rem;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+/* ── Territory card ───────────────────────────────────────────────── */
+.wm-mobile-card {
+  background: var(--gm-bg-panel);
+  border: 1px solid var(--gm-border);
+  border-radius: 10px;
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: border-color 0.15s;
+}
+
+.wm-mobile-card.card-owned     { border-left: 3px solid #4ade80; }
+.wm-mobile-card.card-available { border-left: 3px solid #22d3ee; }
+.wm-mobile-card.card-contested { border-left: 3px solid #f97316; }
+.wm-mobile-card.card-settling  { border-left: 3px solid #fbbf24; }
+.wm-mobile-card.card-fog       { border-left: 3px solid #374151; opacity: 0.65; }
+
+/* Card header row */
+.wm-territory-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.wm-territory-name {
+  color: var(--gm-text-gold);
+  font-weight: 700;
+  font-size: 0.95rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Badge row */
+.wm-territory-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.wm-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.wm-badge-type-capital    { background: rgba(212,160,23,0.2);  color: #fbbf24; border: 1px solid rgba(212,160,23,0.4); }
+.wm-badge-type-fortress   { background: rgba(239,68,68,0.15);  color: #f87171; border: 1px solid rgba(239,68,68,0.3);  }
+.wm-badge-type-settlement { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.3); }
+.wm-badge-type-outpost    { background: rgba(107,114,128,0.2); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
+
+.wm-badge-owned     { background: rgba(74,222,128,0.15);  color: #4ade80; border: 1px solid rgba(74,222,128,0.3);  }
+.wm-badge-unclaimed { background: rgba(34,211,238,0.1);   color: #22d3ee; border: 1px solid rgba(34,211,238,0.25); }
+.wm-badge-contested { background: rgba(249,115,22,0.15);  color: #fb923c; border: 1px solid rgba(249,115,22,0.3);  }
+.wm-badge-settling  { background: rgba(251,191,36,0.15);  color: #fcd34d; border: 1px solid rgba(251,191,36,0.3);  }
+.wm-badge-enemy     { background: rgba(239,68,68,0.15);   color: #f87171; border: 1px solid rgba(239,68,68,0.3);   }
+.wm-badge-fog       { background: rgba(107,114,128,0.15); color: #6b7280; border: 1px solid rgba(107,114,128,0.3); }
+
+/* Stats row */
+.wm-territory-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  color: var(--gm-text-muted);
+}
+
+.wm-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Terrain modifier line */
+.wm-terrain-mod {
+  font-size: 0.73rem;
+  color: var(--gm-text-faint, #6b7280);
+  font-style: italic;
+}
+
+/* Claim cost line */
+.wm-claim-cost {
+  font-size: 0.75rem;
+  color: var(--gm-text-muted);
+}
+
+/* ── Action button ────────────────────────────────────────────────── */
+.wm-territory-action {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: opacity 0.15s, transform 0.1s;
+  padding: 0.5rem 1rem;
+  margin-top: 0.25rem;
+}
+
+.wm-territory-action:active {
+  transform: scale(0.97);
+}
+
+.wm-territory-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.wm-action-settlers {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #1a1a2e;
+}
+
+.wm-action-attack {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5) !important;
+  color: #ef4444;
+}
+
+.wm-action-upgrade {
+  background: rgba(74, 222, 128, 0.15);
+  border: 1px solid rgba(74, 222, 128, 0.4) !important;
+  color: #4ade80;
+}
+
+.wm-action-settling {
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35) !important;
+  color: #fcd34d;
+  cursor: default;
+}
+
+/* ── Empty section placeholder ─────────────────────────────────────── */
+.wm-empty {
+  font-size: 0.8rem;
+  color: var(--gm-text-faint, #6b7280);
+  text-align: center;
+  padding: 0.6rem 0;
+  font-style: italic;
+}
+
+/* ── Loading state ────────────────────────────────────────────────── */
+.wm-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--gm-text-muted);
+  font-size: 0.9rem;
+}

@@ -205,6 +205,29 @@ function ActiveSeasonPanel() {
     }
   };
 
+  const handleSeedAI = async () => {
+    if (!season) return;
+    if (isDemoMode()) {
+      toast.success('[Demo] AI kingdoms seeded (no-op)');
+      return;
+    }
+    setActionLoading('seedAI');
+    try {
+      const raw = await getClient().mutations.manageSeason({
+        action: 'seed_ai_kingdoms',
+        seasonId: season.id,
+      });
+      const result = typeof raw === 'string' ? JSON.parse(raw) : (raw as { data?: unknown }).data ?? raw;
+      const parsed = typeof result === 'string' ? JSON.parse(result) : result as { success?: boolean; created?: number; error?: string };
+      if (parsed?.success === false) throw new Error(parsed.error || 'Seed failed');
+      toast.success(`Seeded ${parsed?.created ?? 0} AI kingdoms for Season #${season.seasonNumber}.`);
+    } catch (err) {
+      toast.error(`Seed AI kingdoms failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleEnd = async () => {
     if (!season) return;
     if (!window.confirm(`End Season #${season.seasonNumber}? This will record final rankings and cannot be undone.`)) return;
@@ -297,6 +320,15 @@ function ActiveSeasonPanel() {
         >
           {actionLoading === 'check' ? 'Checking…' : 'Check Ages'}
         </button>
+        {season && (
+          <button
+            className="admin-btn admin-btn--secondary"
+            onClick={() => { void handleSeedAI(); }}
+            disabled={!!actionLoading}
+          >
+            {actionLoading === 'seedAI' ? 'Seeding...' : '🤖 Seed AI Kingdoms'}
+          </button>
+        )}
         {season && (
           <button
             className="admin-btn admin-btn--danger"
