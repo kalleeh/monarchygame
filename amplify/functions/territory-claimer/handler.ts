@@ -12,7 +12,7 @@ type TerritoryType = { id: string; kingdomId?: string; regionId?: string; coordi
 
 async function handleUpgrade(
   args: { kingdomId: string; territoryId: string; newDefenseLevel: number; goldCost: number },
-  identity: { sub?: string; username?: string } | null
+  identity: { sub?: string; username?: string; claims?: Record<string, string> } | null
 ) {
   const { kingdomId, territoryId, newDefenseLevel, goldCost } = args;
   try {
@@ -29,7 +29,14 @@ async function handleUpgrade(
       return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
     const ownerField = kingdom.owner as string | null;
-    if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
+    const userSub = identity.sub ?? '';
+    const userName = identity.username ?? '';
+    const userEmail = identity.claims?.email ?? '';
+    const preferredUsername = identity.claims?.['preferred_username'] ?? identity.claims?.['cognito:username'] ?? '';
+    const identifiers = [userSub, userName, userEmail, preferredUsername].filter(Boolean);
+    const ownerMatches = ownerField && identifiers.some(id => ownerField.includes(id));
+    if (!ownerMatches) {
+      log.warn('territory-claimer', 'upgradeOwnershipMismatch', { ownerField, userSub, userName, userEmail, kingdomId });
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
@@ -88,7 +95,7 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
     }
 
     // Verify caller identity
-    const identity = event.identity as { sub?: string; username?: string } | null;
+    const identity = event.identity as { sub?: string; username?: string; claims?: Record<string, string> } | null;
     if (!identity?.sub) {
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
@@ -99,9 +106,25 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
       return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
-    // Verify kingdom ownership
+    // Verify kingdom ownership.
+    // Amplify Gen 2 stores the owner field using the Cognito username attribute (varies by pool config).
+    // We check all possible identity representations: sub, username, email, preferred_username.
     const ownerField = kingdom.owner as string | null;
-    if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
+    const userSub = identity.sub ?? '';
+    const userName = identity.username ?? '';
+    const userEmail = identity.claims?.email ?? '';
+    const preferredUsername = identity.claims?.['preferred_username'] ?? identity.claims?.['cognito:username'] ?? '';
+    const identifiers = [userSub, userName, userEmail, preferredUsername].filter(Boolean);
+    const ownerMatches = ownerField && identifiers.some(id => ownerField.includes(id));
+    if (!ownerMatches) {
+      log.warn('territory-claimer', 'ownershipMismatch', {
+        ownerField,
+        userSub,
+        userName,
+        userEmail,
+        preferredUsername,
+        kingdomId,
+      });
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
