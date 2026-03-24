@@ -18,6 +18,10 @@ import { TopNavigation } from './components/TopNavigation';
 import { isDemoMode } from './utils/authMode';
 import { MessageCompose } from './components/MessageCompose';
 import type { MessageTarget } from './components/MessageCompose';
+import { MobileBottomNav } from './components/MobileBottomNav';
+import { useRestorationStore } from './stores/restorationStore';
+import UnitRoster from './components/UnitRoster';
+import { HelpModal } from './components/ui/HelpModal';
 import './components/KingdomList.css';
 
 // Lazy-loaded components for code splitting
@@ -192,6 +196,14 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
   const navigate = useNavigate();
   const loadKingdom = useKingdomStore((state) => state.loadKingdom);
   const loadAIKingdomsFromServer = useAIKingdomStore((state) => state.loadAIKingdomsFromServer);
+  const isInRestoration = useRestorationStore((s) => s.isInRestoration);
+  const prohibitedActions = useRestorationStore((s) => s.prohibitedActions);
+  const [showMobileRoster, setShowMobileRoster] = useState(false);
+  const [showMobileHelp, setShowMobileHelp] = useState(false);
+  const isActionProhibitedRoute = useCallback(
+    (action: string) => isInRestoration && prohibitedActions.includes(action),
+    [isInRestoration, prohibitedActions]
+  );
 
   const kingdom = kingdoms.find(k => k.id === kingdomId);
 
@@ -239,6 +251,18 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
           onClose={closeCompose}
         />
       )}
+
+      {/* Mobile bottom navigation — shown on all kingdom sub-pages (CSS hides on desktop) */}
+      {kingdomId && (
+        <MobileBottomNav
+          kingdomId={kingdomId}
+          isActionProhibited={isActionProhibitedRoute}
+          onShowUnitRoster={() => setShowMobileRoster(true)}
+          onShowHelp={() => setShowMobileHelp(true)}
+        />
+      )}
+      {showMobileRoster && <UnitRoster onClose={() => setShowMobileRoster(false)} />}
+      {showMobileHelp && <HelpModal onClose={() => setShowMobileHelp(false)} />}
 
       <Suspense fallback={<LoadingSkeleton type="dashboard" />}>
       <Routes>

@@ -5,6 +5,13 @@
   z-index: 1000;
 }
 
+@media (max-width: 767px) {
+  .demo-time-control {
+    bottom: 84px; /* clear the 64px bottom nav */
+    right: 12px;
+  }
+}
+
 .time-control-toggle {
   background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
   color: white;
