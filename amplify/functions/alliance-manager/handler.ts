@@ -58,7 +58,10 @@ async function verifyKingdomOwnership(kingdomId: string, identity: any): Promise
     return { error: { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND } };
   }
   const ownerField = kingdom.owner as string | null;
-  if (!ownerField || (!ownerField.includes(identity.sub) && !ownerField.includes(identity.username ?? ''))) {
+  const _ids = [identity.sub ?? '', identity.username ?? '',
+    (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
+    (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
+  if (!ownerField || !_ids.some(id => ownerField.includes(id))) {
     return { error: { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN } };
   }
   return { data: kingdom };
