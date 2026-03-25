@@ -76,17 +76,19 @@ function AppContent() {
       
       // Get current user identity to filter to only their kingdoms
       const session = await fetchAuthSession();
-      const sub = session.tokens?.accessToken?.payload?.sub as string | undefined;
-      const cognitoUsername = session.tokens?.accessToken?.payload?.username as string | undefined;
-      const ownerId = sub || cognitoUsername || '';
+      const sub = (session.tokens?.accessToken?.payload?.sub ?? '') as string;
+      const cognitoUsername = (session.tokens?.accessToken?.payload?.username ?? '') as string;
 
-      // Fetch non-AI kingdoms. Then client-filter to only keep kingdoms the user
-      // actually owns: `resources` is an owner-only field — if it comes back non-null
-      // the user owns that kingdom. This is reliable regardless of owner field format.
       const { data } = await getClient().models.Kingdom.list({
         filter: { isAI: { ne: true } }
       });
-      const myKingdoms = data.filter(k => k.resources != null);
+
+      // Filter client-side by owner field. Amplify Gen 2 stores owner as "{sub}::{username}".
+      // We match on both sub and username so either format works.
+      const myKingdoms = data.filter(k => {
+        const owner = ((k as Record<string, unknown>).owner as string) ?? '';
+        return (sub && owner.includes(sub)) || (cognitoUsername && owner.includes(cognitoUsername));
+      });
       setKingdoms(myKingdoms);
       
       // Only navigate if we're on the root path
