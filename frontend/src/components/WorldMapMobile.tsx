@@ -14,6 +14,8 @@ import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { ToastService } from '../services/toastService';
 import { achievementTriggers } from '../utils/achievementTriggers';
+import { claimTerritory as claimTerritoryApi } from '../services/domain/TerritoryService';
+import { isDemoMode } from '../utils/authMode';
 import {
   WORLD_REGIONS,
   type RegionSlot,
@@ -389,7 +391,7 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
 
   // ── Send settlers handler ─────────────────────────────────────────────────
 
-  const handleSendSettlers = (region: RegionSlot) => {
+  const handleSendSettlers = async (region: RegionSlot) => {
     if (isContested(region, territoryOwnership)) {
       ToastService.error('This region is contested — take it by combat');
       return;
@@ -414,6 +416,42 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
 
     addGold(-cost.gold);
     addTurns(-cost.turns);
+
+    // In auth mode, call the server-side territory-claimer
+    if (!isDemoMode()) {
+      try {
+        const result = await claimTerritoryApi({
+          kingdomId: kingdom.id,
+          name: region.name,
+          terrainType: getRegionTerrain(region.id) ?? 'plains',
+          coordinates: region.position,
+          goldCost: cost.gold,
+        });
+        const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+        if (!parsed.success) {
+          // Refund local resources on failure
+          addGold(cost.gold);
+          addTurns(cost.turns);
+          ToastService.error(parsed.error || 'Failed to send settlers');
+          return;
+        }
+        // Show server-side completesAt if available
+        if (parsed.completesAt) {
+          const msLeft = new Date(parsed.completesAt).getTime() - Date.now();
+          const h = Math.floor(msLeft / 3600000);
+          const m = Math.floor((msLeft % 3600000) / 60000);
+          ToastService.success(`Settlers dispatched to ${region.name}! Arrives in ${h}h ${m}min.`);
+        } else {
+          ToastService.success(`Settlers dispatched to ${region.name}!`);
+        }
+        return;
+      } catch (err) {
+        addGold(cost.gold);
+        addTurns(cost.turns);
+        ToastService.error('Failed to send settlers');
+        return;
+      }
+    }
 
     try {
       useTerritoryStore.getState().startSettlement({

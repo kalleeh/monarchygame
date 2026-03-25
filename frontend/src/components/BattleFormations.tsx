@@ -725,6 +725,9 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
               <p>Defender: {currentBattle.defender}</p>
               <p>Result: {currentBattle.result.toUpperCase()}</p>
               {currentBattle.landGained && <p>Land Gained: +{currentBattle.landGained}</p>}
+              {currentBattle.degradedTerritory && (
+                <p style={{ color: '#f59e0b' }}>⚔️ Damaged: {currentBattle.degradedTerritory} territory defense reduced</p>
+              )}
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>

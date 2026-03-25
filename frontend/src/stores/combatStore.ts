@@ -103,6 +103,7 @@ interface BattleReport {
   };
   landGained?: number;
   resourcesGained?: Record<string, number>;
+  degradedTerritory?: string | null;
 }
 
 interface SiegeOperation {
@@ -218,7 +219,8 @@ export const useCombatStore = create(
               result: combatData.result === 'with_ease' || combatData.result === 'good_fight' ? 'victory' : 'defeat',
               casualties: combatData.casualties || { attacker: {}, defender: {} },
               landGained: combatData.landGained,
-              resourcesGained: combatData.goldLooted ? { gold: combatData.goldLooted } : {}
+              resourcesGained: combatData.goldLooted ? { gold: combatData.goldLooted } : {},
+              degradedTerritory: combatData.degradedTerritory ?? null,
             };
 
             // Server already updated kingdom state — refresh authoritative resources

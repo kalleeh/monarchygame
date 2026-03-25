@@ -200,8 +200,8 @@ async function seedAIKingdoms(seasonId: string): Promise<{ created: number }> {
   // Check if AI kingdoms already exist for this season
   const allKingdoms = await dbList<{ id: string; isAI?: boolean; seasonId?: string }>('Kingdom');
   const existing = allKingdoms.filter(k => k.isAI === true && k.seasonId === seasonId);
-  if (existing.length > 0) {
-    return { created: 0 };
+  if (existing.length >= 490) {
+    return { created: existing.length };
   }
 
   const rng = makeRng(0xdeadbeef);

@@ -922,6 +922,27 @@ function KingdomDashboard({
         {/* Row 3: Territories (full width) */}
         <div className="territories-panel">
           <h2>Territories ({ownedTerritories.length})</h2>
+          {(() => {
+            const pendingSettlements = (() => {
+              try {
+                const stats = typeof kingdom.stats === 'string' ? JSON.parse(kingdom.stats) : (kingdom.stats ?? {});
+                return (stats.pendingSettlements as Array<{ name: string; regionId: string | null; completesAt: string }>) ?? [];
+              } catch { return []; }
+            })();
+            const now = Date.now();
+            const activeSettlements = pendingSettlements.filter(ps => new Date(ps.completesAt).getTime() > now);
+            return activeSettlements.length > 0 ? (
+              <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: '8px', padding: '12px 16px', marginBottom: '12px' }}>
+                <strong>⏳ Settlers en route ({activeSettlements.length})</strong>
+                {activeSettlements.map((ps, i) => {
+                  const msLeft = new Date(ps.completesAt).getTime() - now;
+                  const h = Math.floor(msLeft / 3600000);
+                  const m = Math.floor((msLeft % 3600000) / 60000);
+                  return <div key={i} style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>• {ps.name} — arrives in {h}h {m}min</div>;
+                })}
+              </div>
+            ) : null;
+          })()}
           {loading ? (
             <p>Loading territories...</p>
           ) : ownedTerritories.length === 0 ? (

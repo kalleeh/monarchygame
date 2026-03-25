@@ -306,6 +306,20 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       plains:    {},
     };
 
+    // Race-specific territory income bonuses by category
+    const RACE_TERRITORY_BONUS: Record<string, Partial<Record<string, number>>> = {
+      'Goblin':    { mine: 1.20 },                           // strip miners
+      'Dwarven':   { mine: 1.25, stronghold: 1.15 },         // master miners + fortress builders
+      'Elven':     { forest: 1.20 },                         // forest race
+      'Fae':       { farmland: 1.20 },                       // nature spirits
+      'Sidhe':     { farmland: 1.15 },                       // mystical nature race
+      'Human':     { port: 1.20 },                           // trade/caravan race
+      'Centaur':   { farmland: 1.10 },                       // plains runners
+      'Vampire':   { stronghold: 1.15 },                     // fortress race
+      'Elemental': { mine: 1.10, forest: 1.10 },             // nature hybrid
+      'Droben':    {},                                        // pure warrior, no territory bonus
+    };
+
     const REGION_SLOT_COUNTS: Record<string, number> = { capital: 5, settlement: 3, outpost: 2, fortress: 4 };
     const WORLD_REGION_TYPES: Record<string, string> = {
       'wt-01':'fortress','wt-02':'outpost','wt-03':'capital','wt-04':'settlement','wt-05':'fortress',
@@ -335,8 +349,9 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
         const base = CATEGORY_PRODUCTION[cat] ?? CATEGORY_PRODUCTION.farmland;
         const mult = TERRAIN_MULTIPLIERS[terrain]?.[cat] ?? 1.0;
         const dlvlMult = 1 + 0.1 * (t.defenseLevel ?? 0);
-        territoryGold += Math.floor(base.gold * mult * dlvlMult);
-        territoryPop  += Math.floor(base.population * mult * dlvlMult);
+        const raceBonus = RACE_TERRITORY_BONUS[currentRace]?.[cat] ?? 1.0;
+        territoryGold += Math.floor(base.gold * mult * dlvlMult * raceBonus);
+        territoryPop  += Math.floor(base.population * mult * dlvlMult);  // race bonus only applies to gold
         territoryLand += Math.floor(base.land * mult * dlvlMult);
       }
 
