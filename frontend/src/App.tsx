@@ -82,8 +82,9 @@ function AppContent() {
       // No API filter — isAI: { ne: true } excludes records where isAI is null (DynamoDB
       // behaviour: missing attributes fail comparison conditions). Instead filter client-side
       // using the owner field which reliably identifies the current user's kingdoms.
-      // AI kingdoms have owner: 'system', real kingdoms have owner: '{sub}::{sub}'.
-      const { data } = await getClient().models.Kingdom.list();
+      // AI kingdoms have owner: 'system', real kingdoms have owner: '{sub}'.
+      // limit: 1000 ensures all kingdoms are returned (default page size is 100).
+      const { data } = await getClient().models.Kingdom.list({ limit: 1000 });
 
       const myKingdoms = data.filter(k => {
         const owner = ((k as Record<string, unknown>).owner as string) ?? '';
