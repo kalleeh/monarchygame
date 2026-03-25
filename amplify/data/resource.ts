@@ -62,9 +62,12 @@ const schema = a.schema({
   Kingdom: a
     .model({
       // Public fields — visible to all authenticated users (leaderboard, targeting)
-      name: a.string().required(),
-      race: a.ref('RaceType').required(),
-      currentAge: a.ref('GameAge').required(),
+      name: a.string().required()
+        .authorization((allow) => [allow.authenticated().to(['read'])]),
+      race: a.ref('RaceType').required()
+        .authorization((allow) => [allow.authenticated().to(['read'])]),
+      currentAge: a.ref('GameAge').required()
+        .authorization((allow) => [allow.authenticated().to(['read'])]),
       isAI: a.boolean().default(false),
       isActive: a.boolean().default(true),
       networth: a.integer().default(0),
