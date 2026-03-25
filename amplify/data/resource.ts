@@ -61,33 +61,39 @@ const schema = a.schema({
 
   Kingdom: a
     .model({
+      // Public fields — visible to all authenticated users (leaderboard, targeting)
       name: a.string().required(),
       race: a.ref('RaceType').required(),
-      // Public fields - readable by authenticated users
-      resources: a.json().required(),
-      stats: a.json().required(),
-      buildings: a.json().required(),
-      totalUnits: a.json().required(),
       currentAge: a.ref('GameAge').required(),
       isAI: a.boolean().default(false),
       isActive: a.boolean().default(true),
-      // Presence fields — owner may update directly (safe, no game-balance impact)
+      networth: a.integer().default(0),
+      seasonId: a.id(),
+      createdAt: a.datetime(),
+      ageStartTime: a.datetime(),
+      // Private fields — owner only (sensitive game state, visible to Lambdas via schema-level grants)
+      resources: a.json().required()
+        .authorization((allow) => [allow.owner().to(['read'])]),
+      stats: a.json().required()
+        .authorization((allow) => [allow.owner().to(['read'])]),
+      buildings: a.json().required()
+        .authorization((allow) => [allow.owner().to(['read'])]),
+      totalUnits: a.json().required()
+        .authorization((allow) => [allow.owner().to(['read'])]),
+      lastResourceTick: a.datetime()
+        .authorization((allow) => [allow.owner().to(['read'])]),
+      encampEndTime: a.string()
+        .authorization((allow) => [allow.owner().to(['read'])]),
+      encampBonusTurns: a.integer()
+        .authorization((allow) => [allow.owner().to(['read'])]),
+      // Presence fields — owner may update directly
       isOnline: a.boolean().default(false)
         .authorization((allow) => [allow.owner().to(['read', 'update'])]),
-      createdAt: a.datetime(),
       lastActive: a.datetime()
         .authorization((allow) => [allow.owner().to(['read', 'update'])]),
-      ageStartTime: a.datetime(),
-      lastResourceTick: a.datetime(),
-      // Encamp fields — set by resource-manager Lambda, cleared by turn-ticker after expiry
-      encampEndTime: a.string(),
-      encampBonusTurns: a.integer(),
-      // Denormalized score field — updated whenever resources/units change
-      networth: a.integer().default(0),
-      // Private fields - owner only
+      // Guild membership — owner only
       guildId: a.id()
         .authorization((allow) => [allow.owner().to(['read', 'update'])]),
-      seasonId: a.id()
     })
     .secondaryIndexes((index) => [
       index('seasonId').sortKeys(['networth']).queryField('listKingdomsBySeasonNetworth'),
