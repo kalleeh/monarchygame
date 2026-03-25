@@ -74,14 +74,14 @@ const schema = a.schema({
       seasonId: a.id(),
       createdAt: a.datetime(),
       ageStartTime: a.datetime(),
-      // Private fields — owner only (sensitive game state, visible to Lambdas via schema-level grants)
-      resources: a.json().required()
+      // Private fields — owner only (nullable so non-owners get null, enforced non-null by Lambdas)
+      resources: a.json()
         .authorization((allow) => [allow.owner().to(['read'])]),
-      stats: a.json().required()
+      stats: a.json()
         .authorization((allow) => [allow.owner().to(['read'])]),
-      buildings: a.json().required()
+      buildings: a.json()
         .authorization((allow) => [allow.owner().to(['read'])]),
-      totalUnits: a.json().required()
+      totalUnits: a.json()
         .authorization((allow) => [allow.owner().to(['read'])]),
       lastResourceTick: a.datetime()
         .authorization((allow) => [allow.owner().to(['read'])]),
