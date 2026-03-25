@@ -84,26 +84,9 @@ export function AppRouter({ kingdoms, onGetStarted, onKingdomCreated }: AppRoute
 // Kingdom list component
 function KingdomList({ kingdoms: propKingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) {
   const navigate = useNavigate();
-  const [serverKingdoms, setServerKingdoms] = useState<Schema['Kingdom']['type'][] | null>(null);
 
-  // In auth mode, fetch the authoritative list of kingdoms from AppSync so that
-  // a player on a new device (or after clearing localStorage) sees the correct data.
-  useEffect(() => {
-    if (isDemoMode()) return;
-    const fetchKingdoms = async () => {
-      try {
-        const client = generateClient<Schema>();
-        const { data } = await client.models.Kingdom.list();
-        setServerKingdoms(data || []);
-      } catch (err) {
-        console.error('[KingdomList] Failed to fetch kingdoms:', err);
-      }
-    };
-    void fetchKingdoms();
-  }, []);
-
-  // Prefer the freshly-fetched server list in auth mode; fall back to prop.
-  const kingdoms = (!isDemoMode() && serverKingdoms !== null) ? serverKingdoms : propKingdoms;
+  // Use kingdoms from App.tsx (already filtered by owner, with limit:1000)
+  const kingdoms = propKingdoms;
 
   const getKingdomResources = (kingdom: Schema['Kingdom']['type']) => {
     // In auth mode prefer server-side resources stored on the kingdom record
