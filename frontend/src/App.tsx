@@ -74,7 +74,20 @@ function AppContent() {
         return;
       }
       
-      const { data } = await getClient().models.Kingdom.list();
+      // Get current user identity to filter to only their kingdoms
+      const session = await fetchAuthSession();
+      const sub = session.tokens?.accessToken?.payload?.sub as string | undefined;
+      const cognitoUsername = session.tokens?.accessToken?.payload?.username as string | undefined;
+      const ownerId = sub || cognitoUsername || '';
+
+      const { data } = await getClient().models.Kingdom.list({
+        filter: {
+          and: [
+            { isAI: { ne: true } },
+            { owner: { contains: ownerId } },
+          ]
+        }
+      });
       setKingdoms(data);
       
       // Only navigate if we're on the root path
