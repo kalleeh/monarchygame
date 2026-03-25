@@ -79,6 +79,12 @@ function AppContent() {
       const sub = (session.tokens?.accessToken?.payload?.sub ?? '') as string;
       const cognitoUsername = (session.tokens?.accessToken?.payload?.username ?? '') as string;
 
+      // Bail if we can't identify the user — prevents overwriting good state with unfiltered results
+      if (!sub && !cognitoUsername) {
+        setLoading(false);
+        return;
+      }
+
       // No API filter — isAI: { ne: true } excludes records where isAI is null (DynamoDB
       // behaviour: missing attributes fail comparison conditions). Instead filter client-side
       // using the owner field which reliably identifies the current user's kingdoms.
@@ -91,10 +97,10 @@ function AppContent() {
         return (sub && owner.includes(sub)) || (cognitoUsername && owner.includes(cognitoUsername));
       });
       setKingdoms(myKingdoms);
-      
-      // Only navigate if we're on the root path
+
+      // Use myKingdoms.length for navigation (not data.length — raw data includes AI kingdoms)
       if (window.location.pathname === '/') {
-        if (data.length === 0) {
+        if (myKingdoms.length === 0) {
           navigate('/creation');
         } else {
           navigate('/kingdoms');
