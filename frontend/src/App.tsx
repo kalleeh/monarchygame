@@ -80,14 +80,13 @@ function AppContent() {
       const cognitoUsername = session.tokens?.accessToken?.payload?.username as string | undefined;
       const ownerId = sub || cognitoUsername || '';
 
-      const { data } = await getClient().models.Kingdom.list({
-        filter: {
-          and: [
-            { isAI: { ne: true } },
-            { owner: { contains: ownerId } },
-          ]
-        }
-      });
+      // Build filter — always exclude AI kingdoms; only add owner filter if we have a valid id
+      // (empty ownerId with `contains: ''` would match every record)
+      const ownerFilter = ownerId
+        ? { and: [{ isAI: { ne: true } }, { owner: { contains: ownerId } }] }
+        : { isAI: { ne: true } };
+
+      const { data } = await getClient().models.Kingdom.list({ filter: ownerFilter });
       setKingdoms(data);
       
       // Only navigate if we're on the root path
