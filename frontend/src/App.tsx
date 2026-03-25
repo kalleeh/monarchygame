@@ -79,12 +79,12 @@ function AppContent() {
       const sub = (session.tokens?.accessToken?.payload?.sub ?? '') as string;
       const cognitoUsername = (session.tokens?.accessToken?.payload?.username ?? '') as string;
 
-      const { data } = await getClient().models.Kingdom.list({
-        filter: { isAI: { ne: true } }
-      });
+      // No API filter — isAI: { ne: true } excludes records where isAI is null (DynamoDB
+      // behaviour: missing attributes fail comparison conditions). Instead filter client-side
+      // using the owner field which reliably identifies the current user's kingdoms.
+      // AI kingdoms have owner: 'system', real kingdoms have owner: '{sub}::{sub}'.
+      const { data } = await getClient().models.Kingdom.list();
 
-      // Filter client-side by owner field. Amplify Gen 2 stores owner as "{sub}::{username}".
-      // We match on both sub and username so either format works.
       const myKingdoms = data.filter(k => {
         const owner = ((k as Record<string, unknown>).owner as string) ?? '';
         return (sub && owner.includes(sub)) || (cognitoUsername && owner.includes(cognitoUsername));
