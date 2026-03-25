@@ -80,14 +80,14 @@ function AppContent() {
       const cognitoUsername = session.tokens?.accessToken?.payload?.username as string | undefined;
       const ownerId = sub || cognitoUsername || '';
 
-      // Build filter — always exclude AI kingdoms; only add owner filter if we have a valid id
-      // (empty ownerId with `contains: ''` would match every record)
-      const ownerFilter = ownerId
-        ? { and: [{ isAI: { ne: true } }, { owner: { contains: ownerId } }] }
-        : { isAI: { ne: true } };
-
-      const { data } = await getClient().models.Kingdom.list({ filter: ownerFilter });
-      setKingdoms(data);
+      // Fetch non-AI kingdoms. Then client-filter to only keep kingdoms the user
+      // actually owns: `resources` is an owner-only field — if it comes back non-null
+      // the user owns that kingdom. This is reliable regardless of owner field format.
+      const { data } = await getClient().models.Kingdom.list({
+        filter: { isAI: { ne: true } }
+      });
+      const myKingdoms = data.filter(k => k.resources != null);
+      setKingdoms(myKingdoms);
       
       // Only navigate if we're on the root path
       if (window.location.pathname === '/') {
