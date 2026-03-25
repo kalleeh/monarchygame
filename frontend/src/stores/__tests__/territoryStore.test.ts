@@ -134,19 +134,6 @@ describe('TerritoryStore', () => {
     expect(ownedTerritories[0].id).toBe('capital-1');
   });
 
-  it('should generate territory resources', () => {
-    const { initializeTerritories, generateTerritoryResources, getTerritoryById } = useTerritoryStore.getState();
-    
-    initializeTerritories();
-    
-    const initialGold = getTerritoryById('capital-1')?.resources.gold || 0;
-    
-    generateTerritoryResources();
-    
-    const updatedGold = getTerritoryById('capital-1')?.resources.gold || 0;
-    expect(updatedGold).toBeGreaterThan(initialGold);
-  });
-
   it('should handle errors', () => {
     const { clearError } = useTerritoryStore.getState();
     

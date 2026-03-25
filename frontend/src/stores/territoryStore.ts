@@ -354,35 +354,6 @@ export const useTerritoryStore = create(
         }
       },
 
-      // Resource generation
-      generateTerritoryResources: () => {
-        const state = get();
-        state.ownedTerritories.forEach(territory => {
-          if (territory) {
-            const baseGeneration = {
-              gold: 10 * territory.defenseLevel,
-              population: 5 * territory.defenseLevel,
-              land: 2 * territory.defenseLevel
-            };
-            
-            set(state => ({
-              territories: state.territories.map(t => 
-                t.id === territory.id 
-                  ? {
-                      ...t,
-                      resources: {
-                        gold: territory.resources.gold + baseGeneration.gold,
-                        population: territory.resources.population + baseGeneration.population,
-                        land: territory.resources.land + baseGeneration.land
-                      }
-                    }
-                  : t
-              )
-            }));
-          }
-        });
-      },
-
       // Utility functions
       getTerritoryById: (territoryId: string): Territory | undefined => {
         return get().territories.find(t => t.id === territoryId);

@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbCreate, dbUpdate, dbList, dbAtomicAdd } from '../data-client';
+import { dbGet, dbUpdate, dbList, dbAtomicAdd } from '../data-client';
 
 const TERRITORY_NAME_LIMITS = { min: 2, max: 50 } as const;
 const COORDINATE_LIMITS = { min: -10000, max: 10000 } as const;
@@ -184,22 +184,32 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
     });
     await dbAtomicAdd('Kingdom', kingdomId, 'turnsBalance', -turnCost);
 
-    await dbCreate<Record<string, unknown>>('Territory', {
-      name: territoryName,
-      type: territoryType || 'settlement',
-      coordinates: JSON.stringify(coordObj),
-      terrainType: terrainType || 'plains',
-      resources: JSON.stringify({ gold: 0, land: 100 }),
-      buildings: JSON.stringify({}),
-      defenseLevel: 0,
-      kingdomId,
-      owner: identity.sub,
-      ...(regionId ? { regionId } : {}),
-      ...(category ? { category } : {})
+    // Store a pending settlement in Kingdom.stats instead of immediately creating Territory
+    const currentStats = typeof kingdom.stats === 'string'
+      ? JSON.parse(kingdom.stats as string)
+      : ((kingdom.stats ?? {}) as Record<string, unknown>);
+    const pendingSettlements = (currentStats.pendingSettlements as unknown[]) ?? [];
+    const completesAt = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+    const updatedPendingSettlements = [
+      ...pendingSettlements,
+      {
+        regionId: regionId ?? null,
+        category: category ?? null,
+        name: territoryName,
+        type: territoryType || 'settlement',
+        coordinates: JSON.stringify(coordObj),
+        terrainType: terrainType || 'plains',
+        completesAt,
+        startedAt: new Date().toISOString(),
+        ownerSub: identity.sub,
+      },
+    ];
+    await dbUpdate('Kingdom', kingdomId, {
+      stats: JSON.stringify({ ...currentStats, pendingSettlements: updatedPendingSettlements }),
     });
 
-    log.info('territory-claimer', 'claimTerritory', { kingdomId, territoryName, regionId, category });
-    return { success: true, territory: territoryName, regionId: regionId ?? null, category: category ?? null };
+    log.info('territory-claimer', 'claimTerritory', { kingdomId, territoryName, regionId, category, settling: true, completesAt });
+    return { success: true, territory: territoryName, regionId: regionId ?? null, category: category ?? null, settling: true, completesAt };
   } catch (error) {
     log.error('territory-claimer', error, { kingdomId, territoryName });
     return { success: false, error: error instanceof Error ? error.message : 'Territory claim failed', errorCode: ErrorCode.INTERNAL_ERROR };

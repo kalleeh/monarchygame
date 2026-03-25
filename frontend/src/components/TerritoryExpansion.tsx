@@ -193,8 +193,7 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
               <h4>Regions and Region Bonus</h4>
               <p>
                 Each region (e.g. Crystalpeak, Ironhold Keep) contains a fixed number of territory
-                slots. Control all slots in a region to earn a 20% production bonus on that region's
-                territories.
+                slots. Control all slots in a region to earn a +20% gold production bonus on all territories in that region.
               </p>
             </div>
 
@@ -207,6 +206,7 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
                 <li><strong>Port:</strong> 80 gold · 20 pop · 5 land per tick</li>
                 <li><strong>Stronghold:</strong> 5 gold · 0 pop · 0 land per tick (+defence)</li>
                 <li><strong>Ruins:</strong> 0 per tick (excavate for one-time gold)</li>
+                <li>Each territory can be upgraded (defenseLevel) to gain +10% income per level.</li>
               </ul>
             </div>
 
@@ -471,6 +471,7 @@ const OwnedTerritoryCard: React.FC<OwnedTerritoryCardProps> = ({
             <span className={canAfford ? 'cost-affordable' : 'cost-insufficient'}>
               💰 {Math.floor(upgradeCost.gold).toLocaleString()} Gold
             </span>
+            <span className="upgrade-benefit">+{(territory.defenseLevel + 1) * 10}% territory income</span>
           </div>
         )}
         <button
@@ -482,7 +483,7 @@ const OwnedTerritoryCard: React.FC<OwnedTerritoryCardProps> = ({
           disabled={!canAfford}
           title={canAfford ? 'Upgrade this territory' : 'Not enough gold'}
         >
-          {canAfford ? `Upgrade to Lv.${territory.defenseLevel + 1}` : 'Insufficient Gold'}
+          {canAfford ? `Upgrade to Lv.${territory.defenseLevel + 1} (+${(territory.defenseLevel + 1) * 10}% income)` : 'Insufficient Gold'}
         </button>
       </div>
     </animated.div>
@@ -582,6 +583,7 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
                     💰 {Math.floor(upgradeCost.gold).toLocaleString()} Gold
                   </span>
                 </div>
+                <span className="upgrade-benefit">+{(territory.defenseLevel + 1) * 10}% territory income</span>
               </div>
             )}
             <button
@@ -593,7 +595,7 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
               disabled={!canAfford}
               title={canAfford ? 'Upgrade this territory' : 'Not enough gold'}
             >
-              {canAfford ? `Upgrade to Lv.${territory.defenseLevel + 1}` : 'Insufficient Gold'}
+              {canAfford ? `Upgrade to Lv.${territory.defenseLevel + 1} (+${(territory.defenseLevel + 1) * 10}% income)` : 'Insufficient Gold'}
             </button>
           </>
         ) : canClaim ? (

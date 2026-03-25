@@ -81,7 +81,10 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
     // Verify kingdom ownership (attacker only)
     const attackerOwnerField = attacker.owner as string | null;
-    if (!attackerOwnerField || (!attackerOwnerField.includes(identity.sub) && !attackerOwnerField.includes(identity.username ?? ''))) {
+    const _attackerIds = [identity.sub ?? '', (identity as any).username ?? '',
+      (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
+      (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
+    if (!attackerOwnerField || !_attackerIds.some((id: string) => attackerOwnerField!.includes(id))) {
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
@@ -503,6 +506,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       updatedDefenderUnits[unitType] = Math.max(0, (updatedDefenderUnits[unitType] ?? 0) - lost);
     }
 
+    let degradedTerritoryName: string | null = null;
     if (combatResult.success && combatResult.landGained > 0) {
       await Promise.all([
         dbUpdate('Kingdom', defenderId, {
@@ -522,6 +526,19 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
           totalUnits: updatedAttackerUnits
         })
       ]);
+
+      // Territory degradation on attacker win (non-fatal)
+      try {
+        const allTerrs = await dbList<{ id: string; kingdomId?: string; name?: string; defenseLevel?: number }>('Territory');
+        const defenderTerrs = allTerrs.filter(t => t.kingdomId === defenderId && (t.defenseLevel ?? 0) > 0);
+        if (defenderTerrs.length > 0) {
+          const weakest = defenderTerrs.reduce((a, b) => (a.defenseLevel ?? 0) <= (b.defenseLevel ?? 0) ? a : b);
+          const newLevel = Math.max(0, (weakest.defenseLevel ?? 0) - 1);
+          await dbUpdate('Territory', weakest.id, { defenseLevel: newLevel });
+          degradedTerritoryName = weakest.name ?? null;
+          log.info('combat-processor', 'territory-degraded', { defenderId, territoryId: weakest.id, newLevel });
+        }
+      } catch { /* non-fatal */ }
 
       // Transfer territory: find defender's least important territory and reassign to attacker
       try {
@@ -573,6 +590,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       success: true,
       result: JSON.stringify({
         ...combatResult,
+        degradedTerritory: degradedTerritoryName,
         message: `Combat ${combatResult.result}: ${combatResult.landGained} land gained, ${combatResult.goldLooted} gold looted`
       })
     };

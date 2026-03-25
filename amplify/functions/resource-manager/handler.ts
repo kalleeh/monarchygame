@@ -29,6 +29,8 @@ type TerritoryType = {
   kingdomId?: string | null;
   category?: string | null;
   terrainType?: string | null;
+  defenseLevel?: number;
+  regionId?: string;
 };
 
 // The handler is invoked for updateResources, encampKingdom, and saveDefensiveFormation mutations.
@@ -304,33 +306,72 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       plains:    {},
     };
 
+    const REGION_SLOT_COUNTS: Record<string, number> = { capital: 5, settlement: 3, outpost: 2, fortress: 4 };
+    const WORLD_REGION_TYPES: Record<string, string> = {
+      'wt-01':'fortress','wt-02':'outpost','wt-03':'capital','wt-04':'settlement','wt-05':'fortress',
+      'wt-06':'outpost','wt-07':'capital','wt-08':'settlement','wt-09':'capital','wt-10':'outpost',
+      'wt-11':'settlement','wt-12':'outpost','wt-13':'fortress','wt-14':'outpost','wt-15':'settlement',
+      'wt-16':'capital','wt-17':'outpost','wt-18':'settlement','wt-19':'settlement','wt-20':'capital',
+      'wt-21':'outpost','wt-22':'capital','wt-23':'settlement','wt-24':'outpost','wt-25':'capital',
+      'wt-26':'outpost','wt-27':'capital','wt-28':'settlement','wt-29':'outpost','wt-30':'capital',
+      'wt-31':'settlement','wt-32':'outpost','wt-33':'outpost','wt-34':'settlement','wt-35':'outpost',
+      'wt-36':'settlement','wt-37':'outpost','wt-38':'settlement','wt-39':'outpost','wt-40':'fortress',
+      'wt-41':'capital','wt-42':'settlement','wt-43':'settlement','wt-44':'outpost','wt-45':'settlement',
+      'wt-46':'outpost','wt-47':'settlement','wt-48':'fortress','wt-49':'capital','wt-50':'outpost',
+    };
+
+    let territories: TerritoryType[] = [];
     let territoryGold = 0;
     let territoryPop = 0;
     let territoryLand = 0;
 
     try {
       const allTerritories = await dbList<TerritoryType>('Territory');
-      const territories = allTerritories.filter(t => t.kingdomId === kingdomId);
+      territories = allTerritories.filter(t => t.kingdomId === kingdomId);
 
       for (const t of territories) {
         const cat = t.category ?? 'farmland';
         const terrain = t.terrainType ?? 'plains';
         const base = CATEGORY_PRODUCTION[cat] ?? CATEGORY_PRODUCTION.farmland;
         const mult = TERRAIN_MULTIPLIERS[terrain]?.[cat] ?? 1.0;
-        territoryGold += Math.floor(base.gold * mult);
-        territoryPop  += Math.floor(base.population * mult);
-        territoryLand += Math.floor(base.land * mult);
+        const dlvlMult = 1 + 0.1 * (t.defenseLevel ?? 0);
+        territoryGold += Math.floor(base.gold * mult * dlvlMult);
+        territoryPop  += Math.floor(base.population * mult * dlvlMult);
+        territoryLand += Math.floor(base.land * mult * dlvlMult);
+      }
+
+      // Region completion bonus: +20% gold for fully-controlled regions
+      const regionGroups: Record<string, number> = {};
+      for (const t of territories) {
+        if (t.regionId) regionGroups[t.regionId] = (regionGroups[t.regionId] ?? 0) + 1;
+      }
+      for (const [regionId, count] of Object.entries(regionGroups)) {
+        const rtype = WORLD_REGION_TYPES[regionId];
+        if (rtype && count >= (REGION_SLOT_COUNTS[rtype] ?? 99)) {
+          const regionGold = territories
+            .filter(t => t.regionId === regionId)
+            .reduce((sum, t) => {
+              const cat = t.category ?? 'farmland';
+              const terrain = t.terrainType ?? 'plains';
+              const b = CATEGORY_PRODUCTION[cat] ?? CATEGORY_PRODUCTION.farmland;
+              const m = TERRAIN_MULTIPLIERS[terrain]?.[cat] ?? 1.0;
+              return sum + Math.floor(b.gold * m * (1 + 0.1 * (t.defenseLevel ?? 0)));
+            }, 0);
+          territoryGold += Math.floor(regionGold * 0.20);
+        }
       }
     } catch (err) {
       log.warn('resource-manager', 'territory-income-failed', { err });
       // Non-fatal — proceed without territory income
     }
 
+    const maintenanceCost = Math.max(0, territories.length - 2) * 5 * turns;
+
     // Spread existing resources first so turns (and any other fields) are preserved.
     // Previous bug: not including turns caused it to be stripped on every income tick.
     const updated: KingdomResources = {
       ...resources,
-      gold: Math.min(currentGold + (totalGoldPerTurn + territoryGold) * turns, RESOURCE_LIMITS.gold.max),
+      gold: Math.max(0, Math.min(currentGold + (totalGoldPerTurn + territoryGold) * turns - maintenanceCost, RESOURCE_LIMITS.gold.max)),
       land: Math.max(currentLand + territoryLand * turns, RESOURCE_LIMITS.land.min),
       population: Math.min(currentPop + (populationPerTurn + territoryPop) * turns, RESOURCE_LIMITS.population.max),
       elan: Math.min(currentElan + elanPerTurn * turns, RESOURCE_LIMITS.elan.max),

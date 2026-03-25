@@ -61,6 +61,7 @@ interface CategorisedRegion {
   terrain: string;
   isSettling: boolean;
   turnsRemaining?: number;
+  completesAt?: string;
 }
 
 // ─── Helper: type display label ───────────────────────────────────────────────
@@ -85,6 +86,17 @@ interface CardProps {
   onAttack: () => void;
 }
 
+function settlingCountdown(completesAt: string): string {
+  const msRemaining = new Date(completesAt).getTime() - Date.now();
+  if (msRemaining <= 0) return 'arriving soon';
+  const totalMinutes = Math.ceil(msRemaining / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0 && minutes > 0) return `${hours}h ${minutes}min`;
+  if (hours > 0) return `${hours}h`;
+  return `${minutes}min`;
+}
+
 const TerritoryCard: React.FC<CardProps> = ({
   item,
   playerPositions,
@@ -92,7 +104,7 @@ const TerritoryCard: React.FC<CardProps> = ({
   onSendSettlers,
   onAttack,
 }) => {
-  const { region, category, terrain, isSettling, turnsRemaining } = item;
+  const { region, category, terrain, isSettling, turnsRemaining, completesAt } = item;
   const prod = PRODUCTION_BY_TYPE[region.type] ?? { gold: 0, pop: 0, land: 0 };
   const terrainMod = terrainModSummary(terrain);
   const emoji = terrainEmoji(terrain);
@@ -115,7 +127,9 @@ const TerritoryCard: React.FC<CardProps> = ({
     statusText = '\u265A Owned';
   } else if (isSettling) {
     statusBadgeClass += 'wm-badge-settling';
-    statusText = `\u2691 Settling (${turnsRemaining}t)`;
+    statusText = completesAt
+      ? `\u2691 Settling — ${settlingCountdown(completesAt)}`
+      : `\u2691 Settling (${turnsRemaining}t)`;
   } else if (category === 'available') {
     statusBadgeClass += 'wm-badge-unclaimed';
     statusText = '\u25CB Unclaimed';
@@ -147,9 +161,12 @@ const TerritoryCard: React.FC<CardProps> = ({
       </button>
     );
   } else if (isSettling) {
+    const settlingLabel = completesAt
+      ? `Settlers en route — arrives in ${settlingCountdown(completesAt)}`
+      : `Settling… ${turnsRemaining}t remaining`;
     actionEl = (
       <button className="wm-territory-action wm-action-settling" disabled>
-        Settling… {turnsRemaining}t remaining
+        {settlingLabel}
       </button>
     );
   } else if (category === 'available') {
@@ -260,6 +277,23 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
   const ownedTerritories = useTerritoryStore((s) => s.ownedTerritories);
   const pendingSettlements = useTerritoryStore((s) => s.pendingSettlements);
   const aiKingdoms = useAIKingdomStore((s) => s.aiKingdoms);
+
+  // Parse server-side pending settlements from kingdom.stats (set by territory-claimer Lambda)
+  const serverPendingSettlements = useMemo((): Array<{ regionId: string | null; completesAt: string }> => {
+    try {
+      const raw = kingdom.stats;
+      const stats: Record<string, unknown> = typeof raw === 'string'
+        ? (JSON.parse(raw) as Record<string, unknown>)
+        : ((raw ?? {}) as Record<string, unknown>);
+      const arr = stats.pendingSettlements as Array<Record<string, unknown>> | undefined;
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .filter(ps => ps.completesAt)
+        .map(ps => ({ regionId: (ps.regionId as string | null) ?? null, completesAt: ps.completesAt as string }));
+    } catch {
+      return [];
+    }
+  }, [kingdom.stats]);
   const resources = useKingdomStore((s) => s.resources);
   const addGold = useKingdomStore((s) => s.addGold);
   const addTurns = useKingdomStore((s) => s.addTurns);
@@ -321,6 +355,8 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
       const settling = pendingSettlements.find(
         (ps) => ps.regionId === region.id && ps.kingdomId === 'current-player',
       );
+      // Also check server-side pending settlements (real 3-hour timer)
+      const serverSettling = serverPendingSettlements.find(ps => ps.regionId === region.id);
       const terrain = getRegionTerrain(region.id);
 
       let category: TerritoryCategory;
@@ -339,11 +375,12 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
         region,
         category,
         terrain,
-        isSettling: !!settling,
+        isSettling: !!settling || !!serverSettling,
         turnsRemaining: settling?.turnsRemaining,
+        completesAt: serverSettling?.completesAt,
       };
     });
-  }, [territoryOwnership, playerPositions, pendingSettlements]);
+  }, [territoryOwnership, playerPositions, pendingSettlements, serverPendingSettlements]);
 
   const owned     = categorised.filter((c) => c.category === 'owned');
   const available = categorised.filter((c) => c.category === 'available');
