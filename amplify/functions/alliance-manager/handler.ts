@@ -184,7 +184,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         // Notify all members if full composition bonus was just unlocked (best-effort, non-fatal)
         if (previousBonus < 1.05 && compositionBonus.combat >= 1.05) {
           const now = new Date().toISOString();
-          await Promise.all(memberIds.map(memberId =>
+          const joinResults = await Promise.allSettled(memberIds.map(memberId =>
             dbCreate('CombatNotification', {
               recipientId: memberId,
               type: 'alliance',
@@ -193,7 +193,11 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
               isRead: false,
               createdAt: now,
             })
-          )).catch(() => { /* non-fatal: notification delivery failure must not break join */ });
+          ));
+          const joinFailed = joinResults.filter(r => r.status === 'rejected');
+          if (joinFailed.length > 0) {
+            log.warn('alliance-manager', 'notifications-failed', { failedCount: joinFailed.length });
+          }
         }
 
         log.info('alliance-manager', 'joinAlliance', { kingdomId, allianceId });
@@ -249,7 +253,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
           // Notify remaining members if full composition bonus was just lost (best-effort)
           if (previousBonusOnLeave >= 1.05 && compositionBonus.combat < 1.05) {
             const now = new Date().toISOString();
-            await Promise.all(memberIds.map(memberId =>
+            const leaveResults = await Promise.allSettled(memberIds.map(memberId =>
               dbCreate('CombatNotification', {
                 recipientId: memberId,
                 type: 'alliance',
@@ -258,7 +262,11 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
                 isRead: false,
                 createdAt: now,
               })
-            )).catch(() => { /* non-fatal */ });
+            ));
+            const leaveFailed = leaveResults.filter(r => r.status === 'rejected');
+            if (leaveFailed.length > 0) {
+              log.warn('alliance-manager', 'notifications-failed', { failedCount: leaveFailed.length });
+            }
           }
         } catch { /* non-fatal */ }
 
@@ -305,7 +313,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
           });
           if (previousBonusOnKick >= 1.05 && compositionBonus.combat < 1.05) {
             const now = new Date().toISOString();
-            await Promise.all(memberIds.map(memberId =>
+            const kickResults = await Promise.allSettled(memberIds.map(memberId =>
               dbCreate('CombatNotification', {
                 recipientId: memberId,
                 type: 'alliance',
@@ -314,7 +322,11 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
                 isRead: false,
                 createdAt: now,
               })
-            )).catch(() => { /* non-fatal */ });
+            ));
+            const kickFailed = kickResults.filter(r => r.status === 'rejected');
+            if (kickFailed.length > 0) {
+              log.warn('alliance-manager', 'notifications-failed', { failedCount: kickFailed.length });
+            }
           }
         } catch { /* non-fatal */ }
 

@@ -89,7 +89,13 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
       return JSON.stringify({ success: false, error: 'Proposer kingdom not found', errorCode: ErrorCode.NOT_FOUND });
     }
     const proposerOwnerField = (proposerKingdom as any).owner as string | null;
-    if (!proposerOwnerField || (!proposerOwnerField.includes(callerIdentity.sub) && !proposerOwnerField.includes(callerIdentity.username ?? ''))) {
+    const proposerCallerIds = [
+      callerIdentity.sub ?? '',
+      (callerIdentity as any).username ?? '',
+      (callerIdentity as any).claims?.email ?? '',
+      (callerIdentity as any).claims?.['cognito:username'] ?? '',
+    ].filter(Boolean);
+    if (!proposerOwnerField || !proposerCallerIds.some(id => proposerOwnerField === id)) {
       return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
     }
 
@@ -205,7 +211,13 @@ async function handleDeclareDiplomaticWar(args: { kingdomId: string; targetKingd
     return JSON.stringify({ success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND });
   }
   const ownerField = (kingdom as any).owner as string | null;
-  if (!ownerField || (!ownerField.includes(callerIdentity.sub) && !ownerField.includes(callerIdentity.username ?? ''))) {
+  const warCallerIds = [
+    callerIdentity.sub ?? '',
+    (callerIdentity as any).username ?? '',
+    (callerIdentity as any).claims?.email ?? '',
+    (callerIdentity as any).claims?.['cognito:username'] ?? '',
+  ].filter(Boolean);
+  if (!ownerField || !warCallerIds.some(id => ownerField === id)) {
     return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
   }
 
@@ -264,7 +276,13 @@ async function handleMakePeace(args: { kingdomId: string; targetKingdomId: strin
     return JSON.stringify({ success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND });
   }
   const ownerField = (kingdom as any).owner as string | null;
-  if (!ownerField || (!ownerField.includes(callerIdentity.sub) && !ownerField.includes(callerIdentity.username ?? ''))) {
+  const peaceCallerIds = [
+    callerIdentity.sub ?? '',
+    (callerIdentity as any).username ?? '',
+    (callerIdentity as any).claims?.email ?? '',
+    (callerIdentity as any).claims?.['cognito:username'] ?? '',
+  ].filter(Boolean);
+  if (!ownerField || !peaceCallerIds.some(id => ownerField === id)) {
     return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
   }
 

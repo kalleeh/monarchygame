@@ -78,6 +78,12 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
       return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
     }
 
+    // Verify defender exists
+    const defenderKingdom = await dbGet('Kingdom', defenderId);
+    if (!defenderKingdom) {
+      return JSON.stringify({ success: false, error: 'Target kingdom does not exist', errorCode: 'NOT_FOUND' });
+    }
+
     // Check for existing active war
     const allWars = await dbList<WarDeclarationType>('WarDeclaration');
     const existingWars = allWars.filter(w =>

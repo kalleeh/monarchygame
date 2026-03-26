@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate } from '../data-client';
+import { dbGet, dbList, dbUpdate } from '../data-client';
 
 const SPELL_ELAN_COSTS: Record<string, number> = {
   calming_chant: 5,        // No damage, cheapest
@@ -27,6 +27,8 @@ const SPELL_DAMAGE: Record<string, { type: string; damage: number }> = {
   banshee_deluge: { type: 'structure_damage', damage: 0.05 },
   foul_light: { type: 'peasant_kill', damage: 0.06 },
 };
+
+const OFFENSIVE_SPELL_TYPES = new Set(['rousing_wind', 'shattering_calm', 'hurricane', 'lightning_lance', 'banshee_deluge', 'foul_light']);
 
 type KingdomType = Record<string, unknown>;
 
@@ -73,6 +75,19 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
     if (!ownerField || !_allIds.some(id => ownerField.includes(id))) {
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
+    }
+
+    // Check diplomatic ally protection for offensive spells
+    if (targetId && OFFENSIVE_SPELL_TYPES.has(spellId)) {
+      const allRelations = await dbList<{ kingdomId: string; targetKingdomId: string; status: string }>('DiplomaticRelation');
+      const isDiplomaticAlly = allRelations.some(r =>
+        ((r.kingdomId === casterId && r.targetKingdomId === targetId) ||
+         (r.kingdomId === targetId && r.targetKingdomId === casterId)) &&
+        r.status === 'allied'
+      );
+      if (isDiplomaticAlly) {
+        return { success: false, error: 'Cannot cast offensive spells on diplomatic allies', errorCode: ErrorCode.FORBIDDEN };
+      }
     }
 
     const resources = (typeof casterKingdom.resources === 'string' ? JSON.parse(casterKingdom.resources) : (casterKingdom.resources ?? {})) as KingdomResources;
