@@ -107,9 +107,10 @@ async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: st
     return { success: false, error: 'Alliance not found', errorCode: ErrorCode.NOT_FOUND };
   }
 
-  // Verify caller is the alliance leader
-  if (identity?.sub && alliance.leaderId !== identity.sub) {
-    return { success: false, error: 'Unauthorized: only the alliance leader can withdraw from the treasury', errorCode: ErrorCode.UNAUTHORIZED };
+  // Verify caller is the alliance leader (leaderId is a kingdom ID, not a user ID — must fetch the leader kingdom)
+  const leaderKingdom = await dbGet<{ id: string; owner?: string | null }>('Kingdom', alliance.leaderId);
+  if (!leaderKingdom || leaderKingdom.owner !== identity?.sub) {
+    return { success: false, error: 'Only the alliance leader can withdraw', errorCode: 'FORBIDDEN' };
   }
 
   // Parse treasury and verify sufficient gold
@@ -205,7 +206,7 @@ async function handleUpgrade(args: { allianceId?: string | null; kingdomId?: str
   liveUpgrades.push({ type: upgradeType, expiresAt, effect: upgrade.effect });
 
   await dbUpdate('Alliance', allianceId, {
-    treasury: JSON.stringify(treasury),
+    treasury,
     stats: JSON.stringify({ ...existingStats, activeUpgrades: liveUpgrades }),
   });
 
