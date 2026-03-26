@@ -12,6 +12,7 @@ const SPELL_ELAN_COSTS: Record<string, number> = {
   lightning_lance: 25,     // Fort damage, tier 2
   banshee_deluge: 25,      // Structure damage, tier 2
   foul_light: 30,          // Peasant kill, tier 3
+  remote_fog: 20,          // Elven only: FOG_ACTIVE debuff on target
 };
 
 // Spell damage definitions duplicated here because Lambda functions cannot import
@@ -26,6 +27,7 @@ const SPELL_DAMAGE: Record<string, { type: string; damage: number }> = {
   lightning_lance: { type: 'fort_damage', damage: 0.09 },
   banshee_deluge: { type: 'structure_damage', damage: 0.05 },
   foul_light: { type: 'peasant_kill', damage: 0.06 },
+  remote_fog: { type: 'fog', damage: 0 },
 };
 
 type KingdomType = Record<string, unknown>;
@@ -42,7 +44,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       return { success: false, error: 'Invalid spellId format', errorCode: ErrorCode.INVALID_PARAM };
     }
 
-    const validSpells = ['calming_chant', 'rousing_wind', 'shattering_calm', 'hurricane', 'lightning_lance', 'banshee_deluge', 'foul_light'];
+    const validSpells = ['calming_chant', 'rousing_wind', 'shattering_calm', 'hurricane', 'lightning_lance', 'banshee_deluge', 'foul_light', 'remote_fog'];
     if (!validSpells.includes(spellId)) {
       return { success: false, error: `Invalid spell. Must be one of: ${validSpells.join(', ')}`, errorCode: ErrorCode.INVALID_PARAM };
     }
@@ -73,6 +75,13 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
     if (!ownerField || !_allIds.some(id => ownerField.includes(id))) {
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
+    }
+
+    if (spellId === 'remote_fog') {
+      const casterRaceCheck = (casterKingdom.race as string | undefined) ?? '';
+      if (casterRaceCheck.toLowerCase() !== 'elven') {
+        return { success: false, error: 'Only Elven kingdoms can cast Remote Fog', errorCode: ErrorCode.FORBIDDEN };
+      }
     }
 
     const resources = (typeof casterKingdom.resources === 'string' ? JSON.parse(casterKingdom.resources) : (casterKingdom.resources ?? {})) as KingdomResources;
@@ -170,6 +179,21 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
         });
 
         damageReport = { type: 'peasant_kill', killed };
+
+      } else if (spellEffect.type === 'fog' && targetId) {
+        // Apply FOG_ACTIVE debuff to target's activeFaithEffects
+        const targetStats = (typeof targetKingdom.stats === 'string' ? JSON.parse(targetKingdom.stats) : (targetKingdom.stats ?? {})) as Record<string, unknown>;
+        const existingEffects = (targetStats.activeFaithEffects as Array<Record<string, string>>) ?? [];
+        const now = new Date().toISOString();
+        const activeEffects = existingEffects.filter(e => e.expiresAt > now);
+        const fogEffect = {
+          effectType: 'FOG_ACTIVE',
+          appliedAt: now,
+          expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+        };
+        const updatedTargetStats = { ...targetStats, activeFaithEffects: [...activeEffects, fogEffect] };
+        await dbUpdate('Kingdom', targetId, { stats: JSON.stringify(updatedTargetStats) });
+        damageReport = { type: 'fog', applied: true };
       }
     }
 
