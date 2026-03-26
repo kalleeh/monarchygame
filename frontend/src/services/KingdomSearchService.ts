@@ -42,8 +42,8 @@ export class KingdomSearchService {
     if (isDemoMode()) return null;
     const { limit = 50, nextToken, nameSearch, race, minNetworth, maxNetworth } = opts;
 
-    // Build AppSync filter
-    const filter: Record<string, unknown> = { isAI: { eq: false } };
+    // Build AppSync filter — no isAI filter: AI kingdoms are valid leaderboard competition
+    const filter: Record<string, unknown> = {};
     if (nameSearch?.trim()) filter.name = { contains: nameSearch.trim() };
     if (race) filter.race = { eq: race };
     if (minNetworth != null || maxNetworth != null) {
