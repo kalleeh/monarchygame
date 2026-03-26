@@ -431,6 +431,18 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       }
     }
 
+    // Elven Remote Fog: if attacker has FOG_ACTIVE, reduce their effective units by 20%
+    const attackerStatsForFog = (typeof attacker.stats === 'string' ? JSON.parse(attacker.stats as string) : (attacker.stats ?? {})) as Record<string, unknown>;
+    const attackerFogEffects = (attackerStatsForFog.activeFaithEffects as Array<{ effectType: string; expiresAt?: string }>) ?? [];
+    const nowForFog = new Date().toISOString();
+    const hasFogActive = attackerFogEffects.some(e => e.effectType === 'FOG_ACTIVE' && (e.expiresAt ?? '') > nowForFog);
+    if (hasFogActive) {
+      const FOG_PENALTY = 0.80; // 20% reduction
+      effectiveAttackerUnits = Object.fromEntries(
+        Object.entries(effectiveAttackerUnits).map(([k, v]) => [k, Math.floor((v as number) * FOG_PENALTY)])
+      );
+    }
+
     // -------------------------------------------------------------------------
     // Step 6: Resolve combat using terrain-and-formation-adjusted unit counts
     // -------------------------------------------------------------------------
@@ -564,6 +576,13 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       }
     }
 
+    // Sidhe: emergency temple creation on successful attack
+    let sidheBuildings: Record<string, number> | undefined;
+    if (combatResult.success && attackerRace.toLowerCase() === 'sidhe') {
+      const currentBuildings = parseJsonField<Record<string, number>>(attacker.buildings, {});
+      sidheBuildings = { ...currentBuildings, temple: (currentBuildings.temple ?? 0) + 1 };
+    }
+
     let degradedTerritoryName: string | null = null;
     if (combatResult.success && combatResult.landGained > 0) {
       await Promise.all([
@@ -581,7 +600,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
             land: (attackerResources.land ?? 1000) + combatResult.landGained,
             gold: (attackerResources.gold ?? 0) + combatResult.goldLooted,
           },
-          totalUnits: updatedAttackerUnits
+          totalUnits: updatedAttackerUnits,
+          ...(sidheBuildings ? { buildings: JSON.stringify(sidheBuildings) } : {})
         })
       ]);
 
