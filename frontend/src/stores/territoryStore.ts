@@ -5,6 +5,8 @@
 
 import { create } from 'zustand';
 import { combine } from 'zustand/middleware';
+
+const DEMO_KINGDOM_ID = 'current-player';
 import { useKingdomStore } from './kingdomStore';
 import { calculateActionTurnCost } from '../../../shared/mechanics/turn-mechanics';
 import { isDemoMode } from '../utils/authMode';
@@ -91,7 +93,7 @@ export const useTerritoryStore = create(
       addTerritory: (territory: Territory) => {
         set((state) => ({
           territories: [...state.territories, territory],
-          ownedTerritories: territory.ownerId === 'current-player'
+          ownedTerritories: territory.ownerId === DEMO_KINGDOM_ID
             ? [...state.ownedTerritories, territory]
             : state.ownedTerritories,
         }));
@@ -109,7 +111,7 @@ export const useTerritoryStore = create(
       raidSettlement: (regionId: string): { refundGold: number } | null => {
         const state = get();
         const target = state.pendingSettlements.find(
-          (ps) => ps.kingdomId !== 'current-player' && ps.regionId === regionId
+          (ps) => ps.kingdomId !== DEMO_KINGDOM_ID && ps.regionId === regionId
         );
         if (!target) return null;
         const remaining = state.pendingSettlements.filter((ps) => ps !== target);
@@ -124,7 +126,7 @@ export const useTerritoryStore = create(
         const remaining: PendingSettlement[] = [];
 
         for (const ps of state.pendingSettlements) {
-          if (ps.kingdomId !== 'current-player') {
+          if (ps.kingdomId !== DEMO_KINGDOM_ID) {
             remaining.push(ps); // AI/other players' settlements don't tick (demo mode)
             continue;
           }
@@ -234,7 +236,7 @@ export const useTerritoryStore = create(
             // The population moves FROM kingdom TO territory (settlers relocate)
             const updatedTerritory = { 
               ...territory, 
-              ownerId: 'current-player',
+              ownerId: DEMO_KINGDOM_ID,
               resources: {
                 ...territory.resources,
                 population: territory.resources.population + expansion.cost.population
@@ -446,7 +448,7 @@ export const useTerritoryStore = create(
             name: 'Royal Capital',
             type: 'capital',
             position: { x: 0, y: 0 },
-            ownerId: 'current-player',
+            ownerId: DEMO_KINGDOM_ID,
             resources: { gold: 1000, population: 500, land: 100 },
             buildings: { castle: 1, barracks: 2 },
             defenseLevel: 3,
@@ -499,7 +501,7 @@ export const useTerritoryStore = create(
 
         set({
           territories: mockTerritories,
-          ownedTerritories: mockTerritories.filter(t => t.ownerId === 'current-player'),
+          ownedTerritories: mockTerritories.filter(t => t.ownerId === DEMO_KINGDOM_ID),
           availableExpansions: mockExpansions,
           initialized: true
         });
