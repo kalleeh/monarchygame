@@ -714,6 +714,18 @@ async function simulateBattle(
   // Elemental fort destruction: 25% bonus to structures destroyed on successful attacks
   const isElementalAttacker = attackerRace.toLowerCase() === 'elemental';
 
+  // Cap: scaled attacker unit counts cannot exceed MAX_OFFENSE_MULTIPLIER × original counts
+  const MAX_OFFENSE_MULTIPLIER = 2.5;
+  scaledAttackerUnits.forEach(unit => {
+    const originalUnit = attackerUnits.find(u => u.id === unit.id);
+    if (originalUnit) {
+      const cap = originalUnit.count * MAX_OFFENSE_MULTIPLIER;
+      if (unit.count > cap) {
+        unit.count = cap;
+      }
+    }
+  });
+
   // ── Terrain & formation modifiers (parity with Lambda handler) ─────────────
   // Look up the shared FORMATION_MODIFIERS by the active formation ID (id field,
   // not the Formation object's bonuses which use a different scale).
@@ -814,7 +826,8 @@ async function simulateBattle(
   });
 
   defenderUnits.forEach(unit => {
-    const casualties = applyCasualtyRate(unit.count, defenderCasualtyRate);
+    const defenseModifier = Math.max(0.5, 1 - (unit.defense * 0.05));
+    const casualties = applyCasualtyRate(unit.count, defenderCasualtyRate * defenseModifier);
     if (casualties > 0) {
       defenderCasualties[unit.id] = casualties;
     }
