@@ -1,22 +1,28 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
-// Mock aws-amplify/data before importing the handler
+// Mock ../data-client before importing the handler
 // ---------------------------------------------------------------------------
 
-const mockClient = vi.hoisted(() => ({
-  models: {
-    Kingdom: {
-      get: vi.fn(),
-      update: vi.fn(),
-      list: vi.fn(),
-      create: vi.fn(),
-    },
-  },
-}));
+const mockDbGet = vi.hoisted(() => vi.fn());
+const mockDbUpdate = vi.hoisted(() => vi.fn());
+const mockDbCreate = vi.hoisted(() => vi.fn());
+const mockDbList = vi.hoisted(() => vi.fn());
+const mockDbDelete = vi.hoisted(() => vi.fn());
+const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
 
-vi.mock('aws-amplify/data', () => ({
-  generateClient: () => mockClient,
+vi.mock('../data-client', () => ({
+  dbGet: mockDbGet,
+  dbUpdate: mockDbUpdate,
+  dbCreate: mockDbCreate,
+  dbList: mockDbList,
+  dbDelete: mockDbDelete,
+  dbAtomicAdd: mockDbAtomicAdd,
+  parseJsonField: <T>(value: unknown, defaultValue: T): T => {
+    if (value === null || value === undefined) return defaultValue;
+    if (typeof value === 'string') { try { return JSON.parse(value) as T; } catch { return defaultValue; } }
+    return value as T;
+  },
 }));
 
 import { handler } from './handler';
@@ -48,17 +54,14 @@ function makeEvent(fieldName: string, args: Record<string, unknown>) {
 
 function mockKingdom(overrides: Record<string, unknown> = {}) {
   return {
-    data: {
-      id: 'kingdom-1',
-      owner: 'test-user::owner',
-      resources: { gold: 10000, population: 5000, mana: 500, land: 1000 },
-      buildings: {},
-      totalUnits: {},
-      stats: {},
-      race: 'Human',
-      ...overrides,
-    },
-    errors: null,
+    id: 'kingdom-1',
+    owner: 'test-sub-123',
+    resources: { gold: 10000, population: 5000, mana: 500, land: 1000 },
+    buildings: {},
+    totalUnits: {},
+    stats: {},
+    race: 'Human',
+    ...overrides,
   };
 }
 
@@ -68,13 +71,14 @@ function mockKingdom(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockClient.models.Kingdom.update.mockResolvedValue({ data: {}, errors: null });
+  mockDbUpdate.mockResolvedValue(undefined);
+  mockDbList.mockResolvedValue([]);
 });
 
 describe('bounty-processor handler — claimBounty', () => {
   describe('happy path', () => {
     it('sets activeBountyTargetId in stats and returns success', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ stats: {} }));
+      mockDbGet.mockResolvedValue(mockKingdom({ stats: {} }));
 
       const result = await callHandler(
         makeEvent('claimBounty', { kingdomId: 'kingdom-1', targetId: 'target-kingdom' })
@@ -84,9 +88,9 @@ describe('bounty-processor handler — claimBounty', () => {
       const parsed = JSON.parse(result.result as string);
       expect(parsed.targetId).toBe('target-kingdom');
 
-      const updateCall = mockClient.models.Kingdom.update.mock.calls[0][0];
-      expect(updateCall.stats.activeBountyTargetId).toBe('target-kingdom');
-      expect(updateCall.stats.activeBountyClaimedAt).toBeDefined();
+      const updateCall = mockDbUpdate.mock.calls[0];
+      expect(updateCall[2].stats.activeBountyTargetId).toBe('target-kingdom');
+      expect(updateCall[2].stats.activeBountyClaimedAt).toBeDefined();
     });
   });
 
@@ -110,7 +114,7 @@ describe('bounty-processor handler — claimBounty', () => {
     });
 
     it('returns VALIDATION_FAILED when bounty is already active', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue(
+      mockDbGet.mockResolvedValue(
         mockKingdom({ stats: { activeBountyTargetId: 'already-claimed-target' } })
       );
 
@@ -125,7 +129,7 @@ describe('bounty-processor handler — claimBounty', () => {
 
   describe('NOT_FOUND', () => {
     it('returns NOT_FOUND when kingdom does not exist', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
+      mockDbGet.mockResolvedValue(null);
 
       const result = await callHandler(
         makeEvent('claimBounty', { kingdomId: 'missing-id', targetId: 'target-kingdom' })
@@ -140,7 +144,7 @@ describe('bounty-processor handler — claimBounty', () => {
 describe('bounty-processor handler — completeBounty', () => {
   describe('happy path', () => {
     it('calculates gold and population rewards, clears bounty from stats', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue(
+      mockDbGet.mockResolvedValue(
         mockKingdom({
           stats: { activeBountyTargetId: 'target-kingdom', activeBountyClaimedAt: Date.now() - 1000 },
           resources: { gold: 5000, population: 2000, mana: 500, land: 1000 },
@@ -163,11 +167,11 @@ describe('bounty-processor handler — completeBounty', () => {
       // populationReward = 720 * 2 = 1440
       expect(parsed.populationReward).toBe(1440);
 
-      const updateCall = mockClient.models.Kingdom.update.mock.calls[0][0];
-      expect(updateCall.resources.gold).toBe(5000 + 1_000_000);
-      expect(updateCall.resources.population).toBe(2000 + 1440);
+      const updateCall = mockDbUpdate.mock.calls[0];
+      expect(updateCall[2].resources.gold).toBe(5000 + 1_000_000);
+      expect(updateCall[2].resources.population).toBe(2000 + 1440);
       // Bounty stats cleared
-      expect(updateCall.stats.activeBountyTargetId).toBeUndefined();
+      expect(updateCall[2].stats.activeBountyTargetId).toBeUndefined();
     });
   });
 
@@ -200,7 +204,7 @@ describe('bounty-processor handler — completeBounty', () => {
     });
 
     it('returns VALIDATION_FAILED when targetId does not match active bounty', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue(
+      mockDbGet.mockResolvedValue(
         mockKingdom({ stats: { activeBountyTargetId: 'different-target' } })
       );
 
@@ -215,7 +219,7 @@ describe('bounty-processor handler — completeBounty', () => {
 
   describe('NOT_FOUND', () => {
     it('returns NOT_FOUND when kingdom does not exist', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
+      mockDbGet.mockResolvedValue(null);
 
       const result = await callHandler(
         makeEvent('completeBounty', { kingdomId: 'missing-id', targetId: 'target', landGained: 1500 })

@@ -1,22 +1,28 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
-// Mock aws-amplify/data before importing the handler
+// Mock ../data-client before importing the handler
 // ---------------------------------------------------------------------------
 
-const mockClient = vi.hoisted(() => ({
-  models: {
-    Kingdom: {
-      get: vi.fn(),
-      update: vi.fn(),
-      list: vi.fn(),
-      create: vi.fn(),
-    },
-  },
-}));
+const mockDbGet = vi.hoisted(() => vi.fn());
+const mockDbUpdate = vi.hoisted(() => vi.fn());
+const mockDbCreate = vi.hoisted(() => vi.fn());
+const mockDbList = vi.hoisted(() => vi.fn());
+const mockDbDelete = vi.hoisted(() => vi.fn());
+const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
 
-vi.mock('aws-amplify/data', () => ({
-  generateClient: () => mockClient,
+vi.mock('../data-client', () => ({
+  dbGet: mockDbGet,
+  dbUpdate: mockDbUpdate,
+  dbCreate: mockDbCreate,
+  dbList: mockDbList,
+  dbDelete: mockDbDelete,
+  dbAtomicAdd: mockDbAtomicAdd,
+  parseJsonField: <T>(value: unknown, defaultValue: T): T => {
+    if (value === null || value === undefined) return defaultValue;
+    if (typeof value === 'string') { try { return JSON.parse(value) as T; } catch { return defaultValue; } }
+    return value as T;
+  },
 }));
 
 import { handler } from './handler';
@@ -48,17 +54,14 @@ function makeEvent(args: Record<string, unknown>) {
 
 function mockKingdom(overrides: Record<string, unknown> = {}) {
   return {
-    data: {
-      id: 'kingdom-1',
-      owner: 'test-user::owner',
-      resources: { gold: 10000, population: 1000, mana: 500, land: 1000 },
-      buildings: { mine: 0, farm: 0, tower: 0, temple: 0, castle: 0, barracks: 0, wall: 0 },
-      totalUnits: { infantry: 0, archers: 0, cavalry: 0, siege: 0, mages: 0, scouts: 200 },
-      stats: {},
-      race: 'Human',
-      ...overrides,
-    },
-    errors: null,
+    id: 'kingdom-1',
+    owner: 'test-sub-123',
+    resources: { gold: 10000, population: 1000, mana: 500, land: 1000 },
+    buildings: { mine: 0, farm: 0, tower: 0, temple: 0, castle: 0, barracks: 0, wall: 0 },
+    totalUnits: { infantry: 0, archers: 0, cavalry: 0, siege: 0, mages: 0, scouts: 200 },
+    stats: {},
+    race: 'Human',
+    ...overrides,
   };
 }
 
@@ -68,13 +71,14 @@ function mockKingdom(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockClient.models.Kingdom.update.mockResolvedValue({ data: {}, errors: null });
+  mockDbUpdate.mockResolvedValue(undefined);
+  mockDbList.mockResolvedValue([]);
 });
 
 describe('building-constructor handler', () => {
   describe('happy path', () => {
     it('deducts 250 gold per building and increments building count', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
+      mockDbGet.mockResolvedValue(mockKingdom());
 
       const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 2 }));
 
@@ -83,16 +87,16 @@ describe('building-constructor handler', () => {
       expect(buildings.mine).toBe(2);
 
       // Verify update called with correct resource deduction (2 * 250 = 500)
-      const updateCall = mockClient.models.Kingdom.update.mock.calls[0][0];
-      expect(updateCall.resources.gold).toBe(10000 - 500);
+      const updateCall = mockDbUpdate.mock.calls[0];
+      expect(updateCall[2].resources.gold).toBe(10000 - 500);
     });
 
     it('works for every valid building type', async () => {
       const types = ['castle', 'barracks', 'farm', 'mine', 'temple', 'tower', 'wall'];
       for (const buildingType of types) {
         vi.clearAllMocks();
-        mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
-        mockClient.models.Kingdom.update.mockResolvedValue({ data: {}, errors: null });
+        mockDbGet.mockResolvedValue(mockKingdom());
+        mockDbUpdate.mockResolvedValue(undefined);
 
         const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType, quantity: 1 }));
 
@@ -103,7 +107,7 @@ describe('building-constructor handler', () => {
     });
 
     it('adds to existing building count', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue(
+      mockDbGet.mockResolvedValue(
         mockKingdom({ buildings: { mine: 5, farm: 0, tower: 0, temple: 0, castle: 0, barracks: 0, wall: 0 } })
       );
 
@@ -121,7 +125,7 @@ describe('building-constructor handler', () => {
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('MISSING_PARAMS');
-      expect(mockClient.models.Kingdom.get).not.toHaveBeenCalled();
+      expect(mockDbGet).not.toHaveBeenCalled();
     });
 
     it('returns MISSING_PARAMS when buildingType is absent', async () => {
@@ -169,7 +173,7 @@ describe('building-constructor handler', () => {
 
   describe('NOT_FOUND', () => {
     it('returns NOT_FOUND when kingdom does not exist', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
+      mockDbGet.mockResolvedValue(null);
 
       const result = await callHandler(makeEvent({ kingdomId: 'missing-id', buildingType: 'mine', quantity: 1 }));
 
@@ -181,7 +185,7 @@ describe('building-constructor handler', () => {
   describe('INSUFFICIENT_RESOURCES', () => {
     it('returns INSUFFICIENT_RESOURCES when gold is below cost', async () => {
       // 3 mines = 750 gold cost, but kingdom only has 500 gold
-      mockClient.models.Kingdom.get.mockResolvedValue(
+      mockDbGet.mockResolvedValue(
         mockKingdom({ resources: { gold: 500, population: 1000, mana: 500, land: 1000 } })
       );
 
@@ -189,20 +193,20 @@ describe('building-constructor handler', () => {
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INSUFFICIENT_RESOURCES');
-      expect(mockClient.models.Kingdom.update).not.toHaveBeenCalled();
+      expect(mockDbUpdate).not.toHaveBeenCalled();
     });
 
     it('succeeds when gold is exactly equal to cost', async () => {
       // 1 mine = 250 gold cost, kingdom has exactly 250 gold
-      mockClient.models.Kingdom.get.mockResolvedValue(
+      mockDbGet.mockResolvedValue(
         mockKingdom({ resources: { gold: 250, population: 1000, mana: 500, land: 1000 } })
       );
 
       const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 1 }));
 
       expect(result.success).toBe(true);
-      const updateCall = mockClient.models.Kingdom.update.mock.calls[0][0];
-      expect(updateCall.resources.gold).toBe(0);
+      const updateCall = mockDbUpdate.mock.calls[0];
+      expect(updateCall[2].resources.gold).toBe(0);
     });
   });
 });

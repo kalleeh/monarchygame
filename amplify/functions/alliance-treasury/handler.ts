@@ -100,6 +100,10 @@ async function handleContribute(args: { allianceId?: string | null; kingdomId?: 
 async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: string | null; amount?: number | null }, identity: any): Promise<any> {
   const { allianceId, kingdomId, amount } = args;
 
+  if (!identity?.sub) {
+    return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
+  }
+
   if (!allianceId || !kingdomId || amount == null) {
     return { success: false, error: 'Missing required parameters: allianceId, kingdomId, amount', errorCode: ErrorCode.MISSING_PARAMS };
   }

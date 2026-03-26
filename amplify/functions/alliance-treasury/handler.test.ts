@@ -1,18 +1,28 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
-// Mock aws-amplify/data before importing the handler
+// Mock ../data-client before importing the handler
 // ---------------------------------------------------------------------------
 
-const mockClient = vi.hoisted(() => ({
-  models: {
-    Kingdom: { get: vi.fn(), update: vi.fn() },
-    Alliance: { get: vi.fn(), update: vi.fn() },
-  },
-}));
+const mockDbGet = vi.hoisted(() => vi.fn());
+const mockDbUpdate = vi.hoisted(() => vi.fn());
+const mockDbCreate = vi.hoisted(() => vi.fn());
+const mockDbList = vi.hoisted(() => vi.fn());
+const mockDbDelete = vi.hoisted(() => vi.fn());
+const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
 
-vi.mock('aws-amplify/data', () => ({
-  generateClient: () => mockClient,
+vi.mock('../data-client', () => ({
+  dbGet: mockDbGet,
+  dbUpdate: mockDbUpdate,
+  dbCreate: mockDbCreate,
+  dbList: mockDbList,
+  dbDelete: mockDbDelete,
+  dbAtomicAdd: mockDbAtomicAdd,
+  parseJsonField: <T>(value: unknown, defaultValue: T): T => {
+    if (value === null || value === undefined) return defaultValue;
+    if (typeof value === 'string') { try { return JSON.parse(value) as T; } catch { return defaultValue; } }
+    return value as T;
+  },
 }));
 
 import { handler } from './handler';
@@ -47,32 +57,26 @@ function makeEvent(args: Record<string, unknown>, identity?: { sub?: string; use
 
 function mockKingdom(overrides: Record<string, unknown> = {}) {
   return {
-    data: {
-      id: 'kingdom-1',
-      owner: 'test-sub-123',
-      resources: { gold: 10000, population: 1000, mana: 500, land: 1000 },
-      stats: {},
-      race: 'Human',
-      ...overrides,
-    },
-    errors: null,
+    id: 'kingdom-1',
+    owner: 'test-sub-123',
+    resources: { gold: 10000, population: 1000, mana: 500, land: 1000 },
+    stats: {},
+    race: 'Human',
+    ...overrides,
   };
 }
 
 function mockAlliance(overrides: Record<string, unknown> = {}) {
   return {
-    data: {
-      id: 'alliance-1',
-      name: 'Test Alliance',
-      leaderId: 'kingdom-1',
-      memberIds: JSON.stringify(['kingdom-1']),
-      maxMembers: 20,
-      isPublic: true,
-      owner: 'test-sub-123',
-      treasury: JSON.stringify({ gold: 5000 }),
-      ...overrides,
-    },
-    errors: null,
+    id: 'alliance-1',
+    name: 'Test Alliance',
+    leaderId: 'kingdom-1',
+    memberIds: JSON.stringify(['kingdom-1']),
+    maxMembers: 20,
+    isPublic: true,
+    owner: 'test-sub-123',
+    treasury: JSON.stringify({ gold: 5000 }),
+    ...overrides,
   };
 }
 
@@ -82,16 +86,18 @@ function mockAlliance(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockClient.models.Kingdom.update.mockResolvedValue({ data: {}, errors: null });
-  mockClient.models.Alliance.update.mockResolvedValue({ data: {}, errors: null });
+  mockDbUpdate.mockResolvedValue(undefined);
 });
 
 describe('alliance-treasury handler', () => {
   describe('contribute', () => {
     describe('happy path', () => {
       it('deducts gold from kingdom and increases treasury gold', async () => {
-        mockClient.models.Alliance.get.mockResolvedValue(mockAlliance());
-        mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
+        mockDbGet.mockImplementation(async (model: string) => {
+          if (model === 'Alliance') return mockAlliance();
+          if (model === 'Kingdom') return mockKingdom();
+          return null;
+        });
 
         const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'contribute', amount: 1000 })
@@ -100,12 +106,12 @@ describe('alliance-treasury handler', () => {
         expect(result.success).toBe(true);
 
         // Kingdom gold should be deducted
-        const kingdomUpdateCall = mockClient.models.Kingdom.update.mock.calls[0][0];
-        expect(kingdomUpdateCall.resources.gold).toBe(10000 - 1000);
+        const kingdomUpdateCall = mockDbUpdate.mock.calls.find((c: unknown[]) => c[0] === 'Kingdom');
+        expect(kingdomUpdateCall[2].resources.gold).toBe(10000 - 1000);
 
         // Treasury gold should be increased
-        const allianceUpdateCall = mockClient.models.Alliance.update.mock.calls[0][0];
-        expect(allianceUpdateCall.treasury.gold).toBe(5000 + 1000);
+        const allianceUpdateCall = mockDbUpdate.mock.calls.find((c: unknown[]) => c[0] === 'Alliance');
+        expect(allianceUpdateCall[2].treasury.gold).toBe(5000 + 1000);
 
         const parsed = JSON.parse(result.result as string);
         expect(parsed.contributed).toBe(1000);
@@ -113,23 +119,29 @@ describe('alliance-treasury handler', () => {
       });
 
       it('works when treasury starts empty', async () => {
-        mockClient.models.Alliance.get.mockResolvedValue(mockAlliance({ treasury: null }));
-        mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
+        mockDbGet.mockImplementation(async (model: string) => {
+          if (model === 'Alliance') return mockAlliance({ treasury: null });
+          if (model === 'Kingdom') return mockKingdom();
+          return null;
+        });
 
         const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'contribute', amount: 500 })
         );
 
         expect(result.success).toBe(true);
-        const allianceUpdateCall = mockClient.models.Alliance.update.mock.calls[0][0];
-        expect(allianceUpdateCall.treasury.gold).toBe(500);
+        const allianceUpdateCall = mockDbUpdate.mock.calls.find((c: unknown[]) => c[0] === 'Alliance');
+        expect(allianceUpdateCall[2].treasury.gold).toBe(500);
       });
     });
 
     describe('INSUFFICIENT_RESOURCES', () => {
       it('returns INSUFFICIENT_RESOURCES when kingdom does not have enough gold', async () => {
-        mockClient.models.Alliance.get.mockResolvedValue(mockAlliance());
-        mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ resources: { gold: 200, population: 1000, mana: 500, land: 1000 } }));
+        mockDbGet.mockImplementation(async (model: string) => {
+          if (model === 'Alliance') return mockAlliance();
+          if (model === 'Kingdom') return mockKingdom({ resources: { gold: 200, population: 1000, mana: 500, land: 1000 } });
+          return null;
+        });
 
         const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'contribute', amount: 500 })
@@ -137,15 +149,18 @@ describe('alliance-treasury handler', () => {
 
         expect(result.success).toBe(false);
         expect(result.errorCode).toBe('INSUFFICIENT_RESOURCES');
-        expect(mockClient.models.Kingdom.update).not.toHaveBeenCalled();
-        expect(mockClient.models.Alliance.update).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalledWith('Kingdom', expect.anything(), expect.anything());
+        expect(mockDbUpdate).not.toHaveBeenCalledWith('Alliance', expect.anything(), expect.anything());
       });
     });
 
     describe('NOT_FOUND', () => {
       it('returns NOT_FOUND when kingdom does not exist', async () => {
-        mockClient.models.Alliance.get.mockResolvedValue(mockAlliance());
-        mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
+        mockDbGet.mockImplementation(async (model: string) => {
+          if (model === 'Alliance') return mockAlliance();
+          if (model === 'Kingdom') return null;
+          return null;
+        });
 
         const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', kingdomId: 'missing-kingdom', action: 'contribute', amount: 500 })
@@ -153,11 +168,11 @@ describe('alliance-treasury handler', () => {
 
         expect(result.success).toBe(false);
         expect(result.errorCode).toBe('NOT_FOUND');
-        expect(mockClient.models.Kingdom.update).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalledWith('Kingdom', expect.anything(), expect.anything());
       });
 
       it('returns NOT_FOUND when alliance does not exist', async () => {
-        mockClient.models.Alliance.get.mockResolvedValue({ data: null, errors: null });
+        mockDbGet.mockResolvedValue(null);
 
         const result = await callHandler(
           makeEvent({ allianceId: 'missing-alliance', kingdomId: 'kingdom-1', action: 'contribute', amount: 500 })
@@ -176,7 +191,7 @@ describe('alliance-treasury handler', () => {
 
         expect(result.success).toBe(false);
         expect(result.errorCode).toBe('MISSING_PARAMS');
-        expect(mockClient.models.Alliance.get).not.toHaveBeenCalled();
+        expect(mockDbGet).not.toHaveBeenCalledWith('Alliance', expect.anything());
       });
 
       it('returns MISSING_PARAMS when kingdomId is absent', async () => {
@@ -211,8 +226,11 @@ describe('alliance-treasury handler', () => {
   describe('withdraw', () => {
     describe('happy path', () => {
       it('decrements treasury and increases kingdom gold', async () => {
-        mockClient.models.Alliance.get.mockResolvedValue(mockAlliance());
-        mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
+        mockDbGet.mockImplementation(async (model: string) => {
+          if (model === 'Alliance') return mockAlliance();
+          if (model === 'Kingdom') return mockKingdom();
+          return null;
+        });
 
         const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'withdraw', amount: 2000 })
@@ -221,12 +239,12 @@ describe('alliance-treasury handler', () => {
         expect(result.success).toBe(true);
 
         // Kingdom gold should be increased
-        const kingdomUpdateCall = mockClient.models.Kingdom.update.mock.calls[0][0];
-        expect(kingdomUpdateCall.resources.gold).toBe(10000 + 2000);
+        const kingdomUpdateCall = mockDbUpdate.mock.calls.find((c: unknown[]) => c[0] === 'Kingdom');
+        expect(kingdomUpdateCall[2].resources.gold).toBe(10000 + 2000);
 
         // Treasury gold should be decreased
-        const allianceUpdateCall = mockClient.models.Alliance.update.mock.calls[0][0];
-        expect(allianceUpdateCall.treasury.gold).toBe(5000 - 2000);
+        const allianceUpdateCall = mockDbUpdate.mock.calls.find((c: unknown[]) => c[0] === 'Alliance');
+        expect(allianceUpdateCall[2].treasury.gold).toBe(5000 - 2000);
 
         const parsed = JSON.parse(result.result as string);
         expect(parsed.withdrawn).toBe(2000);
@@ -236,27 +254,26 @@ describe('alliance-treasury handler', () => {
 
     describe('FORBIDDEN', () => {
       it('returns UNAUTHORIZED when caller is not alliance owner', async () => {
-        mockClient.models.Alliance.get.mockResolvedValue(
-          mockAlliance({ owner: 'other-sub-456' })
-        );
+        mockDbGet.mockResolvedValue(mockAlliance({ owner: 'other-sub-456' }));
 
         const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'withdraw', amount: 500 })
         );
 
         expect(result.success).toBe(false);
-        expect(result.errorCode).toBe('UNAUTHORIZED');
-        expect(mockClient.models.Kingdom.update).not.toHaveBeenCalled();
-        expect(mockClient.models.Alliance.update).not.toHaveBeenCalled();
+        expect(result.errorCode).toBe('FORBIDDEN');
+        expect(mockDbUpdate).not.toHaveBeenCalledWith('Kingdom', expect.anything(), expect.anything());
+        expect(mockDbUpdate).not.toHaveBeenCalledWith('Alliance', expect.anything(), expect.anything());
       });
     });
 
     describe('INSUFFICIENT_RESOURCES', () => {
       it('returns INSUFFICIENT_RESOURCES when treasury does not have enough gold', async () => {
-        mockClient.models.Alliance.get.mockResolvedValue(
-          mockAlliance({ treasury: JSON.stringify({ gold: 100 }) })
-        );
-        mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
+        mockDbGet.mockImplementation(async (model: string) => {
+          if (model === 'Alliance') return mockAlliance({ treasury: JSON.stringify({ gold: 100 }) });
+          if (model === 'Kingdom') return mockKingdom();
+          return null;
+        });
 
         const result = await callHandler(
           makeEvent({ allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'withdraw', amount: 500 })
@@ -264,49 +281,12 @@ describe('alliance-treasury handler', () => {
 
         expect(result.success).toBe(false);
         expect(result.errorCode).toBe('INSUFFICIENT_RESOURCES');
-        expect(mockClient.models.Kingdom.update).not.toHaveBeenCalled();
-        expect(mockClient.models.Alliance.update).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalledWith('Kingdom', expect.anything(), expect.anything());
+        expect(mockDbUpdate).not.toHaveBeenCalledWith('Alliance', expect.anything(), expect.anything());
       });
     });
 
     describe('UNAUTHORIZED', () => {
-      it('returns UNAUTHORIZED when identity has no sub', async () => {
-        const result = await callHandler(
-          makeEvent(
-            { allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'withdraw', amount: 500 },
-            { sub: undefined, username: 'test-user' }
-          )
-        );
-
-        // The handler dispatches to handleWithdraw which checks identity.sub
-        // With no sub, the owner check treats identity.sub as undefined so the
-        // condition `identity?.sub && allianceResult.data.owner !== identity.sub`
-        // evaluates to false (falsy sub skips the check). However the action
-        // still requires allianceId/kingdomId/amount. We test UNAUTHORIZED by
-        // providing null identity entirely.
-        const resultNoIdentity = await callHandler(
-          makeEvent(
-            { allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'withdraw', amount: 500 },
-            null
-          )
-        );
-
-        // null identity means identity?.sub is falsy - the check is skipped,
-        // so this tests that it proceeds without crashing (not erroring on auth).
-        // The alliance/kingdom fetch will be called. Set up mocks for this:
-        mockClient.models.Alliance.get.mockResolvedValue(mockAlliance());
-        mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
-
-        const resultWithNullIdentity = await callHandler(
-          makeEvent(
-            { allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'withdraw', amount: 500 },
-            null
-          )
-        );
-        // With null identity, the owner check is skipped, so it proceeds to withdraw
-        expect(resultWithNullIdentity.success).toBe(true);
-      });
-
       it('fails with UNAUTHORIZED when identity is null and no mocks provided at top level', async () => {
         // Test the handler dispatch: action is missing triggers MISSING_PARAMS
         const result = await callHandler(
@@ -317,6 +297,18 @@ describe('alliance-treasury handler', () => {
         );
         expect(result.success).toBe(false);
         expect(result.errorCode).toBe('MISSING_PARAMS');
+      });
+
+      it('with null identity, returns UNAUTHORIZED', async () => {
+        const resultWithNullIdentity = await callHandler(
+          makeEvent(
+            { allianceId: 'alliance-1', kingdomId: 'kingdom-1', action: 'withdraw', amount: 500 },
+            null
+          )
+        );
+        // Handler requires authentication — null identity → UNAUTHORIZED
+        expect(resultWithNullIdentity.success).toBe(false);
+        expect(resultWithNullIdentity.errorCode).toBe('UNAUTHORIZED');
       });
     });
   });

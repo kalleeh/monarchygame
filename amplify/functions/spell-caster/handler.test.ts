@@ -1,22 +1,28 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
-// Mock aws-amplify/data before importing the handler
+// Mock ../data-client before importing the handler
 // ---------------------------------------------------------------------------
 
-const mockClient = vi.hoisted(() => ({
-  models: {
-    Kingdom: {
-      get: vi.fn(),
-      update: vi.fn(),
-      list: vi.fn(),
-      create: vi.fn(),
-    },
-  },
-}));
+const mockDbGet = vi.hoisted(() => vi.fn());
+const mockDbUpdate = vi.hoisted(() => vi.fn());
+const mockDbCreate = vi.hoisted(() => vi.fn());
+const mockDbList = vi.hoisted(() => vi.fn());
+const mockDbDelete = vi.hoisted(() => vi.fn());
+const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
 
-vi.mock('aws-amplify/data', () => ({
-  generateClient: () => mockClient,
+vi.mock('../data-client', () => ({
+  dbGet: mockDbGet,
+  dbUpdate: mockDbUpdate,
+  dbCreate: mockDbCreate,
+  dbList: mockDbList,
+  dbDelete: mockDbDelete,
+  dbAtomicAdd: mockDbAtomicAdd,
+  parseJsonField: <T>(value: unknown, defaultValue: T): T => {
+    if (value === null || value === undefined) return defaultValue;
+    if (typeof value === 'string') { try { return JSON.parse(value) as T; } catch { return defaultValue; } }
+    return value as T;
+  },
 }));
 
 import { handler } from './handler';
@@ -48,17 +54,14 @@ function makeEvent(args: Record<string, unknown>) {
 
 function mockKingdom(overrides: Record<string, unknown> = {}) {
   return {
-    data: {
-      id: 'kingdom-1',
-      owner: 'test-user::owner',
-      resources: { gold: 10000, population: 1000, mana: 500, land: 1000 },
-      buildings: { mine: 0, farm: 0, tower: 0, temple: 0, castle: 0, barracks: 0, wall: 0 },
-      totalUnits: { infantry: 0, archers: 0, cavalry: 0, siege: 0, mages: 0, scouts: 200 },
-      stats: {},
-      race: 'Human',
-      ...overrides,
-    },
-    errors: null,
+    id: 'kingdom-1',
+    owner: 'test-sub-123',
+    resources: { gold: 10000, population: 1000, elan: 500, land: 1000 },
+    buildings: { mine: 0, farm: 0, tower: 0, temple: 0, castle: 0, barracks: 0, wall: 0 },
+    totalUnits: { infantry: 0, archers: 0, cavalry: 0, siege: 0, mages: 0, scouts: 200 },
+    stats: {},
+    race: 'Human',
+    ...overrides,
   };
 }
 
@@ -68,37 +71,37 @@ function mockKingdom(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockClient.models.Kingdom.update.mockResolvedValue({ data: {}, errors: null });
+  mockDbUpdate.mockResolvedValue(undefined);
+  mockDbList.mockResolvedValue([]);
 });
 
 describe('spell-caster handler', () => {
   describe('happy path — self-targeted spell', () => {
-    it('deducts 50 mana from caster for calming_chant (no-damage spell)', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom());
+    it('deducts elan from caster for calming_chant (no-damage spell)', async () => {
+      mockDbGet.mockResolvedValue(mockKingdom());
 
       const result = await callHandler(makeEvent({ casterId: 'kingdom-1', spellId: 'calming_chant' }));
 
       expect(result.success).toBe(true);
       const parsed = JSON.parse(result.result as string);
-      expect(parsed.manaUsed).toBe(50);
-      expect(parsed.remainingMana).toBe(450);
+      expect(parsed.elanUsed).toBe(5); // calming_chant costs 5 elan
+      expect(parsed.remainingElan).toBe(495);
 
-      // Only one update — caster's mana
-      expect(mockClient.models.Kingdom.update).toHaveBeenCalledOnce();
+      // Only one update — caster's elan
+      expect(mockDbUpdate).toHaveBeenCalledOnce();
     });
 
-    it('deducts mana when casting at a target (structure_damage spell)', async () => {
-      const caster = mockKingdom({ id: 'caster-1', resources: { gold: 1000, population: 500, mana: 200, land: 1000 } });
+    it('deducts elan when casting at a target (structure_damage spell)', async () => {
+      const caster = mockKingdom({ id: 'caster-1', resources: { gold: 1000, population: 500, elan: 200, land: 1000 } });
       const target = mockKingdom({
         id: 'target-1',
-        resources: { gold: 5000, population: 2000, mana: 100, land: 1000 },
+        resources: { gold: 5000, population: 2000, elan: 100, land: 1000 },
         buildings: { mine: 10, farm: 10, tower: 0, temple: 0, castle: 0, barracks: 0, wall: 0 },
       });
 
-      // First call: validate target exists; second call: get caster; then get target again for applying damage
-      mockClient.models.Kingdom.get
-        .mockResolvedValueOnce(target)   // validate target
-        .mockResolvedValueOnce(caster)   // get caster for mana check
+      // Caster fetched first, then target fetched for damage application
+      mockDbGet
+        .mockResolvedValueOnce(caster)   // get caster
         .mockResolvedValueOnce(target);  // re-fetch target for damage
 
       const result = await callHandler(
@@ -107,7 +110,7 @@ describe('spell-caster handler', () => {
 
       expect(result.success).toBe(true);
       const parsed = JSON.parse(result.result as string);
-      expect(parsed.manaUsed).toBe(50);
+      expect(parsed.elanUsed).toBe(20); // hurricane costs 20 elan
       expect(parsed.damageReport.type).toBe('structure_damage');
     });
   });
@@ -145,7 +148,7 @@ describe('spell-caster handler', () => {
 
   describe('NOT_FOUND', () => {
     it('returns NOT_FOUND when target kingdom does not exist', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
+      mockDbGet.mockResolvedValue(null);
 
       const result = await callHandler(
         makeEvent({ casterId: 'kingdom-1', spellId: 'calming_chant', targetId: 'ghost-kingdom' })
@@ -156,10 +159,8 @@ describe('spell-caster handler', () => {
     });
 
     it('returns NOT_FOUND when caster kingdom does not exist', async () => {
-      // targetId check passes, caster check returns null
-      mockClient.models.Kingdom.get
-        .mockResolvedValueOnce(mockKingdom({ id: 'target-1' })) // target validation
-        .mockResolvedValueOnce({ data: null, errors: null });    // caster not found
+      // Caster is fetched first in handler; returns null → NOT_FOUND
+      mockDbGet.mockResolvedValueOnce(null);
 
       const result = await callHandler(
         makeEvent({ casterId: 'missing-caster', spellId: 'calming_chant', targetId: 'target-1' })
@@ -171,21 +172,21 @@ describe('spell-caster handler', () => {
   });
 
   describe('INSUFFICIENT_RESOURCES', () => {
-    it('returns INSUFFICIENT_RESOURCES when mana is below 50', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue(
-        mockKingdom({ resources: { gold: 10000, population: 1000, mana: 30, land: 1000 } })
+    it('returns INSUFFICIENT_RESOURCES when elan is below cost', async () => {
+      mockDbGet.mockResolvedValue(
+        mockKingdom({ resources: { gold: 10000, population: 1000, elan: 4, land: 1000 } })
       );
 
       const result = await callHandler(makeEvent({ casterId: 'kingdom-1', spellId: 'calming_chant' }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INSUFFICIENT_RESOURCES');
-      expect(mockClient.models.Kingdom.update).not.toHaveBeenCalled();
+      expect(mockDbUpdate).not.toHaveBeenCalled();
     });
 
-    it('returns INSUFFICIENT_RESOURCES when mana is exactly 0', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue(
-        mockKingdom({ resources: { gold: 10000, population: 1000, mana: 0, land: 1000 } })
+    it('returns INSUFFICIENT_RESOURCES when elan is exactly 0', async () => {
+      mockDbGet.mockResolvedValue(
+        mockKingdom({ resources: { gold: 10000, population: 1000, elan: 0, land: 1000 } })
       );
 
       const result = await callHandler(makeEvent({ casterId: 'kingdom-1', spellId: 'hurricane' }));

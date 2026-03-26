@@ -1,37 +1,28 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
-// Mock aws-amplify/data before importing the handler
+// Mock ../data-client before importing the handler
 // ---------------------------------------------------------------------------
 
-const mockClient = vi.hoisted(() => ({
-  models: {
-    Kingdom: {
-      get: vi.fn(),
-      update: vi.fn(),
-      list: vi.fn(),
-      create: vi.fn(),
-    },
-    Treaty: {
-      get: vi.fn(),
-      list: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-    DiplomaticRelation: {
-      list: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-    WarDeclaration: {
-      list: vi.fn(),
-      update: vi.fn(),
-    },
-  },
-}));
+const mockDbGet = vi.hoisted(() => vi.fn());
+const mockDbUpdate = vi.hoisted(() => vi.fn());
+const mockDbCreate = vi.hoisted(() => vi.fn());
+const mockDbList = vi.hoisted(() => vi.fn());
+const mockDbDelete = vi.hoisted(() => vi.fn());
+const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
 
-vi.mock('aws-amplify/data', () => ({
-  generateClient: () => mockClient,
+vi.mock('../data-client', () => ({
+  dbGet: mockDbGet,
+  dbUpdate: mockDbUpdate,
+  dbCreate: mockDbCreate,
+  dbList: mockDbList,
+  dbDelete: mockDbDelete,
+  dbAtomicAdd: mockDbAtomicAdd,
+  parseJsonField: <T>(value: unknown, defaultValue: T): T => {
+    if (value === null || value === undefined) return defaultValue;
+    if (typeof value === 'string') { try { return JSON.parse(value) as T; } catch { return defaultValue; } }
+    return value as T;
+  },
 }));
 
 import { handler } from './handler';
@@ -56,15 +47,12 @@ function makeEvent(args: Record<string, unknown>) {
 
 function mockKingdom(id: string, overrides: Record<string, unknown> = {}) {
   return {
-    data: {
-      id,
-      owner: 'test-user::owner',
-      resources: { gold: 10000, population: 1000, mana: 500, land: 1000 },
-      stats: {},
-      race: 'Human',
-      ...overrides,
-    },
-    errors: null,
+    id,
+    owner: 'test-sub-123',
+    resources: { gold: 10000, population: 1000, mana: 500, land: 1000 },
+    stats: {},
+    race: 'Human',
+    ...overrides,
   };
 }
 
@@ -74,15 +62,10 @@ function mockKingdom(id: string, overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom('king-1'));
-  mockClient.models.Treaty.list.mockResolvedValue({ data: [], errors: null });
-  mockClient.models.Treaty.create.mockResolvedValue({ data: { id: 'treaty-1' }, errors: null });
-  mockClient.models.Treaty.update.mockResolvedValue({ data: {}, errors: null });
-  mockClient.models.DiplomaticRelation.list.mockResolvedValue({ data: [], errors: null });
-  mockClient.models.DiplomaticRelation.create.mockResolvedValue({ data: { id: 'rel-1' }, errors: null });
-  mockClient.models.DiplomaticRelation.update.mockResolvedValue({ data: {}, errors: null });
-  mockClient.models.WarDeclaration.list.mockResolvedValue({ data: [], errors: null });
-  mockClient.models.WarDeclaration.update.mockResolvedValue({ data: {}, errors: null });
+  mockDbGet.mockResolvedValue(mockKingdom('king-1'));
+  mockDbList.mockResolvedValue([]);
+  mockDbCreate.mockResolvedValue({ id: 'treaty-1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), __typename: 'Treaty' });
+  mockDbUpdate.mockResolvedValue(undefined);
 });
 
 describe('diplomacy-processor handler — sendTreatyProposal', () => {
@@ -105,15 +88,15 @@ describe('diplomacy-processor handler — sendTreatyProposal', () => {
       expect(parsed.treaty.type).toBe('non_aggression');
       expect(parsed.treaty.status).toBe('proposed');
 
-      expect(mockClient.models.Treaty.create).toHaveBeenCalledOnce();
+      expect(mockDbCreate).toHaveBeenCalledOnce();
     });
 
     it('works for all treaty types', async () => {
       const types = ['non_aggression', 'trade_agreement', 'military_alliance', 'ceasefire'];
       for (const treatyType of types) {
         vi.clearAllMocks();
-        mockClient.models.Treaty.list.mockResolvedValue({ data: [], errors: null });
-        mockClient.models.Treaty.create.mockResolvedValue({ data: { id: 'treaty-x' }, errors: null });
+        mockDbList.mockResolvedValue([]);
+        mockDbCreate.mockResolvedValue({ id: 'treaty-x', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), __typename: 'Treaty' });
 
         const result = await callHandler(
           makeEvent({ proposerId: 'king-1', recipientId: 'king-2', seasonId: 'season-1', treatyType })
@@ -158,10 +141,7 @@ describe('diplomacy-processor handler — sendTreatyProposal', () => {
     });
 
     it('returns TREATY_CONFLICT when a pending proposal already exists', async () => {
-      mockClient.models.Treaty.list.mockResolvedValue({
-        data: [{ id: 'existing-treaty', status: 'proposed' }],
-        errors: null,
-      });
+      mockDbList.mockResolvedValue([{ id: 'existing-treaty', proposerId: 'king-1', recipientId: 'king-2', status: 'proposed' }]);
 
       const result = await callHandler(
         makeEvent({ proposerId: 'king-1', recipientId: 'king-2', seasonId: 'season-1', treatyType: 'non_aggression' })
@@ -170,17 +150,14 @@ describe('diplomacy-processor handler — sendTreatyProposal', () => {
       const parsed = JSON.parse(result as string);
       expect(parsed.success).toBe(false);
       expect(parsed.errorCode).toBe('TREATY_CONFLICT');
-      expect(mockClient.models.Treaty.create).not.toHaveBeenCalled();
+      expect(mockDbCreate).not.toHaveBeenCalled();
     });
   });
 });
 
 describe('diplomacy-processor handler — respondToTreaty', () => {
   it('accepts a treaty proposal and updates diplomatic relation', async () => {
-    mockClient.models.Treaty.get.mockResolvedValue({
-      data: { id: 'treaty-1', proposerId: 'king-1', recipientId: 'king-2', status: 'proposed', type: 'non_aggression' },
-      errors: null,
-    });
+    mockDbGet.mockResolvedValue({ id: 'treaty-1', proposerId: 'king-1', recipientId: 'king-2', status: 'proposed', type: 'non_aggression' });
 
     const result = await callHandler(makeEvent({ treatyId: 'treaty-1', accepted: true }));
 
@@ -189,16 +166,15 @@ describe('diplomacy-processor handler — respondToTreaty', () => {
     expect(parsed.accepted).toBe(true);
     expect(parsed.status).toBe('active');
 
-    expect(mockClient.models.Treaty.update).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'treaty-1', status: 'active' })
+    expect(mockDbUpdate).toHaveBeenCalledWith(
+      'Treaty',
+      'treaty-1',
+      expect.objectContaining({ status: 'active' })
     );
   });
 
   it('rejects a treaty proposal and marks it as expired', async () => {
-    mockClient.models.Treaty.get.mockResolvedValue({
-      data: { id: 'treaty-1', proposerId: 'king-1', recipientId: 'king-2', status: 'proposed', type: 'ceasefire' },
-      errors: null,
-    });
+    mockDbGet.mockResolvedValue({ id: 'treaty-1', proposerId: 'king-1', recipientId: 'king-2', status: 'proposed', type: 'ceasefire' });
 
     const result = await callHandler(makeEvent({ treatyId: 'treaty-1', accepted: false }));
 
@@ -209,7 +185,7 @@ describe('diplomacy-processor handler — respondToTreaty', () => {
   });
 
   it('returns NOT_FOUND when treaty does not exist', async () => {
-    mockClient.models.Treaty.get.mockResolvedValue({ data: null, errors: null });
+    mockDbGet.mockResolvedValue(null);
 
     const result = await callHandler(makeEvent({ treatyId: 'ghost-treaty', accepted: true }));
 
@@ -219,10 +195,7 @@ describe('diplomacy-processor handler — respondToTreaty', () => {
   });
 
   it('returns VALIDATION_FAILED when treaty is no longer in proposed status', async () => {
-    mockClient.models.Treaty.get.mockResolvedValue({
-      data: { id: 'treaty-1', status: 'active' },
-      errors: null,
-    });
+    mockDbGet.mockResolvedValue({ id: 'treaty-1', status: 'active' });
 
     const result = await callHandler(makeEvent({ treatyId: 'treaty-1', accepted: true }));
 
@@ -234,13 +207,10 @@ describe('diplomacy-processor handler — respondToTreaty', () => {
 
 describe('diplomacy-processor handler — declareDiplomaticWar', () => {
   it('breaks active treaties and sets diplomatic relation to war', async () => {
-    mockClient.models.Treaty.list.mockResolvedValue({
-      data: [{ id: 'treaty-1', status: 'active' }],
-      errors: null,
-    });
-    mockClient.models.DiplomaticRelation.list.mockResolvedValue({
-      data: [{ id: 'rel-1', reputation: 20 }],
-      errors: null,
+    mockDbList.mockImplementation(async (model: string) => {
+      if (model === 'Treaty') return [{ id: 'treaty-1', proposerId: 'king-1', recipientId: 'king-2', status: 'active' }];
+      if (model === 'DiplomaticRelation') return [{ id: 'rel-1', kingdomId: 'king-1', targetKingdomId: 'king-2', reputation: 20 }];
+      return [];
     });
 
     const result = await callHandler(
@@ -250,19 +220,16 @@ describe('diplomacy-processor handler — declareDiplomaticWar', () => {
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(true);
     expect(parsed.status).toBe('war');
-    expect(mockClient.models.Treaty.update).toHaveBeenCalledWith({ id: 'treaty-1', status: 'broken' });
+    expect(mockDbUpdate).toHaveBeenCalledWith('Treaty', 'treaty-1', { status: 'broken' });
   });
 });
 
 describe('diplomacy-processor handler — makePeace', () => {
   it('resolves active wars and sets relation to neutral', async () => {
-    mockClient.models.WarDeclaration.list.mockResolvedValue({
-      data: [{ id: 'war-1', status: 'active' }],
-      errors: null,
-    });
-    mockClient.models.DiplomaticRelation.list.mockResolvedValue({
-      data: [{ id: 'rel-1', reputation: -30 }],
-      errors: null,
+    mockDbList.mockImplementation(async (model: string) => {
+      if (model === 'WarDeclaration') return [{ id: 'war-1', attackerId: 'king-1', defenderId: 'king-2', status: 'active' }];
+      if (model === 'DiplomaticRelation') return [{ id: 'rel-1', kingdomId: 'king-1', targetKingdomId: 'king-2', reputation: -30 }];
+      return [];
     });
 
     const result = await callHandler(makeEvent({ kingdomId: 'king-1', targetKingdomId: 'king-2' }));
@@ -270,8 +237,10 @@ describe('diplomacy-processor handler — makePeace', () => {
     const parsed = JSON.parse(result as string);
     expect(parsed.success).toBe(true);
     expect(parsed.status).toBe('neutral');
-    expect(mockClient.models.WarDeclaration.update).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'war-1', status: 'resolved' })
+    expect(mockDbUpdate).toHaveBeenCalledWith(
+      'WarDeclaration',
+      'war-1',
+      expect.objectContaining({ status: 'resolved' })
     );
   });
 });

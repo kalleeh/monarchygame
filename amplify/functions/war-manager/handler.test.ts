@@ -1,37 +1,28 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
-// Mock aws-amplify/data before importing the handler
+// Mock ../data-client before importing the handler
 // ---------------------------------------------------------------------------
 
-const mockClient = vi.hoisted(() => ({
-  models: {
-    Kingdom: {
-      get: vi.fn(),
-      update: vi.fn(),
-      list: vi.fn(),
-      create: vi.fn(),
-    },
-    WarDeclaration: {
-      get: vi.fn(),
-      list: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-    DiplomaticRelation: {
-      list: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-    Treaty: {
-      list: vi.fn(),
-      update: vi.fn(),
-    },
-  },
-}));
+const mockDbGet = vi.hoisted(() => vi.fn());
+const mockDbUpdate = vi.hoisted(() => vi.fn());
+const mockDbCreate = vi.hoisted(() => vi.fn());
+const mockDbList = vi.hoisted(() => vi.fn());
+const mockDbDelete = vi.hoisted(() => vi.fn());
+const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
 
-vi.mock('aws-amplify/data', () => ({
-  generateClient: () => mockClient,
+vi.mock('../data-client', () => ({
+  dbGet: mockDbGet,
+  dbUpdate: mockDbUpdate,
+  dbCreate: mockDbCreate,
+  dbList: mockDbList,
+  dbDelete: mockDbDelete,
+  dbAtomicAdd: mockDbAtomicAdd,
+  parseJsonField: <T>(value: unknown, defaultValue: T): T => {
+    if (value === null || value === undefined) return defaultValue;
+    if (typeof value === 'string') { try { return JSON.parse(value) as T; } catch { return defaultValue; } }
+    return value as T;
+  },
 }));
 
 import { handler } from './handler';
@@ -56,15 +47,12 @@ function makeEvent(args: Record<string, unknown>) {
 
 function mockKingdom(id: string, overrides: Record<string, unknown> = {}) {
   return {
-    data: {
-      id,
-      owner: 'test-user::owner',
-      resources: { gold: 10000, population: 1000, mana: 500, land: 1000 },
-      stats: {},
-      race: 'Human',
-      ...overrides,
-    },
-    errors: null,
+    id,
+    owner: 'test-sub-123',
+    resources: { gold: 10000, population: 1000, mana: 500, land: 1000 },
+    stats: {},
+    race: 'Human',
+    ...overrides,
   };
 }
 
@@ -74,15 +62,10 @@ function mockKingdom(id: string, overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom('king-1'));
-  mockClient.models.WarDeclaration.list.mockResolvedValue({ data: [], errors: null });
-  mockClient.models.WarDeclaration.create.mockResolvedValue({ data: { id: 'war-1' }, errors: null });
-  mockClient.models.WarDeclaration.update.mockResolvedValue({ data: {}, errors: null });
-  mockClient.models.DiplomaticRelation.list.mockResolvedValue({ data: [], errors: null });
-  mockClient.models.DiplomaticRelation.create.mockResolvedValue({ data: { id: 'rel-1' }, errors: null });
-  mockClient.models.DiplomaticRelation.update.mockResolvedValue({ data: {}, errors: null });
-  mockClient.models.Treaty.list.mockResolvedValue({ data: [], errors: null });
-  mockClient.models.Treaty.update.mockResolvedValue({ data: {}, errors: null });
+  mockDbGet.mockResolvedValue(mockKingdom('king-1'));
+  mockDbList.mockResolvedValue([]);
+  mockDbCreate.mockResolvedValue({ id: 'war-1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), __typename: 'WarDeclaration' });
+  mockDbUpdate.mockResolvedValue(undefined);
 });
 
 describe('war-manager handler — declareWar', () => {
@@ -98,15 +81,15 @@ describe('war-manager handler — declareWar', () => {
       expect(parsed.warDeclaration.defenderId).toBe('king-2');
       expect(parsed.warDeclaration.status).toBe('active');
 
-      expect(mockClient.models.WarDeclaration.create).toHaveBeenCalledOnce();
+      expect(mockDbCreate).toHaveBeenCalledWith('WarDeclaration', expect.anything());
       // No existing relation → create one
-      expect(mockClient.models.DiplomaticRelation.create).toHaveBeenCalledOnce();
+      expect(mockDbCreate).toHaveBeenCalledWith('DiplomaticRelation', expect.anything());
     });
 
     it('updates existing diplomatic relation to war status', async () => {
-      mockClient.models.DiplomaticRelation.list.mockResolvedValue({
-        data: [{ id: 'rel-1', kingdomId: 'king-1', targetKingdomId: 'king-2', status: 'neutral', reputation: 10 }],
-        errors: null,
+      mockDbList.mockImplementation(async (model: string) => {
+        if (model === 'DiplomaticRelation') return [{ id: 'rel-1', kingdomId: 'king-1', targetKingdomId: 'king-2', status: 'neutral', reputation: 10 }];
+        return [];
       });
 
       const result = await callHandler(
@@ -115,21 +98,21 @@ describe('war-manager handler — declareWar', () => {
 
       const parsed = JSON.parse(result as string);
       expect(parsed.success).toBe(true);
-      expect(mockClient.models.DiplomaticRelation.update).toHaveBeenCalledOnce();
-      expect(mockClient.models.DiplomaticRelation.create).not.toHaveBeenCalled();
+      expect(mockDbUpdate).toHaveBeenCalledWith('DiplomaticRelation', 'rel-1', expect.anything());
+      expect(mockDbCreate).not.toHaveBeenCalledWith('DiplomaticRelation', expect.anything());
     });
 
     it('breaks active treaties when war is declared', async () => {
-      mockClient.models.Treaty.list.mockResolvedValue({
-        data: [{ id: 'treaty-1', status: 'active' }],
-        errors: null,
+      mockDbList.mockImplementation(async (model: string) => {
+        if (model === 'Treaty') return [{ id: 'treaty-1', proposerId: 'king-1', recipientId: 'king-2', status: 'active' }];
+        return [];
       });
 
       await callHandler(
         makeEvent({ attackerId: 'king-1', defenderId: 'king-2', seasonId: 'season-1' })
       );
 
-      expect(mockClient.models.Treaty.update).toHaveBeenCalledWith({ id: 'treaty-1', status: 'broken' });
+      expect(mockDbUpdate).toHaveBeenCalledWith('Treaty', 'treaty-1', { status: 'broken' });
     });
   });
 
@@ -150,12 +133,12 @@ describe('war-manager handler — declareWar', () => {
       expect(parsed.errorCode).toBe('MISSING_PARAMS');
     });
 
-    it('returns MISSING_PARAMS when seasonId is absent', async () => {
+    it('succeeds when seasonId is absent (seasonId is optional)', async () => {
+      // seasonId is optional — war can be declared without associating it to a season
       const result = await callHandler(makeEvent({ attackerId: 'king-1', defenderId: 'king-2' }));
 
       const parsed = JSON.parse(result as string);
-      expect(parsed.success).toBe(false);
-      expect(parsed.errorCode).toBe('MISSING_PARAMS');
+      expect(parsed.success).toBe(true);
     });
 
     it('returns INVALID_PARAM when attacker and defender are the same', async () => {
@@ -169,9 +152,9 @@ describe('war-manager handler — declareWar', () => {
     });
 
     it('returns VALIDATION_FAILED when war already exists against this kingdom', async () => {
-      mockClient.models.WarDeclaration.list.mockResolvedValue({
-        data: [{ id: 'war-existing', attackerId: 'king-1', defenderId: 'king-2', status: 'active' }],
-        errors: null,
+      mockDbList.mockImplementation(async (model: string) => {
+        if (model === 'WarDeclaration') return [{ id: 'war-existing', attackerId: 'king-1', defenderId: 'king-2', seasonId: 'season-1', status: 'active' }];
+        return [];
       });
 
       const result = await callHandler(
@@ -181,7 +164,7 @@ describe('war-manager handler — declareWar', () => {
       const parsed = JSON.parse(result as string);
       expect(parsed.success).toBe(false);
       expect(parsed.errorCode).toBe('VALIDATION_FAILED');
-      expect(mockClient.models.WarDeclaration.create).not.toHaveBeenCalled();
+      expect(mockDbCreate).not.toHaveBeenCalledWith('WarDeclaration', expect.anything());
     });
   });
 });
@@ -189,13 +172,13 @@ describe('war-manager handler — declareWar', () => {
 describe('war-manager handler — resolveWar', () => {
   describe('happy path', () => {
     it('resolves an existing war and updates diplomatic relation to neutral', async () => {
-      mockClient.models.WarDeclaration.get.mockResolvedValue({
-        data: { id: 'war-1', attackerId: 'king-1', defenderId: 'king-2', status: 'active' },
-        errors: null,
+      mockDbGet.mockImplementation(async (model: string) => {
+        if (model === 'WarDeclaration') return { id: 'war-1', attackerId: 'king-1', defenderId: 'king-2', status: 'active' };
+        return mockKingdom('king-1');
       });
-      mockClient.models.DiplomaticRelation.list.mockResolvedValue({
-        data: [{ id: 'rel-1', kingdomId: 'king-1', targetKingdomId: 'king-2', status: 'war', reputation: -50 }],
-        errors: null,
+      mockDbList.mockImplementation(async (model: string) => {
+        if (model === 'DiplomaticRelation') return [{ id: 'rel-1', kingdomId: 'king-1', targetKingdomId: 'king-2', status: 'war', reputation: -50 }];
+        return [];
       });
 
       const result = await callHandler(
@@ -207,10 +190,14 @@ describe('war-manager handler — resolveWar', () => {
       expect(parsed.warId).toBe('war-1');
       expect(parsed.resolution).toBe('peace_treaty');
 
-      expect(mockClient.models.WarDeclaration.update).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'war-1', status: 'resolved' })
+      expect(mockDbUpdate).toHaveBeenCalledWith(
+        'WarDeclaration',
+        'war-1',
+        expect.objectContaining({ status: 'resolved' })
       );
-      expect(mockClient.models.DiplomaticRelation.update).toHaveBeenCalledWith(
+      expect(mockDbUpdate).toHaveBeenCalledWith(
+        'DiplomaticRelation',
+        'rel-1',
         expect.objectContaining({ status: 'neutral' })
       );
     });
@@ -218,7 +205,7 @@ describe('war-manager handler — resolveWar', () => {
 
   describe('NOT_FOUND', () => {
     it('returns NOT_FOUND when warId does not exist', async () => {
-      mockClient.models.WarDeclaration.get.mockResolvedValue({ data: null, errors: null });
+      mockDbGet.mockResolvedValue(null);
 
       const result = await callHandler(makeEvent({ warId: 'missing-war', resolution: 'peace' }));
 

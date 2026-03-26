@@ -1,22 +1,28 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
-// Mock aws-amplify/data before importing the handler
+// Mock ../data-client before importing the handler
 // ---------------------------------------------------------------------------
 
-const mockClient = vi.hoisted(() => ({
-  models: {
-    Kingdom: {
-      get: vi.fn(),
-      update: vi.fn(),
-      list: vi.fn(),
-      create: vi.fn(),
-    },
-  },
-}));
+const mockDbGet = vi.hoisted(() => vi.fn());
+const mockDbUpdate = vi.hoisted(() => vi.fn());
+const mockDbCreate = vi.hoisted(() => vi.fn());
+const mockDbList = vi.hoisted(() => vi.fn());
+const mockDbDelete = vi.hoisted(() => vi.fn());
+const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
 
-vi.mock('aws-amplify/data', () => ({
-  generateClient: () => mockClient,
+vi.mock('../data-client', () => ({
+  dbGet: mockDbGet,
+  dbUpdate: mockDbUpdate,
+  dbCreate: mockDbCreate,
+  dbList: mockDbList,
+  dbDelete: mockDbDelete,
+  dbAtomicAdd: mockDbAtomicAdd,
+  parseJsonField: <T>(value: unknown, defaultValue: T): T => {
+    if (value === null || value === undefined) return defaultValue;
+    if (typeof value === 'string') { try { return JSON.parse(value) as T; } catch { return defaultValue; } }
+    return value as T;
+  },
 }));
 
 import { handler } from './handler';
@@ -48,17 +54,14 @@ function makeEvent(args: Record<string, unknown>) {
 
 function mockKingdom(overrides: Record<string, unknown> = {}) {
   return {
-    data: {
-      id: 'kingdom-1',
-      owner: 'test-user::owner',
-      resources: { gold: 10000, population: 1000, mana: 500, land: 1000 },
-      buildings: {},
-      totalUnits: {},
-      stats: { focusPoints: 50, faithAlignment: 'neutral' },
-      race: 'Human',
-      ...overrides,
-    },
-    errors: null,
+    id: 'kingdom-1',
+    owner: 'test-sub-123',
+    resources: { gold: 10000, population: 1000, mana: 500, land: 1000 },
+    buildings: {},
+    totalUnits: {},
+    stats: { focusPoints: 50, faithAlignment: 'neutral' },
+    race: 'Human',
+    ...overrides,
   };
 }
 
@@ -68,14 +71,15 @@ function mockKingdom(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockClient.models.Kingdom.update.mockResolvedValue({ data: {}, errors: null });
+  mockDbUpdate.mockResolvedValue(undefined);
+  mockDbList.mockResolvedValue([]);
 });
 
 describe('faith-processor handler — selectAlignment', () => {
   describe('happy path', () => {
     it('sets faithAlignment in stats for a compatible race', async () => {
       // Human is compatible with 'angelique'
-      mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ race: 'Human' }));
+      mockDbGet.mockResolvedValue(mockKingdom({ race: 'Human' }));
 
       const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', action: 'selectAlignment', alignment: 'angelique' })
@@ -85,12 +89,12 @@ describe('faith-processor handler — selectAlignment', () => {
       const parsed = JSON.parse(result.result as string);
       expect(parsed.alignment).toBe('angelique');
 
-      const updateCall = mockClient.models.Kingdom.update.mock.calls[0][0];
-      expect(updateCall.stats.faithAlignment).toBe('angelique');
+      const updateCall = mockDbUpdate.mock.calls[0];
+      expect(updateCall[2].stats.faithAlignment).toBe('angelique');
     });
 
     it('allows any race to select neutral alignment', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ race: 'Orc' }));
+      mockDbGet.mockResolvedValue(mockKingdom({ race: 'Orc' }));
 
       const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', action: 'selectAlignment', alignment: 'neutral' })
@@ -135,7 +139,7 @@ describe('faith-processor handler — selectAlignment', () => {
 
     it('returns VALIDATION_FAILED when race is incompatible with chosen alignment', async () => {
       // Orc is not in the 'angelique' compatible list
-      mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ race: 'Orc' }));
+      mockDbGet.mockResolvedValue(mockKingdom({ race: 'Orc' }));
 
       const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', action: 'selectAlignment', alignment: 'angelique' })
@@ -148,7 +152,7 @@ describe('faith-processor handler — selectAlignment', () => {
 
   describe('NOT_FOUND', () => {
     it('returns NOT_FOUND when kingdom does not exist', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
+      mockDbGet.mockResolvedValue(null);
 
       const result = await callHandler(
         makeEvent({ kingdomId: 'missing-id', action: 'selectAlignment', alignment: 'neutral' })
@@ -164,7 +168,7 @@ describe('faith-processor handler — useFocusAbility', () => {
   describe('happy path', () => {
     it('deducts focus points and returns remaining balance', async () => {
       // combat_focus costs 8; kingdom has 50 focus points
-      mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ stats: { focusPoints: 50 } }));
+      mockDbGet.mockResolvedValue(mockKingdom({ stats: { focusPoints: 50 } }));
 
       const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', action: 'useFocusAbility', abilityType: 'combat_focus' })
@@ -188,8 +192,8 @@ describe('faith-processor handler — useFocusAbility', () => {
 
       for (const [abilityType, cost] of abilities) {
         vi.clearAllMocks();
-        mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ stats: { focusPoints: 100 } }));
-        mockClient.models.Kingdom.update.mockResolvedValue({ data: {}, errors: null });
+        mockDbGet.mockResolvedValue(mockKingdom({ stats: { focusPoints: 100 } }));
+        mockDbUpdate.mockResolvedValue(undefined);
 
         const result = await callHandler(
           makeEvent({ kingdomId: 'kingdom-1', action: 'useFocusAbility', abilityType })
@@ -217,7 +221,7 @@ describe('faith-processor handler — useFocusAbility', () => {
   describe('INSUFFICIENT_RESOURCES', () => {
     it('returns INSUFFICIENT_RESOURCES when focus points are below the ability cost', async () => {
       // emergency costs 20; kingdom only has 5 focus points
-      mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ stats: { focusPoints: 5 } }));
+      mockDbGet.mockResolvedValue(mockKingdom({ stats: { focusPoints: 5 } }));
 
       const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', action: 'useFocusAbility', abilityType: 'emergency' })
@@ -225,11 +229,11 @@ describe('faith-processor handler — useFocusAbility', () => {
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INSUFFICIENT_RESOURCES');
-      expect(mockClient.models.Kingdom.update).not.toHaveBeenCalled();
+      expect(mockDbUpdate).not.toHaveBeenCalled();
     });
 
     it('returns INSUFFICIENT_RESOURCES when focusPoints is 0', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue(mockKingdom({ stats: { focusPoints: 0 } }));
+      mockDbGet.mockResolvedValue(mockKingdom({ stats: { focusPoints: 0 } }));
 
       const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', action: 'useFocusAbility', abilityType: 'economic_focus' })

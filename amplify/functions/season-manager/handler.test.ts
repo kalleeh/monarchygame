@@ -1,22 +1,28 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
-// Mock aws-amplify/data before importing the handler
+// Mock ../data-client before importing the handler
 // ---------------------------------------------------------------------------
 
-const mockClient = vi.hoisted(() => ({
-  models: {
-    GameSeason: {
-      list: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      get: vi.fn(),
-    },
-  },
-}));
+const mockDbGet = vi.hoisted(() => vi.fn());
+const mockDbUpdate = vi.hoisted(() => vi.fn());
+const mockDbCreate = vi.hoisted(() => vi.fn());
+const mockDbList = vi.hoisted(() => vi.fn());
+const mockDbDelete = vi.hoisted(() => vi.fn());
+const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
 
-vi.mock('aws-amplify/data', () => ({
-  generateClient: () => mockClient,
+vi.mock('../data-client', () => ({
+  dbGet: mockDbGet,
+  dbUpdate: mockDbUpdate,
+  dbCreate: mockDbCreate,
+  dbList: mockDbList,
+  dbDelete: mockDbDelete,
+  dbAtomicAdd: mockDbAtomicAdd,
+  parseJsonField: <T>(value: unknown, defaultValue: T): T => {
+    if (value === null || value === undefined) return defaultValue;
+    if (typeof value === 'string') { try { return JSON.parse(value) as T; } catch { return defaultValue; } }
+    return value as T;
+  },
 }));
 
 import { handler } from './handler';
@@ -75,14 +81,14 @@ function expiredSeason(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockClient.models.GameSeason.update.mockResolvedValue({ data: {}, errors: null });
+  mockDbUpdate.mockResolvedValue(undefined);
 });
 
 describe('season-manager handler — getActiveSeason', () => {
   describe('active season exists', () => {
     it('returns season details including currentAge and weeksRemaining', async () => {
       const season = freshActiveSeason();
-      mockClient.models.GameSeason.list.mockResolvedValue({ data: [season], errors: null });
+      mockDbList.mockResolvedValue([season]);
 
       const result = await callHandler(makeEvent({}));
 
@@ -97,30 +103,32 @@ describe('season-manager handler — getActiveSeason', () => {
 
     it('does not call update when currentAge has not changed', async () => {
       const season = freshActiveSeason({ currentAge: 'early' });
-      mockClient.models.GameSeason.list.mockResolvedValue({ data: [season], errors: null });
+      mockDbList.mockResolvedValue([season]);
 
       await callHandler(makeEvent({}));
 
-      expect(mockClient.models.GameSeason.update).not.toHaveBeenCalled();
+      expect(mockDbUpdate).not.toHaveBeenCalled();
     });
 
     it('calls update when currentAge needs to transition', async () => {
       // Season started 3 weeks ago → weeksElapsed = 3, which is >= 2 but < 4, so 'middle'
       const threeWeeksAgo = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString();
       const season = freshActiveSeason({ startDate: threeWeeksAgo, currentAge: 'early' });
-      mockClient.models.GameSeason.list.mockResolvedValue({ data: [season], errors: null });
+      mockDbList.mockResolvedValue([season]);
 
       await callHandler(makeEvent({}));
 
-      expect(mockClient.models.GameSeason.update).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'season-1', currentAge: 'middle' })
+      expect(mockDbUpdate).toHaveBeenCalledWith(
+        'GameSeason',
+        'season-1',
+        expect.objectContaining({ currentAge: 'middle' })
       );
     });
   });
 
   describe('no active season', () => {
     it('returns SEASON_INACTIVE error when no seasons are found', async () => {
-      mockClient.models.GameSeason.list.mockResolvedValue({ data: [], errors: null });
+      mockDbList.mockResolvedValue([]);
 
       const result = await callHandler(makeEvent({}));
 
@@ -129,8 +137,8 @@ describe('season-manager handler — getActiveSeason', () => {
       expect(parsed.errorCode).toBe('SEASON_INACTIVE');
     });
 
-    it('returns SEASON_INACTIVE when data is null', async () => {
-      mockClient.models.GameSeason.list.mockResolvedValue({ data: null, errors: null });
+    it('returns SEASON_INACTIVE when data is empty', async () => {
+      mockDbList.mockResolvedValue([]);
 
       const result = await callHandler(makeEvent({}));
 
@@ -143,22 +151,24 @@ describe('season-manager handler — getActiveSeason', () => {
   describe('expired season', () => {
     it('marks expired season as completed and returns SEASON_INACTIVE', async () => {
       const season = expiredSeason();
-      mockClient.models.GameSeason.list.mockResolvedValue({ data: [season], errors: null });
+      mockDbList.mockResolvedValue([season]);
 
       const result = await callHandler(makeEvent({}));
 
       const parsed = JSON.parse(result as string);
       expect(parsed.success).toBe(false);
       expect(parsed.errorCode).toBe('SEASON_INACTIVE');
-      expect(mockClient.models.GameSeason.update).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'season-old', status: 'completed' })
+      expect(mockDbUpdate).toHaveBeenCalledWith(
+        'GameSeason',
+        'season-old',
+        expect.objectContaining({ status: 'completed' })
       );
     });
   });
 
   describe('error handling', () => {
     it('returns INTERNAL_ERROR on unexpected exception', async () => {
-      mockClient.models.GameSeason.list.mockRejectedValue(new Error('DynamoDB offline'));
+      mockDbList.mockRejectedValue(new Error('DynamoDB offline'));
 
       const result = await callHandler(makeEvent({}));
 

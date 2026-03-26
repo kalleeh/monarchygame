@@ -1,22 +1,28 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
-// Mock aws-amplify/data before importing the handler
+// Mock ../data-client before importing the handler
 // ---------------------------------------------------------------------------
 
-const mockClient = vi.hoisted(() => ({
-  models: {
-    Kingdom: {
-      get: vi.fn(),
-      update: vi.fn(),
-      list: vi.fn(),
-      create: vi.fn(),
-    },
-  },
-}));
+const mockDbGet = vi.hoisted(() => vi.fn());
+const mockDbUpdate = vi.hoisted(() => vi.fn());
+const mockDbCreate = vi.hoisted(() => vi.fn());
+const mockDbList = vi.hoisted(() => vi.fn());
+const mockDbDelete = vi.hoisted(() => vi.fn());
+const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
 
-vi.mock('aws-amplify/data', () => ({
-  generateClient: () => mockClient,
+vi.mock('../data-client', () => ({
+  dbGet: mockDbGet,
+  dbUpdate: mockDbUpdate,
+  dbCreate: mockDbCreate,
+  dbList: mockDbList,
+  dbDelete: mockDbDelete,
+  dbAtomicAdd: mockDbAtomicAdd,
+  parseJsonField: <T>(value: unknown, defaultValue: T): T => {
+    if (value === null || value === undefined) return defaultValue;
+    if (typeof value === 'string') { try { return JSON.parse(value) as T; } catch { return defaultValue; } }
+    return value as T;
+  },
 }));
 
 import { handler } from './handler';
@@ -48,17 +54,14 @@ function makeEvent(args: Record<string, unknown>) {
 
 function mockKingdom(id: string, overrides: Record<string, unknown> = {}) {
   return {
-    data: {
-      id,
-      owner: 'test-user::owner',
-      resources: { gold: 10000, population: 5000, mana: 500, land: 1000 },
-      buildings: {},
-      totalUnits: { infantry: 100, archers: 0, cavalry: 0, siege: 0, mages: 0, scouts: 500 },
-      stats: {},
-      race: 'Human',
-      ...overrides,
-    },
-    errors: null,
+    id,
+    owner: 'test-sub-123',
+    resources: { gold: 10000, population: 5000, mana: 500, land: 1000 },
+    buildings: {},
+    totalUnits: { infantry: 100, archers: 0, cavalry: 0, siege: 0, mages: 0, scouts: 500 },
+    stats: {},
+    race: 'Human',
+    ...overrides,
   };
 }
 
@@ -68,13 +71,14 @@ function mockKingdom(id: string, overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockClient.models.Kingdom.update.mockResolvedValue({ data: {}, errors: null });
+  mockDbUpdate.mockResolvedValue(undefined);
+  mockDbList.mockResolvedValue([]);
 });
 
 describe('thievery-processor handler', () => {
   describe('happy path — scout operation', () => {
     it('applies scout casualties regardless of success and returns operation result', async () => {
-      mockClient.models.Kingdom.get
+      mockDbGet
         .mockResolvedValueOnce(mockKingdom('kingdom-1'))   // attacker
         .mockResolvedValueOnce(mockKingdom('target-1'));    // target
 
@@ -89,14 +93,14 @@ describe('thievery-processor handler', () => {
       expect(parsed.casualties).toBeGreaterThanOrEqual(0);
 
       // Attacker units updated (casualty deduction)
-      expect(mockClient.models.Kingdom.update).toHaveBeenCalled();
+      expect(mockDbUpdate).toHaveBeenCalled();
     });
   });
 
   describe('happy path — steal operation', () => {
     it('transfers gold from target to attacker on successful steal', async () => {
       // Force success by making attacker have far more scouts than target
-      mockClient.models.Kingdom.get
+      mockDbGet
         .mockResolvedValueOnce(
           mockKingdom('kingdom-1', { totalUnits: { scouts: 10000 } })
         )
@@ -160,7 +164,7 @@ describe('thievery-processor handler', () => {
 
   describe('INSUFFICIENT_RESOURCES', () => {
     it('returns INSUFFICIENT_RESOURCES when attacker has fewer than 100 scouts', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValueOnce(
+      mockDbGet.mockResolvedValueOnce(
         mockKingdom('kingdom-1', { totalUnits: { scouts: 50 } })
       );
 
@@ -173,7 +177,7 @@ describe('thievery-processor handler', () => {
     });
 
     it('returns INSUFFICIENT_RESOURCES when attacker has exactly 0 scouts', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValueOnce(
+      mockDbGet.mockResolvedValueOnce(
         mockKingdom('kingdom-1', { totalUnits: { scouts: 0 } })
       );
 
@@ -188,7 +192,7 @@ describe('thievery-processor handler', () => {
 
   describe('NOT_FOUND', () => {
     it('returns NOT_FOUND when attacker kingdom does not exist', async () => {
-      mockClient.models.Kingdom.get.mockResolvedValue({ data: null, errors: null });
+      mockDbGet.mockResolvedValue(null);
 
       const result = await callHandler(
         makeEvent({ kingdomId: 'missing-id', operation: 'scout', targetKingdomId: 'target-1' })
@@ -199,9 +203,9 @@ describe('thievery-processor handler', () => {
     });
 
     it('returns NOT_FOUND when target kingdom does not exist', async () => {
-      mockClient.models.Kingdom.get
+      mockDbGet
         .mockResolvedValueOnce(mockKingdom('kingdom-1'))
-        .mockResolvedValueOnce({ data: null, errors: null });
+        .mockResolvedValueOnce(null);
 
       const result = await callHandler(
         makeEvent({ kingdomId: 'kingdom-1', operation: 'scout', targetKingdomId: 'missing-target' })

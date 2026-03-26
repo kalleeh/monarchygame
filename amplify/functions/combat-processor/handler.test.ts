@@ -1,35 +1,28 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
-// Mock aws-amplify/data before importing the handler
+// Mock ../data-client before importing the handler
 // ---------------------------------------------------------------------------
 
-const mockClient = vi.hoisted(() => ({
-  models: {
-    Kingdom: {
-      get: vi.fn(),
-      update: vi.fn(),
-      list: vi.fn(),
-      create: vi.fn(),
-    },
-    BattleReport: {
-      create: vi.fn(),
-      list: vi.fn(),
-    },
-    RestorationStatus: {
-      create: vi.fn(),
-    },
-    WarDeclaration: {
-      list: vi.fn(),
-      update: vi.fn(),
-      create: vi.fn(),
-      get: vi.fn(),
-    },
-  },
-}));
+const mockDbGet = vi.hoisted(() => vi.fn());
+const mockDbUpdate = vi.hoisted(() => vi.fn());
+const mockDbCreate = vi.hoisted(() => vi.fn());
+const mockDbList = vi.hoisted(() => vi.fn());
+const mockDbDelete = vi.hoisted(() => vi.fn());
+const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
 
-vi.mock('aws-amplify/data', () => ({
-  generateClient: () => mockClient,
+vi.mock('../data-client', () => ({
+  dbGet: mockDbGet,
+  dbUpdate: mockDbUpdate,
+  dbCreate: mockDbCreate,
+  dbList: mockDbList,
+  dbDelete: mockDbDelete,
+  dbAtomicAdd: mockDbAtomicAdd,
+  parseJsonField: <T>(value: unknown, defaultValue: T): T => {
+    if (value === null || value === undefined) return defaultValue;
+    if (typeof value === 'string') { try { return JSON.parse(value) as T; } catch { return defaultValue; } }
+    return value as T;
+  },
 }));
 
 import { handler } from './handler';
@@ -59,17 +52,14 @@ function makeEvent(args: Record<string, unknown>) {
 
 function mockKingdom(id: string, overrides: Record<string, unknown> = {}) {
   return {
-    data: {
-      id,
-      owner: 'test-user::owner',
-      resources: { gold: 50000, population: 5000, mana: 500, land: 10000 },
-      buildings: { mine: 5, farm: 5, tower: 2, temple: 1, castle: 1, barracks: 2, wall: 3 },
-      totalUnits: { infantry: 1000, archers: 500, cavalry: 200, siege: 50, mages: 100, scouts: 300 },
-      stats: {},
-      race: 'Human',
-      ...overrides,
-    },
-    errors: null,
+    id,
+    owner: 'test-sub-123',
+    resources: { gold: 50000, population: 5000, mana: 500, land: 10000 },
+    buildings: { mine: 5, farm: 5, tower: 2, temple: 1, castle: 1, barracks: 2, wall: 3 },
+    totalUnits: { infantry: 1000, archers: 500, cavalry: 200, siege: 50, mages: 100, scouts: 300 },
+    stats: {},
+    race: 'Human',
+    ...overrides,
   };
 }
 
@@ -79,11 +69,9 @@ function mockKingdom(id: string, overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockClient.models.Kingdom.update.mockResolvedValue({ data: {}, errors: null });
-  mockClient.models.BattleReport.create.mockResolvedValue({ data: { id: 'battle-1' }, errors: null });
-  mockClient.models.BattleReport.list.mockResolvedValue({ data: [], errors: null });
-  mockClient.models.RestorationStatus.create.mockResolvedValue({ data: { id: 'restoration-1' }, errors: null });
-  mockClient.models.WarDeclaration.list.mockResolvedValue({ data: [], errors: null });
+  mockDbUpdate.mockResolvedValue(undefined);
+  mockDbCreate.mockResolvedValue({ id: 'battle-1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), __typename: 'BattleReport' });
+  mockDbList.mockResolvedValue([]);
 });
 
 describe('combat-processor handler', () => {
@@ -98,7 +86,7 @@ describe('combat-processor handler', () => {
         resources: { gold: 10000, population: 1000, mana: 100, land: 5000 },
       });
 
-      mockClient.models.Kingdom.get
+      mockDbGet
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
@@ -112,8 +100,8 @@ describe('combat-processor handler', () => {
       );
 
       expect(result.success).toBe(true);
-      expect(mockClient.models.BattleReport.create).toHaveBeenCalledOnce();
-      expect(mockClient.models.Kingdom.update).toHaveBeenCalled();
+      expect(mockDbCreate).toHaveBeenCalledOnce();
+      expect(mockDbUpdate).toHaveBeenCalled();
 
       const parsed = JSON.parse(result.result as string);
       expect(parsed).toHaveProperty('result');
@@ -130,7 +118,7 @@ describe('combat-processor handler', () => {
         resources: { gold: 10000, population: 1000, mana: 100, land: 5000 },
       });
 
-      mockClient.models.Kingdom.get
+      mockDbGet
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
@@ -159,7 +147,7 @@ describe('combat-processor handler', () => {
         resources: { gold: 10000, population: 1000, mana: 100, land: 5000 },
       });
 
-      mockClient.models.Kingdom.get
+      mockDbGet
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
@@ -187,7 +175,7 @@ describe('combat-processor handler', () => {
         resources: { gold: 10000, population: 1000, mana: 100, land: 5000 },
       });
 
-      mockClient.models.Kingdom.get
+      mockDbGet
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
@@ -215,7 +203,7 @@ describe('combat-processor handler', () => {
         totalUnits: { infantry: 10000, archers: 5000, cavalry: 2000, siege: 500, mages: 1000, scouts: 300 },
       });
 
-      mockClient.models.Kingdom.get
+      mockDbGet
         .mockResolvedValueOnce(weakAttacker)
         .mockResolvedValueOnce(strongDefender);
 
@@ -230,14 +218,14 @@ describe('combat-processor handler', () => {
 
       expect(result.success).toBe(true);
       // Kingdom updates still happen (casualty deduction)
-      expect(mockClient.models.Kingdom.update).toHaveBeenCalled();
+      expect(mockDbUpdate).toHaveBeenCalled();
     });
 
     it('accepts units as a parsed object (not a JSON string)', async () => {
       const attackerKingdom = mockKingdom('attacker-1');
       const defenderKingdom = mockKingdom('defender-1');
 
-      mockClient.models.Kingdom.get
+      mockDbGet
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
@@ -297,7 +285,7 @@ describe('combat-processor handler', () => {
       });
       const defenderKingdom = mockKingdom('defender-1');
 
-      mockClient.models.Kingdom.get
+      mockDbGet
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
@@ -316,8 +304,8 @@ describe('combat-processor handler', () => {
 
   describe('NOT_FOUND', () => {
     it('returns NOT_FOUND when attacker kingdom does not exist', async () => {
-      mockClient.models.Kingdom.get
-        .mockResolvedValueOnce({ data: null, errors: null })
+      mockDbGet
+        .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(mockKingdom('defender-1'));
 
       const result = await callHandler(
@@ -329,9 +317,9 @@ describe('combat-processor handler', () => {
     });
 
     it('returns NOT_FOUND when defender kingdom does not exist', async () => {
-      mockClient.models.Kingdom.get
+      mockDbGet
         .mockResolvedValueOnce(mockKingdom('attacker-1'))
-        .mockResolvedValueOnce({ data: null, errors: null });
+        .mockResolvedValueOnce(null);
 
       const result = await callHandler(
         makeEvent({ attackerId: 'attacker-1', defenderId: 'missing-defender', units: { infantry: 10 } })
@@ -353,7 +341,7 @@ describe('combat-processor handler', () => {
         resources: { gold: 10000, population: 1000, mana: 100, land: 5000 },
       });
 
-      mockClient.models.Kingdom.get
+      mockDbGet
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
@@ -385,7 +373,7 @@ describe('combat-processor handler', () => {
         resources: { gold: 10000, population: 1000, mana: 100, land: 5000 },
       });
 
-      mockClient.models.Kingdom.get
+      mockDbGet
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
@@ -415,7 +403,7 @@ describe('combat-processor handler', () => {
         resources: { gold: 10000, population: 1000, mana: 100, land: 5000 },
       });
 
-      mockClient.models.Kingdom.get
+      mockDbGet
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
 
@@ -440,18 +428,24 @@ describe('combat-processor handler', () => {
       const attackerKingdom = mockKingdom('attacker-1', { seasonId: 'season-1' });
       const defenderKingdom = mockKingdom('defender-1');
 
-      mockClient.models.Kingdom.get
-        .mockResolvedValueOnce(attackerKingdom)
-        .mockResolvedValueOnce(defenderKingdom);
-
-      // 3 existing battle reports — threshold reached
-      mockClient.models.BattleReport.list.mockResolvedValue({
-        data: [{ id: 'b1' }, { id: 'b2' }, { id: 'b3' }],
-        errors: null,
+      // The handler calls dbGet multiple times (attacker, defender, then alliance coord check x2)
+      // Use a stable implementation so subsequent calls return the right kingdoms
+      mockDbGet.mockImplementation(async (model: string, id: string) => {
+        if (model === 'Kingdom' && id === 'attacker-1') return attackerKingdom;
+        if (model === 'Kingdom' && id === 'defender-1') return defenderKingdom;
+        return null;
       });
 
-      // No active war declaration
-      mockClient.models.WarDeclaration.list.mockResolvedValue({ data: [], errors: null });
+      // 3 existing battle reports with matching attackerId/defenderId — threshold reached
+      mockDbList.mockImplementation(async (model: string) => {
+        if (model === 'BattleReport') return [
+          { id: 'b1', attackerId: 'attacker-1', defenderId: 'defender-1' },
+          { id: 'b2', attackerId: 'attacker-1', defenderId: 'defender-1' },
+          { id: 'b3', attackerId: 'attacker-1', defenderId: 'defender-1' },
+        ];
+        if (model === 'WarDeclaration') return [];
+        return [];
+      });
 
       const result = await callHandler(
         makeEvent({
@@ -461,8 +455,9 @@ describe('combat-processor handler', () => {
         })
       );
 
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('WAR_REQUIRED');
+      const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+      expect(parsed.success).toBe(false);
+      expect(parsed.errorCode).toBe('WAR_REQUIRED');
     });
   });
 });
