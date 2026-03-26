@@ -256,10 +256,22 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     const ageMultiplier = AGE_INCOME_MULTIPLIERS[currentAge] ?? 1.0;
 
     // Building-based income per turn (tithe is separated so it can be floored before age scaling)
-    const baseGoldPerTurn = Math.max(50, (buildings.mine ?? 0) * 20 + (buildings.farm ?? 0) * 8 + (buildings.tower ?? 0) * 50 + 100);
+    let baseGoldPerTurn = Math.max(50, (buildings.mine ?? 0) * 20 + (buildings.farm ?? 0) * 8 + (buildings.tower ?? 0) * 50 + 100);
     const populationPerTurn = (buildings.farm ?? 0) * 10;
     // Race-specific elan generation per turn (matches shared/mechanics/elan-mechanics.ts)
     const currentRace = (kingdom.race as string) ?? '';
+
+    // Castle: small gold income for all races (10 gold per castle)
+    baseGoldPerTurn += (buildings.castle ?? 0) * 10;
+
+    // Barracks: small income from military levies (15 gold per barracks)
+    baseGoldPerTurn += (buildings.barracks ?? 0) * 15;
+
+    // Dwarven castle bonus: +30 gold per castle (stone mastery — castles doubly valuable)
+    if (currentRace.toLowerCase() === 'dwarven') {
+      baseGoldPerTurn += (buildings.castle ?? 0) * 30;
+    }
+
     const ELAN_RATE = (['Sidhe', 'Vampire'].includes(currentRace)) ? 0.005 : 0.003;
     const elanPerTurn = Math.ceil((buildings.temple ?? 0) * ELAN_RATE);
 
