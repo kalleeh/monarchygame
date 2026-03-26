@@ -40,6 +40,15 @@ async function handleUpgrade(
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
+    // Verify territory ownership
+    const territory = await dbGet<{ id: string; kingdomId?: string }>('Territory', territoryId);
+    if (!territory) {
+      return { success: false, error: 'Territory not found', errorCode: ErrorCode.NOT_FOUND };
+    }
+    if (territory.kingdomId !== kingdomId) {
+      return { success: false, error: 'You do not own this territory', errorCode: ErrorCode.FORBIDDEN };
+    }
+
     // Check gold
     const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
     const currentGold = resources.gold ?? 0;
@@ -132,9 +141,17 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
     const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
     const activeRestoration = allRestoration.find(r => r.kingdomId === kingdomId && new Date(r.endTime) > new Date());
     if (activeRestoration) {
-      const prohibited: string[] = typeof activeRestoration.prohibitedActions === 'string'
-        ? JSON.parse(activeRestoration.prohibitedActions)
-        : (activeRestoration.prohibitedActions ?? []);
+      let prohibited: string[] = [];
+      if (typeof activeRestoration.prohibitedActions === 'string') {
+        try {
+          prohibited = JSON.parse(activeRestoration.prohibitedActions);
+        } catch {
+          log.warn('territory-claimer', 'prohibitedActionsParseError', { kingdomId });
+          prohibited = [];
+        }
+      } else {
+        prohibited = activeRestoration.prohibitedActions ?? [];
+      }
       if (prohibited.some(a => ['build', 'attack'].includes(a))) {
         return { success: false, error: 'Kingdom is in restoration and cannot claim territories', errorCode: ErrorCode.RESTORATION_BLOCKED };
       }
@@ -185,9 +202,17 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
     await dbAtomicAdd('Kingdom', kingdomId, 'turnsBalance', -turnCost);
 
     // Store a pending settlement in Kingdom.stats instead of immediately creating Territory
-    const currentStats = typeof kingdom.stats === 'string'
-      ? JSON.parse(kingdom.stats as string)
-      : ((kingdom.stats ?? {}) as Record<string, unknown>);
+    let currentStats: Record<string, unknown>;
+    if (typeof kingdom.stats === 'string') {
+      try {
+        currentStats = JSON.parse(kingdom.stats as string);
+      } catch {
+        log.warn('territory-claimer', 'statsParseError', { kingdomId });
+        currentStats = {};
+      }
+    } else {
+      currentStats = (kingdom.stats ?? {}) as Record<string, unknown>;
+    }
     const pendingSettlements = (currentStats.pendingSettlements as unknown[]) ?? [];
     const completesAt = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
     const updatedPendingSettlements = [

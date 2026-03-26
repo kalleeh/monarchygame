@@ -12,6 +12,7 @@ type KingdomType = {
 };
 
 const MIN_LAND_GAINED = 1000;
+const MAX_LAND_GAINED = 10000;
 
 type CallerIdentity = { sub: string; username?: string };
 
@@ -38,15 +39,33 @@ async function handleClaim(args: { kingdomId?: string | null; targetId?: string 
   const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
   const activeRestoration = allRestoration.find(r => r.kingdomId === kingdomId && new Date(r.endTime) > new Date());
   if (activeRestoration) {
-    const prohibited: string[] = typeof activeRestoration.prohibitedActions === 'string'
-      ? JSON.parse(activeRestoration.prohibitedActions)
-      : (activeRestoration.prohibitedActions ?? []);
+    let prohibited: string[] = [];
+    if (typeof activeRestoration.prohibitedActions === 'string') {
+      try {
+        prohibited = JSON.parse(activeRestoration.prohibitedActions);
+      } catch {
+        log.warn('bounty-processor', 'prohibitedActionsParseError', { kingdomId });
+        prohibited = [];
+      }
+    } else {
+      prohibited = activeRestoration.prohibitedActions ?? [];
+    }
     if (prohibited.some(a => ['attack'].includes(a))) {
       return { success: false, error: 'Kingdom is in restoration and cannot perform this action', errorCode: ErrorCode.RESTORATION_BLOCKED };
     }
   }
 
-  const stats = (typeof kingdom.stats === 'string' ? JSON.parse(kingdom.stats) : (kingdom.stats ?? {})) as Record<string, unknown>;
+  let stats: Record<string, unknown>;
+  if (typeof kingdom.stats === 'string') {
+    try {
+      stats = JSON.parse(kingdom.stats) as Record<string, unknown>;
+    } catch {
+      log.warn('bounty-processor', 'statsParseError', { kingdomId });
+      stats = {};
+    }
+  } else {
+    stats = (kingdom.stats ?? {}) as Record<string, unknown>;
+  }
 
   if (stats.activeBountyTargetId) {
     return { success: false, error: 'Bounty already active — complete or abandon the current bounty first', errorCode: ErrorCode.VALIDATION_FAILED };
@@ -77,6 +96,9 @@ async function handleComplete(args: { kingdomId?: string | null; targetId?: stri
   if (landGained < MIN_LAND_GAINED) {
     return { success: false, error: `landGained must be at least ${MIN_LAND_GAINED}`, errorCode: ErrorCode.INVALID_PARAM };
   }
+  if (landGained > MAX_LAND_GAINED) {
+    return { success: false, error: `landGained must be at most ${MAX_LAND_GAINED}`, errorCode: ErrorCode.INVALID_PARAM };
+  }
 
   const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
   if (!kingdom) {
@@ -89,7 +111,17 @@ async function handleComplete(args: { kingdomId?: string | null; targetId?: stri
     return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
   }
 
-  const stats = (typeof kingdom.stats === 'string' ? JSON.parse(kingdom.stats) : (kingdom.stats ?? {})) as Record<string, unknown>;
+  let stats: Record<string, unknown>;
+  if (typeof kingdom.stats === 'string') {
+    try {
+      stats = JSON.parse(kingdom.stats) as Record<string, unknown>;
+    } catch {
+      log.warn('bounty-processor', 'statsParseError', { kingdomId });
+      stats = {};
+    }
+  } else {
+    stats = (kingdom.stats ?? {}) as Record<string, unknown>;
+  }
 
   if (stats.activeBountyTargetId !== targetId) {
     return { success: false, error: 'No active bounty matches the provided targetId', errorCode: ErrorCode.VALIDATION_FAILED };

@@ -3,6 +3,8 @@ import { dbList, dbGet, dbCreate, dbUpdate, dbBatchWrite, getTableSuffix } from 
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 
+const ADMIN_USER_IDS: string[] = process.env.ADMIN_USER_IDS?.split(',').map(s => s.trim()).filter(Boolean) ?? [];
+
 const SEASON_DURATION_WEEKS = 6;
 const AGE_DURATION_WEEKS = 2;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -63,9 +65,17 @@ async function recordSeasonRankings(seasonNumber: number): Promise<void> {
   // Write rank back to each kingdom's stats JSON
   for (let i = 0; i < ranked.length; i++) {
     const { id, networth, stats } = ranked[i];
-    const existingStats = typeof stats === 'string'
-      ? (JSON.parse(stats) as Record<string, unknown>)
-      : ((stats ?? {}) as Record<string, unknown>);
+    let existingStats: Record<string, unknown>;
+    if (typeof stats === 'string') {
+      try {
+        existingStats = JSON.parse(stats) as Record<string, unknown>;
+      } catch {
+        log.warn('season-lifecycle', 'statsParseError', { id });
+        existingStats = {};
+      }
+    } else {
+      existingStats = (stats ?? {}) as Record<string, unknown>;
+    }
     const updatedStats = {
       ...existingStats,
       previousSeasonRank: i + 1,
@@ -309,6 +319,11 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
       return JSON.stringify({ success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED });
     }
 
+    // Verify caller is an admin
+    if (!ADMIN_USER_IDS.includes(identity.sub)) {
+      return JSON.stringify({ success: false, error: 'Forbidden: admin access required', errorCode: ErrorCode.FORBIDDEN });
+    }
+
     const action = args.action;
 
     switch (action) {
@@ -372,7 +387,12 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
             // Record final rankings before closing the season
             await recordSeasonRankings(season.seasonNumber);
 
-            const existingTransitions = JSON.parse(season.ageTransitions || '{}');
+            let existingTransitions: Record<string, unknown> = {};
+            try {
+              existingTransitions = JSON.parse(season.ageTransitions || '{}');
+            } catch {
+              log.warn('season-lifecycle', 'ageTransitionsParseError', { seasonId: season.id });
+            }
             await dbUpdate('GameSeason', season.id, {
               status: 'completed',
               endDate: new Date().toISOString(),
@@ -402,7 +422,12 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
           // Check age transition
           const currentAge = calculateCurrentAge(startDate);
           if (currentAge !== season.currentAge) {
-            const transitions = JSON.parse((season.ageTransitions as string) || '{}');
+            let transitions: Record<string, unknown> = {};
+          try {
+            transitions = JSON.parse((season.ageTransitions as string) || '{}');
+          } catch {
+            log.warn('season-lifecycle', 'ageTransitionsParseError', { seasonId: season.id });
+          }
             transitions[currentAge] = new Date().toISOString();
 
             await dbUpdate('GameSeason', season.id, {
@@ -438,7 +463,12 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
         // Record final rankings before closing the season
         await recordSeasonRankings(season.seasonNumber);
 
-        const existingTransitions = JSON.parse(season.ageTransitions || '{}');
+        let existingTransitions: Record<string, unknown> = {};
+        try {
+          existingTransitions = JSON.parse(season.ageTransitions || '{}');
+        } catch {
+          log.warn('season-lifecycle', 'ageTransitionsParseError', { seasonId });
+        }
         await dbUpdate('GameSeason', seasonId, {
           status: 'completed',
           endDate: new Date().toISOString(),
