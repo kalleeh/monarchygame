@@ -137,6 +137,19 @@ export async function dbBatchWrite(
   await docClient.send(new BatchWriteCommand({ RequestItems: requestItems }));
 }
 
+/** Parses a database field that may be a JSON string, an already-parsed object, or null/undefined. */
+export function parseJsonField<T>(value: unknown, defaultValue: T): T {
+  if (value === null || value === undefined) return defaultValue;
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return defaultValue;
+    }
+  }
+  return value as T;
+}
+
 /** Atomically increments (or decrements with negative delta) a top-level numeric field. */
 export async function dbAtomicAdd(
   modelName: string,

@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate } from '../data-client';
+import { dbGet, dbUpdate, parseJsonField } from '../data-client';
 
 const SPELL_ELAN_COSTS: Record<string, number> = {
   calming_chant: 5,        // No damage, cheapest
@@ -27,6 +27,9 @@ const SPELL_DAMAGE: Record<string, { type: string; damage: number }> = {
   banshee_deluge: { type: 'structure_damage', damage: 0.05 },
   foul_light: { type: 'peasant_kill', damage: 0.06 },
 };
+
+// Offensive spell types — require diplomatic/restoration checks
+const OFFENSIVE_SPELL_TYPES = new Set(['structure_damage', 'fort_damage', 'peasant_kill', 'shield_removal']);
 
 type KingdomType = Record<string, unknown>;
 
@@ -53,13 +56,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
 
-    if (targetId) {
-      const targetResult = await dbGet<KingdomType>('Kingdom', targetId);
-      if (!targetResult) {
-        return { success: false, error: 'Target kingdom not found', errorCode: ErrorCode.NOT_FOUND };
-      }
-    }
-
+    // BL-1: Fetch caster first (precondition check before any resource deduction)
     const casterKingdom = await dbGet<KingdomType>('Kingdom', casterId);
 
     if (!casterKingdom) {
@@ -75,7 +72,8 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
-    const resources = (typeof casterKingdom.resources === 'string' ? JSON.parse(casterKingdom.resources) : (casterKingdom.resources ?? {})) as KingdomResources;
+    // BL-2: Use parseJsonField for resources
+    const resources = parseJsonField<KingdomResources>(casterKingdom.resources, {} as KingdomResources);
     const currentElan = resources.elan ?? 0;
 
     const spellElanCost = SPELL_ELAN_COSTS[spellId] ?? 20;
@@ -83,13 +81,50 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       return { success: false, error: `Insufficient elan: need ${spellElanCost}, have ${currentElan}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
-    // Check and deduct turns
+    // Check turns (precondition, before deduction)
     const currentTurns = resources.turns ?? 72;
     const turnCost = 1;
     if (currentTurns < turnCost) {
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
+    // SEC-2: Diplomatic/restoration/newbie checks for offensive spells
+    const spellEffect = SPELL_DAMAGE[spellId];
+    const isOffensiveSpell = spellEffect && OFFENSIVE_SPELL_TYPES.has(spellEffect.type);
+
+    let targetKingdom: KingdomType | null = null;
+    if (targetId) {
+      targetKingdom = await dbGet<KingdomType>('Kingdom', targetId);
+      if (!targetKingdom) {
+        return { success: false, error: 'Target kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+      }
+
+      if (isOffensiveSpell) {
+        // SEC-2a: Restoration/encampment check
+        const encampEndTime = targetKingdom.encampEndTime as string | null | undefined;
+        if (encampEndTime && new Date(encampEndTime) > new Date()) {
+          return { success: false, error: 'Cannot target a kingdom in restoration', errorCode: ErrorCode.FORBIDDEN };
+        }
+
+        // SEC-2b: Allied kingdom check (same non-null guildId)
+        const casterGuildId = casterKingdom.guildId as string | null | undefined;
+        const targetGuildId = targetKingdom.guildId as string | null | undefined;
+        if (casterGuildId && casterGuildId === targetGuildId) {
+          return { success: false, error: 'Cannot cast offensive spells on allied kingdoms', errorCode: ErrorCode.FORBIDDEN };
+        }
+
+        // SEC-2c: Newbie protection (target created less than 24 hours ago)
+        const targetCreatedAt = targetKingdom.createdAt as string | null | undefined;
+        if (targetCreatedAt) {
+          const ageHours = (Date.now() - new Date(targetCreatedAt).getTime()) / (1000 * 60 * 60);
+          if (ageHours < 24) {
+            return { success: false, error: 'Cannot target newly created kingdoms', errorCode: ErrorCode.FORBIDDEN };
+          }
+        }
+      }
+    }
+
+    // BL-1: All preconditions passed — now deduct elan and turns
     const updatedResources: KingdomResources = {
       ...resources,
       elan: currentElan - spellElanCost,
@@ -101,75 +136,79 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     });
 
     // --- Apply spell effects to target ---
-    const spellEffect = SPELL_DAMAGE[spellId];
     let damageReport: Record<string, unknown> = {};
 
     if (targetId && spellEffect && spellEffect.type !== 'none' && spellEffect.type !== 'shield_removal') {
-      const targetKingdom = await dbGet<KingdomType>('Kingdom', targetId);
-      if (!targetKingdom) {
-        // Mana already spent but target disappeared — still return success with warning
+      // BL-1: targetKingdom was already fetched above; re-fetch only if it wasn't (no target ID path)
+      const resolvedTarget = targetKingdom ?? await dbGet<KingdomType>('Kingdom', targetId);
+      if (!resolvedTarget) {
+        // Elan already spent but target disappeared — still return success with warning
         return { success: true, result: JSON.stringify({ spellId, targetId, elanUsed: spellElanCost, remainingElan: updatedResources.elan, warning: 'Target kingdom not found, elan spent' }) };
       }
 
-      if (spellEffect.type === 'structure_damage') {
-        // Reduce all building counts by damage percentage
-        const targetBuildings = (typeof targetKingdom.buildings === 'string' ? JSON.parse(targetKingdom.buildings) : (targetKingdom.buildings ?? {})) as Record<string, number>;
-        const damagedBuildings: Record<string, number> = {};
-        let totalDestroyed = 0;
+      try {
+        if (spellEffect.type === 'structure_damage') {
+          // BL-2/BL-3: Use parseJsonField for buildings
+          const targetBuildings = parseJsonField<Record<string, number>>(resolvedTarget.buildings, {});
+          const damagedBuildings: Record<string, number> = {};
+          let totalDestroyed = 0;
 
-        for (const [buildingType, count] of Object.entries(targetBuildings)) {
-          if (typeof count === 'number' && count > 0) {
-            const destroyed = Math.floor(count * spellEffect.damage);
-            damagedBuildings[buildingType] = count - destroyed;
-            totalDestroyed += destroyed;
-          } else {
-            damagedBuildings[buildingType] = count;
+          for (const [buildingType, count] of Object.entries(targetBuildings)) {
+            if (typeof count === 'number' && count > 0) {
+              const destroyed = Math.floor(count * spellEffect.damage);
+              damagedBuildings[buildingType] = count - destroyed;
+              totalDestroyed += destroyed;
+            } else {
+              damagedBuildings[buildingType] = count;
+            }
           }
-        }
 
-        await dbUpdate('Kingdom', targetId, {
-          buildings: damagedBuildings
-        });
+          await dbUpdate('Kingdom', targetId, {
+            buildings: damagedBuildings
+          });
 
-        damageReport = { type: 'structure_damage', totalDestroyed };
+          damageReport = { type: 'structure_damage', totalDestroyed };
 
-      } else if (spellEffect.type === 'fort_damage') {
-        // Reduce forts/walls specifically by damage percentage
-        const targetBuildings = (typeof targetKingdom.buildings === 'string' ? JSON.parse(targetKingdom.buildings) : (targetKingdom.buildings ?? {})) as Record<string, number>;
-        const damagedBuildings = { ...targetBuildings };
-        let totalDestroyed = 0;
+        } else if (spellEffect.type === 'fort_damage') {
+          // BL-2/BL-3: Use parseJsonField for buildings
+          const targetBuildings = parseJsonField<Record<string, number>>(resolvedTarget.buildings, {});
+          const damagedBuildings = { ...targetBuildings };
+          let totalDestroyed = 0;
 
-        // Target fort-type buildings: wall and forts
-        for (const fortKey of ['wall', 'forts']) {
-          const count = damagedBuildings[fortKey];
-          if (typeof count === 'number' && count > 0) {
-            const destroyed = Math.floor(count * spellEffect.damage);
-            damagedBuildings[fortKey] = count - destroyed;
-            totalDestroyed += destroyed;
+          // Target fort-type buildings: wall and forts
+          for (const fortKey of ['wall', 'forts']) {
+            const count = damagedBuildings[fortKey];
+            if (typeof count === 'number' && count > 0) {
+              const destroyed = Math.floor(count * spellEffect.damage);
+              damagedBuildings[fortKey] = count - destroyed;
+              totalDestroyed += destroyed;
+            }
           }
+
+          await dbUpdate('Kingdom', targetId, {
+            buildings: damagedBuildings
+          });
+
+          damageReport = { type: 'fort_damage', totalDestroyed };
+
+        } else if (spellEffect.type === 'peasant_kill') {
+          // BL-2/BL-3: Use parseJsonField for resources
+          const targetResources = parseJsonField<KingdomResources>(resolvedTarget.resources, {} as KingdomResources);
+          const currentPop = targetResources.population ?? 0;
+          const killed = Math.floor(currentPop * spellEffect.damage);
+          const updatedTargetResources: KingdomResources = {
+            ...targetResources,
+            population: currentPop - killed
+          };
+
+          await dbUpdate('Kingdom', targetId, {
+            resources: updatedTargetResources
+          });
+
+          damageReport = { type: 'peasant_kill', killed };
         }
-
-        await dbUpdate('Kingdom', targetId, {
-          buildings: damagedBuildings
-        });
-
-        damageReport = { type: 'fort_damage', totalDestroyed };
-
-      } else if (spellEffect.type === 'peasant_kill') {
-        // Reduce population by damage percentage
-        const targetResources = (typeof targetKingdom.resources === 'string' ? JSON.parse(targetKingdom.resources) : (targetKingdom.resources ?? {})) as KingdomResources;
-        const currentPop = targetResources.population ?? 0;
-        const killed = Math.floor(currentPop * spellEffect.damage);
-        const updatedTargetResources: KingdomResources = {
-          ...targetResources,
-          population: currentPop - killed
-        };
-
-        await dbUpdate('Kingdom', targetId, {
-          resources: updatedTargetResources
-        });
-
-        damageReport = { type: 'peasant_kill', killed };
+      } catch (effectError) {
+        log.warn('spell-caster', 'spell-effect-failed-after-elan-deducted', { spellId, targetId, error: effectError instanceof Error ? effectError.message : String(effectError) });
       }
     }
 

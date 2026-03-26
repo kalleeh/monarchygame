@@ -1,7 +1,7 @@
 import type { Schema } from '../../data/resource';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbList } from '../data-client';
+import { dbGet, dbUpdate, dbList, parseJsonField } from '../data-client';
 
 const VALID_ALIGNMENTS = ['angelique', 'neutral', 'elemental'] as const;
 const VALID_ABILITY_TYPES = ['racial_ability', 'spell_power', 'combat_focus', 'economic_focus', 'emergency'] as const;
@@ -70,7 +70,7 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
         }
       }
 
-      const stats = (typeof kingdom.stats === 'string' ? JSON.parse(kingdom.stats) : (kingdom.stats ?? {})) as Record<string, unknown>;
+      const stats = parseJsonField<Record<string, unknown>>(kingdom.stats, {});
       const updatedStats = { ...stats, faithAlignment: alignment };
 
       await dbUpdate('Kingdom', kingdomId, {
@@ -111,7 +111,8 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
         }
       }
 
-      const stats = (typeof kingdom.stats === 'string' ? JSON.parse(kingdom.stats) : (kingdom.stats ?? {})) as Record<string, unknown>;
+      // BL-2: Use parseJsonField; BL-5: spread existing stats to preserve all fields including activeFaithEffects
+      const stats = parseJsonField<Record<string, unknown>>(kingdom.stats, {});
       const focusPoints = (stats.focusPoints as number) ?? 0;
       const cost = ABILITY_COSTS[abilityType];
 
@@ -120,6 +121,7 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
       }
 
       const remainingFocusPoints = focusPoints - cost;
+      // BL-5: Spread existing stats first so array fields like activeFaithEffects are preserved
       const updatedStats = { ...stats, focusPoints: remainingFocusPoints };
 
       await dbUpdate('Kingdom', kingdomId, {
