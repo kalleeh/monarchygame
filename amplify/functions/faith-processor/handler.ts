@@ -56,7 +56,7 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
       const _oids = [identity.sub ?? '', (identity as any).username ?? '',
         (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
         (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-      if (!ownerField || !_oids.some(id => ownerField.includes(id))) {
+      if (!ownerField || !_oids.some(id => ownerField === id)) {
         return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
       }
 
@@ -95,7 +95,7 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
       const _oids = [identity.sub ?? '', (identity as any).username ?? '',
         (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
         (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-      if (!ownerField || !_oids.some(id => ownerField.includes(id))) {
+      if (!ownerField || !_oids.some(id => ownerField === id)) {
         return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
       }
 

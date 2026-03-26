@@ -93,6 +93,7 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
       callerIdentity.sub ?? '',
       (callerIdentity as any).username ?? '',
       (callerIdentity as any).claims?.email ?? '',
+      (callerIdentity as any).claims?.['preferred_username'] ?? '',
       (callerIdentity as any).claims?.['cognito:username'] ?? '',
     ].filter(Boolean);
     if (!proposerOwnerField || !proposerCallerIds.some(id => proposerOwnerField === id)) {
@@ -215,6 +216,7 @@ async function handleDeclareDiplomaticWar(args: { kingdomId: string; targetKingd
     callerIdentity.sub ?? '',
     (callerIdentity as any).username ?? '',
     (callerIdentity as any).claims?.email ?? '',
+    (callerIdentity as any).claims?.['preferred_username'] ?? '',
     (callerIdentity as any).claims?.['cognito:username'] ?? '',
   ].filter(Boolean);
   if (!ownerField || !warCallerIds.some(id => ownerField === id)) {
@@ -280,6 +282,7 @@ async function handleMakePeace(args: { kingdomId: string; targetKingdomId: strin
     callerIdentity.sub ?? '',
     (callerIdentity as any).username ?? '',
     (callerIdentity as any).claims?.email ?? '',
+    (callerIdentity as any).claims?.['preferred_username'] ?? '',
     (callerIdentity as any).claims?.['cognito:username'] ?? '',
   ].filter(Boolean);
   if (!ownerField || !peaceCallerIds.some(id => ownerField === id)) {
