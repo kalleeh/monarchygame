@@ -388,7 +388,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
         if (allianceData?.stats) {
           const aStats = parseJsonField<Record<string, unknown>>(allianceData.stats, {});
           // Composition bonus
-          const compCombat = aStats?.compositionBonus?.combat ?? 1.0;
+          const compositionBonus = aStats?.compositionBonus as Record<string, number> | undefined;
+          const compCombat = compositionBonus?.combat ?? 1.0;
           if (compCombat !== 1.0) {
             effectiveAttackerUnits = Object.fromEntries(
               Object.entries(effectiveAttackerUnits).map(([k, v]) => [k, Math.floor(v * compCombat)])
