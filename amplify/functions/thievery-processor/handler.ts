@@ -47,9 +47,17 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
     const activeRestoration = allRestoration.find(r => r.kingdomId === kingdomId && new Date(r.endTime) > new Date());
     if (activeRestoration) {
-      const prohibited: string[] = typeof activeRestoration.prohibitedActions === 'string'
-        ? JSON.parse(activeRestoration.prohibitedActions)
-        : (activeRestoration.prohibitedActions ?? []);
+      let prohibited: string[] = [];
+      if (typeof activeRestoration.prohibitedActions === 'string') {
+        try {
+          prohibited = JSON.parse(activeRestoration.prohibitedActions);
+        } catch {
+          log.warn('thievery-processor', 'prohibitedActionsParseError', { kingdomId });
+          prohibited = [];
+        }
+      } else {
+        prohibited = activeRestoration.prohibitedActions ?? [];
+      }
       if (prohibited.some(a => ['espionage'].includes(a))) {
         return { success: false, error: 'Kingdom is in restoration and cannot perform this action', errorCode: ErrorCode.RESTORATION_BLOCKED };
       }
@@ -224,6 +232,19 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
       resources: updatedAttackerResources,
     });
     await dbAtomicAdd('Kingdom', kingdomId, 'turnsBalance', -turnCost);
+
+    // BL-6: If operation was detected (spy caught), record detection on the target kingdom
+    if (!succeeded) {
+      const targetStats = (typeof targetKingdom.stats === 'string'
+        ? (() => { try { return JSON.parse(targetKingdom.stats as string); } catch { return {}; } })()
+        : (targetKingdom.stats ?? {})) as Record<string, unknown>;
+      const updatedTargetStats = {
+        ...targetStats,
+        lastDetectedThievery: new Date().toISOString(),
+      };
+      await dbUpdate('Kingdom', targetKingdomId, { stats: updatedTargetStats });
+      log.info('thievery-processor', 'thieveryDetected', { targetKingdomId, operation, attackerKingdomId: kingdomId });
+    }
 
     log.info('thievery-processor', 'executeThievery', { kingdomId, operation, targetKingdomId });
     return {
