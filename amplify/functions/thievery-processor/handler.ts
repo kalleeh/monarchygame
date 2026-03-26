@@ -108,7 +108,13 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     const targetResources = (typeof targetKingdom.resources === 'string' ? JSON.parse(targetKingdom.resources) : (targetKingdom.resources ?? {})) as KingdomResources;
 
     // Calculate detection rate
-    const detectionRate = Math.min(0.95, ((targetUnits.scouts ?? 0) / Math.max(1, attackerScouts)) * 0.85);
+    let detectionRate = Math.min(0.95, ((targetUnits.scouts ?? 0) / Math.max(1, attackerScouts)) * 0.85);
+
+    // Fae Glamour: 30% reduction in detection rate
+    const attackerRace = (attackerKingdom.race as string | undefined) ?? '';
+    if (attackerRace.toLowerCase() === 'fae') {
+      detectionRate = detectionRate * 0.70;
+    }
 
     // Apply espionage bonus (reduces detection rate)
     const adjustedDetectionRate = Math.max(0, detectionRate / espionageBonus);

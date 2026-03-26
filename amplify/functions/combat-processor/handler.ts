@@ -512,6 +512,28 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       updatedDefenderUnits[unitType] = Math.max(0, (updatedDefenderUnits[unitType] ?? 0) - lost);
     }
 
+    // Droben summon: on successful attack, gain 5% of attacking units as bonus troops
+    if (combatResult.success && attackerRace.toLowerCase() === 'droben') {
+      const totalAttackerUnitsCount = Object.values(updatedAttackerUnits).reduce((sum, n) => sum + (n ?? 0), 0);
+      const bonusTotal = Math.floor(totalAttackerUnitsCount * 0.05);
+      if (bonusTotal > 0) {
+        // Distribute proportionally across existing unit types
+        const unitEntries = Object.entries(updatedAttackerUnits).filter(([, v]) => v > 0);
+        if (unitEntries.length > 0) {
+          let distributed = 0;
+          for (let i = 0; i < unitEntries.length; i++) {
+            const [uType, uCount] = unitEntries[i];
+            const share = i === unitEntries.length - 1
+              ? bonusTotal - distributed
+              : Math.floor((uCount / totalAttackerUnitsCount) * bonusTotal);
+            updatedAttackerUnits[uType] = (updatedAttackerUnits[uType] ?? 0) + share;
+            distributed += share;
+          }
+          log.info('combat-processor', 'droben-summon', { attackerId, bonusTotal });
+        }
+      }
+    }
+
     let degradedTerritoryName: string | null = null;
     if (combatResult.success && combatResult.landGained > 0) {
       await Promise.all([
@@ -539,7 +561,9 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
         const defenderTerrs = allTerrs.filter(t => t.kingdomId === defenderId && (t.defenseLevel ?? 0) > 0);
         if (defenderTerrs.length > 0) {
           const weakest = defenderTerrs.reduce((a, b) => (a.defenseLevel ?? 0) <= (b.defenseLevel ?? 0) ? a : b);
-          const newLevel = Math.max(0, (weakest.defenseLevel ?? 0) - 1);
+          // Elemental: +25% fort/structure destruction — degrade an extra level
+          const elementalExtraLevel = attackerRace.toLowerCase() === 'elemental' ? 1 : 0;
+          const newLevel = Math.max(0, (weakest.defenseLevel ?? 0) - 1 - elementalExtraLevel);
           await dbUpdate('Territory', weakest.id, { defenseLevel: newLevel });
           degradedTerritoryName = weakest.name ?? null;
           log.info('combat-processor', 'territory-degraded', { defenderId, territoryId: weakest.id, newLevel });

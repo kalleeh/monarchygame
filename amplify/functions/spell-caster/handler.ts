@@ -173,6 +173,24 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       }
     }
 
+    // Vampire Elan Drain: drain 10% of spell cost from target's elan on offensive spells
+    const OFFENSIVE_SPELL_TYPES = new Set(['hurricane', 'lightning_lance', 'banshee_deluge', 'foul_light']);
+    const casterRace = (casterKingdom.race as string | undefined) ?? '';
+    if (casterRace.toLowerCase() === 'vampire' && targetId && OFFENSIVE_SPELL_TYPES.has(spellId)) {
+      try {
+        const targetKingdomForDrain = await dbGet<KingdomType>('Kingdom', targetId);
+        if (targetKingdomForDrain) {
+          const targetResourcesForDrain = (typeof targetKingdomForDrain.resources === 'string' ? JSON.parse(targetKingdomForDrain.resources) : (targetKingdomForDrain.resources ?? {})) as KingdomResources;
+          const drainAmount = Math.ceil(spellElanCost * 0.1);
+          const targetNewElan = Math.max(0, (targetResourcesForDrain.elan ?? 0) - drainAmount);
+          await dbUpdate('Kingdom', targetId, {
+            resources: JSON.stringify({ ...targetResourcesForDrain, elan: targetNewElan })
+          });
+          log.info('spell-caster', 'vampire-elan-drain', { casterId, targetId, drainAmount });
+        }
+      } catch { /* non-fatal */ }
+    }
+
     log.info('spell-caster', 'castSpell', { casterId, spellId, targetId });
     return { success: true, result: JSON.stringify({ spellId, targetId, elanUsed: spellElanCost, remainingElan: updatedResources.elan, damageReport }) };
   } catch (error) {
