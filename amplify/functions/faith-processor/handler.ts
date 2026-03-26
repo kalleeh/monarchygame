@@ -121,8 +121,21 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
       }
 
       const remainingFocusPoints = focusPoints - cost;
-      // BL-5: Spread existing stats first so array fields like activeFaithEffects are preserved
-      const updatedStats = { ...stats, focusPoints: remainingFocusPoints };
+
+      // Spread existing stats first so all fields (including activeFaithEffects) are preserved
+      let updatedStats: Record<string, unknown> = { ...stats, focusPoints: remainingFocusPoints };
+      if (abilityType === 'combat_focus' || abilityType === 'economic_focus') {
+        const now = new Date().toISOString();
+        const existingEffects = (stats.activeFaithEffects as Array<Record<string, string>>) ?? [];
+        const activeEffects = existingEffects.filter(e => e.expiresAt > now);
+        const effectType = abilityType === 'combat_focus' ? 'COMBAT_FOCUS' : 'ECONOMIC_FOCUS';
+        const newEffect = {
+          effectType,
+          appliedAt: now,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        };
+        updatedStats = { ...updatedStats, activeFaithEffects: [...activeEffects, newEffect] };
+      }
 
       await dbUpdate('Kingdom', kingdomId, {
         stats: updatedStats,
