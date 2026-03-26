@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomUnits, KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbList, dbAtomicAdd } from '../data-client';
+import { dbGet, dbUpdate, dbList } from '../data-client';
 
 const UNIT_QUANTITY = { min: 1, max: 1000 } as const;
 
@@ -102,11 +102,12 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
       gold: currentGold - goldCost,
     };
 
+    const newTurns = Math.max(0, currentTurns - turnCost);
     await dbUpdate('Kingdom', kingdomId, {
       totalUnits: updatedUnits,
-      resources: updatedResources
+      resources: updatedResources,
+      turnsBalance: newTurns,
     });
-    await dbAtomicAdd('Kingdom', kingdomId, 'turnsBalance', -turnCost);
 
     log.info('unit-trainer', 'trainUnits', { kingdomId, unitType, quantity });
     return { success: true, units: JSON.stringify(updatedUnits) };

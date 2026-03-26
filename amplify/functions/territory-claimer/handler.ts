@@ -34,7 +34,7 @@ async function handleUpgrade(
     const userEmail = identity.claims?.email ?? '';
     const preferredUsername = identity.claims?.['preferred_username'] ?? identity.claims?.['cognito:username'] ?? '';
     const identifiers = [userSub, userName, userEmail, preferredUsername].filter(Boolean);
-    const ownerMatches = ownerField && identifiers.some(id => ownerField.includes(id));
+    const ownerMatches = ownerField && identifiers.some(id => ownerField === id);
     if (!ownerMatches) {
       log.warn('territory-claimer', 'upgradeOwnershipMismatch', { ownerField, userSub, userName, userEmail, kingdomId });
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
@@ -115,7 +115,7 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
     const userEmail = identity.claims?.email ?? '';
     const preferredUsername = identity.claims?.['preferred_username'] ?? identity.claims?.['cognito:username'] ?? '';
     const identifiers = [userSub, userName, userEmail, preferredUsername].filter(Boolean);
-    const ownerMatches = ownerField && identifiers.some(id => ownerField.includes(id));
+    const ownerMatches = ownerField && identifiers.some(id => ownerField === id);
     if (!ownerMatches) {
       log.warn('territory-claimer', 'ownershipMismatch', {
         ownerField,

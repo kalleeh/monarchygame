@@ -58,8 +58,15 @@ async function handleContribute(args: { allianceId?: string | null; kingdomId?: 
   }
 
   // Verify caller owns the kingdom via identity
-  if (identity?.sub && kingdom.owner !== identity.sub) {
-    return { success: false, error: 'Unauthorized: you do not own this kingdom', errorCode: ErrorCode.UNAUTHORIZED };
+  const contribIds = [
+    identity.sub ?? '',
+    (identity as any).username ?? '',
+    (identity as any).claims?.email ?? '',
+    (identity as any).claims?.['preferred_username'] ?? '',
+    (identity as any).claims?.['cognito:username'] ?? '',
+  ].filter(Boolean);
+  if (!kingdom.owner || !contribIds.some(id => kingdom.owner === id)) {
+    return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
   }
 
   const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;

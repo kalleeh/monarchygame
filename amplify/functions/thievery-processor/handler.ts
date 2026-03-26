@@ -111,7 +111,9 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     const detectionRate = Math.min(0.95, ((targetUnits.scouts ?? 0) / Math.max(1, attackerScouts)) * 0.85);
 
     // Apply espionage bonus (reduces detection rate)
-    const adjustedDetectionRate = Math.max(0, detectionRate / espionageBonus);
+    const adjustedDetectionRate = espionageBonus > 0
+      ? Math.max(0, detectionRate / espionageBonus)
+      : detectionRate; // no bonus, use base rate
 
     // Determine success
     const succeeded = Math.random() > adjustedDetectionRate;

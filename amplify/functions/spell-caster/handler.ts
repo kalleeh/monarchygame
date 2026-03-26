@@ -71,7 +71,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     const _allIds = [identity.sub ?? '', (identity as any).username ?? '',
       (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
       (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-    if (!ownerField || !_allIds.some(id => ownerField.includes(id))) {
+    if (!ownerField || !_allIds.some(id => ownerField === id)) {
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 

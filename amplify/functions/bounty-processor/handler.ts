@@ -30,7 +30,7 @@ async function handleClaim(args: { kingdomId?: string | null; targetId?: string 
 
   // Verify kingdom ownership
   const ownerField = kingdom.owner ?? null;
-  if (!ownerField || (!ownerField.includes(callerIdentity.sub) && !ownerField.includes(callerIdentity.username ?? ''))) {
+  if (!ownerField || (ownerField !== callerIdentity.sub && ownerField !== (callerIdentity.username ?? ''))) {
     return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
   }
 
@@ -55,7 +55,7 @@ async function handleClaim(args: { kingdomId?: string | null; targetId?: string 
   const updatedStats = {
     ...stats,
     activeBountyTargetId: targetId,
-    activeBountyClaimedAt: Date.now(),
+    activeBountyClaimedAt: new Date().toISOString(),
   };
 
   await dbUpdate('Kingdom', kingdomId, {
@@ -85,7 +85,7 @@ async function handleComplete(args: { kingdomId?: string | null; targetId?: stri
 
   // Verify kingdom ownership
   const ownerField = kingdom.owner ?? null;
-  if (!ownerField || (!ownerField.includes(callerIdentity.sub) && !ownerField.includes(callerIdentity.username ?? ''))) {
+  if (!ownerField || (ownerField !== callerIdentity.sub && ownerField !== (callerIdentity.username ?? ''))) {
     return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
   }
 
