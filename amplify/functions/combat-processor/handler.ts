@@ -137,7 +137,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     }
 
     const attackerUnits: Record<string, number> = typeof units === 'string' ? JSON.parse(units) : units;
-    const ownedUnits = (attacker.totalUnits ?? {}) as Record<string, number>;
+    const ownedUnitsRaw = attacker.totalUnits;
+    const ownedUnits = (typeof ownedUnitsRaw === 'string' ? JSON.parse(ownedUnitsRaw) : (ownedUnitsRaw ?? {})) as Record<string, number>;
 
     // Validate that attacker has enough units
     for (const [unitType, count] of Object.entries(attackerUnits)) {
@@ -149,14 +150,17 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     // Newbie protection: kingdoms < 72 hours old that are 3x+ smaller than attacker
     const defenderCreatedAt = new Date((defender.createdAt as string) ?? 0);
     const defenderAgeHours = (Date.now() - defenderCreatedAt.getTime()) / (1000 * 60 * 60);
-    const attackerNetworth = ((attacker.resources as KingdomResources | null)?.land ?? 100) * 1000 + ((attacker.resources as KingdomResources | null)?.gold ?? 0);
-    const defenderNetworth = ((defender.resources as KingdomResources | null)?.land ?? 100) * 1000 + ((defender.resources as KingdomResources | null)?.gold ?? 0);
+    const _aRes = (typeof attacker.resources === 'string' ? JSON.parse(attacker.resources as string) : (attacker.resources ?? {})) as KingdomResources;
+    const _dRes = (typeof defender.resources === 'string' ? JSON.parse(defender.resources as string) : (defender.resources ?? {})) as KingdomResources;
+    const attackerNetworth = (_aRes.land ?? 100) * 1000 + (_aRes.gold ?? 0);
+    const defenderNetworth = (_dRes.land ?? 100) * 1000 + (_dRes.gold ?? 0);
     if (defenderAgeHours < 72 && attackerNetworth > defenderNetworth * 3) {
       return JSON.stringify({ success: false, error: 'This kingdom is under new player protection (72 hours)', errorCode: 'NEWBIE_PROTECTION' });
     }
 
     // Check and deduct turns
-    const attackerResources = (attacker.resources ?? {}) as KingdomResources;
+    const attackerResourcesRaw = attacker.resources;
+    const attackerResources = (typeof attackerResourcesRaw === 'string' ? JSON.parse(attackerResourcesRaw) : (attackerResourcesRaw ?? {})) as KingdomResources;
     const currentTurns = (attacker.turnsBalance ?? attackerResources.turns ?? 72) as number;
     const turnCost = 4;
     if (currentTurns < turnCost) {
@@ -186,8 +190,10 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       });
     }
 
-    const defenderResources = (defender.resources ?? {}) as KingdomResources;
-    const defenderUnits = (defender.totalUnits ?? {}) as Record<string, number>;
+    const defenderResourcesRaw = defender.resources;
+    const defenderResources = (typeof defenderResourcesRaw === 'string' ? JSON.parse(defenderResourcesRaw) : (defenderResourcesRaw ?? {})) as KingdomResources;
+    const defenderUnitsRaw = defender.totalUnits;
+    const defenderUnits = (typeof defenderUnitsRaw === 'string' ? JSON.parse(defenderUnitsRaw) : (defenderUnitsRaw ?? {})) as Record<string, number>;
     const defenderLand = defenderResources.land ?? 1000;
 
     // -------------------------------------------------------------------------
