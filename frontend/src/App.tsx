@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
+import React, { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
 import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/data';
@@ -33,6 +33,83 @@ import { useAITick } from './hooks/useAITick';
 // so it doesn't ship in the initial bundle for the welcome / demo-mode pages.
 const AuthProvider = lazy(() => import('./AuthProvider'));
 
+// Defined at module scope to satisfy Rules of Hooks — must not be inside another
+// component's render function, otherwise its hooks re-run on every parent render.
+interface AuthenticatedAppProps {
+  user: AuthUser | undefined;
+  signOut?: () => void;
+  username: string;
+  isAdminUser: boolean;
+  kingdoms: Schema['Kingdom']['type'][];
+  currentUser: AuthUser | null;
+  setCurrentUser: (user: AuthUser) => void;
+  handleGetStarted: () => void;
+  handleKingdomCreated: (kingdomName: string, race: string) => Promise<void>;
+  navigate: ReturnType<typeof useNavigate>;
+}
+
+const AuthenticatedApp = React.memo(function AuthenticatedApp({
+  user,
+  signOut,
+  username,
+  isAdminUser,
+  kingdoms,
+  currentUser,
+  setCurrentUser,
+  handleGetStarted,
+  handleKingdomCreated,
+  navigate,
+}: AuthenticatedAppProps) {
+  useEffect(() => {
+    if (user && user !== currentUser) {
+      setCurrentUser(user as AuthUser);
+    }
+  }, [user, currentUser, setCurrentUser]);
+
+  const handleKingdomCreatedWithAuth = async (kingdomName: string, race: string) => {
+    const isDemo = isDemoMode();
+    if (isDemo) {
+      return handleKingdomCreated(kingdomName, race);
+    }
+    if (!user) {
+      alert('Authentication required. Please sign in again.');
+      return;
+    }
+    return handleKingdomCreated(kingdomName, race);
+  };
+
+  return (
+    <main className="app">
+      <Toaster />
+      <div className="app-utility-bar">
+        <span className="utility-bar-label">Welcome, {username}</span>
+        {isAdminUser && (
+          <button
+            className="utility-bar-btn utility-bar-btn--admin"
+            onClick={() => navigate('/admin')}
+            title="Admin Dashboard"
+          >
+            ⚙ Admin
+          </button>
+        )}
+        <button onClick={signOut} className="utility-bar-btn utility-bar-btn--signout">
+          Sign Out
+        </button>
+      </div>
+
+      <div className="game-content">
+        <ErrorBoundary>
+          <AppRouter
+            kingdoms={kingdoms}
+            onGetStarted={handleGetStarted}
+            onKingdomCreated={handleKingdomCreatedWithAuth}
+          />
+        </ErrorBoundary>
+      </div>
+    </main>
+  );
+});
+
 Amplify.configure(outputs);
 let _client: ReturnType<typeof generateClient<Schema>> | null = null;
 const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
@@ -49,8 +126,12 @@ function AppContent() {
   const [username, setUsername] = useState<string>('User');
   const [hasInitialFetch, setHasInitialFetch] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
+  // FE-7: guard against concurrent in-flight fetches
+  const fetchingRef = useRef(false);
 
   const fetchKingdoms = useCallback(async () => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     try {
       if (demoMode) {
         // Demo mode - check if kingdoms exist in localStorage
@@ -119,6 +200,7 @@ function AppContent() {
       }
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   }, [demoMode, navigate]);
 
@@ -169,6 +251,18 @@ function AppContent() {
       }, 1000);
     }
   }, [currentUser, demoMode, hasInitialFetch, fetchKingdoms]); // Add fetchKingdoms dependency
+
+  // FE-1: move protected-route auth redirect out of render path
+  useEffect(() => {
+    if (!showAuth && !demoMode && !loading) {
+      const currentPath = window.location.pathname;
+      const protectedRoutes = ['/creation', '/kingdoms', '/kingdom'];
+      const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
+      if (isProtectedRoute) {
+        setShowAuth(true);
+      }
+    }
+  }, [showAuth, demoMode, loading]);
 
   const handleGetStarted = () => {
     const isDemo = isDemoMode();
@@ -371,26 +465,8 @@ function AppContent() {
 
   // Show welcome or auth
   if (!showAuth && !demoMode) {
-    // Check if user is trying to access protected routes directly
-    const currentPath = window.location.pathname;
-    const protectedRoutes = ['/creation', '/kingdoms', '/kingdom'];
-    const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
-    
-    if (isProtectedRoute) {
-      // Show loading while checking auth, then redirect to auth
-      if (loading) {
-        return (
-          <div className="loading">
-            <p>Loading...</p>
-          </div>
-        );
-      }
-      setShowAuth(true);
-      return null; // Prevent flash of content
-    }
-    
     return (
-      <AppRouter 
+      <AppRouter
         kingdoms={kingdoms}
         onGetStarted={handleGetStarted}
         onKingdomCreated={handleKingdomCreated}
@@ -398,69 +474,22 @@ function AppContent() {
     );
   }
 
-  // Authenticated app
-  const AuthenticatedApp = ({ user, signOut }: { user: AuthUser | undefined, signOut?: () => void }) => {
-    useEffect(() => {
-      if (user && user !== currentUser) {
-        setCurrentUser(user as AuthUser);
-      }
-    }, [user]);
-
-    // Create a wrapper for handleKingdomCreated that uses the user prop directly
-    const handleKingdomCreatedWithAuth = async (kingdomName: string, race: string) => {
-      const isDemo = isDemoMode();
-
-      if (isDemo) {
-        return handleKingdomCreated(kingdomName, race);
-      }
-      
-      // For authenticated users, verify user exists before proceeding
-      if (!user) {
-        alert('Authentication required. Please sign in again.');
-        return;
-      }
-      
-      // Call original handler
-      return handleKingdomCreated(kingdomName, race);
-    };
-
-    return (
-      <main className="app">
-        <Toaster />
-        <div className="app-utility-bar">
-          <span className="utility-bar-label">Welcome, {username}</span>
-          {isAdminUser && (
-            <button
-              className="utility-bar-btn utility-bar-btn--admin"
-              onClick={() => navigate('/admin')}
-              title="Admin Dashboard"
-            >
-              ⚙ Admin
-            </button>
-          )}
-          <button onClick={signOut} className="utility-bar-btn utility-bar-btn--signout">
-            Sign Out
-          </button>
-        </div>
-
-        <div className="game-content">
-          <ErrorBoundary>
-            <AppRouter
-              kingdoms={kingdoms}
-              onGetStarted={handleGetStarted}
-              onKingdomCreated={handleKingdomCreatedWithAuth}
-            />
-          </ErrorBoundary>
-        </div>
-      </main>
-    );
-  };
-
   return (
     <Suspense fallback={<div className="loading"><p>Loading...</p></div>}>
       <AuthProvider>
         {({ signOut, user }) => (
-          <AuthenticatedApp user={user} signOut={signOut} />
+          <AuthenticatedApp
+            user={user}
+            signOut={signOut}
+            username={username}
+            isAdminUser={isAdminUser}
+            kingdoms={kingdoms}
+            currentUser={currentUser}
+            setCurrentUser={(u) => setCurrentUser(u)}
+            handleGetStarted={handleGetStarted}
+            handleKingdomCreated={handleKingdomCreated}
+            navigate={navigate}
+          />
         )}
       </AuthProvider>
     </Suspense>

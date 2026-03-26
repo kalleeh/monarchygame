@@ -46,6 +46,88 @@ import { NextStepBanner } from './ui/NextStepBanner';
 import { AchievementsPanel } from './ui/AchievementsPanel';
 import { HelpModal } from './ui/HelpModal';
 
+// FE-6: Memoised sub-components to avoid re-rendering on unrelated state changes.
+
+interface PendingSettlementsProps {
+  kingdomStats: Schema['Kingdom']['type']['stats'];
+}
+
+const PendingSettlements = React.memo(function PendingSettlements({ kingdomStats }: PendingSettlementsProps) {
+  const pendingSettlements = (() => {
+    try {
+      const stats = typeof kingdomStats === 'string' ? JSON.parse(kingdomStats) : (kingdomStats ?? {});
+      return (stats.pendingSettlements as Array<{ name: string; regionId: string | null; completesAt: string }>) ?? [];
+    } catch { return []; }
+  })();
+  const now = Date.now();
+  const activeSettlements = pendingSettlements.filter(ps => new Date(ps.completesAt).getTime() > now);
+  if (activeSettlements.length === 0) return null;
+  return (
+    <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: '8px', padding: '12px 16px', marginBottom: '12px' }}>
+      <strong>⏳ Settlers en route ({activeSettlements.length})</strong>
+      {activeSettlements.map((ps, i) => {
+        const msLeft = new Date(ps.completesAt).getTime() - now;
+        const h = Math.floor(msLeft / 3600000);
+        const m = Math.floor((msLeft % 3600000) / 60000);
+        return <div key={i} style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>• {ps.name} — arrives in {h}h {m}min</div>;
+      })}
+    </div>
+  );
+});
+
+interface ResourceStatusInfo {
+  label: string;
+  color: string;
+}
+
+interface ResourcesGridProps {
+  resources: { gold?: number; population?: number; land?: number; turns?: number };
+  resourceStatus: {
+    gold: ResourceStatusInfo;
+    population: ResourceStatusInfo;
+    land: ResourceStatusInfo;
+    turns: ResourceStatusInfo;
+  };
+}
+
+const ResourcesGrid = React.memo(function ResourcesGrid({ resources, resourceStatus }: ResourcesGridProps) {
+  return (
+    <div className="resources-grid">
+      <div className="resource-item">
+        <img src="/gold-resource-icon.png" alt="Gold" className="resource-icon-img" />
+        <div>
+          <div className="resource-value">{resources?.gold || 0}</div>
+          <div className="resource-label">Gold</div>
+          <div style={{ fontSize: '0.7rem', color: resourceStatus.gold.color }}>{resourceStatus.gold.label}</div>
+        </div>
+      </div>
+      <div className="resource-item">
+        <img src="/population-resource-icon.png" alt="Population" className="resource-icon-img" />
+        <div>
+          <div className="resource-value">{resources?.population || 0}</div>
+          <div className="resource-label">Population</div>
+          <div style={{ fontSize: '0.7rem', color: resourceStatus.population.color }}>{resourceStatus.population.label}</div>
+        </div>
+      </div>
+      <div className="resource-item">
+        <img src="/land-resource-icon.png" alt="Land" className="resource-icon-img" />
+        <div>
+          <div className="resource-value">{resources?.land || 0}</div>
+          <div className="resource-label">Land</div>
+        </div>
+      </div>
+      <div className="resource-item">
+        <img src="/time-turns-icon.png" alt="Turns" className="resource-icon-img" />
+        <div>
+          <div className="resource-value">{resources?.turns || 0}</div>
+          <div className="resource-label">Turns</div>
+          <div style={{ fontSize: '0.7rem', color: resourceStatus.turns.color }}>{resourceStatus.turns.label}</div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 interface KingdomDashboardProps {
   kingdom: Schema['Kingdom']['type'];
   onBack: () => void;
@@ -120,14 +202,14 @@ function KingdomDashboard({
   // In auth mode these are set by the encampKingdom Lambda and cleared by turn-ticker.
   const [encampEndTimeMs, setEncampEndTimeMs] = useState<number | null>(() => {
     if (isDemoMode()) return null; // demo mode uses localStorage via EncampPanel
-    const raw = (kingdom as unknown as Record<string, unknown>).encampEndTime as string | null | undefined;
+    const raw = (kingdom as any)?.encampEndTime as string | null | undefined;
     if (!raw) return null;
     const ms = new Date(raw).getTime();
     return ms > Date.now() ? ms : null;
   });
   const [encampBonusTurns, setEncampBonusTurns] = useState<number>(() => {
     if (isDemoMode()) return 0;
-    return ((kingdom as unknown as Record<string, unknown>).encampBonusTurns as number | null | undefined) ?? 0;
+    return ((kingdom as any)?.encampBonusTurns as number | null | undefined) ?? 0;
   });
   const [encampLoading, setEncampLoading] = useState(false);
 
@@ -199,6 +281,23 @@ function KingdomDashboard({
     onBack();
   }, [onBack]);
 
+
+  // FE-4: memoised networth calculation — avoids re-running try/catch + JSON.parse on every render
+  const networth = useMemo(() => {
+    const land = Number(resources?.land) || 0;
+    const gold = Number(resources?.gold) || 0;
+    const unitValue = liveUnits.length > 0
+      ? liveUnits.reduce((sum, u) => sum + (Number.isFinite(u.count) ? u.count : 0) * 100, 0)
+      : (() => {
+          try {
+            const tu = typeof kingdom.totalUnits === 'string'
+              ? JSON.parse(kingdom.totalUnits as unknown as string)
+              : kingdom.totalUnits;
+            return tu ? Object.values(tu).reduce((s: number, v) => s + (Number.isFinite(v as number) ? (v as number) : 0) * 100, 0) : 0;
+          } catch { return 0; }
+        })();
+    return land * 1000 + gold + unitValue;
+  }, [resources, liveUnits, kingdom.totalUnits]);
 
   const upkeepInfo = useMemo(() => {
     const totalUpkeep = getTotalUpkeep();
@@ -802,61 +901,14 @@ function KingdomDashboard({
               KINGDOM NETWORTH (SCORE)
             </div>
             <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)' }}>
-              {(() => {
-                const land = Number(resources?.land) || 0;
-                const gold = Number(resources?.gold) || 0;
-                // Use live units from store (updated on summon) — fall back to kingdom.totalUnits prop
-                const unitValue = liveUnits.length > 0
-                  ? liveUnits.reduce((sum, u) => sum + (Number.isFinite(u.count) ? u.count : 0) * 100, 0)
-                  : (() => {
-                      try {
-                        const tu = typeof kingdom.totalUnits === 'string'
-                          ? JSON.parse(kingdom.totalUnits as unknown as string)
-                          : kingdom.totalUnits;
-                        return tu ? Object.values(tu).reduce((s: number, v) => s + (Number.isFinite(v as number) ? (v as number) : 0) * 100, 0) : 0;
-                      } catch { return 0; }
-                    })();
-                return (land * 1000 + gold + unitValue).toLocaleString();
-              })()}
+              {networth.toLocaleString()}
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
               Land × 1,000 + Gold + Units × 100
             </div>
           </div>
 
-          <div className="resources-grid">
-            <div className="resource-item">
-              <img src="/gold-resource-icon.png" alt="Gold" className="resource-icon-img" />
-              <div>
-                <div className="resource-value">{resources?.gold || 0}</div>
-                <div className="resource-label">Gold</div>
-                <div style={{ fontSize: '0.7rem', color: resourceStatus.gold.color }}>{resourceStatus.gold.label}</div>
-              </div>
-            </div>
-            <div className="resource-item">
-              <img src="/population-resource-icon.png" alt="Population" className="resource-icon-img" />
-              <div>
-                <div className="resource-value">{resources?.population || 0}</div>
-                <div className="resource-label">Population</div>
-                <div style={{ fontSize: '0.7rem', color: resourceStatus.population.color }}>{resourceStatus.population.label}</div>
-              </div>
-            </div>
-            <div className="resource-item">
-              <img src="/land-resource-icon.png" alt="Land" className="resource-icon-img" />
-              <div>
-                <div className="resource-value">{resources?.land || 0}</div>
-                <div className="resource-label">Land</div>
-              </div>
-            </div>
-            <div className="resource-item">
-              <img src="/time-turns-icon.png" alt="Turns" className="resource-icon-img" />
-              <div>
-                <div className="resource-value">{resources?.turns || 0}</div>
-                <div className="resource-label">Turns</div>
-                <div style={{ fontSize: '0.7rem', color: resourceStatus.turns.color }}>{resourceStatus.turns.label}</div>
-              </div>
-            </div>
-          </div>
+          <ResourcesGrid resources={resources} resourceStatus={resourceStatus} />
 
           {/* Demo-only shortcuts — in auth mode turns/income are server-generated
               on a 20-minute timer; manual buttons would bypass anti-cheat */}
@@ -922,27 +974,7 @@ function KingdomDashboard({
         {/* Row 3: Territories (full width) */}
         <div className="territories-panel">
           <h2>Territories ({ownedTerritories.length})</h2>
-          {(() => {
-            const pendingSettlements = (() => {
-              try {
-                const stats = typeof kingdom.stats === 'string' ? JSON.parse(kingdom.stats) : (kingdom.stats ?? {});
-                return (stats.pendingSettlements as Array<{ name: string; regionId: string | null; completesAt: string }>) ?? [];
-              } catch { return []; }
-            })();
-            const now = Date.now();
-            const activeSettlements = pendingSettlements.filter(ps => new Date(ps.completesAt).getTime() > now);
-            return activeSettlements.length > 0 ? (
-              <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: '8px', padding: '12px 16px', marginBottom: '12px' }}>
-                <strong>⏳ Settlers en route ({activeSettlements.length})</strong>
-                {activeSettlements.map((ps, i) => {
-                  const msLeft = new Date(ps.completesAt).getTime() - now;
-                  const h = Math.floor(msLeft / 3600000);
-                  const m = Math.floor((msLeft % 3600000) / 60000);
-                  return <div key={i} style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>• {ps.name} — arrives in {h}h {m}min</div>;
-                })}
-              </div>
-            ) : null;
-          })()}
+          <PendingSettlements kingdomStats={kingdom.stats} />
           {loading ? (
             <p>Loading territories...</p>
           ) : ownedTerritories.length === 0 ? (
