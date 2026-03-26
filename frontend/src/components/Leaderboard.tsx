@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../../amplify/data/resource';
 import type { Kingdom } from '../types/kingdom';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { GuildService } from '../services/GuildService';
@@ -191,10 +193,41 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
             networth: calculateNetworth(k),
             rank: i + 1,
           }));
+
+        // Fetch the completed season record to get victoryResults from ageTransitions
+        let victoryTracks: SeasonResultsProps['victoryTracks'] = undefined;
+        try {
+          const client = generateClient<Schema>();
+          const { data: seasons } = await client.models.GameSeason.list({
+            filter: { seasonNumber: { eq: detectedSeasonNumber } },
+            limit: 1,
+          });
+          if (seasons && seasons.length > 0) {
+            const ageTransitions = (() => {
+              const raw = seasons[0].ageTransitions;
+              if (!raw) return null;
+              if (typeof raw === 'string') {
+                try { return JSON.parse(raw); } catch { return null; }
+              }
+              return raw as Record<string, unknown>;
+            })();
+            const victoryResults = ageTransitions?.victoryResults as Record<string, unknown> | undefined;
+            if (victoryResults) {
+              victoryTracks = {
+                militaryChampion: victoryResults.militaryChampion as SeasonResultsProps['victoryTracks']['militaryChampion'],
+                economicPowerhouse: victoryResults.economicPowerhouse as SeasonResultsProps['victoryTracks']['economicPowerhouse'],
+                strategistGuild: victoryResults.strategistGuild as SeasonResultsProps['victoryTracks']['strategistGuild'],
+              };
+            }
+          }
+        } catch {
+          // Non-fatal — modal shows without track details
+        }
+
         setSeasonModal({
           seasonNumber: detectedSeasonNumber,
           topKingdoms: sorted,
-          victoryTracks: undefined,
+          victoryTracks,
         });
         toast('Season has ended — final rankings recorded!', { icon: '🏆', duration: 6000 });
       }

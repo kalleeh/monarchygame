@@ -30,6 +30,8 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 import { BalanceTestRunner } from './BalanceTestRunner';
 import { useRestorationStore } from '../stores/restorationStore';
 import { isDemoMode } from '../utils/authMode';
+import { normalizeRace } from '../utils/raceUtils';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 import { subscriptionManager } from '../services/subscriptionManager';
 import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
 import { NotificationCenter } from './ui/NotificationCenter';
@@ -45,6 +47,89 @@ import { EncampPanel } from './ui/EncampPanel';
 import { NextStepBanner } from './ui/NextStepBanner';
 import { AchievementsPanel } from './ui/AchievementsPanel';
 import { HelpModal } from './ui/HelpModal';
+
+// ── AI simulation helper ──────────────────────────────────────────────────────
+// Extracted from handleTimeTravel to avoid duplicating logic across try/catch.
+// When includeAttacks is true the attacker action type is handled and the
+// caller is responsible for showing a toast with the action log.
+
+interface AIKingdomLike {
+  id: string;
+  name: string;
+  race: string;
+  resources: { gold: number; population: number; land: number; turns: number };
+  units: Record<string, number>;
+  networth: number;
+}
+
+function simulateAITick(
+  aiKingdoms: AIKingdomLike[],
+  updateAIKingdom: (id: string, updates: Partial<AIKingdomLike>) => void,
+  incomeToGenerate: number,
+  populationGrowth: number,
+  landGrowth: number,
+  turnsToGenerate: number,
+  includeAttacks: boolean
+): string[] {
+  const aiActionLog: string[] = [];
+
+  aiKingdoms.forEach(ai => {
+    const updatedAI = {
+      ...ai,
+      resources: {
+        ...ai.resources,
+        gold: ai.resources.gold + incomeToGenerate,
+        population: ai.resources.population + populationGrowth,
+        land: ai.resources.land + landGrowth,
+        turns: Math.min(ai.resources.turns + turnsToGenerate, 100),
+      },
+    };
+
+    const actions = AIActionService.decideActions(updatedAI, aiKingdoms);
+
+    actions.forEach(action => {
+      if (action.type === 'build') {
+        const result = AIActionService.executeBuild(updatedAI);
+        if (result.resources) {
+          updatedAI.resources = result.resources;
+          if (includeAttacks) aiActionLog.push(`${ai.name} built structures`);
+        }
+      } else if (action.type === 'train') {
+        const result = AIActionService.executeTrain(updatedAI);
+        if (result.resources) {
+          updatedAI.resources = result.resources;
+          if (result.units) updatedAI.units = result.units;
+          if (includeAttacks) aiActionLog.push(`${ai.name} trained units`);
+        }
+      } else if (action.type === 'attack' && includeAttacks) {
+        const target = aiKingdoms.find(t => t.id !== ai.id && t.networth < ai.networth * 1.5);
+        if (target) {
+          const result = AIActionService.executeAttack(updatedAI, target);
+          if (result.attacker.resources) {
+            updatedAI.resources = result.attacker.resources;
+            aiActionLog.push(`${ai.name} attacked ${target.name}`);
+            if (result.defender.resources) {
+              updateAIKingdom(target.id, result.defender);
+            }
+          }
+        }
+      }
+    });
+
+    const newNetworth =
+      updatedAI.resources.land * 1000 +
+      updatedAI.resources.gold +
+      Object.values(updatedAI.units).reduce((sum, count) => sum + count * 100, 0);
+
+    updateAIKingdom(ai.id, {
+      resources: updatedAI.resources,
+      units: updatedAI.units,
+      networth: newNetworth,
+    });
+  });
+
+  return aiActionLog;
+}
 
 // FE-6: Memoised sub-components to avoid re-rendering on unrelated state changes.
 
@@ -228,7 +313,7 @@ function KingdomDashboard({
   // Compute upkeep directly from kingdomStore.units + race definition so it works
   // even before the Summon page has been opened (when summonStore.availableUnits is empty).
   const getTotalUpkeep = useCallback(() => {
-    const raceKey = kingdom.race ? kingdom.race.charAt(0).toUpperCase() + kingdom.race.slice(1).toLowerCase() : 'Human';
+    const raceKey = normalizeRace(kingdom.race);
     const raceUnits = getUnitsForRace(raceKey);
     return liveUnits.reduce((sum, unit) => {
       const def = raceUnits.find(u => u.id === unit.type);
@@ -538,7 +623,7 @@ function KingdomDashboard({
         : TURN_MECHANICS.ENCAMP_BONUSES.ENCAMP_16_HOURS.bonusTurns;
       const endTime = Date.now() + duration * 60 * 60 * 1000;
       localStorage.setItem(
-        `encamp-${kingdom.id}`,
+        STORAGE_KEYS.ENCAMP(kingdom.id),
         JSON.stringify({ endTime, bonusTurns })
       );
       ToastService.success(
@@ -628,68 +713,16 @@ function KingdomDashboard({
 
       // Update AI kingdoms with time progression AND actions
       const updateAIKingdom = useAIKingdomStore.getState().updateAIKingdom;
-      const aiActionLog: string[] = [];
-      
-      aiKingdoms.forEach(ai => {
-        // First, update resources from time progression
-        const updatedAI = {
-          ...ai,
-          resources: {
-            ...ai.resources,
-            gold: ai.resources.gold + incomeToGenerate,
-            population: ai.resources.population + populationGrowth,
-            land: ai.resources.land + landGrowth,
-            turns: Math.min(ai.resources.turns + turnsToGenerate, 100)
-          }
-        };
-        
-        // Then, AI takes actions based on state
-        const actions = AIActionService.decideActions(updatedAI, aiKingdoms);
-        
-        actions.forEach(action => {
-          if (action.type === 'build') {
-            const result = AIActionService.executeBuild(updatedAI);
-            if (result.resources) {
-              updatedAI.resources = result.resources;
-              aiActionLog.push(`${ai.name} built structures`);
-            }
-          } else if (action.type === 'train') {
-            const result = AIActionService.executeTrain(updatedAI);
-            if (result.resources) {
-              updatedAI.resources = result.resources;
-              if (result.units) updatedAI.units = result.units;
-              aiActionLog.push(`${ai.name} trained units`);
-            }
-          } else if (action.type === 'attack') {
-            const target = aiKingdoms.find(t => t.id !== ai.id && t.networth < ai.networth * 1.5);
-            if (target) {
-              const result = AIActionService.executeAttack(updatedAI, target);
-              if (result.attacker.resources) {
-                updatedAI.resources = result.attacker.resources;
-                aiActionLog.push(`${ai.name} attacked ${target.name}`);
-                
-                // Update defender too
-                if (result.defender.resources) {
-                  updateAIKingdom(target.id, result.defender);
-                }
-              }
-            }
-          }
-        });
-        
-        // Apply all updates to AI kingdom
-        const newNetworth = 
-          updatedAI.resources.land * 1000 + 
-          updatedAI.resources.gold + 
-          Object.values(updatedAI.units).reduce((sum, count) => sum + count * 100, 0);
-        
-        updateAIKingdom(ai.id, {
-          resources: updatedAI.resources,
-          units: updatedAI.units,
-          networth: newNetworth
-        });
-      });
-      
+      const aiActionLog = simulateAITick(
+        aiKingdoms,
+        updateAIKingdom,
+        incomeToGenerate,
+        populationGrowth,
+        landGrowth,
+        turnsToGenerate,
+        true
+      );
+
       // Show AI action summary if any actions taken
       if (aiActionLog.length > 0) {
         ToastService.info(`AI Activity: ${aiActionLog.slice(0, 3).join(', ')}${aiActionLog.length > 3 ? '...' : ''}`);
@@ -706,47 +739,19 @@ function KingdomDashboard({
 
       // Update AI kingdoms even on error (demo mode)
       const updateAIKingdom = useAIKingdomStore.getState().updateAIKingdom;
-      
-      aiKingdoms.forEach(ai => {
-        const updatedAI = {
-          ...ai,
-          resources: {
-            ...ai.resources,
-            gold: ai.resources.gold + incomeToGenerate,
-            population: ai.resources.population + populationGrowth,
-            land: ai.resources.land + landGrowth,
-            turns: Math.min(ai.resources.turns + turnsToGenerate, 100)
-          }
-        };
-        
-        // AI takes actions even on error
-        const actions = AIActionService.decideActions(updatedAI, aiKingdoms);
-        actions.forEach(action => {
-          if (action.type === 'build') {
-            const result = AIActionService.executeBuild(updatedAI);
-            if (result.resources) updatedAI.resources = result.resources;
-          } else if (action.type === 'train') {
-            const result = AIActionService.executeTrain(updatedAI);
-            if (result.resources) updatedAI.resources = result.resources;
-            if (result.units) updatedAI.units = result.units;
-          }
-        });
-        
-        const newNetworth = 
-          updatedAI.resources.land * 1000 + 
-          updatedAI.resources.gold + 
-          Object.values(updatedAI.units).reduce((sum, count) => sum + count * 100, 0);
-        
-        updateAIKingdom(ai.id, {
-          resources: updatedAI.resources,
-          units: updatedAI.units,
-          networth: newNetworth
-        });
-      });
+      simulateAITick(
+        aiKingdoms,
+        updateAIKingdom,
+        incomeToGenerate,
+        populationGrowth,
+        landGrowth,
+        turnsToGenerate,
+        false
+      );
     }
   };
 
-  const raceKey = kingdom.race ? kingdom.race.charAt(0).toUpperCase() + kingdom.race.slice(1).toLowerCase() : 'Human';
+  const raceKey = normalizeRace(kingdom.race);
   const raceData = RACES[raceKey as keyof typeof RACES];
 
   // Calculate context-aware "Next Step" recommendation
@@ -793,25 +798,25 @@ function KingdomDashboard({
     if (!tutorialCompleted) return;
 
     const kingdomId = kingdom.id;
-    const coached = JSON.parse(localStorage.getItem(`coached-${kingdomId}`) || '{}');
+    const coached = JSON.parse(localStorage.getItem(STORAGE_KEYS.COACHED(kingdomId)) || '{}');
 
     // Coach 1: no territories after visiting dashboard twice
-    const visitCount = (parseInt(localStorage.getItem(`visits-${kingdomId}`) || '0')) + 1;
-    localStorage.setItem(`visits-${kingdomId}`, String(visitCount));
+    const visitCount = (parseInt(localStorage.getItem(STORAGE_KEYS.VISITS(kingdomId)) || '0')) + 1;
+    localStorage.setItem(STORAGE_KEYS.VISITS(kingdomId), String(visitCount));
 
     if (visitCount >= 2 && ownedTerritories.length === 0 && !coached.territory) {
       setTimeout(() => {
         ToastService.info('💡 Tip: Claiming a territory gives you income every turn. Try Manage Territories!');
-        localStorage.setItem(`coached-${kingdomId}`, JSON.stringify({ ...coached, territory: true }));
+        localStorage.setItem(STORAGE_KEYS.COACHED(kingdomId), JSON.stringify({ ...coached, territory: true }));
       }, 3000);
     }
 
     // Coach 2: turns are high but no attacks yet
-    const hasBattled = localStorage.getItem(`has-battled-${kingdomId}`);
+    const hasBattled = localStorage.getItem(STORAGE_KEYS.HAS_BATTLED(kingdomId));
     if ((resources.turns || 0) > 40 && ownedTerritories.length > 0 && !coached.combat && !hasBattled) {
       setTimeout(() => {
         ToastService.info('💡 Tip: You have plenty of turns! Attack a kingdom on the Leaderboard to gain land.');
-        localStorage.setItem(`coached-${kingdomId}`, JSON.stringify({ ...coached, combat: true }));
+        localStorage.setItem(STORAGE_KEYS.COACHED(kingdomId), JSON.stringify({ ...coached, combat: true }));
       }, 5000);
     }
   }, [tutorialCompleted, ownedTerritories.length, resources.turns, kingdom.id]);

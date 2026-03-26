@@ -8,6 +8,8 @@ import type { AuthUser } from 'aws-amplify/auth';
 import outputs from './amplify-config';
 import { AppRouter } from './AppRouter';
 import { RACES } from './shared-races';
+import { normalizeRace } from './utils/raceUtils';
+import { STORAGE_KEYS } from './constants/storageKeys';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { isDemoMode, disableDemoMode } from './utils/authMode';
 import { getActiveSeason } from './services/domain/SeasonService';
@@ -135,7 +137,7 @@ function AppContent() {
     try {
       if (demoMode) {
         // Demo mode - check if kingdoms exist in localStorage
-        const savedKingdoms = localStorage.getItem('demo-kingdoms');
+        const savedKingdoms = localStorage.getItem(STORAGE_KEYS.DEMO_KINGDOMS);
         if (savedKingdoms) {
           const kingdoms = JSON.parse(savedKingdoms);
           setKingdoms(kingdoms);
@@ -271,7 +273,7 @@ function AppContent() {
       // Navigate directly instead of calling fetchKingdoms through a setTimeout.
       // The stale closure from useCallback would still have demoMode=false,
       // causing it to attempt an authenticated API call that fails in demo mode.
-      const savedKingdoms = localStorage.getItem('demo-kingdoms');
+      const savedKingdoms = localStorage.getItem(STORAGE_KEYS.DEMO_KINGDOMS);
       if (savedKingdoms) {
         const parsed = JSON.parse(savedKingdoms);
         setKingdoms(parsed);
@@ -288,7 +290,7 @@ function AppContent() {
     const isDemo = isDemoMode();
 
     if (isDemo) {
-      const raceName = race.charAt(0).toUpperCase() + race.slice(1).toLowerCase();
+      const raceName = normalizeRace(race);
       const raceData = RACES[raceName];
       const startingResources = raceData?.startingResources || {
         gold: 2000,
@@ -296,7 +298,7 @@ function AppContent() {
         land: 500,
         turns: 50
       };
-      
+
       const newKingdom = {
         id: `demo-kingdom-${Date.now()}`,
         name: kingdomName || 'Demo Kingdom',
@@ -311,15 +313,15 @@ function AppContent() {
       } as Schema['Kingdom']['type'];
       
       // Get existing kingdoms or create new array
-      const savedKingdoms = localStorage.getItem('demo-kingdoms');
+      const savedKingdoms = localStorage.getItem(STORAGE_KEYS.DEMO_KINGDOMS);
       const existingKingdoms = savedKingdoms ? JSON.parse(savedKingdoms) : [];
       const updatedKingdoms = [...existingKingdoms, newKingdom];
-      
+
       // Save updated kingdoms array
-      localStorage.setItem('demo-kingdoms', JSON.stringify(updatedKingdoms));
-      
+      localStorage.setItem(STORAGE_KEYS.DEMO_KINGDOMS, JSON.stringify(updatedKingdoms));
+
       // Save kingdom-specific data
-      localStorage.setItem(`kingdom-${newKingdom.id}`, JSON.stringify({
+      localStorage.setItem(STORAGE_KEYS.KINGDOM(newKingdom.id), JSON.stringify({
         resources: startingResources,
         units: []
       }));
@@ -356,7 +358,7 @@ function AppContent() {
           throw new Error('Please sign out and sign in again, then try creating your kingdom.');
         }
         
-        const raceName = race.charAt(0).toUpperCase() + race.slice(1).toLowerCase();
+        const raceName = normalizeRace(race);
         const raceData = RACES[raceName];
         const startingResources = raceData?.startingResources || {
           gold: 2000,
@@ -434,16 +436,16 @@ function AppContent() {
           <button
             onClick={() => {
               // Clear all demo data
-              const savedKingdoms = localStorage.getItem('demo-kingdoms');
+              const savedKingdoms = localStorage.getItem(STORAGE_KEYS.DEMO_KINGDOMS);
               if (savedKingdoms) {
                 const kingdoms = JSON.parse(savedKingdoms);
                 kingdoms.forEach((k: Schema['Kingdom']['type']) => {
-                  localStorage.removeItem(`kingdom-${k.id}`);
+                  localStorage.removeItem(STORAGE_KEYS.KINGDOM(k.id));
                 });
               }
               disableDemoMode();
-              localStorage.removeItem('demo-kingdoms');
-              localStorage.removeItem('tutorial-progress');
+              localStorage.removeItem(STORAGE_KEYS.DEMO_KINGDOMS);
+              localStorage.removeItem(STORAGE_KEYS.TUTORIAL_PROGRESS);
               window.location.href = '/';
             }}
             className="utility-bar-btn"

@@ -1,15 +1,18 @@
-/**
- * localStorage key constants used throughout the application.
- *
- * Centralising these prevents typo-driven bugs and makes it trivial to
- * rename or namespace keys in the future.
- */
-
-/** Set to 'true' when the player is using demo (unauthenticated) mode */
-export const STORAGE_KEY_DEMO_MODE = 'demo-mode';
-
-/** JSON array of demo-mode kingdom objects */
-export const STORAGE_KEY_DEMO_KINGDOMS = 'demo-kingdoms';
-
-/** Persisted tutorial / onboarding progress (used by tutorialStore) */
-export const STORAGE_KEY_TUTORIAL_PROGRESS = 'tutorial-progress';
+export const STORAGE_KEYS = {
+  DEMO_KINGDOMS: 'demo-kingdoms',
+  DEMO_MODE: 'demo-mode',
+  KINGDOM: (id: string) => `kingdom-${id}`,
+  ENCAMP: (kingdomId: string) => `encamp-${kingdomId}`,
+  COACHED: (kingdomId: string) => `coached-${kingdomId}`,
+  VISITS: (kingdomId: string) => `visits-${kingdomId}`,
+  HAS_BATTLED: (kingdomId: string) => `has-battled-${kingdomId}`,
+  TUTORIAL_PROGRESS: 'tutorial-progress',
+  TUTORIAL: (tutorialId: string) => `tutorial-${tutorialId}`,
+  PENDING_PLAYSTYLE: 'pending-playstyle',
+  THEME: 'monarchy-theme',
+  LEADERBOARD_FILTERS: 'leaderboard-filters',
+  PENDING_SETTLEMENTS: 'pendingSettlements',
+  DEFENSIVE_FORMATION: (kingdomId: string) => `defensive-formation-${kingdomId}`,
+  TURN_TIMER_LAST: (kingdomId: string) => `turnTimer-last-${kingdomId}`,
+  AGE_START_TIME: (kingdomId: string) => `kingdom-${kingdomId}-ageStartTime`,
+} as const;

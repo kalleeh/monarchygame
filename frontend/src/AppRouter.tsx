@@ -424,10 +424,14 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
                 kingdoms={kingdoms.map(k => {
                   const rawStats = (k.stats ?? {}) as Record<string, unknown>;
                   // Amplify returns json fields as strings — parse if needed
-                  const parsedResources: Record<string, number> =
-                    typeof k.resources === 'string' ? JSON.parse(k.resources) : (k.resources ?? {});
-                  const parsedTotalUnits: Record<string, number> =
-                    typeof k.totalUnits === 'string' ? JSON.parse(k.totalUnits) : (k.totalUnits ?? {});
+                  const parsedResources: Record<string, number> = (() => {
+                    if (typeof k.resources !== 'string') return (k.resources ?? {}) as Record<string, number>;
+                    try { return JSON.parse(k.resources); } catch { return {}; }
+                  })();
+                  const parsedTotalUnits: Record<string, number> = (() => {
+                    if (typeof k.totalUnits !== 'string') return (k.totalUnits ?? {}) as Record<string, number>;
+                    try { return JSON.parse(k.totalUnits); } catch { return {}; }
+                  })();
                   return {
                     id: k.id,
                     name: k.name || 'Unknown',
@@ -462,10 +466,14 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
                 })}
                 currentKingdom={(() => {
                   const rawStats = (kingdom.stats ?? {}) as Record<string, unknown>;
-                  const parsedResources: Record<string, number> =
-                    typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {});
-                  const parsedTotalUnitsK: Record<string, number> =
-                    typeof kingdom.totalUnits === 'string' ? JSON.parse(kingdom.totalUnits) : (kingdom.totalUnits ?? {});
+                  const parsedResources: Record<string, number> = (() => {
+                    if (typeof kingdom.resources !== 'string') return (kingdom.resources ?? {}) as Record<string, number>;
+                    try { return JSON.parse(kingdom.resources); } catch { return {}; }
+                  })();
+                  const parsedTotalUnitsK: Record<string, number> = (() => {
+                    if (typeof kingdom.totalUnits !== 'string') return (kingdom.totalUnits ?? {}) as Record<string, number>;
+                    try { return JSON.parse(kingdom.totalUnits); } catch { return {}; }
+                  })();
                   return {
                     id: kingdom.id,
                     name: kingdom.name || 'Unknown',
