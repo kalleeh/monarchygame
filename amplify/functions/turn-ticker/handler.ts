@@ -7,7 +7,7 @@
  *
  * Turn rate: 3/hour (1 per 20 min), matching the game's TURNS_PER_HOUR constant.
  */
-import { dbList, dbAtomicAdd, dbUpdate, dbCreate } from '../data-client';
+import { dbList, dbAtomicAdd, dbUpdate, dbCreate, dbQuery } from '../data-client';
 import { log } from '../logger';
 
 const MAX_STORED_TURNS = 100;
@@ -30,8 +30,10 @@ interface KingdomRow {
 
 export const handler = async (_event: unknown): Promise<{ success: boolean; ticked: number; skipped: number }> => {
   try {
-    const kingdoms = await dbList<KingdomRow>('Kingdom');
-    const active = kingdoms.filter(k => k.isActive === true);
+    // Query active kingdoms via GSI instead of full table scan
+    const active = await dbQuery<KingdomRow>(
+      'Kingdom', 'isActive', { field: 'isActive', value: true }
+    );
 
     let ticked = 0;
     let skipped = 0;
@@ -76,7 +78,7 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
     }
 
     // Process AI kingdoms: apply income and slight land variance each tick
-    const aiKingdoms = kingdoms.filter(k => k.isAI === true && k.isActive === true);
+    const aiKingdoms = active.filter(k => k.isAI === true);
     let aiTicked = 0;
     for (const kingdom of aiKingdoms) {
       try {
@@ -108,7 +110,7 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
     }
 
     // Complete pending settlements for real player kingdoms
-    const realKingdoms = kingdoms.filter(k => !k.isAI && k.isActive === true);
+    const realKingdoms = active.filter(k => !k.isAI);
     let settlementsCompleted = 0;
     for (const kingdom of realKingdoms) {
       try {

@@ -18,6 +18,7 @@ import {
   DeleteCommand,
   ScanCommand,
   BatchWriteCommand,
+  QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
 
 const REGION = process.env.AWS_REGION ?? 'eu-west-1';
@@ -57,6 +58,64 @@ export async function dbList<T>(modelName: string): Promise<T[]> {
   let ExclusiveStartKey: Record<string, unknown> | undefined;
   do {
     const result = await docClient.send(new ScanCommand({ TableName, ExclusiveStartKey }));
+    items.push(...((result.Items ?? []) as T[]));
+    ExclusiveStartKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+  } while (ExclusiveStartKey);
+  return items;
+}
+
+/**
+ * Queries a GSI by partition key (exact match).
+ * indexName: the GSI name WITHOUT the '-index' suffix (e.g. 'kingdomId' → 'kingdomId-index')
+ */
+export async function dbQuery<T>(
+  modelName: string,
+  indexName: string,
+  partitionKey: { field: string; value: unknown }
+): Promise<T[]> {
+  const TableName = await getTableName(modelName);
+  const items: T[] = [];
+  let ExclusiveStartKey: Record<string, unknown> | undefined;
+  do {
+    const result = await docClient.send(new QueryCommand({
+      TableName,
+      IndexName: `${indexName}-index`,
+      KeyConditionExpression: '#pk = :pk',
+      ExpressionAttributeNames: { '#pk': partitionKey.field },
+      ExpressionAttributeValues: { ':pk': partitionKey.value },
+      ExclusiveStartKey,
+    }));
+    items.push(...((result.Items ?? []) as T[]));
+    ExclusiveStartKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+  } while (ExclusiveStartKey);
+  return items;
+}
+
+/**
+ * Queries a GSI with a filter expression applied server-side.
+ * filterExpression: e.g. '#status = :status'
+ */
+export async function dbQueryFilter<T>(
+  modelName: string,
+  indexName: string,
+  partitionKey: { field: string; value: unknown },
+  filterExpression: string,
+  filterValues: Record<string, unknown>,
+  filterNames?: Record<string, string>
+): Promise<T[]> {
+  const TableName = await getTableName(modelName);
+  const items: T[] = [];
+  let ExclusiveStartKey: Record<string, unknown> | undefined;
+  do {
+    const result = await docClient.send(new QueryCommand({
+      TableName,
+      IndexName: `${indexName}-index`,
+      KeyConditionExpression: '#pk = :pk',
+      FilterExpression: filterExpression,
+      ExpressionAttributeNames: { '#pk': partitionKey.field, ...(filterNames ?? {}) },
+      ExpressionAttributeValues: { ':pk': partitionKey.value, ...filterValues },
+      ExclusiveStartKey,
+    }));
     items.push(...((result.Items ?? []) as T[]));
     ExclusiveStartKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
   } while (ExclusiveStartKey);

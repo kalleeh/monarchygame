@@ -9,7 +9,7 @@ import {
 import type { KingdomResources, CombatResultData } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbCreate, dbUpdate, dbList, dbAtomicAdd } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbList, dbAtomicAdd, dbQuery } from '../data-client';
 import { isRacialAbilityActive } from '../../../shared/mechanics/age-mechanics';
 
 // Race offensive combat bonuses (based on warOffense stat 1-5)
@@ -176,9 +176,11 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     const attackCount = recentAttacks.length;
 
     if (attackCount >= 3) {
-      const allWars = await dbList<WarDeclarationType>('WarDeclaration');
-      const activeWar = allWars.find(
-        (w: WarDeclarationType) => w.attackerId === attackerId && w.defenderId === defenderId && w.status === 'active'
+      const attackerWars = await dbQuery<WarDeclarationType>(
+        'WarDeclaration', 'attackerId', { field: 'attackerId', value: attackerId }
+      );
+      const activeWar = attackerWars.find(
+        (w: WarDeclarationType) => w.defenderId === defenderId && w.status === 'active'
       );
       if (!activeWar) {
         return JSON.stringify({ success: false, error: 'You must declare war before attacking this kingdom again', errorCode: 'WAR_REQUIRED' });
@@ -307,8 +309,9 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     if (!resolvedTerrainId) {
       // Attempt to read terrain from the defender's first non-capital territory
       try {
-        const allTerritories = await dbList<TerritoryType>('Territory');
-        const territories = allTerritories.filter(t => t.kingdomId === defenderId);
+        const territories = await dbQuery<TerritoryType>(
+          'Territory', 'kingdomId', { field: 'kingdomId', value: defenderId }
+        );
         const capital = territories.find((t: TerritoryType) => t.type === 'capital') ?? territories[0];
         if (capital) {
           resolvedTerrainId = capital.terrainType ?? '';
@@ -535,8 +538,10 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
       // Territory degradation on attacker win (non-fatal)
       try {
-        const allTerrs = await dbList<{ id: string; kingdomId?: string; name?: string; defenseLevel?: number }>('Territory');
-        const defenderTerrs = allTerrs.filter(t => t.kingdomId === defenderId && (t.defenseLevel ?? 0) > 0);
+        const allTerrs = await dbQuery<{ id: string; kingdomId?: string; name?: string; defenseLevel?: number }>(
+          'Territory', 'kingdomId', { field: 'kingdomId', value: defenderId }
+        );
+        const defenderTerrs = allTerrs.filter(t => (t.defenseLevel ?? 0) > 0);
         if (defenderTerrs.length > 0) {
           const weakest = defenderTerrs.reduce((a, b) => (a.defenseLevel ?? 0) <= (b.defenseLevel ?? 0) ? a : b);
           const newLevel = Math.max(0, (weakest.defenseLevel ?? 0) - 1);
@@ -548,8 +553,9 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
       // Transfer territory: find defender's least important territory and reassign to attacker
       try {
-        const allTerritories = await dbList<TerritoryType>('Territory');
-        const defenderTerritories = allTerritories.filter(t => t.kingdomId === defenderId);
+        const defenderTerritories = await dbQuery<TerritoryType>(
+          'Territory', 'kingdomId', { field: 'kingdomId', value: defenderId }
+        );
 
         // Sort by defense level ascending (take least developed first), never take the capital
         const sorted = defenderTerritories
