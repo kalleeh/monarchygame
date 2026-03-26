@@ -1,6 +1,7 @@
 import type { Schema } from '../../data/resource';
 import {
   calculateCombatResult,
+  getCasualtyRates,
   TERRAIN_MODIFIERS,
   FORMATION_MODIFIERS,
   applyTerrainToUnitPower,
@@ -412,6 +413,24 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       log.warn('combat-processor', 'alliance-upgrade-bonus-failed', { attackerId, attackerGuildId, error: err instanceof Error ? err.message : String(err) });
     }
 
+    // Cap: effective attacker units cannot exceed MAX_OFFENSE_MULTIPLIER × original units
+    const MAX_OFFENSE_MULTIPLIER = 2.5;
+    for (const [unitType, originalCount] of Object.entries(attackerUnits)) {
+      const cap = Math.floor((originalCount as number) * MAX_OFFENSE_MULTIPLIER);
+      if ((effectiveAttackerUnits[unitType] ?? 0) > cap) {
+        effectiveAttackerUnits[unitType] = cap;
+      }
+    }
+
+    // Cap: effective defender units cannot exceed MAX_DEFENSE_MULTIPLIER × original units
+    const MAX_DEFENSE_MULTIPLIER = 2.5;
+    for (const [unitType, originalCount] of Object.entries(defenderUnits)) {
+      const cap = Math.floor((originalCount as number) * MAX_DEFENSE_MULTIPLIER);
+      if ((effectiveDefenderUnits[unitType] ?? 0) > cap) {
+        effectiveDefenderUnits[unitType] = cap;
+      }
+    }
+
     // -------------------------------------------------------------------------
     // Step 6: Resolve combat using terrain-and-formation-adjusted unit counts
     // -------------------------------------------------------------------------
@@ -494,10 +513,24 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       }
     }
 
+    // Per-unit defense mitigation for defender casualties (higher defense = fewer casualties)
+    // The shared calculateCombatResult applies a flat rate; we override the defender side here.
+    const UNIT_DEFENSE_STATS: Record<string, number> = {
+      peasant: 1, militia: 3, tier2: 2, tier3: 3, tier4: 4, knight: 4, cavalry: 3,
+      infantry: 2, archer: 2, scout: 1, mage: 1, tier1: 1
+    };
+    const defenderCasualtyRate = (getCasualtyRates(combatResult.result) as { attacker: number; defender: number }).defender;
+    const mitigatedDefenderCasualties: Record<string, number> = {};
+    for (const [unitType, count] of Object.entries(effectiveDefenderUnits)) {
+      const defStat = UNIT_DEFENSE_STATS[unitType] ?? 1;
+      const defMitigation = Math.max(0.5, 1 - (defStat * 0.05));
+      mitigatedDefenderCasualties[unitType] = Math.floor((count as number) * defenderCasualtyRate * defMitigation);
+    }
+
     // Deduct casualties from both sides' units
     const casualties: CombatResultData['casualties'] = combatResult.casualties || { attacker: {}, defender: {} };
     const attackerCasualties = casualties.attacker || {};
-    const defenderCasualties = casualties.defender || {};
+    const defenderCasualties = mitigatedDefenderCasualties;
 
     const updatedAttackerUnits: Record<string, number> = { ...ownedUnits };
     for (const [unitType, lost] of Object.entries(attackerCasualties as Record<string, number>)) {
@@ -532,10 +565,12 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
       // Territory degradation on attacker win (non-fatal)
       try {
-        const allTerrs = await dbList<{ id: string; kingdomId?: string; name?: string; defenseLevel?: number }>('Territory');
+        const allTerrs = await dbList<{ id: string; kingdomId?: string; type?: string; name?: string; defenseLevel?: number }>('Territory');
         const defenderTerrs = allTerrs.filter(t => t.kingdomId === defenderId && (t.defenseLevel ?? 0) > 0);
-        if (defenderTerrs.length > 0) {
-          const weakest = defenderTerrs.reduce((a, b) => (a.defenseLevel ?? 0) <= (b.defenseLevel ?? 0) ? a : b);
+        // Exclude capital from degradation candidates
+        const degradableTerrs = defenderTerrs.filter(t => t.type !== 'capital');
+        if (degradableTerrs.length > 0) {
+          const weakest = degradableTerrs.reduce((a, b) => (a.defenseLevel ?? 0) <= (b.defenseLevel ?? 0) ? a : b);
           const newLevel = Math.max(0, (weakest.defenseLevel ?? 0) - 1);
           await dbUpdate('Territory', weakest.id, { defenseLevel: newLevel });
           degradedTerritoryName = weakest.name ?? null;
