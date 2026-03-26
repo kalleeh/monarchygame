@@ -275,8 +275,8 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     const ELAN_RATE = (['Sidhe', 'Vampire'].includes(currentRace)) ? 0.005 : 0.003;
     const elanPerTurn = Math.ceil((buildings.temple ?? 0) * ELAN_RATE);
 
-    // Human caravan bonus: +20% gold income from double-frequency trade caravans
-    const caravan_bonus = currentRace === 'Human' ? Math.floor(baseGoldPerTurn * 0.20) : 0;
+    // Human caravan bonus: double-frequency trade caravans generate 40% bonus income
+    const caravan_bonus = currentRace === 'Human' ? Math.floor(baseGoldPerTurn * 0.40) : 0;
 
     // Alliance composition and upgrade income bonuses
     let compositionIncomeBonus = 1.0;

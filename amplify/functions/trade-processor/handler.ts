@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbCreate, dbUpdate } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbList } from '../data-client';
 
 const TRADE_OFFER_EXPIRY_HOURS = 48;
 
@@ -12,6 +12,7 @@ type KingdomRecord = {
   id: string;
   owner?: string | null;
   resources?: KingdomResources | null;
+  race?: string | null;
 };
 
 type TradeOfferRecord = {
@@ -81,6 +82,19 @@ export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event
     const available = (sellerResources as unknown as Record<string, number>)[resourceType] ?? 0;
     if (available < quantity) {
       return JSON.stringify({ success: false, error: `Insufficient ${resourceType}: have ${available}, need ${quantity}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES });
+    }
+
+    // Enforce active trade offer limit (Human race: 2, others: 1)
+    const allOffers = await dbList<{ sellerId: string; status: string }>('TradeOffer');
+    const activeOffers = allOffers.filter(o => o.sellerId === sellerId && o.status === 'open');
+    const isHuman = (seller.race as string | undefined)?.toLowerCase() === 'human';
+    const maxOffers = isHuman ? 2 : 1;
+    if (activeOffers.length >= maxOffers) {
+      return JSON.stringify({
+        success: false,
+        error: `You already have ${activeOffers.length} active trade offer${activeOffers.length > 1 ? 's' : ''}. ${isHuman ? 'Human kingdoms can have up to 2.' : 'Cancel an existing offer to create a new one.'}`,
+        errorCode: 'VALIDATION_FAILED'
+      });
     }
 
     // Escrow: deduct resources from seller
