@@ -8,6 +8,8 @@ const VALID_BUILDING_TYPES = ['castle', 'barracks', 'farm', 'mine', 'temple', 't
 type BuildingType = typeof VALID_BUILDING_TYPES[number];
 
 const BUILDING_QUANTITY = { min: 1, max: 100 } as const;
+const MAX_BUILDINGS_PER_TYPE = 10;
+const MAX_TOTAL_BUILDINGS = 50;
 
 type KingdomType = {
   id: string;
@@ -50,7 +52,7 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
     const _allIds = [identity.sub ?? '', (identity as any).username ?? '',
       (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
       (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-    if (!ownerField || !_allIds.some(id => ownerField.includes(id))) {
+    if (!ownerField || !_allIds.some(id => ownerField === id)) {
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
@@ -66,7 +68,13 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
       }
     }
 
-    const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
+    let resources: KingdomResources;
+    try {
+      resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
+    } catch (parseErr) {
+      log.warn('building-constructor', 'Failed to parse resources JSON, using empty object', { parseErr });
+      resources = {} as KingdomResources;
+    }
     const goldCost = quantity * 250;
     const currentGold = resources.gold ?? 0;
 
@@ -81,8 +89,24 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
-    const buildings = (typeof kingdom.buildings === 'string' ? JSON.parse(kingdom.buildings) : (kingdom.buildings ?? {})) as KingdomBuildings;
+    let buildings: KingdomBuildings;
+    try {
+      buildings = (typeof kingdom.buildings === 'string' ? JSON.parse(kingdom.buildings) : (kingdom.buildings ?? {})) as KingdomBuildings;
+    } catch (parseErr) {
+      log.warn('building-constructor', 'Failed to parse buildings JSON, using empty object', { parseErr });
+      buildings = {} as KingdomBuildings;
+    }
     const currentCount = buildings[buildingType as keyof KingdomBuildings] ?? 0;
+
+    // VAL-1: enforce per-type and total building caps
+    if (currentCount + quantity > MAX_BUILDINGS_PER_TYPE) {
+      return { success: false, error: `Building limit reached: max ${MAX_BUILDINGS_PER_TYPE} per type (have ${currentCount})`, errorCode: ErrorCode.VALIDATION_FAILED };
+    }
+    const totalBuildings = Object.values(buildings).reduce((sum, n) => sum + (n ?? 0), 0);
+    if (totalBuildings + quantity > MAX_TOTAL_BUILDINGS) {
+      return { success: false, error: `Total building limit reached: max ${MAX_TOTAL_BUILDINGS} (have ${totalBuildings})`, errorCode: ErrorCode.VALIDATION_FAILED };
+    }
+
     const updatedBuildings: KingdomBuildings = {
       ...buildings,
       [buildingType]: currentCount + quantity

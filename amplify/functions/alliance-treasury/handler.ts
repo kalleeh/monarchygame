@@ -139,8 +139,20 @@ async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: st
   // Deduct from treasury
   treasury.gold = treasuryGold - amount;
 
+  // Append withdrawal audit log entry (capped to last 50 entries)
+  const existingStats = typeof alliance.stats === 'string'
+    ? JSON.parse(alliance.stats as string)
+    : (alliance.stats ?? {});
+  const withdrawalLog: Array<{ type: string; amount: number; performedBy: string; timestamp: string }> =
+    (existingStats.withdrawalLog as Array<{ type: string; amount: number; performedBy: string; timestamp: string }>) ?? [];
+  withdrawalLog.push({ type: 'withdrawal', amount, performedBy: identity?.sub ?? '', timestamp: new Date().toISOString() });
+  const trimmedLog = withdrawalLog.slice(-50);
+
   await dbUpdate('Kingdom', kingdomId, { resources: updatedResources });
-  await dbUpdate('Alliance', allianceId, { treasury });
+  await dbUpdate('Alliance', allianceId, {
+    treasury,
+    stats: JSON.stringify({ ...existingStats, withdrawalLog: trimmedLog }),
+  });
 
   log.info('alliance-treasury', 'withdraw', { allianceId, kingdomId, amount });
   return { success: true, result: JSON.stringify({ withdrawn: amount, newTreasuryBalance: treasury.gold }) };

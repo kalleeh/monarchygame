@@ -89,7 +89,7 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
       return JSON.stringify({ success: false, error: 'Proposer kingdom not found', errorCode: ErrorCode.NOT_FOUND });
     }
     const proposerOwnerField = (proposerKingdom as any).owner as string | null;
-    if (!proposerOwnerField || (!proposerOwnerField.includes(callerIdentity.sub) && !proposerOwnerField.includes(callerIdentity.username ?? ''))) {
+    if (!proposerOwnerField || (proposerOwnerField !== callerIdentity.sub && proposerOwnerField !== (callerIdentity.username ?? ''))) {
       return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
     }
 
@@ -205,7 +205,7 @@ async function handleDeclareDiplomaticWar(args: { kingdomId: string; targetKingd
     return JSON.stringify({ success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND });
   }
   const ownerField = (kingdom as any).owner as string | null;
-  if (!ownerField || (!ownerField.includes(callerIdentity.sub) && !ownerField.includes(callerIdentity.username ?? ''))) {
+  if (!ownerField || (ownerField !== callerIdentity.sub && ownerField !== (callerIdentity.username ?? ''))) {
     return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
   }
 
@@ -264,7 +264,7 @@ async function handleMakePeace(args: { kingdomId: string; targetKingdomId: strin
     return JSON.stringify({ success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND });
   }
   const ownerField = (kingdom as any).owner as string | null;
-  if (!ownerField || (!ownerField.includes(callerIdentity.sub) && !ownerField.includes(callerIdentity.username ?? ''))) {
+  if (!ownerField || (ownerField !== callerIdentity.sub && ownerField !== (callerIdentity.username ?? ''))) {
     return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
   }
 

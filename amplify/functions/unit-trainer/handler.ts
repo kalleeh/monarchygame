@@ -8,6 +8,7 @@ const UNIT_QUANTITY = { min: 1, max: 1000 } as const;
 
 // Minimum gold cost per unit (sanity check to prevent zero-cost exploits)
 const MIN_GOLD_COST_PER_UNIT = 1;
+const MAX_TOTAL_UNITS = 100000;
 
 type KingdomType = {
   id: string;
@@ -59,7 +60,7 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
     const _allIds = [identity.sub ?? '', (identity as any).username ?? '',
       (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
       (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-    if (!ownerField || !_allIds.some(id => ownerField.includes(id))) {
+    if (!ownerField || !_allIds.some(id => ownerField === id)) {
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
@@ -75,7 +76,13 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
       }
     }
 
-    const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
+    let resources: KingdomResources;
+    try {
+      resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
+    } catch (parseErr) {
+      log.warn('unit-trainer', 'Failed to parse resources JSON, using empty object', { parseErr });
+      resources = {} as KingdomResources;
+    }
     const goldCost = quantity * resolvedGoldCostPerUnit;
     const currentGold = resources.gold ?? 0;
 
@@ -90,7 +97,21 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
-    const units = (typeof kingdom.totalUnits === 'string' ? JSON.parse(kingdom.totalUnits) : (kingdom.totalUnits ?? {})) as KingdomUnits;
+    let units: KingdomUnits;
+    try {
+      units = (typeof kingdom.totalUnits === 'string' ? JSON.parse(kingdom.totalUnits) : (kingdom.totalUnits ?? {})) as KingdomUnits;
+    } catch (parseErr) {
+      log.warn('unit-trainer', 'Failed to parse totalUnits JSON, using empty object', { parseErr });
+      units = {} as KingdomUnits;
+    }
+
+    // VAL-2: enforce total unit cap
+    const currentTotal = Object.values(units).reduce((sum, n) => sum + (n ?? 0), 0);
+    if (currentTotal + quantity > MAX_TOTAL_UNITS) {
+      const available = Math.max(0, MAX_TOTAL_UNITS - currentTotal);
+      return { success: false, error: `Unit limit reached: max ${MAX_TOTAL_UNITS} total units. You can train ${available} more.`, errorCode: ErrorCode.VALIDATION_FAILED };
+    }
+
     const currentCount = units[unitType as keyof KingdomUnits] ?? 0;
     const updatedUnits: KingdomUnits = {
       ...units,

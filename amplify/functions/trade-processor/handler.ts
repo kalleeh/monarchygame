@@ -73,7 +73,7 @@ export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event
 
     // Verify kingdom ownership (seller)
     const sellerOwnerField = (seller as any).owner as string | null;
-    if (!sellerOwnerField || (!sellerOwnerField.includes(callerIdentity.sub) && !sellerOwnerField.includes(callerIdentity.username ?? ''))) {
+    if (!sellerOwnerField || (sellerOwnerField !== callerIdentity.sub && sellerOwnerField !== (callerIdentity.username ?? ''))) {
       return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
     }
 
@@ -167,7 +167,7 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }, cal
 
   // Verify kingdom ownership (buyer)
   const buyerOwnerField = (buyer as any).owner as string | null;
-  if (!buyerOwnerField || (!buyerOwnerField.includes(callerIdentity.sub) && !buyerOwnerField.includes(callerIdentity.username ?? ''))) {
+  if (!buyerOwnerField || (buyerOwnerField !== callerIdentity.sub && buyerOwnerField !== (callerIdentity.username ?? ''))) {
     return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
   }
 
@@ -176,7 +176,16 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }, cal
     return JSON.stringify({ success: false, error: `Insufficient gold: have ${buyerResources.gold ?? 0}, need ${offer.totalPrice}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES });
   }
 
-  // Execute the trade atomically
+  // PERF-3: Atomically claim the offer by flipping status to 'accepted' FIRST.
+  // This is the gate that prevents two concurrent buyers from accepting the same offer.
+  // We re-fetch the offer after the update and verify it reflects our buyerId to confirm
+  // we won the race; if it was already changed by another request, we bail out.
+  await dbUpdate('TradeOffer', offerId, { status: 'accepted', buyerId, acceptedAt: new Date().toISOString() });
+  const claimedOffer = await dbGet<TradeOfferRecord>('TradeOffer', offerId);
+  if (!claimedOffer || claimedOffer.buyerId !== buyerId) {
+    return JSON.stringify({ success: false, error: 'Trade offer was already accepted by another buyer', errorCode: ErrorCode.TRADE_EXPIRED });
+  }
+
   // 1. Deduct gold from buyer, add resource
   const updatedBuyerResources = {
     ...buyerResources,
@@ -192,11 +201,10 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }, cal
     gold: (sellerResources.gold ?? 0) + offer.totalPrice
   };
 
-  // Execute all updates
+  // Transfer resources now that the offer is claimed
   await Promise.all([
     dbUpdate('Kingdom', buyerId, { resources: updatedBuyerResources }),
     dbUpdate('Kingdom', offer.sellerId, { resources: updatedSellerResources }),
-    dbUpdate('TradeOffer', offerId, { status: 'accepted', buyerId, acceptedAt: new Date().toISOString() })
   ]);
 
   return JSON.stringify({
@@ -237,7 +245,7 @@ async function handleCancelOffer(args: { offerId: string; sellerId: string }, ca
   if (seller) {
     // Verify kingdom ownership (seller cancelling their own offer)
     const sellerOwnerField = (seller as any).owner as string | null;
-    if (!sellerOwnerField || (!sellerOwnerField.includes(callerIdentity.sub) && !sellerOwnerField.includes(callerIdentity.username ?? ''))) {
+    if (!sellerOwnerField || (sellerOwnerField !== callerIdentity.sub && sellerOwnerField !== (callerIdentity.username ?? ''))) {
       return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
     }
 
