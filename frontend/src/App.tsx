@@ -139,7 +139,8 @@ function AppContent() {
         // Demo mode - check if kingdoms exist in localStorage
         const savedKingdoms = localStorage.getItem(STORAGE_KEYS.DEMO_KINGDOMS);
         if (savedKingdoms) {
-          const kingdoms = JSON.parse(savedKingdoms);
+          let kingdoms: Schema['Kingdom']['type'][] = [];
+          try { kingdoms = JSON.parse(savedKingdoms); } catch { kingdoms = []; }
           setKingdoms(kingdoms);
           
           // Navigate to kingdoms list if on root
@@ -275,7 +276,8 @@ function AppContent() {
       // causing it to attempt an authenticated API call that fails in demo mode.
       const savedKingdoms = localStorage.getItem(STORAGE_KEYS.DEMO_KINGDOMS);
       if (savedKingdoms) {
-        const parsed = JSON.parse(savedKingdoms);
+        let parsed: Schema['Kingdom']['type'][] = [];
+        try { parsed = JSON.parse(savedKingdoms); } catch { parsed = []; }
         setKingdoms(parsed);
         navigate('/kingdoms');
       } else {
@@ -314,7 +316,10 @@ function AppContent() {
       
       // Get existing kingdoms or create new array
       const savedKingdoms = localStorage.getItem(STORAGE_KEYS.DEMO_KINGDOMS);
-      const existingKingdoms = savedKingdoms ? JSON.parse(savedKingdoms) : [];
+      let existingKingdoms: Schema['Kingdom']['type'][] = [];
+      if (savedKingdoms) {
+        try { existingKingdoms = JSON.parse(savedKingdoms); } catch { existingKingdoms = []; }
+      }
       const updatedKingdoms = [...existingKingdoms, newKingdom];
 
       // Save updated kingdoms array
@@ -438,7 +443,8 @@ function AppContent() {
               // Clear all demo data
               const savedKingdoms = localStorage.getItem(STORAGE_KEYS.DEMO_KINGDOMS);
               if (savedKingdoms) {
-                const kingdoms = JSON.parse(savedKingdoms);
+                let kingdoms: Schema['Kingdom']['type'][] = [];
+                try { kingdoms = JSON.parse(savedKingdoms); } catch { kingdoms = []; }
                 kingdoms.forEach((k: Schema['Kingdom']['type']) => {
                   localStorage.removeItem(STORAGE_KEYS.KINGDOM(k.id));
                 });
