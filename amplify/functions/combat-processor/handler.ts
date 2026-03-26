@@ -9,7 +9,7 @@ import {
 import type { KingdomResources, CombatResultData } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbCreate, dbUpdate, dbList, dbAtomicAdd } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbList, dbAtomicAdd, parseJsonField } from '../data-client';
 import { isRacialAbilityActive } from '../../../shared/mechanics/age-mechanics';
 
 // Race offensive combat bonuses (based on warOffense stat 1-5)
@@ -122,23 +122,22 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
           }
         }
       }
-    } catch { /* non-fatal */ }
+    } catch (err) {
+      log.warn('combat-processor', 'alliance-coord-bonus-failed', { attackerId, defenderId, error: err instanceof Error ? err.message : String(err) });
+    }
 
     // Check attacker restoration status — cannot attack while under restoration
     const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
     const attackerRestoration = allRestoration.find(r => r.kingdomId === attackerId && new Date(r.endTime) > new Date());
     if (attackerRestoration) {
-      const prohibited: string[] = typeof attackerRestoration.prohibitedActions === 'string'
-        ? JSON.parse(attackerRestoration.prohibitedActions)
-        : (attackerRestoration.prohibitedActions ?? []);
+      const prohibited: string[] = parseJsonField<string[]>(attackerRestoration.prohibitedActions, []);
       if (prohibited.includes('attack')) {
         return JSON.stringify({ success: false, error: 'Kingdom is in restoration and cannot attack', errorCode: 'RESTORATION_ACTIVE' });
       }
     }
 
-    const attackerUnits: Record<string, number> = typeof units === 'string' ? JSON.parse(units) : units;
-    const ownedUnitsRaw = attacker.totalUnits;
-    const ownedUnits = (typeof ownedUnitsRaw === 'string' ? JSON.parse(ownedUnitsRaw) : (ownedUnitsRaw ?? {})) as Record<string, number>;
+    const attackerUnits: Record<string, number> = parseJsonField<Record<string, number>>(units, {});
+    const ownedUnits = parseJsonField<Record<string, number>>(attacker.totalUnits, {});
 
     // Validate that attacker has enough units
     for (const [unitType, count] of Object.entries(attackerUnits)) {
@@ -150,8 +149,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     // Newbie protection: kingdoms < 72 hours old that are 3x+ smaller than attacker
     const defenderCreatedAt = new Date((defender.createdAt as string) ?? 0);
     const defenderAgeHours = (Date.now() - defenderCreatedAt.getTime()) / (1000 * 60 * 60);
-    const _aRes = (typeof attacker.resources === 'string' ? JSON.parse(attacker.resources as string) : (attacker.resources ?? {})) as KingdomResources;
-    const _dRes = (typeof defender.resources === 'string' ? JSON.parse(defender.resources as string) : (defender.resources ?? {})) as KingdomResources;
+    const _aRes = parseJsonField<KingdomResources>(attacker.resources, {} as KingdomResources);
+    const _dRes = parseJsonField<KingdomResources>(defender.resources, {} as KingdomResources);
     const attackerNetworth = (_aRes.land ?? 100) * 1000 + (_aRes.gold ?? 0);
     const defenderNetworth = (_dRes.land ?? 100) * 1000 + (_dRes.gold ?? 0);
     if (defenderAgeHours < 72 && attackerNetworth > defenderNetworth * 3) {
@@ -159,8 +158,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     }
 
     // Check and deduct turns
-    const attackerResourcesRaw = attacker.resources;
-    const attackerResources = (typeof attackerResourcesRaw === 'string' ? JSON.parse(attackerResourcesRaw) : (attackerResourcesRaw ?? {})) as KingdomResources;
+    const attackerResources = parseJsonField<KingdomResources>(attacker.resources, {} as KingdomResources);
     const currentTurns = (attacker.turnsBalance ?? attackerResources.turns ?? 72) as number;
     const turnCost = 4;
     if (currentTurns < turnCost) {
@@ -190,10 +188,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       });
     }
 
-    const defenderResourcesRaw = defender.resources;
-    const defenderResources = (typeof defenderResourcesRaw === 'string' ? JSON.parse(defenderResourcesRaw) : (defenderResourcesRaw ?? {})) as KingdomResources;
-    const defenderUnitsRaw = defender.totalUnits;
-    const defenderUnits = (typeof defenderUnitsRaw === 'string' ? JSON.parse(defenderUnitsRaw) : (defenderUnitsRaw ?? {})) as Record<string, number>;
+    const defenderResources = parseJsonField<KingdomResources>(defender.resources, {} as KingdomResources);
+    const defenderUnits = parseJsonField<Record<string, number>>(defender.totalUnits, {});
     const defenderLand = defenderResources.land ?? 1000;
 
     // -------------------------------------------------------------------------
@@ -249,9 +245,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     // Kingdom stats may contain activeFaithEffects array set by faith-processor
     // -------------------------------------------------------------------------
     try {
-      const statsObj = typeof attacker.stats === 'string'
-        ? JSON.parse(attacker.stats as string) as Record<string, unknown>
-        : ((attacker.stats ?? {}) as Record<string, unknown>);
+      const statsObj = parseJsonField<Record<string, unknown>>(attacker.stats, {});
       const activeEffects = (statsObj.activeFaithEffects as Array<{ effectType: string; enhancedValue?: number; appliedAt?: string; duration?: number }>) ?? [];
       const combatFocusEffect = activeEffects.find(e => e.effectType === 'COMBAT_FOCUS' || e.effectType === 'combat_focus');
       if (combatFocusEffect) {
@@ -262,8 +256,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
         );
         log.info('combat-processor', 'combat-focus-applied', { attackerId, bonus: focusBonus });
       }
-    } catch {
-      // Non-fatal — skip faith bonus if stats parsing fails
+    } catch (err) {
+      log.warn('combat-processor', 'faith-bonus-failed', { attackerId, error: err instanceof Error ? err.message : String(err) });
     }
 
     // -------------------------------------------------------------------------
@@ -276,9 +270,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     );
 
     // Apply defender's persistent defensive formation if set
-    const defenderStats = (typeof defender.stats === 'string'
-      ? JSON.parse(defender.stats as string)
-      : (defender.stats ?? {})) as Record<string, unknown>;
+    const defenderStats = parseJsonField<Record<string, unknown>>(defender.stats, {});
     const defFormationId = (defenderStats.defensiveFormation as string | undefined) ?? 'balanced';
     const defFormationMods = FORMATION_MODIFIERS[defFormationId] ?? FORMATION_MODIFIERS['balanced'];
     const defFormationDefenseFactor = 1 + defFormationMods.defense;
@@ -313,8 +305,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
         if (capital) {
           resolvedTerrainId = capital.terrainType ?? '';
         }
-      } catch {
-        // Non-fatal — terrain lookup is a best-effort enhancement
+      } catch (err) {
+        log.warn('combat-processor', 'terrain-lookup-failed', { defenderId, error: err instanceof Error ? err.message : String(err) });
       }
     }
 
@@ -394,7 +386,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       if (attackerGuildId) {
         const allianceData = await dbGet<{ stats?: string }>('Alliance', attackerGuildId);
         if (allianceData?.stats) {
-          const aStats = typeof allianceData.stats === 'string' ? JSON.parse(allianceData.stats) : allianceData.stats;
+          const aStats = parseJsonField<Record<string, unknown>>(allianceData.stats, {});
           // Composition bonus
           const compCombat = aStats?.compositionBonus?.combat ?? 1.0;
           if (compCombat !== 1.0) {
@@ -415,7 +407,9 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
           }
         }
       }
-    } catch { /* non-fatal */ }
+    } catch (err) {
+      log.warn('combat-processor', 'alliance-upgrade-bonus-failed', { attackerId, attackerGuildId, error: err instanceof Error ? err.message : String(err) });
+    }
 
     // -------------------------------------------------------------------------
     // Step 6: Resolve combat using terrain-and-formation-adjusted unit counts
@@ -494,7 +488,9 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
             });
           }
         }
-      } catch { /* non-fatal */ }
+      } catch (err) {
+        log.warn('combat-processor', 'kill-bounty-notification-failed', { attackerId, defenderId, error: err instanceof Error ? err.message : String(err) });
+      }
     }
 
     // Deduct casualties from both sides' units
@@ -544,7 +540,9 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
           degradedTerritoryName = weakest.name ?? null;
           log.info('combat-processor', 'territory-degraded', { defenderId, territoryId: weakest.id, newLevel });
         }
-      } catch { /* non-fatal */ }
+      } catch (err) {
+        log.warn('combat-processor', 'territory-degradation-failed', { defenderId, error: err instanceof Error ? err.message : String(err) });
+      }
 
       // Transfer territory: find defender's least important territory and reassign to attacker
       try {
