@@ -256,11 +256,11 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     const ageMultiplier = AGE_INCOME_MULTIPLIERS[currentAge] ?? 1.0;
 
     // Building-based income per turn (tithe is separated so it can be floored before age scaling)
-    const baseGoldPerTurn = (buildings.mine ?? 0) * 20 + (buildings.farm ?? 0) * 8 + (buildings.tower ?? 0) * 50 + 100;
+    const baseGoldPerTurn = Math.max(50, (buildings.mine ?? 0) * 20 + (buildings.farm ?? 0) * 8 + (buildings.tower ?? 0) * 50 + 100);
     const populationPerTurn = (buildings.farm ?? 0) * 10;
     // Race-specific elan generation per turn (matches shared/mechanics/elan-mechanics.ts)
     const currentRace = (kingdom.race as string) ?? '';
-    const ELAN_RATE = (['Sidhe', 'Vampire'].includes(currentRace)) ? 0.15 : 0.10;
+    const ELAN_RATE = (['Sidhe', 'Vampire'].includes(currentRace)) ? 0.005 : 0.003;
     const elanPerTurn = Math.ceil((buildings.temple ?? 0) * ELAN_RATE);
 
     // Human caravan bonus: +20% gold income from double-frequency trade caravans
@@ -287,7 +287,15 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     } catch { /* non-fatal */ }
 
     // Apply age multiplier and alliance bonuses to all gold income (base + tithe + caravan bonus)
-    const totalGoldPerTurn = Math.floor((baseGoldPerTurn + tithePerTurn + caravan_bonus) * ageMultiplier * compositionIncomeBonus * upgradeIncomeBonus);
+    let totalGoldPerTurn = Math.floor((baseGoldPerTurn + tithePerTurn + caravan_bonus) * ageMultiplier * compositionIncomeBonus * upgradeIncomeBonus);
+
+    // Apply ECONOMIC_FOCUS faith effect bonus (+20% gold income)
+    const activeFaithEffects = (stats.activeFaithEffects as Array<{ effectType: string; expiresAt: string }>) ?? [];
+    const nowIso = new Date().toISOString();
+    const hasEconomicFocus = activeFaithEffects.some(e => e.effectType === 'ECONOMIC_FOCUS' && e.expiresAt > nowIso);
+    if (hasEconomicFocus) {
+      totalGoldPerTurn = Math.floor(totalGoldPerTurn * 1.20);
+    }
 
     // Territory-based income (Tier 2 production)
     const CATEGORY_PRODUCTION: Record<string, { gold: number; population: number; land: number }> = {

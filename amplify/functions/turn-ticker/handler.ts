@@ -7,7 +7,7 @@
  *
  * Turn rate: 3/hour (1 per 20 min), matching the game's TURNS_PER_HOUR constant.
  */
-import { dbList, dbAtomicAdd, dbUpdate, dbCreate } from '../data-client';
+import { dbList, dbAtomicAdd, dbUpdate, dbCreate, dbGet } from '../data-client';
 import { log } from '../logger';
 
 const MAX_STORED_TURNS = 100;
@@ -58,12 +58,16 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
           if (encampEnd <= Date.now() && kingdom.encampBonusTurns) {
             const bonus = kingdom.encampBonusTurns;
             try {
-              await dbAtomicAdd('Kingdom', kingdom.id, 'turnsBalance', bonus);
+              const currentTurns = (kingdom as any).turnsBalance ?? 0;
+              const cappedBonus = Math.min(bonus, Math.max(0, MAX_STORED_TURNS - currentTurns));
+              if (cappedBonus > 0) {
+                await dbAtomicAdd('Kingdom', kingdom.id, 'turnsBalance', cappedBonus);
+              }
               await dbUpdate('Kingdom', kingdom.id, {
                 encampEndTime: null,
                 encampBonusTurns: null,
               });
-              log.info('turn-ticker', 'encamp-bonus-awarded', { kingdomId: kingdom.id, bonus });
+              log.info('turn-ticker', 'encamp-bonus-awarded', { kingdomId: kingdom.id, bonus: cappedBonus });
             } catch (encampErr) {
               log.error('turn-ticker', encampErr, { kingdomId: kingdom.id, context: 'encamp-bonus' });
             }
@@ -122,6 +126,13 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
         if (ready.length === 0) continue;
 
         const remaining = pending.filter(ps => (ps.completesAt as string) > now);
+
+        // Verify kingdom still exists before creating Territory records
+        const stillExists = await dbGet('Kingdom', kingdom.id);
+        if (!stillExists) {
+          log.warn('turn-ticker', 'settlement-kingdom-gone', { kingdomId: kingdom.id });
+          continue;
+        }
 
         // Create Territory records for completed settlements
         for (const ps of ready) {
