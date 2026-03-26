@@ -55,7 +55,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
       }
     }
 
-    const attackerUnits = (attackerKingdom.totalUnits ?? {}) as Record<string, number>;
+    const attackerUnits = (typeof attackerKingdom.totalUnits === 'string' ? JSON.parse(attackerKingdom.totalUnits) : (attackerKingdom.totalUnits ?? {})) as Record<string, number>;
     const attackerScouts = attackerUnits.scouts ?? 0;
 
     if (attackerScouts < MIN_SCOUTS) {
@@ -81,7 +81,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     } catch { /* non-fatal */ }
 
     // Check turns from turnsBalance (server-side pool), falling back to resources.turns
-    const attackerResources = (attackerKingdom.resources ?? {}) as KingdomResources;
+    const attackerResources = (typeof attackerKingdom.resources === 'string' ? JSON.parse(attackerKingdom.resources) : (attackerKingdom.resources ?? {})) as KingdomResources;
     const currentTurns = attackerKingdom.turnsBalance ?? attackerResources.turns ?? 72;
     const OPERATION_TURN_COSTS: Record<string, number> = {
       scout:              THIEVERY_MECHANICS.OPERATION_COSTS.SCOUT,
@@ -104,8 +104,8 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
       return { success: false, error: 'Target kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
-    const targetUnits = (targetKingdom.totalUnits ?? {}) as Record<string, number>;
-    const targetResources = (targetKingdom.resources ?? {}) as KingdomResources;
+    const targetUnits = (typeof targetKingdom.totalUnits === 'string' ? JSON.parse(targetKingdom.totalUnits) : (targetKingdom.totalUnits ?? {})) as Record<string, number>;
+    const targetResources = (typeof targetKingdom.resources === 'string' ? JSON.parse(targetKingdom.resources) : (targetKingdom.resources ?? {})) as KingdomResources;
 
     // Calculate detection rate
     const detectionRate = Math.min(0.95, ((targetUnits.scouts ?? 0) / Math.max(1, attackerScouts)) * 0.85);
@@ -164,7 +164,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
       } else if (operation === 'desecrate') {
         // Desecrate Temples: destroy ~10% of target's temples, reducing their elan generation.
         // This is the primary counter to sorcery-focused kingdoms (Sidhe, Vampire).
-        const targetBuildings = (targetKingdom.buildings ?? {}) as Record<string, number>;
+        const targetBuildings = (typeof targetKingdom.buildings === 'string' ? JSON.parse(targetKingdom.buildings) : (targetKingdom.buildings ?? {})) as Record<string, number>;
         const currentTemples = targetBuildings.temple ?? 0;
         const templesDestroyed = Math.floor(currentTemples * 0.10);
         if (templesDestroyed > 0) {

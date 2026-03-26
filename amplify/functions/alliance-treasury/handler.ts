@@ -62,7 +62,7 @@ async function handleContribute(args: { allianceId?: string | null; kingdomId?: 
     return { success: false, error: 'Unauthorized: you do not own this kingdom', errorCode: ErrorCode.UNAUTHORIZED };
   }
 
-  const resources = (kingdom.resources ?? {}) as KingdomResources;
+  const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
   const currentGold = resources.gold ?? 0;
 
   if (currentGold < amount) {
@@ -130,7 +130,7 @@ async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: st
   }
 
   // Add gold to kingdom
-  const resources = (kingdom.resources ?? {}) as KingdomResources;
+  const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
   const updatedResources: KingdomResources = {
     ...resources,
     gold: (resources.gold ?? 0) + amount

@@ -70,7 +70,7 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
         }
       }
 
-      const stats = (kingdom.stats ?? {}) as Record<string, unknown>;
+      const stats = (typeof kingdom.stats === 'string' ? JSON.parse(kingdom.stats) : (kingdom.stats ?? {})) as Record<string, unknown>;
       const updatedStats = { ...stats, faithAlignment: alignment };
 
       await dbUpdate('Kingdom', kingdomId, {
@@ -111,7 +111,7 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
         }
       }
 
-      const stats = (kingdom.stats ?? {}) as Record<string, unknown>;
+      const stats = (typeof kingdom.stats === 'string' ? JSON.parse(kingdom.stats) : (kingdom.stats ?? {})) as Record<string, unknown>;
       const focusPoints = (stats.focusPoints as number) ?? 0;
       const cost = ABILITY_COSTS[abilityType];
 

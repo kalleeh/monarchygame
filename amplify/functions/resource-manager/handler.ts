@@ -233,9 +233,9 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
-    const resources = (kingdom.resources ?? {}) as KingdomResources;
-    const buildings = (kingdom.buildings ?? {}) as KingdomBuildings;
-    const stats = (kingdom.stats ?? {}) as Record<string, unknown>;
+    const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
+    const buildings = (typeof kingdom.buildings === 'string' ? JSON.parse(kingdom.buildings) : (kingdom.buildings ?? {})) as KingdomBuildings;
+    const stats = (typeof kingdom.stats === 'string' ? JSON.parse(kingdom.stats) : (kingdom.stats ?? {})) as Record<string, unknown>;
     const currentAge = (kingdom.currentAge as string) ?? 'early';
 
     const currentGold = resources.gold ?? 0;

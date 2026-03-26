@@ -75,7 +75,7 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
       }
     }
 
-    const resources = (kingdom.resources ?? {}) as KingdomResources;
+    const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
     const goldCost = quantity * resolvedGoldCostPerUnit;
     const currentGold = resources.gold ?? 0;
 
@@ -90,7 +90,7 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
-    const units = (kingdom.totalUnits ?? {}) as KingdomUnits;
+    const units = (typeof kingdom.totalUnits === 'string' ? JSON.parse(kingdom.totalUnits) : (kingdom.totalUnits ?? {})) as KingdomUnits;
     const currentCount = units[unitType as keyof KingdomUnits] ?? 0;
     const updatedUnits: KingdomUnits = {
       ...units,

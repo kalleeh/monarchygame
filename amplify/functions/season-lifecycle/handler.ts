@@ -388,7 +388,7 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
                 // Refund escrowed resources
                 const seller = await dbGet<KingdomType>('Kingdom', offer.sellerId);
                 if (seller) {
-                  const resources = (seller.resources ?? {}) as Record<string, number>;
+                  const resources = (typeof seller.resources === 'string' ? JSON.parse(seller.resources) : (seller.resources ?? {})) as Record<string, number>;
                   resources[offer.resourceType] = (resources[offer.resourceType] ?? 0) + offer.quantity;
                   await dbUpdate('Kingdom', offer.sellerId, { resources });
                 }

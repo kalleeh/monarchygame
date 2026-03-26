@@ -75,7 +75,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
-    const resources = (casterKingdom.resources ?? {}) as KingdomResources;
+    const resources = (typeof casterKingdom.resources === 'string' ? JSON.parse(casterKingdom.resources) : (casterKingdom.resources ?? {})) as KingdomResources;
     const currentElan = resources.elan ?? 0;
 
     const spellElanCost = SPELL_ELAN_COSTS[spellId] ?? 20;
@@ -113,7 +113,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
 
       if (spellEffect.type === 'structure_damage') {
         // Reduce all building counts by damage percentage
-        const targetBuildings = (targetKingdom.buildings ?? {}) as Record<string, number>;
+        const targetBuildings = (typeof targetKingdom.buildings === 'string' ? JSON.parse(targetKingdom.buildings) : (targetKingdom.buildings ?? {})) as Record<string, number>;
         const damagedBuildings: Record<string, number> = {};
         let totalDestroyed = 0;
 
@@ -135,7 +135,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
 
       } else if (spellEffect.type === 'fort_damage') {
         // Reduce forts/walls specifically by damage percentage
-        const targetBuildings = (targetKingdom.buildings ?? {}) as Record<string, number>;
+        const targetBuildings = (typeof targetKingdom.buildings === 'string' ? JSON.parse(targetKingdom.buildings) : (targetKingdom.buildings ?? {})) as Record<string, number>;
         const damagedBuildings = { ...targetBuildings };
         let totalDestroyed = 0;
 
@@ -157,7 +157,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
 
       } else if (spellEffect.type === 'peasant_kill') {
         // Reduce population by damage percentage
-        const targetResources = (targetKingdom.resources ?? {}) as KingdomResources;
+        const targetResources = (typeof targetKingdom.resources === 'string' ? JSON.parse(targetKingdom.resources) : (targetKingdom.resources ?? {})) as KingdomResources;
         const currentPop = targetResources.population ?? 0;
         const killed = Math.floor(currentPop * spellEffect.damage);
         const updatedTargetResources: KingdomResources = {

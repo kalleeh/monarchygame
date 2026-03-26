@@ -41,7 +41,7 @@ async function handleUpgrade(
     }
 
     // Check gold
-    const resources = (kingdom.resources ?? {}) as KingdomResources;
+    const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
     const currentGold = resources.gold ?? 0;
     if (currentGold < goldCost) {
       return { success: false, error: `Insufficient gold: need ${goldCost}, have ${currentGold}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
@@ -141,7 +141,7 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
     }
 
     // Check kingdom has enough gold
-    const resources = (kingdom.resources ?? {}) as KingdomResources;
+    const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
     const currentGold = resources.gold ?? 0;
     if (currentGold < 500) {
       return { success: false, error: `Insufficient gold: need 500, have ${currentGold}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };

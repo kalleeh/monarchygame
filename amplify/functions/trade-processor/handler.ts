@@ -77,7 +77,7 @@ export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event
       return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
     }
 
-    const sellerResources = (seller.resources ?? {}) as KingdomResources;
+    const sellerResources = (typeof seller.resources === 'string' ? JSON.parse(seller.resources) : (seller.resources ?? {})) as KingdomResources;
     const available = (sellerResources as unknown as Record<string, number>)[resourceType] ?? 0;
     if (available < quantity) {
       return JSON.stringify({ success: false, error: `Insufficient ${resourceType}: have ${available}, need ${quantity}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES });
@@ -151,7 +151,7 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }, cal
     // Refund escrowed resources to seller
     const seller = await dbGet<KingdomRecord>('Kingdom', offer.sellerId);
     if (seller) {
-      const sellerResources = (seller.resources ?? {}) as Record<string, number>;
+      const sellerResources = (typeof seller.resources === 'string' ? JSON.parse(seller.resources) : (seller.resources ?? {})) as Record<string, number>;
       sellerResources[offer.resourceType] = (sellerResources[offer.resourceType] ?? 0) + offer.quantity;
       await dbUpdate('Kingdom', offer.sellerId, { resources: sellerResources });
     }
@@ -171,7 +171,7 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }, cal
     return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
   }
 
-  const buyerResources = (buyer.resources ?? {}) as KingdomResources;
+  const buyerResources = (typeof buyer.resources === 'string' ? JSON.parse(buyer.resources) : (buyer.resources ?? {})) as KingdomResources;
   if ((buyerResources.gold ?? 0) < offer.totalPrice) {
     return JSON.stringify({ success: false, error: `Insufficient gold: have ${buyerResources.gold ?? 0}, need ${offer.totalPrice}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES });
   }
@@ -186,7 +186,7 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }, cal
 
   // 2. Add gold to seller (resources already escrowed)
   const seller = await dbGet<KingdomRecord>('Kingdom', offer.sellerId);
-  const sellerResources = (seller?.resources ?? {}) as KingdomResources;
+  const sellerResources = (typeof seller?.resources === 'string' ? JSON.parse(seller.resources) : (seller?.resources ?? {})) as KingdomResources;
   const updatedSellerResources = {
     ...sellerResources,
     gold: (sellerResources.gold ?? 0) + offer.totalPrice
@@ -241,7 +241,7 @@ async function handleCancelOffer(args: { offerId: string; sellerId: string }, ca
       return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
     }
 
-    const sellerResources = (seller.resources ?? {}) as Record<string, number>;
+    const sellerResources = (typeof seller.resources === 'string' ? JSON.parse(seller.resources) : (seller.resources ?? {})) as Record<string, number>;
     sellerResources[offer.resourceType] = (sellerResources[offer.resourceType] ?? 0) + offer.quantity;
     await dbUpdate('Kingdom', sellerId, { resources: sellerResources });
   }

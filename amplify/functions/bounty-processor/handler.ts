@@ -46,7 +46,7 @@ async function handleClaim(args: { kingdomId?: string | null; targetId?: string 
     }
   }
 
-  const stats = (kingdom.stats ?? {}) as Record<string, unknown>;
+  const stats = (typeof kingdom.stats === 'string' ? JSON.parse(kingdom.stats) : (kingdom.stats ?? {})) as Record<string, unknown>;
 
   if (stats.activeBountyTargetId) {
     return { success: false, error: 'Bounty already active — complete or abandon the current bounty first', errorCode: ErrorCode.VALIDATION_FAILED };
@@ -89,7 +89,7 @@ async function handleComplete(args: { kingdomId?: string | null; targetId?: stri
     return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
   }
 
-  const stats = (kingdom.stats ?? {}) as Record<string, unknown>;
+  const stats = (typeof kingdom.stats === 'string' ? JSON.parse(kingdom.stats) : (kingdom.stats ?? {})) as Record<string, unknown>;
 
   if (stats.activeBountyTargetId !== targetId) {
     return { success: false, error: 'No active bounty matches the provided targetId', errorCode: ErrorCode.VALIDATION_FAILED };
@@ -101,7 +101,7 @@ async function handleComplete(args: { kingdomId?: string | null; targetId?: stri
   const populationReward = structuresGained * 2;
 
   // Update resources
-  const resources = (kingdom.resources ?? {}) as KingdomResources;
+  const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
   const updatedResources: KingdomResources = {
     ...resources,
     gold: (resources.gold ?? 0) + goldReward,

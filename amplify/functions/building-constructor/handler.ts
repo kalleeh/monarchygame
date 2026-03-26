@@ -66,7 +66,7 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
       }
     }
 
-    const resources = (kingdom.resources ?? {}) as KingdomResources;
+    const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
     const goldCost = quantity * 250;
     const currentGold = resources.gold ?? 0;
 
@@ -81,7 +81,7 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
-    const buildings = (kingdom.buildings ?? {}) as KingdomBuildings;
+    const buildings = (typeof kingdom.buildings === 'string' ? JSON.parse(kingdom.buildings) : (kingdom.buildings ?? {})) as KingdomBuildings;
     const currentCount = buildings[buildingType as keyof KingdomBuildings] ?? 0;
     const updatedBuildings: KingdomBuildings = {
       ...buildings,
