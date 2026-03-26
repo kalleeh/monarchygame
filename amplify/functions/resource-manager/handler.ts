@@ -75,7 +75,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       const _ownerIds = [identity.sub ?? '', (identity as any).username ?? '',
         (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
         (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-      if (!ownerField || !_ownerIds.some(id => ownerField.includes(id))) {
+      if (!ownerField || !_ownerIds.some(id => ownerField === id)) {
         return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
       }
       const currentStats: Record<string, unknown> = typeof kingdom.stats === 'string'
@@ -123,7 +123,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       const _ownerIds = [identity.sub ?? '', (identity as any).username ?? '',
         (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
         (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-      if (!ownerField || !_ownerIds.some(id => ownerField.includes(id))) {
+      if (!ownerField || !_ownerIds.some(id => ownerField === id)) {
         return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
       }
       const currentStats: Record<string, unknown> = typeof kingdom.stats === 'string'
@@ -168,7 +168,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       const _frmIds = [identity.sub ?? '', (identity as any).username ?? '',
         (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
         (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-      if (!ownerField || !_frmIds.some(id => ownerField.includes(id))) {
+      if (!ownerField || !_frmIds.some(id => ownerField === id)) {
         return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
       }
 
@@ -229,7 +229,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     const _ids = [identity.sub ?? '', identity.username ?? '',
       (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
       (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-    if (!ownerField || !_ids.some(id => ownerField.includes(id))) {
+    if (!ownerField || !_ids.some(id => ownerField === id)) {
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 

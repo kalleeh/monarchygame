@@ -74,7 +74,7 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
       return JSON.stringify({ success: false, error: 'Attacker kingdom not found', errorCode: ErrorCode.NOT_FOUND });
     }
     const attackerOwnerField = (attackerKingdom as any).owner as string | null;
-    if (!attackerOwnerField || (!attackerOwnerField.includes(identity.sub) && !attackerOwnerField.includes(identity.username ?? ''))) {
+    if (!attackerOwnerField || (attackerOwnerField !== identity.sub && attackerOwnerField !== (identity.username ?? ''))) {
       return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
     }
 
