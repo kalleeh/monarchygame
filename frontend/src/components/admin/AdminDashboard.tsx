@@ -361,7 +361,7 @@ function KingdomOverviewPanel() {
     }
     setLoading(true);
     try {
-      const { data } = await getClient().models.Kingdom.list();
+      const { data } = await getClient().models.Kingdom.list({ filter: { isActive: { eq: true } } });
       setKingdoms(data || []);
     } catch (err) {
       toast.error('Failed to load kingdoms.');
@@ -482,7 +482,7 @@ function KingdomManagementPanel() {
     }
     setLoading(true);
     try {
-      const { data } = await getClient().models.Kingdom.list();
+      const { data } = await getClient().models.Kingdom.list({ filter: { isActive: { eq: true } } });
       setKingdoms(data || []);
     } catch (err) {
       toast.error('Failed to load kingdoms.');
