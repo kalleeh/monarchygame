@@ -496,6 +496,18 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
         return JSON.stringify({ success: true, seasonId, action: 'force_ended' });
       }
 
+      case 'list_kingdoms_admin': {
+        // Returns all active kingdoms with full resource data (reads DynamoDB directly,
+        // bypassing Amplify field-level auth that hides resources for non-owners)
+        const kingdoms = await dbList<{
+          id: string; name?: string; race?: string; isAI?: boolean; isActive?: boolean;
+          networth?: number; resources?: string; totalUnits?: string; isOnline?: boolean;
+        }>('Kingdom');
+        const active = kingdoms.filter(k => k.isActive !== false);
+        log.info('season-lifecycle', 'list_kingdoms_admin', { count: active.length });
+        return JSON.stringify({ success: true, kingdoms: active });
+      }
+
       case 'seed_ai_kingdoms': {
         const seasonId = args.seasonId;
         if (!seasonId) {

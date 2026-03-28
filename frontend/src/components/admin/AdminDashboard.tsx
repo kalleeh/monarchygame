@@ -364,19 +364,12 @@ function KingdomOverviewPanel() {
     }
     setLoading(true);
     try {
-      // Paginate through all active kingdoms (Amplify defaults to 100/page)
-      const allKingdoms: typeof data extends Array<infer T> ? T[] : never[] = [] as never[];
-      let nextToken: string | null | undefined = undefined;
-      do {
-        const { data: page, nextToken: nt } = await getClient().models.Kingdom.list({
-          filter: { isActive: { eq: true } },
-          limit: 500,
-          nextToken: nextToken ?? undefined,
-        });
-        allKingdoms.push(...(page || []));
-        nextToken = nt;
-      } while (nextToken);
-      setKingdoms(allKingdoms);
+      // Use Lambda to bypass Amplify field-level auth (resources is owner-restricted via AppSync)
+      const raw = await getClient().mutations.manageSeason({ action: 'list_kingdoms_admin' });
+      const result = typeof raw === 'string' ? JSON.parse(raw) : (raw as { data?: unknown }).data ?? raw;
+      const parsed = typeof result === 'string' ? JSON.parse(result) : result as { success?: boolean; kingdoms?: KingdomRow[]; error?: string };
+      if (!parsed?.success) throw new Error(parsed?.error || 'Failed');
+      setKingdoms((parsed.kingdoms ?? []) as KingdomRow[]);
     } catch (err) {
       toast.error('Failed to load kingdoms.');
       console.error('[AdminDashboard] fetchKingdoms error', err);
@@ -496,16 +489,11 @@ function KingdomManagementPanel() {
     }
     setLoading(true);
     try {
-      const allKms: Awaited<ReturnType<typeof getClient>['models']['Kingdom']['list']>['data'] = [];
-      let nxt: string | null | undefined = undefined;
-      do {
-        const { data: pg, nextToken: nt } = await getClient().models.Kingdom.list({
-          filter: { isActive: { eq: true } }, limit: 500, nextToken: nxt ?? undefined,
-        });
-        allKms.push(...(pg || []));
-        nxt = nt;
-      } while (nxt);
-      setKingdoms(allKms);
+      const raw = await getClient().mutations.manageSeason({ action: 'list_kingdoms_admin' });
+      const result = typeof raw === 'string' ? JSON.parse(raw) : (raw as { data?: unknown }).data ?? raw;
+      const parsed = typeof result === 'string' ? JSON.parse(result) : result as { success?: boolean; kingdoms?: KingdomRow[]; error?: string };
+      if (!parsed?.success) throw new Error(parsed?.error || 'Failed');
+      setKingdoms((parsed.kingdoms ?? []) as KingdomRow[]);
     } catch (err) {
       toast.error('Failed to load kingdoms.');
       console.error('[AdminDashboard] KingdomManagement fetchKingdoms error', err);
