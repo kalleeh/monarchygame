@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbList, dbAtomicAdd } from '../data-client';
+import { dbGet, dbUpdate, dbList, dbAtomicAdd, dbQuery } from '../data-client';
 
 const TERRITORY_NAME_LIMITS = { min: 2, max: 50 } as const;
 const COORDINATE_LIMITS = { min: -10000, max: 10000 } as const;
@@ -173,8 +173,9 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
 
     // Check for duplicate territory at same coordinates
     const coordStr = JSON.stringify(coordObj);
-    const allTerritories = await dbList<TerritoryType>('Territory');
-    const kingdomTerritories = allTerritories.filter(t => t.kingdomId === kingdomId);
+    const kingdomTerritories = await dbQuery<TerritoryType>(
+      'Territory', 'kingdomId', { field: 'kingdomId', value: kingdomId }
+    );
     const duplicate = kingdomTerritories.find(
       (t: TerritoryType) => t.coordinates === coordStr
     );
@@ -184,8 +185,8 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
 
     // Slot-count validation: cap at 5 territories per region
     if (regionId) {
-      const regionTerritories = allTerritories.filter(
-        t => t.regionId === regionId && t.kingdomId === kingdomId
+      const regionTerritories = kingdomTerritories.filter(
+        t => t.regionId === regionId
       );
       if (regionTerritories.length >= 5) {
         return { success: false, error: 'Region is full', errorCode: 'REGION_FULL' };

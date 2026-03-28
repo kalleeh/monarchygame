@@ -1,5 +1,5 @@
 import type { Schema } from '../../data/resource';
-import { dbList, dbGet, dbCreate, dbUpdate } from '../data-client';
+import { dbList, dbGet, dbCreate, dbUpdate, dbQuery } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 
@@ -85,9 +85,10 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
     }
 
     // Check for existing active war
-    const allWars = await dbList<WarDeclarationType>('WarDeclaration');
-    const existingWars = allWars.filter(w =>
-      w.attackerId === attackerId &&
+    const attackerWars = await dbQuery<WarDeclarationType>(
+      'WarDeclaration', 'attackerId', { field: 'attackerId', value: attackerId }
+    );
+    const existingWars = attackerWars.filter(w =>
       w.defenderId === defenderId &&
       (!seasonId || w.seasonId === seasonId) &&
       w.status === 'active'

@@ -100,6 +100,7 @@ const schema = a.schema({
     })
     .secondaryIndexes((index) => [
       index('seasonId').sortKeys(['networth']).queryField('listKingdomsBySeasonNetworth'),
+      index('isActive').sortKeys(['updatedAt']),
     ])
     .authorization((allow) => [
       // Players can create their kingdom and read it; all writes go through Lambda
@@ -125,6 +126,9 @@ const schema = a.schema({
       createdAt: a.datetime(),
       updatedAt: a.datetime()
     })
+    .secondaryIndexes((index) => [
+      index('kingdomId').sortKeys(['createdAt']),
+    ])
     .authorization((allow) => [
       allow.owner(),
       allow.authenticated().to(['read'])
@@ -165,6 +169,10 @@ const schema = a.schema({
       detailedReport: a.json()
         .authorization((allow) => [allow.owner().to(['read'])])
     })
+    .secondaryIndexes((index) => [
+      index('defenderId').sortKeys(['createdAt']),
+      index('attackerId').sortKeys(['defenderId']),
+    ])
     .authorization((allow) => [
       allow.owner(),
       allow.authenticated().to(['read'])
@@ -239,6 +247,10 @@ const schema = a.schema({
       resolvedAt: a.datetime(),
       reason: a.string(),
     })
+    .secondaryIndexes((index) => [
+      index('attackerId').sortKeys(['status']),
+      index('defenderId').sortKeys(['status']),
+    ])
     .authorization((allow) => [
       allow.authenticated().to(['read']),
       allow.owner()
@@ -302,6 +314,9 @@ const schema = a.schema({
       allowedActions: a.json(),
       prohibitedActions: a.json(),
     })
+    .secondaryIndexes((index) => [
+      index('kingdomId').sortKeys(['endTime']),
+    ])
     .authorization((allow) => [
       allow.authenticated().to(['read']),
       allow.owner()
