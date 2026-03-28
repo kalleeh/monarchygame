@@ -612,10 +612,10 @@ function KingdomManagementPanel() {
                   <tr>
                     <td>{k.name ?? '—'}</td>
                     <td>{k.race ?? '—'}</td>
-                    <td title="Owner-restricted">{res.gold > 0 ? res.gold.toLocaleString() : '—'}</td>
-                    <td title="Owner-restricted">{res.population > 0 ? res.population.toLocaleString() : '—'}</td>
-                    <td title="Owner-restricted">{res.land > 0 ? res.land.toLocaleString() : '—'}</td>
-                    <td title="Owner-restricted">{res.turns > 0 ? res.turns : '—'}</td>
+                    <td>{res.gold > 0 ? res.gold.toLocaleString() : '—'}</td>
+                    <td>{res.population > 0 ? res.population.toLocaleString() : '—'}</td>
+                    <td>{res.land > 0 ? res.land.toLocaleString() : '—'}</td>
+                    <td>{res.turns > 0 ? res.turns : '—'}</td>
                     <td className="admin-table-networth">{((k.networth ?? nw) || 0).toLocaleString()}</td>
                     <td>
                       <button

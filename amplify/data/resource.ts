@@ -74,15 +74,16 @@ const schema = a.schema({
       seasonId: a.id(),
       createdAt: a.datetime(),
       ageStartTime: a.datetime(),
-      // Private fields — owner only (nullable so non-owners get null, enforced non-null by Lambdas)
+      // Visible to all authenticated users — consistent with scouting revealing resources
       resources: a.json()
-        .authorization((allow) => [allow.owner().to(['read'])]),
+        .authorization((allow) => [allow.authenticated().to(['read']), allow.owner()]),
+      // Strategic fields — owner only (active buffs, building details, unit composition)
       stats: a.json()
         .authorization((allow) => [allow.owner().to(['read'])]),
       buildings: a.json()
         .authorization((allow) => [allow.owner().to(['read'])]),
       totalUnits: a.json()
-        .authorization((allow) => [allow.owner().to(['read'])]),
+        .authorization((allow) => [allow.authenticated().to(['read']), allow.owner()]),
       lastResourceTick: a.datetime()
         .authorization((allow) => [allow.owner().to(['read'])]),
       encampEndTime: a.string()
