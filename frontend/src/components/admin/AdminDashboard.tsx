@@ -364,8 +364,19 @@ function KingdomOverviewPanel() {
     }
     setLoading(true);
     try {
-      const { data } = await getClient().models.Kingdom.list({ filter: { isActive: { eq: true } } });
-      setKingdoms(data || []);
+      // Paginate through all active kingdoms (Amplify defaults to 100/page)
+      const allKingdoms: typeof data extends Array<infer T> ? T[] : never[] = [] as never[];
+      let nextToken: string | null | undefined = undefined;
+      do {
+        const { data: page, nextToken: nt } = await getClient().models.Kingdom.list({
+          filter: { isActive: { eq: true } },
+          limit: 500,
+          nextToken: nextToken ?? undefined,
+        });
+        allKingdoms.push(...(page || []));
+        nextToken = nt;
+      } while (nextToken);
+      setKingdoms(allKingdoms);
     } catch (err) {
       toast.error('Failed to load kingdoms.');
       console.error('[AdminDashboard] fetchKingdoms error', err);
@@ -387,7 +398,7 @@ function KingdomOverviewPanel() {
   });
 
   const top5 = kingdoms
-    .map((k) => ({ k, nw: calcNetworth(parseResources(k.resources)) }))
+    .map((k) => ({ k, nw: k.networth ?? calcNetworth(parseResources(k.resources)) }))
     .sort((a, b) => b.nw - a.nw)
     .slice(0, 5);
 
@@ -485,8 +496,16 @@ function KingdomManagementPanel() {
     }
     setLoading(true);
     try {
-      const { data } = await getClient().models.Kingdom.list({ filter: { isActive: { eq: true } } });
-      setKingdoms(data || []);
+      const allKms: Awaited<ReturnType<typeof getClient>['models']['Kingdom']['list']>['data'] = [];
+      let nxt: string | null | undefined = undefined;
+      do {
+        const { data: pg, nextToken: nt } = await getClient().models.Kingdom.list({
+          filter: { isActive: { eq: true } }, limit: 500, nextToken: nxt ?? undefined,
+        });
+        allKms.push(...(pg || []));
+        nxt = nt;
+      } while (nxt);
+      setKingdoms(allKms);
     } catch (err) {
       toast.error('Failed to load kingdoms.');
       console.error('[AdminDashboard] KingdomManagement fetchKingdoms error', err);
@@ -593,11 +612,11 @@ function KingdomManagementPanel() {
                   <tr>
                     <td>{k.name ?? '—'}</td>
                     <td>{k.race ?? '—'}</td>
-                    <td>{res.gold.toLocaleString()}</td>
-                    <td>{res.population.toLocaleString()}</td>
-                    <td>{res.land.toLocaleString()}</td>
-                    <td>{res.turns}</td>
-                    <td className="admin-table-networth">{nw.toLocaleString()}</td>
+                    <td title="Owner-restricted">{res.gold > 0 ? res.gold.toLocaleString() : '—'}</td>
+                    <td title="Owner-restricted">{res.population > 0 ? res.population.toLocaleString() : '—'}</td>
+                    <td title="Owner-restricted">{res.land > 0 ? res.land.toLocaleString() : '—'}</td>
+                    <td title="Owner-restricted">{res.turns > 0 ? res.turns : '—'}</td>
+                    <td className="admin-table-networth">{((k.networth ?? nw) || 0).toLocaleString()}</td>
                     <td>
                       <button
                         className="admin-btn admin-btn--secondary admin-btn--sm"

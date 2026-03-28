@@ -41,6 +41,8 @@ export interface Kingdom {
   lastActive?: Date;
   guildId?: string;
   guildName?: string;
+  /** Stored networth from DynamoDB — publicly readable, no owner restriction */
+  networth?: number;
 }
 
 export interface Territory {

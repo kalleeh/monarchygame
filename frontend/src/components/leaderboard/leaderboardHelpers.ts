@@ -7,12 +7,12 @@ export interface TargetIndicator {
   emoji: string;
 }
 
-// Simple networth calculation (land + gold + units value)
+// Networth calculation — uses stored public networth field when resources are owner-restricted (null for non-owners)
 export const calculateNetworth = (kingdom: Kingdom): number => {
-  const landValue = kingdom.resources.land * 1000;
-  const goldValue = kingdom.resources.gold;
-  const unitsValue = Object.values(kingdom.totalUnits).reduce((sum, count) => sum + count * 100, 0);
-  return landValue + goldValue + unitsValue;
+  const computed = kingdom.resources.land * 1000 + kingdom.resources.gold +
+    Object.values(kingdom.totalUnits).reduce((sum, count) => sum + count * 100, 0);
+  // Fall back to stored networth when computed is 0 (resources are null for non-owners)
+  return computed > 0 ? computed : (kingdom.networth ?? 0);
 };
 
 export const getTargetIndicator = (yourNW: number, theirNW: number): TargetIndicator => {
