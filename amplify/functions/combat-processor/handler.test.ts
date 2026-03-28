@@ -10,6 +10,7 @@ const mockDbCreate = vi.hoisted(() => vi.fn());
 const mockDbList = vi.hoisted(() => vi.fn());
 const mockDbDelete = vi.hoisted(() => vi.fn());
 const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
+const mockDbQuery = vi.hoisted(() => vi.fn());
 
 vi.mock('../data-client', () => ({
   dbGet: mockDbGet,
@@ -18,6 +19,7 @@ vi.mock('../data-client', () => ({
   dbList: mockDbList,
   dbDelete: mockDbDelete,
   dbAtomicAdd: mockDbAtomicAdd,
+  dbQuery: mockDbQuery,
   parseJsonField: <T>(value: unknown, defaultValue: T): T => {
     if (value === null || value === undefined) return defaultValue;
     if (typeof value === 'string') { try { return JSON.parse(value) as T; } catch { return defaultValue; } }
@@ -72,6 +74,7 @@ beforeEach(() => {
   mockDbUpdate.mockResolvedValue(undefined);
   mockDbCreate.mockResolvedValue({ id: 'battle-1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), __typename: 'BattleReport' });
   mockDbList.mockResolvedValue([]);
+  mockDbQuery.mockResolvedValue([]);
 });
 
 describe('combat-processor handler', () => {
@@ -443,6 +446,10 @@ describe('combat-processor handler', () => {
           { id: 'b2', attackerId: 'attacker-1', defenderId: 'defender-1' },
           { id: 'b3', attackerId: 'attacker-1', defenderId: 'defender-1' },
         ];
+        return [];
+      });
+      // Handler uses dbQuery (GSI) to check for active WarDeclaration — no active war
+      mockDbQuery.mockImplementation(async (model: string) => {
         if (model === 'WarDeclaration') return [];
         return [];
       });

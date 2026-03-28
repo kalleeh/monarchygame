@@ -10,6 +10,7 @@ const mockDbCreate = vi.hoisted(() => vi.fn());
 const mockDbList = vi.hoisted(() => vi.fn());
 const mockDbDelete = vi.hoisted(() => vi.fn());
 const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
+const mockDbQuery = vi.hoisted(() => vi.fn());
 
 vi.mock('../data-client', () => ({
   dbGet: mockDbGet,
@@ -18,6 +19,7 @@ vi.mock('../data-client', () => ({
   dbList: mockDbList,
   dbDelete: mockDbDelete,
   dbAtomicAdd: mockDbAtomicAdd,
+  dbQuery: mockDbQuery,
   parseJsonField: <T>(value: unknown, defaultValue: T): T => {
     if (value === null || value === undefined) return defaultValue;
     if (typeof value === 'string') { try { return JSON.parse(value) as T; } catch { return defaultValue; } }
@@ -64,6 +66,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockDbGet.mockResolvedValue(mockKingdom('king-1'));
   mockDbList.mockResolvedValue([]);
+  mockDbQuery.mockResolvedValue([]);
   mockDbCreate.mockResolvedValue({ id: 'war-1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), __typename: 'WarDeclaration' });
   mockDbUpdate.mockResolvedValue(undefined);
 });
@@ -152,7 +155,7 @@ describe('war-manager handler — declareWar', () => {
     });
 
     it('returns VALIDATION_FAILED when war already exists against this kingdom', async () => {
-      mockDbList.mockImplementation(async (model: string) => {
+      mockDbQuery.mockImplementation(async (model: string) => {
         if (model === 'WarDeclaration') return [{ id: 'war-existing', attackerId: 'king-1', defenderId: 'king-2', seasonId: 'season-1', status: 'active' }];
         return [];
       });

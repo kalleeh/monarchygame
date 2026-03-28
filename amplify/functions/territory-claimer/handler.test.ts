@@ -10,6 +10,7 @@ const mockDbCreate = vi.hoisted(() => vi.fn());
 const mockDbList = vi.hoisted(() => vi.fn());
 const mockDbDelete = vi.hoisted(() => vi.fn());
 const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
+const mockDbQuery = vi.hoisted(() => vi.fn());
 
 vi.mock('../data-client', () => ({
   dbGet: mockDbGet,
@@ -18,6 +19,7 @@ vi.mock('../data-client', () => ({
   dbList: mockDbList,
   dbDelete: mockDbDelete,
   dbAtomicAdd: mockDbAtomicAdd,
+  dbQuery: mockDbQuery,
   parseJsonField: <T>(value: unknown, defaultValue: T): T => {
     if (value === null || value === undefined) return defaultValue;
     if (typeof value === 'string') { try { return JSON.parse(value) as T; } catch { return defaultValue; } }
@@ -73,6 +75,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockDbUpdate.mockResolvedValue(undefined);
   mockDbList.mockResolvedValue([]);
+  mockDbQuery.mockResolvedValue([]);
   mockDbCreate.mockResolvedValue({ id: 'territory-1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), __typename: 'Territory' });
   // Some handlers also call dbList for RestorationStatus or other checks - keep [] as default
 });
@@ -162,7 +165,7 @@ describe('territory-claimer handler', () => {
 
     it('returns INVALID_PARAM when territory already claimed at these coordinates', async () => {
       mockDbGet.mockResolvedValue(mockKingdom());
-      mockDbList.mockImplementation(async (model: string) => {
+      mockDbQuery.mockImplementation(async (model: string) => {
         if (model === 'Territory') return [{ id: 'existing', kingdomId: 'kingdom-1', coordinates: JSON.stringify({ x: 5, y: 5 }) }];
         return [];
       });
