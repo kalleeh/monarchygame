@@ -56,7 +56,7 @@ const ABILITY_CONFIG: Array<{ key: AbilityKey; label: string; cost: number; desc
     key: 'EMERGENCY_ACTION',
     label: 'Emergency Action',
     cost: FOCUS_MECHANICS.ABILITY_COSTS.EMERGENCY_ACTION,
-    description: 'Perform an emergency action with enhanced racial ability boost.',
+    description: 'Instantly grants 5 turns to your kingdom.',
   },
 ];
 

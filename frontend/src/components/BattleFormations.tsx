@@ -604,7 +604,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
             {([
               { value: 'standard', label: 'Standard', desc: 'Captures land' },
               { value: 'raid', label: 'Raid', desc: 'Steals gold (5%), captures less land' },
-              { value: 'pillage', label: 'Pillage', desc: 'Steals gold (10%), destroys buildings, no land' },
+              { value: 'pillage', label: 'Pillage 💰', desc: 'Destructive raid — steals 10% gold, destroys buildings, no land captured' },
               { value: 'siege', label: 'Siege', desc: 'Heavy assault (+50% land, 3 turns, +30% casualties)' },
             ] as const).map(opt => (
               <button

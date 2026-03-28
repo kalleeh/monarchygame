@@ -592,7 +592,14 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
 
 // Lists recent replays stored in the replay store
 function ReplaysListRoute({ onNavigate }: { onNavigate: (replayId: string) => void }) {
+  const { kingdomId } = useParams<{ kingdomId: string }>();
+  const loadReplays = useCombatReplayStore((state) => state.loadReplaysFromBattleReports);
   const getRecentReplays = useCombatReplayStore((state) => state.getRecentReplays);
+
+  useEffect(() => {
+    if (kingdomId) void loadReplays(kingdomId);
+  }, [kingdomId, loadReplays]);
+
   const replays = getRecentReplays(20);
 
   if (replays.length === 0) {

@@ -55,6 +55,12 @@ export const KINGDOM_DASHBOARD_TUTORIAL: TutorialStep[] = [
     position: 'left'
   },
   {
+    id: 'faith-focus',
+    title: 'Faith & Focus Abilities',
+    description: 'Spend Focus Points on powerful abilities:\n• Combat Focus (8 FP) — +20% combat for 24h\n• Economic Focus (6 FP) — +15% income for 24h\n• Spell Power Boost (15 FP) — +30% spell damage for 24h\n• Racial Ability Boost (10 FP) — +50% racial bonuses for 24h\n• Emergency Action (20 FP) — instantly grants 5 turns',
+    position: 'bottom' as const,
+  },
+  {
     id: 'alliances',
     title: '🤝 Alliances',
     description: 'Join or create alliances to coordinate with other players. Share intelligence, plan attacks, and defend each other.',
@@ -103,7 +109,13 @@ export const COMBAT_TUTORIAL: TutorialStep[] = [
     description: 'Select your target, choose your formation, and execute the attack. Land gained depends on your offense vs their defense.',
     targetElement: '.battle-execution',
     position: 'top'
-  }
+  },
+  {
+    id: 'attack-types',
+    title: 'Attack Types',
+    description: 'Choose your assault strategy:\n• Standard — balanced attack, captures land\n• Raid — quick strike, steals gold (5%), less land, fewer casualties\n• Pillage — destroys buildings, steals gold (10%), no land captured\n• Siege — heavy assault, +50% land, costs 3 turns, higher casualties',
+    position: 'bottom' as const,
+  },
 ];
 
 export const SPELL_CASTING_TUTORIAL: TutorialStep[] = [

@@ -107,16 +107,6 @@ interface BattleReport {
   degradedTerritory?: string | null;
 }
 
-interface SiegeOperation {
-  id: string;
-  targetTerritoryId: string;
-  attackerUnits: Unit[];
-  defenderUnits: Unit[];
-  turnsRemaining: number;
-  siegeEquipment: string[];
-  fortificationLevel: number;
-}
-
 export const useCombatStore = create(
   combine(
     {
@@ -127,15 +117,6 @@ export const useCombatStore = create(
       // War declarations (from documentation)
       warDeclarations: [] as WarDeclaration[],
       attackCounts: {} as Record<string, number>, // Track attacks per target
-
-      // Siege warfare
-      activeSieges: [] as SiegeOperation[],
-      siegeHistory: [] as Array<{
-        id: string;
-        timestamp: number;
-        success: boolean;
-        duration: number;
-      }>,
 
       // UI state
       selectedBattleReport: null as string | null,
@@ -461,92 +442,6 @@ export const useCombatStore = create(
           currentBattle: report,
           battleHistory: [report, ...s.battleHistory.slice(0, 49)],
         }));
-      },
-
-      // Siege warfare
-      startSiege: async (territoryId: string, units: Unit[]) => {
-        // Use crypto.randomUUID when available; fall back to timestamp-based id
-        const newSiegeId =
-          typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-            ? crypto.randomUUID()
-            : `siege-${Date.now()}`;
-
-        const siege: SiegeOperation = {
-          id: newSiegeId,
-          targetTerritoryId: territoryId,
-          attackerUnits: units,
-          defenderUnits: [],
-          turnsRemaining: 5, // 5-turn siege
-          siegeEquipment: ['catapult', 'ram'],
-          fortificationLevel: 3
-        };
-
-        set((state) => ({
-          activeSieges: [...state.activeSieges, siege]
-        }));
-
-        return siege.id;
-      },
-
-      updateSiege: (siegeId: string, updates: Partial<SiegeOperation>) => {
-        set((state) => ({
-          activeSieges: state.activeSieges.map(s =>
-            s.id === siegeId ? { ...s, ...updates } : s
-          )
-        }));
-      },
-
-      completeSiege: (siegeId: string, success: boolean) => {
-        const currentState = get();
-        const siege = currentState.activeSieges.find(s => s.id === siegeId);
-
-        if (!siege) return;
-
-        const duration = 5 - siege.turnsRemaining;
-
-        if (success) {
-          // Fortified-position land grant: 3–5% of a standard 1 000-acre base.
-          // Sieges target fortified positions, so gains are smaller than open battle.
-          const BASE_LAND = 1000;
-          const landGainRate = 0.03 + Math.random() * 0.02; // 3–5 %
-          const landGained = Math.floor(BASE_LAND * landGainRate);
-
-          // Apply land gain to the player's kingdom resources
-          useKingdomStore.getState().updateResources({
-            land: (useKingdomStore.getState().resources?.land ?? 0) + landGained
-          });
-
-          set((storeState) => ({
-            activeSieges: storeState.activeSieges.filter(s => s.id !== siegeId),
-            siegeHistory: [
-              { id: siegeId, timestamp: Date.now(), success: true, duration },
-              ...storeState.siegeHistory.slice(0, 19)
-            ]
-          }));
-        } else {
-          // Failed siege: besieging units take 15 % casualties
-          const FAILURE_CASUALTY_RATE = 0.15;
-          const kingdomUnits = useKingdomStore.getState().units;
-          const siegeUnitIds = new Set(siege.attackerUnits.map(u => u.id));
-          const updatedUnits = kingdomUnits
-            .map(u => {
-              if (siegeUnitIds.has(u.id)) {
-                const lost = Math.floor(u.count * FAILURE_CASUALTY_RATE);
-                return { ...u, count: Math.max(0, u.count - lost) };
-              }
-              return u;
-            })
-            .filter(u => u.count > 0);
-          useKingdomStore.getState().setUnits(updatedUnits);
-
-          set((storeState) => ({
-            activeSieges: storeState.activeSieges.filter(s => s.id !== siegeId),
-            siegeHistory: [
-              { id: siegeId, timestamp: Date.now(), success: false, duration },
-              ...storeState.siegeHistory.slice(0, 19)
-            ]
-          }));
-        }
       },
 
       // Battle analytics

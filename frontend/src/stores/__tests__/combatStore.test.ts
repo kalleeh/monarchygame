@@ -65,8 +65,6 @@ describe('CombatStore', () => {
       battleHistory: [],
       warDeclarations: [],
       attackCounts: {},
-      activeSieges: [],
-      siegeHistory: [],
       selectedBattleReport: null,
       loading: false,
       error: null,
@@ -88,7 +86,6 @@ describe('CombatStore', () => {
     expect(state.battleHistory).toEqual([]);
     expect(state.warDeclarations).toEqual([]);
     expect(state.attackCounts).toEqual({});
-    expect(state.activeSieges).toEqual([]);
     expect(state.loading).toBe(false);
     expect(state.error).toBeNull();
   });
@@ -164,27 +161,6 @@ describe('CombatStore', () => {
 
     expect(result).toBeNull();
     expect(useCombatStore.getState().error).toBe('No units selected for battle');
-  });
-
-  it('should manage siege operations', async () => {
-    const { startSiege, updateSiege, completeSiege } = useCombatStore.getState();
-
-    const units = [
-      { id: 'test-1', type: 'knight' as const, count: 10, attack: 5, defense: 5, health: 50 }
-    ];
-
-    const siegeId = await startSiege('enemy-fortress', units);
-
-    expect(siegeId).toBeTruthy();
-    expect(useCombatStore.getState().activeSieges).toHaveLength(1);
-
-    updateSiege(siegeId, { turnsRemaining: 3 });
-    const updatedSiege = useCombatStore.getState().activeSieges[0];
-    expect(updatedSiege.turnsRemaining).toBe(3);
-
-    completeSiege(siegeId, true);
-    expect(useCombatStore.getState().activeSieges).toHaveLength(0);
-    expect(useCombatStore.getState().siegeHistory).toHaveLength(1);
   });
 
   it('should calculate battle statistics', () => {
