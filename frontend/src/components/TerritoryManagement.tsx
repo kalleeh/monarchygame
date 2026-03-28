@@ -135,7 +135,8 @@ export function TerritoryManagement({ kingdom, onBack }: TerritoryManagementProp
       <TopNavigation
         title="Territory Management"
         onBack={onBack}
-        backLabel="← Back to Dashboard"
+        backLabel="← Back to Kingdom"
+        kingdomId={kingdom.id}
         actions={
           <button 
             onClick={() => setShowCreateForm(true)}

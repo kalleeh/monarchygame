@@ -3,6 +3,13 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Schema } from '../../../../amplify/data/resource'
 
+// Mock react-router-dom so KingdomActionBarConnected can call useNavigate outside a Router
+const mockNavigate = vi.fn()
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => mockNavigate,
+  useLocation: () => ({ pathname: '/' })
+}))
+
 // Mock the generateClient function before importing the component
 vi.mock('aws-amplify/data', () => ({
   generateClient: vi.fn(() => ({
@@ -93,7 +100,7 @@ describe('TerritoryManagement', () => {
       render(<TerritoryManagement kingdom={mockKingdom} onBack={mockOnBack} />)
     })
     
-    const backButton = screen.getByText('← Back to Dashboard')
+    const backButton = screen.getByText('← Back to Kingdom')
     
     await act(async () => {
       await user.click(backButton)

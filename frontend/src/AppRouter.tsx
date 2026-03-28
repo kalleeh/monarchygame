@@ -423,10 +423,12 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
         <Route path="leaderboard" element={
           <Suspense fallback={<LoadingSkeleton type="list" className="m-8" />}>
             <div className="leaderboard-page">
-              <div className="leaderboard-header">
-                <button className="back-btn" onClick={handleBackToDashboard}>← Back to Kingdom</button>
-                <h1><img src="/overview-analytics-icon.png" style={{width:32,height:32,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Kingdom Scrolls</h1>
-              </div>
+              <TopNavigation
+                title={<><img src="/overview-analytics-icon.png" style={{width:32,height:32,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Kingdom Scrolls</>}
+                onBack={handleBackToDashboard}
+                backLabel="← Back to Kingdom"
+                kingdomId={kingdomId}
+              />
               <Leaderboard
                 kingdoms={kingdoms.map(k => {
                   const rawStats = (k.stats ?? {}) as Record<string, unknown>;

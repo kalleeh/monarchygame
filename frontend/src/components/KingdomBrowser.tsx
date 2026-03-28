@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { isDemoMode } from '../utils/authMode';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { KingdomSearchService } from '../services/KingdomSearchService';
+import { TopNavigation } from './TopNavigation';
 import './KingdomBrowser.css';
 
 interface BrowsableKingdom {
@@ -105,10 +106,12 @@ const KingdomBrowser: React.FC<KingdomBrowserProps> = ({
 
   return (
     <div className="kingdom-browser">
-      <div className="browser-header">
-        <button className="back-btn" onClick={onBack}>← Back</button>
-        <h1>Kingdom Browser</h1>
-      </div>
+      <TopNavigation
+        title="Kingdom Browser"
+        onBack={onBack}
+        backLabel="← Back to Kingdom"
+        kingdomId={kingdomId}
+      />
 
       <div className="browser-search">
         <input

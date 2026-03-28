@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDiplomacyStore } from '../stores/useDiplomacyStore';
 import { ErrorBoundary } from './ErrorBoundary';
+import { TopNavigation } from './TopNavigation';
 import type { Kingdom, TreatyProposal } from '../types/diplomacy';
 import './DiplomacyInterface.css';
 
@@ -365,12 +366,12 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
 
   return (
     <div className="diplomacy-interface">
-      <div className="diplomacy-header">
-        <button className="gm-back-btn" onClick={onBack} aria-label="Back to Kingdom">
-          ← Back to Kingdom
-        </button>
-        <h1><img src="/diplomacy-icon.png" style={{width:32,height:32,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Diplomacy</h1>
-      </div>
+      <TopNavigation
+        title={<><img src="/diplomacy-icon.png" style={{width:32,height:32,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Diplomacy</>}
+        onBack={onBack}
+        backLabel="← Back to Kingdom"
+        kingdomId={kingdomId}
+      />
 
       <nav className="diplomacy-navigation" role="navigation">
         <button 

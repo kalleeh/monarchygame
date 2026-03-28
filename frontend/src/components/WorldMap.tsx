@@ -41,6 +41,7 @@ import {
 } from './worldmap/KingdomNode';
 import { MapLegend } from './worldmap/MapLegend';
 import { MapControls } from './worldmap/MapControls';
+import { TopNavigation } from './TopNavigation';
 import { WorldMapMobile } from './WorldMapMobile';
 
 interface WorldMapProps {
@@ -448,18 +449,15 @@ const WorldMapDesktop: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
 
   return (
     <div className="world-map">
-      <div className="world-map-header">
-        <button
-          onClick={onBack}
-          className="back-button"
-        >
-          ← Back to Kingdom
-        </button>
-        <h1>World Map</h1>
-        <MapLegend allianceControlledRegions={allianceControlledRegions} />
-      </div>
+      <TopNavigation
+        title="World Map"
+        onBack={onBack}
+        backLabel="← Back to Kingdom"
+        kingdomId={kingdom.id}
+      />
 
       <div className="map-container">
+        <MapLegend allianceControlledRegions={allianceControlledRegions} />
         <ReactFlow
           nodes={nodes}
           edges={edges}

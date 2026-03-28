@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { isDemoMode } from '../utils/authMode';
 import { getActiveSeason } from '../services/domain/SeasonService';
-import { useKingdomStore } from '../stores/kingdomStore';
+import { TopNavigation } from './TopNavigation';
 import './MultiplayerLobby.css';
 
 interface SeasonInfo {
@@ -53,10 +53,12 @@ const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({
   if (isDemoMode()) {
     return (
       <div className="multiplayer-lobby">
-        <div className="lobby-header">
-          <button className="back-btn" onClick={onBack}>← Back</button>
-          <h1>Multiplayer Lobby</h1>
-        </div>
+        <TopNavigation
+          title="Multiplayer Lobby"
+          onBack={onBack}
+          backLabel="← Back to Kingdom"
+          kingdomId={kingdomId}
+        />
         <div className="lobby-demo-notice">
           <h2>Multiplayer Mode</h2>
           <p>Multiplayer features require authentication. Sign in to access:</p>
@@ -83,10 +85,12 @@ const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({
 
   return (
     <div className="multiplayer-lobby">
-      <div className="lobby-header">
-        <button className="back-btn" onClick={onBack}>← Back</button>
-        <h1>Multiplayer Lobby</h1>
-      </div>
+      <TopNavigation
+        title="Multiplayer Lobby"
+        onBack={onBack}
+        backLabel="← Back to Kingdom"
+        kingdomId={kingdomId}
+      />
 
       {loading && <div className="lobby-loading">Loading season data...</div>}
       {error && (
