@@ -5,7 +5,8 @@ import userEvent from '@testing-library/user-event'
 // Mock react-router-dom before importing the component
 const mockNavigate = vi.fn()
 vi.mock('react-router-dom', () => ({
-  useNavigate: () => mockNavigate
+  useNavigate: () => mockNavigate,
+  useLocation: () => ({ pathname: '/' })
 }))
 
 // Mock @react-spring/web (used by Tutorial and TurnTimer sub-components)
@@ -205,9 +206,9 @@ describe('KingdomDashboard', () => {
       render(<KingdomDashboard kingdom={mockKingdom} onBack={mockOnBack} />)
     })
 
-    expect(screen.getByText('Manage Territories')).toBeInTheDocument()
-    expect(screen.getByText(/Summon Units/)).toBeInTheDocument()
-    expect(screen.getByText('Cast Spells')).toBeInTheDocument()
+    expect(screen.getByTitle('Manage Territories')).toBeInTheDocument()
+    expect(screen.getByTitle('Summon Units')).toBeInTheDocument()
+    expect(screen.getByTitle('Cast Spells')).toBeInTheDocument()
   })
 
   it('handles back navigation', async () => {

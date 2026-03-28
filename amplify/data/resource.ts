@@ -100,7 +100,7 @@ const schema = a.schema({
     })
     .secondaryIndexes((index) => [
       index('seasonId').sortKeys(['networth']).queryField('listKingdomsBySeasonNetworth'),
-      index('isActive').sortKeys(['updatedAt']),
+      // Note: isActive (boolean) cannot be a GSI key in Amplify Gen 2 — turn-ticker uses dbList+filter
     ])
     .authorization((allow) => [
       // Players can create their kingdom and read it; all writes go through Lambda
@@ -170,7 +170,7 @@ const schema = a.schema({
         .authorization((allow) => [allow.owner().to(['read'])])
     })
     .secondaryIndexes((index) => [
-      index('defenderId').sortKeys(['createdAt']),
+      index('defenderId').sortKeys(['timestamp']),
       index('attackerId').sortKeys(['defenderId']),
     ])
     .authorization((allow) => [

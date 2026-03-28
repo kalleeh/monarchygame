@@ -30,10 +30,9 @@ interface KingdomRow {
 
 export const handler = async (_event: unknown): Promise<{ success: boolean; ticked: number; skipped: number }> => {
   try {
-    // Query active kingdoms via GSI instead of full table scan
-    const active = await dbQuery<KingdomRow>(
-      'Kingdom', 'isActive', { field: 'isActive', value: true }
-    );
+    // Amplify Gen 2 does not support boolean GSI keys — full scan with filter
+    const allKingdoms = await dbList<KingdomRow>('Kingdom');
+    const active = allKingdoms.filter(k => k.isActive === true);
 
     let ticked = 0;
     let skipped = 0;
