@@ -42,8 +42,8 @@ export class KingdomSearchService {
     if (isDemoMode()) return null;
     const { limit = 50, nextToken, nameSearch, race, minNetworth, maxNetworth } = opts;
 
-    // Build AppSync filter — no isAI filter: AI kingdoms are valid leaderboard competition
-    const filter: Record<string, unknown> = {};
+    // Build AppSync filter — active kingdoms only; AI kingdoms are valid leaderboard competition
+    const filter: Record<string, unknown> = { isActive: { eq: true } };
     if (nameSearch?.trim()) filter.name = { contains: nameSearch.trim() };
     if (race) filter.race = { eq: race };
     if (minNetworth != null || maxNetworth != null) {
@@ -60,12 +60,8 @@ export class KingdomSearchService {
         nextToken: nextToken ?? undefined,
       });
 
-      // Sort client-side within the page by networth descending
-      // (server returns unsorted since there is no global networth GSI yet)
-      const sorted = [...(data ?? [])].sort((a, b) => (b.networth ?? 0) - (a.networth ?? 0));
-
       return {
-        kingdoms: sorted.map(k => {
+        kingdoms: [...(data ?? [])].map(k => {
           const res: Record<string, number> =
             typeof k.resources === 'string' ? JSON.parse(k.resources) : (k.resources ?? {});
           const units: Record<string, number> =
@@ -108,6 +104,10 @@ export class KingdomSearchService {
             guildId: k.guildId ?? undefined,
             networth: k.networth ?? 0,
           };
+        }).sort((a, b) => {
+          const nwA = a.resources.land * 1000 + a.resources.gold;
+          const nwB = b.resources.land * 1000 + b.resources.gold;
+          return nwB - nwA;
         }),
         nextToken: nt ?? null,
       };
