@@ -235,10 +235,28 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     }
 
     // -------------------------------------------------------------------------
-    // Step 3: Race offense bonus — applied multiplicatively after age bonus
+    // Step 3: Read faith effects early so RACIAL_ABILITY_BOOST can influence
+    // the race offense bonus below (Step 3 proper).
+    // -------------------------------------------------------------------------
+    let activeFaithEffects: Array<{ effectType: string; enhancedValue?: number; appliedAt?: string; duration?: number; expiresAt?: string }> = [];
+    try {
+      const statsObj = parseJsonField<Record<string, unknown>>(attacker.stats, {});
+      activeFaithEffects = (statsObj.activeFaithEffects as Array<{ effectType: string; enhancedValue?: number; appliedAt?: string; duration?: number; expiresAt?: string }>) ?? [];
+    } catch {
+      // Handled below in Step 4a
+    }
+
+    // Faith effect: RACIAL_ABILITY_BOOST (+50% to racial ability bonuses)
+    const racialBoostActive = activeFaithEffects.some(
+      e => e.effectType === 'RACIAL_ABILITY_BOOST' && (e.expiresAt ?? '') > new Date().toISOString()
+    );
+    const racialBoostMult = racialBoostActive ? 1.5 : 1.0;
+
+    // -------------------------------------------------------------------------
+    // Step 3 (cont): Race offense bonus — applied multiplicatively after age bonus
     // -------------------------------------------------------------------------
     const attackerRace = attacker.race as string ?? 'Human';
-    const raceOffenseBonus = RACE_OFFENSE_BONUSES[attackerRace] ?? 1.0;
+    const raceOffenseBonus = (RACE_OFFENSE_BONUSES[attackerRace] ?? 1.0) * racialBoostMult;
     effectiveAttackerUnits = Object.fromEntries(
       Object.entries(effectiveAttackerUnits).map(([k, v]) => [k, Math.floor(v * raceOffenseBonus)])
     );
@@ -248,9 +266,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     // Kingdom stats may contain activeFaithEffects array set by faith-processor
     // -------------------------------------------------------------------------
     try {
-      const statsObj = parseJsonField<Record<string, unknown>>(attacker.stats, {});
-      const activeEffects = (statsObj.activeFaithEffects as Array<{ effectType: string; enhancedValue?: number; appliedAt?: string; duration?: number }>) ?? [];
-      const combatFocusEffect = activeEffects.find(e => e.effectType === 'COMBAT_FOCUS' || e.effectType === 'combat_focus');
+      const combatFocusEffect = activeFaithEffects.find(e => e.effectType === 'COMBAT_FOCUS' || e.effectType === 'combat_focus');
       if (combatFocusEffect) {
         // Apply a 20% combat bonus from Combat Focus
         const focusBonus = 1.20;
@@ -416,6 +432,29 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       log.warn('combat-processor', 'alliance-upgrade-bonus-failed', { attackerId, attackerGuildId, error: err instanceof Error ? err.message : String(err) });
     }
 
+    // Defender alliance upgrade: fortification (+10% defense)
+    try {
+      const defenderGuildId = (defender as { guildId?: string | null }).guildId ?? null;
+      if (defenderGuildId) {
+        const defAllianceData = await dbGet<{ stats?: string }>('Alliance', defenderGuildId);
+        if (defAllianceData?.stats) {
+          const dStats = parseJsonField<Record<string, unknown>>(defAllianceData.stats, {});
+          const now = new Date().toISOString();
+          const defUpgrades = (dStats?.activeUpgrades ?? []) as Array<{ type: string; expiresAt: string; effect: Record<string, number> }>;
+          for (const u of defUpgrades.filter(x => x.expiresAt > now)) {
+            const defMult = u.effect.defenseBonus ?? 1.0;
+            if (defMult !== 1.0) {
+              effectiveDefenderUnits = Object.fromEntries(
+                Object.entries(effectiveDefenderUnits).map(([k, v]) => [k, Math.floor(v * defMult)])
+              );
+            }
+          }
+        }
+      }
+    } catch (err) {
+      log.warn('combat-processor', 'defender-upgrade-bonus-failed', { defenderId, error: String(err) });
+    }
+
     // Cap: effective attacker units cannot exceed MAX_OFFENSE_MULTIPLIER × original units
     const MAX_OFFENSE_MULTIPLIER = 2.5;
     for (const [unitType, originalCount] of Object.entries(attackerUnits)) {
@@ -462,6 +501,43 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       defenseTerrainBonus,
     });
 
+    // -------------------------------------------------------------------------
+    // Attack type modifications: raid / pillage
+    // Applied after combat calculations but before writing results to DB.
+    // -------------------------------------------------------------------------
+    let finalLandGained = combatResult.landGained;
+    let extraGoldStolen = 0;
+    let buildingDestroyed = false;
+
+    if (combatResult.success) {
+      if (attackType === 'raid') {
+        // Raid: capture half the normal land, steal 5% of defender's gold
+        finalLandGained = Math.floor(finalLandGained * 0.5);
+        extraGoldStolen = Math.floor((defenderResources.gold ?? 0) * 0.05);
+        // Reduce attacker casualties by 20%
+        const attackerCasualtiesForRaid = combatResult.casualties?.attacker ?? {};
+        for (const unitType of Object.keys(attackerCasualtiesForRaid)) {
+          (combatResult.casualties as CombatResultData['casualties'])!.attacker[unitType] =
+            Math.floor((attackerCasualtiesForRaid[unitType] ?? 0) * 0.8);
+        }
+        log.info('combat-processor', 'raid-applied', { attackerId, finalLandGained, extraGoldStolen });
+      } else if (attackType === 'pillage') {
+        // Pillage: no territory capture, steal 10% of defender's gold, destroy a building
+        finalLandGained = 0;
+        extraGoldStolen = Math.floor((defenderResources.gold ?? 0) * 0.10);
+        // Destroy one random defender building
+        const defenderBuildings = parseJsonField<Record<string, number>>(defender.buildings, {});
+        const buildingKeys = Object.keys(defenderBuildings).filter(k => (defenderBuildings[k] ?? 0) > 0);
+        if (buildingKeys.length > 0) {
+          const randomKey = buildingKeys[Math.floor(Math.random() * buildingKeys.length)];
+          defenderBuildings[randomKey] = (defenderBuildings[randomKey] ?? 1) - 1;
+          defender.buildings = JSON.stringify(defenderBuildings);
+          buildingDestroyed = true;
+        }
+        log.info('combat-processor', 'pillage-applied', { attackerId, extraGoldStolen, buildingDestroyed });
+      }
+    }
+
     await dbCreate<BattleReportType>('BattleReport', {
       attackerId,
       defenderId,
@@ -469,18 +545,19 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       result: JSON.stringify({
         result: combatResult.result,
         powerRatio: combatResult.powerRatio,
-        landGained: combatResult.landGained,
-        goldLooted: combatResult.goldLooted
+        landGained: finalLandGained,
+        goldLooted: combatResult.goldLooted + extraGoldStolen,
+        buildingDestroyed
       }),
       casualties: JSON.stringify(combatResult.casualties),
-      landGained: combatResult.landGained,
+      landGained: finalLandGained,
       timestamp: new Date().toISOString(),
       owner: identity.sub
     });
 
     // Check if defender should enter restoration after severe damage
-    const defenderPostLand = Math.max(1000, (defenderResources.land ?? 1000) - combatResult.landGained);
-    const landLossPercent = combatResult.landGained / (defenderResources.land ?? 1000);
+    const defenderPostLand = Math.max(1000, (defenderResources.land ?? 1000) - finalLandGained);
+    const landLossPercent = finalLandGained / (defenderResources.land ?? 1000);
 
     if (landLossPercent >= 0.5 || defenderPostLand <= 1000) {
       // Trigger restoration for severely damaged defender
@@ -587,29 +664,30 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     }
 
     let degradedTerritoryName: string | null = null;
-    if (combatResult.success && combatResult.landGained > 0) {
+    if (combatResult.success && (finalLandGained > 0 || extraGoldStolen > 0)) {
       await Promise.all([
         dbUpdate('Kingdom', defenderId, {
           resources: {
             ...defenderResources,
-            land: Math.max(1000, (defenderResources.land ?? 1000) - combatResult.landGained),
-            gold: Math.max(0, (defenderResources.gold ?? 0) - combatResult.goldLooted)
+            land: Math.max(1000, (defenderResources.land ?? 1000) - finalLandGained),
+            gold: Math.max(0, (defenderResources.gold ?? 0) - combatResult.goldLooted - extraGoldStolen)
           },
-          totalUnits: updatedDefenderUnits
+          totalUnits: updatedDefenderUnits,
+          ...(buildingDestroyed ? { buildings: defender.buildings } : {})
         }),
         dbUpdate('Kingdom', attackerId, {
           resources: {
             ...attackerResources,
-            land: (attackerResources.land ?? 1000) + combatResult.landGained,
-            gold: (attackerResources.gold ?? 0) + combatResult.goldLooted,
+            land: (attackerResources.land ?? 1000) + finalLandGained,
+            gold: (attackerResources.gold ?? 0) + combatResult.goldLooted + extraGoldStolen,
           },
           totalUnits: updatedAttackerUnits,
           ...(sidheBuildings ? { buildings: JSON.stringify(sidheBuildings) } : {})
         })
       ]);
 
-      // Territory degradation on attacker win (non-fatal)
-      try {
+      // Territory degradation on attacker win (non-fatal) — skip for pillage (no land captured)
+      if (finalLandGained > 0) try {
         const allTerrs = await dbQuery<{ id: string; kingdomId?: string; type?: string; name?: string; defenseLevel?: number }>(
           'Territory', 'kingdomId', { field: 'kingdomId', value: defenderId }
         );
@@ -629,8 +707,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
         log.warn('combat-processor', 'territory-degradation-failed', { defenderId, error: err instanceof Error ? err.message : String(err) });
       }
 
-      // Transfer territory: find defender's least important territory and reassign to attacker
-      try {
+      // Transfer territory: find defender's least important territory and reassign to attacker — skip for pillage
+      if (finalLandGained > 0) try {
         const defenderTerritories = await dbQuery<TerritoryType>(
           'Territory', 'kingdomId', { field: 'kingdomId', value: defenderId }
         );
@@ -680,8 +758,11 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       success: true,
       result: JSON.stringify({
         ...combatResult,
+        landGained: finalLandGained,
+        goldLooted: combatResult.goldLooted + extraGoldStolen,
+        buildingDestroyed,
         degradedTerritory: degradedTerritoryName,
-        message: `Combat ${combatResult.result}: ${combatResult.landGained} land gained, ${combatResult.goldLooted} gold looted`
+        message: `Combat ${combatResult.result}: ${finalLandGained} land gained, ${combatResult.goldLooted + extraGoldStolen} gold looted`
       })
     };
   } catch (error) {

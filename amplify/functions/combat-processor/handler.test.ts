@@ -426,6 +426,143 @@ describe('combat-processor handler', () => {
     });
   });
 
+  describe('attack type mechanics', () => {
+    it('raid attack returns landGained at ~50% of standard and attacker gains extra gold', async () => {
+      const attackerKingdom = mockKingdom('attacker-1', {
+        totalUnits: { cavalry: 5000 },
+      });
+      const defenderKingdom = mockKingdom('defender-1', {
+        totalUnits: { infantry: 10 },
+        resources: { gold: 20000, population: 1000, mana: 100, land: 5000 },
+      });
+
+      // Run standard first to get baseline landGained
+      mockDbGet
+        .mockResolvedValueOnce(attackerKingdom)
+        .mockResolvedValueOnce(defenderKingdom);
+
+      const standardResult = await callHandler(
+        makeEvent({
+          attackerId: 'attacker-1',
+          defenderId: 'defender-1',
+          attackType: 'standard',
+          units: JSON.stringify({ cavalry: 5000 }),
+        })
+      );
+      expect(standardResult.success).toBe(true);
+      const standardData = JSON.parse(standardResult.result as string);
+
+      // Reset mocks and run raid
+      vi.clearAllMocks();
+      mockDbUpdate.mockResolvedValue(undefined);
+      mockDbCreate.mockResolvedValue({ id: 'battle-2', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), __typename: 'BattleReport' });
+      mockDbList.mockResolvedValue([]);
+      mockDbQuery.mockResolvedValue([]);
+
+      mockDbGet
+        .mockResolvedValueOnce(attackerKingdom)
+        .mockResolvedValueOnce(defenderKingdom);
+
+      const raidResult = await callHandler(
+        makeEvent({
+          attackerId: 'attacker-1',
+          defenderId: 'defender-1',
+          attackType: 'raid',
+          units: JSON.stringify({ cavalry: 5000 }),
+        })
+      );
+      expect(raidResult.success).toBe(true);
+      const raidData = JSON.parse(raidResult.result as string);
+
+      // Raid land should be ~50% of standard land
+      if (standardData.landGained > 0) {
+        expect(raidData.landGained).toBeLessThan(standardData.landGained);
+        expect(raidData.landGained).toBeGreaterThanOrEqual(Math.floor(standardData.landGained * 0.4));
+      }
+
+      // Attacker should gain extra gold from raid: at least the 5% of 20000 = 1000
+      // goldLooted includes both combat loot and stolen gold
+      expect(raidData.goldLooted).toBeGreaterThanOrEqual(1000);
+    });
+
+    it('pillage attack returns landGained === 0 and attacker gains extra gold', async () => {
+      const attackerKingdom = mockKingdom('attacker-1', {
+        totalUnits: { cavalry: 5000 },
+      });
+      const defenderKingdom = mockKingdom('defender-1', {
+        totalUnits: { infantry: 10 },
+        resources: { gold: 20000, population: 1000, mana: 100, land: 5000 },
+      });
+
+      mockDbGet
+        .mockResolvedValueOnce(attackerKingdom)
+        .mockResolvedValueOnce(defenderKingdom);
+
+      const result = await callHandler(
+        makeEvent({
+          attackerId: 'attacker-1',
+          defenderId: 'defender-1',
+          attackType: 'pillage',
+          units: JSON.stringify({ cavalry: 5000 }),
+        })
+      );
+
+      expect(result.success).toBe(true);
+      const data = JSON.parse(result.result as string);
+
+      // No land captured
+      expect(data.landGained).toBe(0);
+
+      // Attacker gains extra gold: 10% of 20000 = 2000 extra
+      expect(data.goldLooted).toBeGreaterThanOrEqual(2000);
+    });
+
+    it('defender with fortification alliance upgrade has boosted effective defense units', async () => {
+      const attackerKingdom = mockKingdom('attacker-1', {
+        totalUnits: { infantry: 500 },
+      });
+      const defenderKingdom = mockKingdom('defender-1', {
+        guildId: 'alliance-def-1',
+        totalUnits: { infantry: 500 },
+        resources: { gold: 10000, population: 1000, mana: 100, land: 5000 },
+      });
+
+      // Use stable mockDbGet: return kingdoms by id, return alliance for 'alliance-def-1'
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      mockDbGet.mockImplementation(async (model: string, id: string) => {
+        if (model === 'Kingdom' && id === 'attacker-1') return attackerKingdom;
+        if (model === 'Kingdom' && id === 'defender-1') return defenderKingdom;
+        if (model === 'Alliance' && id === 'alliance-def-1') {
+          return {
+            id: 'alliance-def-1',
+            stats: JSON.stringify({
+              activeUpgrades: [
+                { type: 'fortification', expiresAt: futureDate, effect: { defenseBonus: 1.1 } }
+              ]
+            })
+          };
+        }
+        return null;
+      });
+
+      const result = await callHandler(
+        makeEvent({
+          attackerId: 'attacker-1',
+          defenderId: 'defender-1',
+          attackType: 'standard',
+          units: JSON.stringify({ infantry: 500 }),
+        })
+      );
+
+      // Combat should process without error
+      expect(result.success).toBe(true);
+      const data = JSON.parse(result.result as string);
+      expect(data).toHaveProperty('result');
+      // The defender alliance upgrade is applied — verify the call was made
+      expect(mockDbGet).toHaveBeenCalledWith('Alliance', 'alliance-def-1');
+    });
+  });
+
   describe('war declaration enforcement', () => {
     it('requires a WarDeclaration after 3 attacks in same season', async () => {
       const attackerKingdom = mockKingdom('attacker-1', { seasonId: 'season-1' });

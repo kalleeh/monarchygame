@@ -86,11 +86,22 @@ async function recordSeasonRankings(seasonNumber: number): Promise<void> {
   }
 }
 
+/** Resolve the display name for an alliance by its ID. */
+async function resolveAllianceName(allianceId: string | null | undefined): Promise<string> {
+  if (!allianceId) return 'Unknown Alliance';
+  try {
+    const alliance = await dbGet<{ name?: string }>('Alliance', allianceId);
+    return alliance?.name ?? 'Unknown Alliance';
+  } catch {
+    return 'Unknown Alliance';
+  }
+}
+
 /** Compute alliance-level victory track winners for the season that is ending */
 async function computeSeasonVictory(seasonId: string): Promise<{
-  militaryChampion?: { allianceId: string; totalLandGained: number };
-  economicPowerhouse?: { allianceId: string; totalNetworth: number };
-  strategistGuild?: { allianceId: string; territoriesControlled: number };
+  militaryChampion?: { allianceId: string; allianceName: string; totalLandGained: number };
+  economicPowerhouse?: { allianceId: string; allianceName: string; totalNetworth: number };
+  strategistGuild?: { allianceId: string; allianceName: string; territoriesControlled: number };
 }> {
   void seasonId; // parameter reserved for future per-season filtering
 
@@ -145,10 +156,16 @@ async function computeSeasonVictory(seasonId: string): Promise<{
   const topEconomic  = Object.entries(allianceNetworth).sort(([, a], [, b]) => b - a)[0];
   const topStrategic = Object.entries(allianceTerritories).sort(([, a], [, b]) => b - a)[0];
 
+  const [militaryName, economicName, strategistName] = await Promise.all([
+    resolveAllianceName(topMilitary?.[0] ?? null),
+    resolveAllianceName(topEconomic?.[0] ?? null),
+    resolveAllianceName(topStrategic?.[0] ?? null),
+  ]);
+
   return {
-    militaryChampion:  topMilitary  ? { allianceId: topMilitary[0],  totalLandGained:      topMilitary[1]  } : undefined,
-    economicPowerhouse:topEconomic  ? { allianceId: topEconomic[0],  totalNetworth:         topEconomic[1]  } : undefined,
-    strategistGuild:   topStrategic ? { allianceId: topStrategic[0], territoriesControlled: topStrategic[1] } : undefined,
+    militaryChampion:  topMilitary  ? { allianceId: topMilitary[0],  allianceName: militaryName,   totalLandGained:      topMilitary[1]  } : undefined,
+    economicPowerhouse:topEconomic  ? { allianceId: topEconomic[0],  allianceName: economicName,   totalNetworth:         topEconomic[1]  } : undefined,
+    strategistGuild:   topStrategic ? { allianceId: topStrategic[0], allianceName: strategistName, territoriesControlled: topStrategic[1] } : undefined,
   };
 }
 

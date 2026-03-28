@@ -207,6 +207,38 @@ describe('faith-processor handler — useFocusAbility', () => {
     });
   });
 
+  it('spell_power ability stores SPELL_POWER_BOOST in activeFaithEffects', async () => {
+    mockDbGet.mockResolvedValue(mockKingdom({ stats: { focusPoints: 50 } }));
+
+    const result = await callHandler(
+      makeEvent({ kingdomId: 'kingdom-1', action: 'useFocusAbility', abilityType: 'spell_power' })
+    );
+
+    expect(result.success).toBe(true);
+    const updateCall = mockDbUpdate.mock.calls[0];
+    const updatedStats = updateCall[2].stats;
+    expect(Array.isArray(updatedStats.activeFaithEffects)).toBe(true);
+    const effect = updatedStats.activeFaithEffects.find((e: Record<string, string>) => e.effectType === 'SPELL_POWER_BOOST');
+    expect(effect).toBeDefined();
+    expect(effect.effectType).toBe('SPELL_POWER_BOOST');
+  });
+
+  it('racial_ability ability stores RACIAL_ABILITY_BOOST in activeFaithEffects', async () => {
+    mockDbGet.mockResolvedValue(mockKingdom({ stats: { focusPoints: 50 } }));
+
+    const result = await callHandler(
+      makeEvent({ kingdomId: 'kingdom-1', action: 'useFocusAbility', abilityType: 'racial_ability' })
+    );
+
+    expect(result.success).toBe(true);
+    const updateCall = mockDbUpdate.mock.calls[0];
+    const updatedStats = updateCall[2].stats;
+    expect(Array.isArray(updatedStats.activeFaithEffects)).toBe(true);
+    const effect = updatedStats.activeFaithEffects.find((e: Record<string, string>) => e.effectType === 'RACIAL_ABILITY_BOOST');
+    expect(effect).toBeDefined();
+    expect(effect.effectType).toBe('RACIAL_ABILITY_BOOST');
+  });
+
   describe('validation failures', () => {
     it('returns INVALID_PARAM for an unknown abilityType', async () => {
       const result = await callHandler(

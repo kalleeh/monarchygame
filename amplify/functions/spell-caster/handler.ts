@@ -98,6 +98,17 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     const resources = parseJsonField<KingdomResources>(casterKingdom.resources, {} as KingdomResources);
     const currentElan = resources.elan ?? 0;
 
+    // Faith effect: SPELL_POWER_BOOST (+30% spell damage)
+    const casterStats = parseJsonField<Record<string, unknown>>(casterKingdom.stats, {});
+    const activeFaithEffects = parseJsonField<Array<{ effectType: string; expiresAt: string }>>(
+      (typeof casterStats.activeFaithEffects === 'string' ? casterStats.activeFaithEffects : (casterStats.activeFaithEffects ?? [])) as string | unknown[],
+      []
+    );
+    const nowIso = new Date().toISOString();
+    const spellPowerMult = (Array.isArray(activeFaithEffects) ? activeFaithEffects : []).some(
+      (e: { effectType: string; expiresAt: string }) => e.effectType === 'SPELL_POWER_BOOST' && e.expiresAt > nowIso
+    ) ? 1.3 : 1.0;
+
     const spellElanCost = SPELL_ELAN_COSTS[spellId] ?? 20;
     if (currentElan < spellElanCost) {
       return { success: false, error: `Insufficient elan: need ${spellElanCost}, have ${currentElan}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
@@ -177,7 +188,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
 
           for (const [buildingType, count] of Object.entries(targetBuildings)) {
             if (typeof count === 'number' && count > 0) {
-              const destroyed = Math.floor(count * spellEffect.damage);
+              const destroyed = Math.floor(count * spellEffect.damage * spellPowerMult);
               damagedBuildings[buildingType] = count - destroyed;
               totalDestroyed += destroyed;
             } else {
@@ -201,7 +212,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
           for (const fortKey of ['wall', 'forts']) {
             const count = damagedBuildings[fortKey];
             if (typeof count === 'number' && count > 0) {
-              const destroyed = Math.floor(count * spellEffect.damage);
+              const destroyed = Math.floor(count * spellEffect.damage * spellPowerMult);
               damagedBuildings[fortKey] = count - destroyed;
               totalDestroyed += destroyed;
             }
@@ -217,7 +228,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
           // BL-2/BL-3: Use parseJsonField for resources
           const targetResources = parseJsonField<KingdomResources>(resolvedTarget.resources, {} as KingdomResources);
           const currentPop = targetResources.population ?? 0;
-          const killed = Math.floor(currentPop * spellEffect.damage);
+          const killed = Math.floor(currentPop * spellEffect.damage * spellPowerMult);
           const updatedTargetResources: KingdomResources = {
             ...targetResources,
             population: currentPop - killed

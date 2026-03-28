@@ -236,6 +236,51 @@ describe('season-lifecycle handler — end action', () => {
     );
   });
 
+  it('includes allianceName in victoryResults stored on the season', async () => {
+    // Season to end
+    mockDbGet.mockImplementation(async (model: string, id: string) => {
+      if (model === 'GameSeason') return { id: 'season-3', status: 'active', seasonNumber: 3, ageTransitions: JSON.stringify({}) };
+      if (model === 'Alliance') return { id, name: 'Iron Fist' };
+      if (model === 'Kingdom') return null;
+      return null;
+    });
+
+    // Kingdoms belonging to alliance 'alliance-a', with land+gold resources
+    mockDbList.mockImplementation(async (model: string) => {
+      if (model === 'Kingdom') return [
+        { id: 'k1', guildId: 'alliance-a', resources: JSON.stringify({ gold: 1000, land: 10 }), isActive: true, stats: '{}' },
+      ];
+      if (model === 'BattleReport') return [
+        { attackerId: 'k1', landGained: 50 },
+      ];
+      if (model === 'Territory') return [
+        { kingdomId: 'k1', regionId: 'region-1' },
+        { kingdomId: 'k1', regionId: 'region-1' },
+        { kingdomId: 'k1', regionId: 'region-1' },
+      ];
+      return [];
+    });
+
+    await callHandler(makeEvent({ action: 'end', seasonId: 'season-3' }));
+
+    // Find the dbUpdate call that stores ageTransitions with victoryResults
+    const updateCall = mockDbUpdate.mock.calls.find(
+      ([model, id]: [string, string]) => model === 'GameSeason' && id === 'season-3'
+    );
+    expect(updateCall).toBeDefined();
+    const updatePayload = updateCall[2] as Record<string, unknown>;
+    const transitions = JSON.parse(updatePayload.ageTransitions as string) as Record<string, unknown>;
+    const victoryResults = transitions.victoryResults as {
+      militaryChampion?: { allianceName: string };
+      economicPowerhouse?: { allianceName: string };
+      strategistGuild?: { allianceName: string };
+    };
+
+    expect(victoryResults.militaryChampion?.allianceName).toBe('Iron Fist');
+    expect(victoryResults.economicPowerhouse?.allianceName).toBe('Iron Fist');
+    expect(victoryResults.strategistGuild?.allianceName).toBe('Iron Fist');
+  });
+
   it('returns MISSING_PARAMS when seasonId is absent for end action', async () => {
     const result = await callHandler(makeEvent({ action: 'end' }));
 

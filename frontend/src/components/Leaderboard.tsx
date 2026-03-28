@@ -32,7 +32,14 @@ const ALL_RACES = [
   'Vampire', 'Elemental', 'Centaur', 'Sidhe', 'Dwarven', 'Fae',
 ] as const;
 
-type TabId = 'all' | typeof ALL_RACES[number] | 'guilds';
+type TabId = 'all' | typeof ALL_RACES[number] | 'guilds' | 'bounty';
+
+function getBountyCompletions(kingdom: { stats?: unknown }): number {
+  try {
+    const stats = typeof kingdom.stats === 'string' ? JSON.parse(kingdom.stats) : (kingdom.stats ?? {});
+    return typeof stats.bountyCompletions === 'number' ? stats.bountyCompletions : 0;
+  } catch { return 0; }
+}
 
 // Convert a KingdomPage kingdom entry to the local Kingdom shape
 function pageKingdomToKingdom(k: KingdomPage['kingdoms'][number]): Kingdom {
@@ -257,7 +264,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
 
   // ── Tab change: re-fetch for new race (auth mode) ─────────────────────────
   useEffect(() => {
-    if (isDemoMode() || activeTab === 'guilds') return;
+    if (isDemoMode() || activeTab === 'guilds' || activeTab === 'bounty') return;
     const race = activeTab === 'all' ? undefined : activeTab;
     void fetchPage({ append: false, token: null, race });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: re-fetch when tab changes
@@ -265,7 +272,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
 
   // ── Fair-target filter change: re-fetch (auth mode) ──────────────────────
   useEffect(() => {
-    if (isDemoMode() || activeTab === 'guilds') return;
+    if (isDemoMode() || activeTab === 'guilds' || activeTab === 'bounty') return;
     const race = activeTab === 'all' ? undefined : activeTab;
     void fetchPage({ append: false, token: null, race, nameSearch: searchQuery || undefined });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: re-fetch when fair-target bounds change
@@ -275,6 +282,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
   const handleSearchChange = useCallback((q: string) => {
     setSearchQuery(q);
     if (isDemoMode()) return;
+    if (activeTab === 'bounty') return;
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     searchDebounceRef.current = setTimeout(() => {
       const race = activeTab === 'all' || activeTab === 'guilds' ? undefined : activeTab;
@@ -290,7 +298,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
   // ── Load More ─────────────────────────────────────────────────────────────
   const handleLoadMore = useCallback(() => {
     if (!hasMore || loading) return;
-    const race = activeTab === 'all' || activeTab === 'guilds' ? undefined : activeTab;
+    const race = activeTab === 'all' || activeTab === 'guilds' || activeTab === 'bounty' ? undefined : activeTab;
     void fetchPage({ append: true, token: nextToken, race, nameSearch: searchQuery || undefined });
   }, [hasMore, loading, nextToken, activeTab, searchQuery, fetchPage]);
 
@@ -430,10 +438,20 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
     return computeGuildRows(allKingdomsForGuilds, guildNamesMap, activeWarCount, currentKingdom.guildId);
   }, [activeTab, allKingdomsForGuilds, guildNamesMap, activeWarCount, currentKingdom.guildId]);
 
+  // ── Bounty rankings (all active kingdoms sorted by bountyCompletions) ─────
+  const bountyKingdoms = useMemo(() => {
+    if (activeTab !== 'bounty') return [];
+    const source = isDemo ? demoAllKingdoms : serverKingdoms;
+    return source
+      .filter(k => (k as unknown as { isActive?: boolean }).isActive !== false)
+      .sort((a, b) => getBountyCompletions(b) - getBountyCompletions(a));
+  }, [activeTab, isDemo, demoAllKingdoms, serverKingdoms]);
+
   // ── Header label ──────────────────────────────────────────────────────────
   const tabLabel =
     activeTab === 'all'    ? 'All Kingdoms'   :
     activeTab === 'guilds' ? 'Guild Rankings' :
+    activeTab === 'bounty' ? 'Bounty Rankings' :
     `${activeTab} Rankings`;
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -479,6 +497,15 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
         >
           Guilds
         </button>
+
+        <button
+          role="tab"
+          aria-selected={activeTab === 'bounty'}
+          className={`lb-tab lb-tab--bounty ${activeTab === 'bounty' ? 'lb-tab--active' : ''}`}
+          onClick={() => setActiveTab('bounty')}
+        >
+          Bounty
+        </button>
       </div>
 
       {/* Section heading + live/demo badge */}
@@ -490,8 +517,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
         }
       </div>
 
-      {/* Filters (hidden on guilds tab) */}
-      {activeTab !== 'guilds' && (
+      {/* Filters (hidden on guilds and bounty tabs) */}
+      {activeTab !== 'guilds' && activeTab !== 'bounty' && (
         <LeaderboardFilters
           searchQuery={searchQuery}
           onSearchChange={handleSearchChange}
@@ -505,8 +532,38 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
         <GuildRankingsTable guildRows={guildRows} />
       )}
 
+      {/* Bounty tab content */}
+      {activeTab === 'bounty' && (
+        bountyKingdoms.length === 0 ? (
+          <p className="lb-empty-state">No bounties completed this season yet.</p>
+        ) : (
+          <table className="lb-bounty-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Kingdom</th>
+                <th>Race</th>
+                <th>Bounty Completions</th>
+                <th>Networth</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bountyKingdoms.map((kingdom, index) => (
+                <tr key={kingdom.id}>
+                  <td>{index + 1}</td>
+                  <td>{kingdom.name}</td>
+                  <td>{kingdom.race}</td>
+                  <td>{getBountyCompletions(kingdom)}</td>
+                  <td>{calculateNetworth(kingdom).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )
+      )}
+
       {/* Kingdom grid (all / race tabs) */}
-      {activeTab !== 'guilds' && (
+      {activeTab !== 'guilds' && activeTab !== 'bounty' && (
         <>
           {loading && serverKingdoms.length === 0 ? (
             <LoadingSkeleton />

@@ -124,11 +124,17 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
 
       // Spread existing stats first so all fields (including activeFaithEffects) are preserved
       let updatedStats: Record<string, unknown> = { ...stats, focusPoints: remainingFocusPoints };
-      if (abilityType === 'combat_focus' || abilityType === 'economic_focus') {
+      if (['combat_focus', 'economic_focus', 'spell_power', 'racial_ability'].includes(abilityType)) {
         const now = new Date().toISOString();
         const existingEffects = (stats.activeFaithEffects as Array<Record<string, string>>) ?? [];
         const activeEffects = existingEffects.filter(e => e.expiresAt > now);
-        const effectType = abilityType === 'combat_focus' ? 'COMBAT_FOCUS' : 'ECONOMIC_FOCUS';
+        const effectTypeMap: Record<string, string> = {
+          combat_focus: 'COMBAT_FOCUS',
+          economic_focus: 'ECONOMIC_FOCUS',
+          spell_power: 'SPELL_POWER_BOOST',
+          racial_ability: 'RACIAL_ABILITY_BOOST',
+        };
+        const effectType = effectTypeMap[abilityType];
         const newEffect = {
           effectType,
           appliedAt: now,

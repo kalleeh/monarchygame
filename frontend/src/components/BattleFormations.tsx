@@ -134,6 +134,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
   const [unitOrder, setUnitOrder] = useState<string[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<string>('');
   const [showBattleResult, setShowBattleResult] = useState(false);
+  const [selectedAttackType, setSelectedAttackType] = useState<'standard' | 'raid' | 'pillage'>('standard');
   const [ambushActive, setAmbushActive] = useState(false);
   const [defensiveFormation, setDefensiveFormation] = useState<string>(() => {
     try {
@@ -297,7 +298,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
 
   const handleExecuteBattle = async () => {
     if (selectedUnits.length > 0 && selectedTarget) {
-      const result = await executeBattle(selectedTarget);
+      const result = await executeBattle(selectedTarget, selectedAttackType);
       if (result) {
         setShowBattleResult(true);
       }
@@ -598,6 +599,39 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
       <div className="battle-controls">
         <h3>Battle Execution</h3>
         <div className="battle-form">
+          {/* Attack type selector */}
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+            {([
+              { value: 'standard', label: 'Standard', desc: 'Captures land' },
+              { value: 'raid', label: 'Raid', desc: 'Steals gold (5%), captures less land' },
+              { value: 'pillage', label: 'Pillage', desc: 'Steals gold (10%), destroys buildings, no land' },
+            ] as const).map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setSelectedAttackType(opt.value)}
+                title={opt.desc}
+                style={{
+                  flex: 1,
+                  padding: '0.5rem 0.75rem',
+                  background: selectedAttackType === opt.value ? 'rgba(139, 92, 246, 0.3)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${selectedAttackType === opt.value ? 'rgba(139,92,246,0.7)' : 'rgba(255,255,255,0.1)'}`,
+                  borderRadius: '6px',
+                  color: selectedAttackType === opt.value ? '#c4b5fd' : '#9ca3af',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  fontWeight: selectedAttackType === opt.value ? 'bold' : 'normal',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '1rem' }}>
+            {selectedAttackType === 'standard' && 'Captures land from the defender.'}
+            {selectedAttackType === 'raid' && 'Steals 5% of defender\'s gold and captures half the normal land. Lower attacker casualties.'}
+            {selectedAttackType === 'pillage' && 'Steals 10% of defender\'s gold and destroys a random building. No land captured.'}
+          </div>
           <label className="ambush-toggle" style={{
             display: 'flex',
             alignItems: 'center',

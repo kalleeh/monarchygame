@@ -171,6 +171,50 @@ describe('spell-caster handler', () => {
     });
   });
 
+  describe('SPELL_POWER_BOOST faith effect', () => {
+    it('SPELL_POWER_BOOST amplifies hurricane structure damage by 1.3x', async () => {
+      const futureExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const caster = mockKingdom({
+        id: 'caster-1',
+        resources: { gold: 1000, population: 500, elan: 200, land: 1000 },
+        stats: {
+          activeFaithEffects: [
+            { effectType: 'SPELL_POWER_BOOST', appliedAt: new Date().toISOString(), expiresAt: futureExpiry },
+          ],
+        },
+      });
+      // 100 mines — hurricane deals 5% structure damage, so base = 5, with 1.3x = Math.floor(100 * 0.05 * 1.3) = 6
+      const target = mockKingdom({
+        id: 'target-1',
+        resources: { gold: 5000, population: 2000, elan: 100, land: 1000 },
+        buildings: { mine: 100, farm: 0, tower: 0, temple: 0, castle: 0, barracks: 0, wall: 0 },
+        createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+      });
+
+      mockDbGet
+        .mockResolvedValueOnce(caster)  // fetch caster
+        .mockResolvedValueOnce(target); // fetch target for protection checks
+
+      const result = await callHandler(
+        makeEvent({ casterId: 'caster-1', spellId: 'hurricane', targetId: 'target-1' })
+      );
+
+      expect(result.success).toBe(true);
+      const parsed = JSON.parse(result.result as string);
+      expect(parsed.damageReport.type).toBe('structure_damage');
+
+      // Find the dbUpdate call that updates the target's buildings
+      const buildingUpdateCall = mockDbUpdate.mock.calls.find(
+        (call: unknown[]) => call[0] === 'Kingdom' && call[1] === 'target-1' && (call[2] as Record<string, unknown>).buildings
+      );
+      expect(buildingUpdateCall).toBeDefined();
+      const updatedBuildings = (buildingUpdateCall![2] as Record<string, unknown>).buildings as Record<string, number>;
+      // Base: 100 mines, 5% damage without boost = 5 destroyed (95 remaining)
+      // With 1.3x boost: Math.floor(100 * 0.05 * 1.3) = 6 destroyed (94 remaining)
+      expect(updatedBuildings.mine).toBe(94);
+    });
+  });
+
   describe('INSUFFICIENT_RESOURCES', () => {
     it('returns INSUFFICIENT_RESOURCES when elan is below cost', async () => {
       mockDbGet.mockResolvedValue(
