@@ -7,7 +7,7 @@ import { NextStepBanner } from '../ui/NextStepBanner';
 import { FirstSteps } from '../ui/FirstSteps';
 
 interface DashboardBannersProps {
-  seasonInfo: { seasonNumber: number; currentAge: 'early' | 'middle' | 'late' } | null;
+  seasonInfo: { seasonNumber: number; currentAge: 'early' | 'middle' | 'late'; startDate: string } | null;
   noActiveSeason: boolean;
   startingSeasonLoading: boolean;
   onStartSeason: () => void;
@@ -62,6 +62,7 @@ export function DashboardBanners({
         <SeasonBadge
           seasonNumber={seasonInfo.seasonNumber}
           currentAge={seasonInfo.currentAge}
+          startDate={seasonInfo.startDate}
         />
       )}
 

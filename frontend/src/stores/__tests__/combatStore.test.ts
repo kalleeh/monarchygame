@@ -303,6 +303,29 @@ describe('CombatStore', () => {
     expect(useCombatStore.getState().error).toBeNull();
   });
 
+  describe('refreshBattleHistory', () => {
+    it('prepends a BattleReport from a subscription event', () => {
+      const { refreshBattleHistory } = useCombatStore.getState();
+      refreshBattleHistory({
+        id: 'battle-sub-1',
+        attackerId: 'attacker-123',
+        defenderId: 'defender-456',
+        attackType: 'standard',
+        timestamp: new Date().toISOString(),
+      });
+      const { battleHistory } = useCombatStore.getState();
+      expect(battleHistory[0].id).toBe('battle-sub-1');
+    });
+
+    it('deduplicates if the same id is received twice', () => {
+      const event = { id: 'dup-1', attackerId: 'a', defenderId: 'b', attackType: 'standard', timestamp: new Date().toISOString() };
+      useCombatStore.getState().refreshBattleHistory(event);
+      useCombatStore.getState().refreshBattleHistory(event);
+      const count = useCombatStore.getState().battleHistory.filter(b => b.id === 'dup-1').length;
+      expect(count).toBe(1);
+    });
+  });
+
   it('should manage UI state', () => {
     const { selectBattleReport } = useCombatStore.getState();
     const { setShowFormationEditor } = useFormationStore.getState();

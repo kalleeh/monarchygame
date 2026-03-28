@@ -22,6 +22,7 @@ export interface TradeStore {
   getResourceById: (id: string) => Resource | undefined;
   initializeTradeData: () => Promise<void>;
   clearError: () => void;
+  setActiveOffers: (offers: { id: string; sellerId: string; resourceType: string; quantity: number; pricePerUnit: number; totalPrice: number; status: string; expiresAt: string }[]) => void;
 }
 
 export interface TrainingStore {

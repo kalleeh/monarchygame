@@ -392,6 +392,13 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
               kingdomId={kingdom.id}
               race={kingdom.race || 'Human'}
               onBack={handleBackToDashboard}
+              serverFocusPoints={(() => {
+                try {
+                  const s = kingdom.stats;
+                  const parsed = typeof s === 'string' ? JSON.parse(s) : (s ?? {});
+                  return typeof parsed.focusPoints === 'number' ? parsed.focusPoints : undefined;
+                } catch { return undefined; }
+              })()}
             />
           </Suspense>
         } />

@@ -172,6 +172,25 @@ describe('bounty-processor handler — completeBounty', () => {
       expect(updateCall[2].resources.population).toBe(2000 + 1440);
       // Bounty stats cleared
       expect(updateCall[2].stats.activeBountyTargetId).toBeUndefined();
+      // Completion counter incremented from 0 to 1
+      expect(updateCall[2].stats.bountyCompletions).toBe(1);
+    });
+
+    it('increments bountyCompletions from existing value', async () => {
+      mockDbGet.mockResolvedValue(
+        mockKingdom({
+          stats: { activeBountyTargetId: 'target-kingdom', activeBountyClaimedAt: Date.now() - 1000, bountyCompletions: 5 },
+          resources: { gold: 5000, population: 2000, mana: 500, land: 1000 },
+        })
+      );
+
+      const result = await callHandler(
+        makeEvent('completeBounty', { kingdomId: 'kingdom-1', targetId: 'target-kingdom', landGained: 2000 })
+      );
+
+      expect(result.success).toBe(true);
+      const updateCall = mockDbUpdate.mock.calls[0];
+      expect(updateCall[2].stats.bountyCompletions).toBe(6);
     });
   });
 

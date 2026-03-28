@@ -3,11 +3,15 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { TopNavigation } from './TopNavigation';
 import { useKingdomStore } from '../stores/kingdomStore';
+import { useCombatStore } from '../stores/combatStore';
+import { useDiplomacyStore } from '../stores/useDiplomacyStore';
+import { useTradeStore } from '../stores/tradeStore';
 import { Tutorial } from './ui/Tutorial';
 import { KINGDOM_DASHBOARD_TUTORIAL } from '../data/tutorialSteps';
 import { TurnTimer } from './ui/TurnTimer';
 import { DemoTimeControl } from './ui/DemoTimeControl';
 import { calculateGoldIncome, calculatePopulationGrowth, type BuildingCounts } from '../utils/resourceCalculations';
+import { calculateAgeBasedIncome } from '../../../shared/mechanics/age-mechanics';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { BalanceTestRunner } from './BalanceTestRunner';
 import { isDemoMode } from '../utils/authMode';
@@ -122,14 +126,14 @@ function KingdomDashboard({
     if (!kingdom?.id || isDemoMode()) return;
 
     subscriptionManager.startSubscriptions(kingdom.id, {
-      onAttackReceived: (_report) => {
-        // BattleReport toast is shown by subscriptionManager; future: refresh battle history here
+      onAttackReceived: (report) => {
+        useCombatStore.getState().refreshBattleHistory(report);
       },
-      onWarDeclared: (_war) => {
-        // WarDeclaration toast is shown by subscriptionManager; future: update war state here
+      onWarDeclared: (war) => {
+        useDiplomacyStore.getState().applyIncomingWarDeclaration(war.attackerId);
       },
-      onTradeOfferReceived: (_offers) => {
-        // TradeOffer toast is shown by subscriptionManager; future: update trade store here
+      onTradeOfferReceived: (offers) => {
+        useTradeStore.getState().setActiveOffers(offers);
       },
     });
 
@@ -215,7 +219,8 @@ function KingdomDashboard({
                   temples: buildingStats.temples,
                 };
                 const buildingIncome = calculateGoldIncome(buildings);
-                const goldEarned = (BASE_INCOME_PER_TURN + buildingIncome) * newTurns;
+                const rawGold = (BASE_INCOME_PER_TURN + buildingIncome) * newTurns;
+                const goldEarned = calculateAgeBasedIncome(rawGold, seasonInfo?.currentAge ?? 'early');
                 const populationEarned = calculatePopulationGrowth(buildings) * newTurns;
                 const manaEarned = (buildingStats.temples || 0) * 3 * newTurns;
 

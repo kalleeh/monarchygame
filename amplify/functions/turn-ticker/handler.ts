@@ -9,8 +9,10 @@
  */
 import { dbList, dbAtomicAdd, dbUpdate, dbCreate, dbGet, dbQuery } from '../data-client';
 import { log } from '../logger';
+import { FOCUS_MECHANICS } from '../../../shared/mechanics/faith-focus-mechanics';
 
 const MAX_STORED_TURNS = 100;
+const FOCUS_REGEN_PER_TICK = 1 / 3; // 20-min tick = 1/3 hour
 const AI_GOLD_PER_TICK = 5000;
 const AI_POPULATION_PER_TICK = 500;
 const AI_GOLD_CAP = 500000;
@@ -26,6 +28,8 @@ interface KingdomRow {
   encampBonusTurns?: number | null;
   resources?: string | Record<string, number>;
   totalUnits?: string | Record<string, number>;
+  race?: string | null;
+  stats?: string | Record<string, unknown> | null;
 }
 
 export const handler = async (_event: unknown): Promise<{ success: boolean; ticked: number; skipped: number }> => {
@@ -167,7 +171,39 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
       }
     }
 
-    log.info('turn-ticker', 'tick', { ticked, skipped, total: active.length, aiTicked, settlementsCompleted });
+    // Focus point regeneration — one tick = 20 min = 1/3 hour
+    let faithTicked = 0;
+    for (const kingdom of realKingdoms) {
+      try {
+        const rawStats = (kingdom as Record<string, unknown>).stats;
+        const stats: Record<string, unknown> = typeof rawStats === 'string'
+          ? JSON.parse(rawStats as string)
+          : ((rawStats ?? {}) as Record<string, unknown>);
+
+        const race = ((kingdom as Record<string, unknown>).race as string ?? 'human').toLowerCase();
+        const modifiers = FOCUS_MECHANICS.BASE_GENERATION.RACIAL_MODIFIERS as Record<string, number>;
+        const racialMod = modifiers[race] ?? 1.0;
+        const regenRate = Math.floor(FOCUS_MECHANICS.BASE_GENERATION.POINTS_PER_HOUR * racialMod);
+        const pointsToAdd = Math.round(regenRate * FOCUS_REGEN_PER_TICK);
+
+        if (pointsToAdd === 0) { faithTicked++; continue; }
+
+        const maxFP = Math.floor(FOCUS_MECHANICS.BASE_GENERATION.MAX_STORAGE_BASE * racialMod);
+        const currentFP = typeof stats.focusPoints === 'number' ? stats.focusPoints : 0;
+        const newFP = Math.min(maxFP, currentFP + pointsToAdd);
+
+        if (newFP === currentFP) { faithTicked++; continue; }
+
+        await dbUpdate('Kingdom', kingdom.id, {
+          stats: JSON.stringify({ ...stats, focusPoints: newFP }),
+        });
+        faithTicked++;
+      } catch (err) {
+        // Non-fatal
+      }
+    }
+
+    log.info('turn-ticker', 'tick', { ticked, skipped, total: active.length, aiTicked, settlementsCompleted, faithTicked });
     return { success: true, ticked, skipped };
   } catch (err) {
     log.error('turn-ticker', err);

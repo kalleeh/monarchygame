@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Schema } from '../../../amplify/data/resource';
 import type { KingdomResources } from '../types/amplify';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
@@ -23,6 +23,7 @@ import { isDemoMode } from '../utils/authMode';
 import { normalizeRace } from '../utils/raceUtils';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
+import { AGE_MECHANICS } from '../../../shared/mechanics/age-mechanics';
 
 // ── AI simulation helper ──────────────────────────────────────────────────────
 
@@ -156,7 +157,8 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
   const [encampLoading, setEncampLoading] = useState(false);
 
   // Season info for the age badge
-  const [seasonInfo, setSeasonInfo] = useState<{ seasonNumber: number; currentAge: 'early' | 'middle' | 'late' } | null>(null);
+  const [seasonInfo, setSeasonInfo] = useState<{ seasonNumber: number; currentAge: 'early' | 'middle' | 'late'; startDate: string } | null>(null);
+  const prevAgeRef = useRef<string | null>(null);
   const [noActiveSeason, setNoActiveSeason] = useState(false);
   const [startingSeasonLoading, setStartingSeasonLoading] = useState(false);
 
@@ -310,6 +312,7 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
       setSeasonInfo({
         seasonNumber: seasonData.seasonNumber ?? 1,
         currentAge: seasonData.currentAge as 'early' | 'middle' | 'late',
+        startDate: seasonData.startDate ?? new Date().toISOString(),
       });
       setNoActiveSeason(false);
       return true;
@@ -591,6 +594,23 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
       }, 5000);
     }
   }, [tutorialCompleted, ownedTerritories.length, resources.turns, kingdom.id]);
+
+  // Notify player when the age changes
+  useEffect(() => {
+    const currentAge = seasonInfo?.currentAge;
+    if (!currentAge) return;
+    if (prevAgeRef.current !== null && prevAgeRef.current !== currentAge) {
+      const effects = AGE_MECHANICS.ECONOMIC_AGE_EFFECTS[currentAge as 'early' | 'middle' | 'late'];
+      const ageLabel = currentAge.charAt(0).toUpperCase() + currentAge.slice(1);
+      const incomeNote = effects.incomeMultiplier > 1
+        ? `+${Math.round((effects.incomeMultiplier - 1) * 100)}% income`
+        : effects.incomeMultiplier < 1
+        ? `-${Math.round((1 - effects.incomeMultiplier) * 100)}% income`
+        : 'standard income';
+      ToastService.info(`⚔️ The ${ageLabel} Age has begun — ${incomeNote}`);
+    }
+    prevAgeRef.current = currentAge;
+  }, [seasonInfo?.currentAge]);
 
   return {
     // Store values

@@ -1,11 +1,19 @@
 import React from 'react';
+import { calculateCurrentAge } from '../../../../shared/mechanics/age-mechanics';
 
 interface SeasonBadgeProps {
   seasonNumber: number;
   currentAge: string;
+  startDate: string;
 }
 
-export function SeasonBadge({ seasonNumber, currentAge }: SeasonBadgeProps) {
+export function SeasonBadge({ seasonNumber, currentAge, startDate }: SeasonBadgeProps) {
+  const ageStatus = calculateCurrentAge(new Date(startDate));
+  const hoursLeft = Math.max(0, ageStatus.remainingTime);
+  const timeDisplay = hoursLeft < 48
+    ? `${Math.ceil(hoursLeft)}h left`
+    : `${Math.ceil(hoursLeft / 24)}d left`;
+
   return (
     <div style={{
       display: 'inline-flex',
@@ -35,7 +43,7 @@ export function SeasonBadge({ seasonNumber, currentAge }: SeasonBadgeProps) {
         ? '#fbbf24'
         : '#f87171',
     }}>
-      Season {seasonNumber} &middot; {currentAge.charAt(0).toUpperCase() + currentAge.slice(1)} Age
+      Season {seasonNumber} &middot; {currentAge.charAt(0).toUpperCase() + currentAge.slice(1)} Age{hoursLeft > 0 ? ` · ${timeDisplay}` : ''}
     </div>
   );
 }

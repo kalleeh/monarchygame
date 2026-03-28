@@ -452,6 +452,6 @@ interface BattleReportEvent {
   timestamp: string;
 }
 
-export type { BattleReportEvent };
+export type { BattleReportEvent, TradeOfferEvent, WarDeclarationEvent };
 
 export const subscriptionManager = new SubscriptionManager();

@@ -16,6 +16,7 @@ import { RACES } from '../../__mocks__/@game-data/races';
 import { useSummonStore } from './useSummonStore';
 import { isDemoMode } from '../utils/authMode';
 import { ToastService } from '../services/toastService';
+import type { BattleReportEvent } from '../services/subscriptionManager';
 import { processCombat, declareWar as declareWarApi, refreshKingdomResources } from '../services/domain/CombatService';
 import { achievementTriggers } from '../utils/achievementTriggers';
 import { GuildService } from '../services/GuildService';
@@ -440,6 +441,25 @@ export const useCombatStore = create(
         set((state) => ({
           currentBattle: report,
           battleHistory: [report, ...state.battleHistory.slice(0, 49)],
+        }));
+      },
+
+      refreshBattleHistory: (event: BattleReportEvent) => {
+        const state = get();
+        if (state.battleHistory.some(b => b.id === event.id)) return;
+        const report: BattleReport = {
+          id: event.id,
+          timestamp: new Date(event.timestamp).getTime(),
+          attacker: event.attackerId,
+          defender: event.defenderId,
+          attackerUnits: [],
+          defenderUnits: [],
+          result: 'defeat' as const,
+          casualties: { attacker: {}, defender: {} },
+        };
+        set((s) => ({
+          currentBattle: report,
+          battleHistory: [report, ...s.battleHistory.slice(0, 49)],
         }));
       },
 

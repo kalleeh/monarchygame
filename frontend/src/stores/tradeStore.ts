@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import type { TradeStore } from '../types/stores';
 import type { Resource, TradeOffer, MarketData, TrendData, PriceHistoryEntry } from '../types';
+import type { TradeOfferEvent } from '../services/subscriptionManager';
 import { useKingdomStore } from './kingdomStore';
 import { isDemoMode } from '../utils/authMode';
 import { postTradeOffer, acceptTradeOffer, cancelTradeOffer } from '../services/domain/TradeService';
@@ -577,5 +578,25 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
   // -----------------------------------------------------------------------
   clearError: () => {
     set({ error: null });
+  },
+
+  // -----------------------------------------------------------------------
+  // setActiveOffers — apply subscription-pushed trade offers to the store
+  // -----------------------------------------------------------------------
+  setActiveOffers: (offers: TradeOfferEvent[]) => {
+    const { myOffers } = get();
+    const mapped: TradeOffer[] = offers.map(o => ({
+      id: o.id,
+      sellerId: o.sellerId,
+      sellerName: 'Unknown Kingdom',
+      resourceId: o.resourceType,
+      quantity: o.quantity,
+      pricePerUnit: o.pricePerUnit,
+      totalPrice: o.totalPrice,
+      status: 'open' as const,
+      createdAt: Date.now(),
+    }));
+    const playerIds = new Set(myOffers.map(o => o.id));
+    set({ activeOffers: [...myOffers.filter(o => o.status === 'open'), ...mapped.filter(o => !playerIds.has(o.id))] });
   },
 }));

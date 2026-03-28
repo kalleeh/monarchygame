@@ -14,6 +14,7 @@ interface FaithInterfaceProps {
   kingdomId: string;
   race: string;
   onBack: () => void;
+  serverFocusPoints?: number;
 }
 
 type AlignmentType = 'angelique' | 'neutral' | 'elemental';
@@ -59,7 +60,7 @@ const ABILITY_CONFIG: Array<{ key: AbilityKey; label: string; cost: number; desc
   },
 ];
 
-const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, race, onBack }) => {
+const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, race, onBack, serverFocusPoints }) => {
   const [lastResult, setLastResult] = useState<string | null>(null);
 
   const {
@@ -80,8 +81,8 @@ const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, race, onBack
 
   // Initialize on mount
   useEffect(() => {
-    initializeFaith(race, kingdomId);
-  }, [kingdomId, race, initializeFaith]);
+    initializeFaith(race, kingdomId, serverFocusPoints);
+  }, [kingdomId, race, initializeFaith, serverFocusPoints]);
 
   // Periodically regenerate focus points
   useEffect(() => {

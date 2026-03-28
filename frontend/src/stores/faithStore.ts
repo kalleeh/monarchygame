@@ -84,7 +84,7 @@ export const useFaithStore = create(
        * Initialize faith system for a given race.
        * Checks available alignments and sets a default (neutral if compatible, else first compatible).
        */
-      initializeFaith: (race: string, kingdomId?: string) => {
+      initializeFaith: (race: string, kingdomId?: string, serverFocusPoints?: number) => {
         // Determine which alignments this race can use
         const availableAlignments = Object.keys(FAITH_ALIGNMENTS).filter((alignmentId) =>
           canUseFaithAlignment(race, alignmentId)
@@ -104,8 +104,21 @@ export const useFaithStore = create(
 
         // Restore persisted FP so progress survives page reloads
         const persisted = loadPersistedFP(resolvedKingdomId);
-        const restoredFP = persisted ? Math.min(maxFocus, persisted.focusPoints) : 0;
+        let restoredFP = persisted ? Math.min(maxFocus, persisted.focusPoints) : 0;
         const restoredRegenTime = persisted ? new Date(persisted.lastFocusRegenTime) : new Date();
+
+        // If the server has a higher value (from offline regen), use it
+        if (serverFocusPoints !== undefined && serverFocusPoints > restoredFP) {
+          restoredFP = serverFocusPoints;
+          try {
+            if (resolvedKingdomId) {
+              localStorage.setItem('faith-fp-' + resolvedKingdomId, JSON.stringify({
+                focusPoints: restoredFP,
+                lastRegenTime: Date.now(),
+              }));
+            }
+          } catch {}
+        }
 
         set({
           kingdomId: resolvedKingdomId,

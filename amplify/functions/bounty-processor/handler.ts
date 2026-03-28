@@ -144,6 +144,8 @@ async function handleComplete(args: { kingdomId?: string | null; targetId?: stri
   const updatedStats = { ...stats };
   delete updatedStats.activeBountyTargetId;
   delete updatedStats.activeBountyClaimedAt;
+  updatedStats.bountyCompletions =
+    typeof stats.bountyCompletions === 'number' ? stats.bountyCompletions + 1 : 1;
 
   await dbUpdate('Kingdom', kingdomId, {
     stats: updatedStats,

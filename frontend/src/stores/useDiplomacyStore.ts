@@ -34,6 +34,7 @@ interface DiplomacyStore {
   declareWar: (targetKingdomId: string) => Promise<void>;
   makePeace: (targetKingdomId: string) => Promise<void>;
   updateReputation: (change: number) => void;
+  applyIncomingWarDeclaration: (attackerId: string) => void;
 }
 
 export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
@@ -112,14 +113,7 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
         });
       }
 
-      // Add to active proposals
-      
-        set(state => ({
-        activeProposals: [...state.activeProposals, proposal],
-        loading: false
-      }));
-
-      // Update diplomatic history
+      // Add to active proposals and update diplomatic history atomically
       const action: DiplomaticAction = {
         id: `action-${Date.now()}`,
         type: 'PROPOSAL_SENT',
@@ -129,9 +123,10 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
         timestamp: new Date()
       };
 
-      
-        set(state => ({
-        diplomaticHistory: [action, ...state.diplomaticHistory]
+      set(state => ({
+        activeProposals: [...state.activeProposals, proposal],
+        diplomaticHistory: [action, ...state.diplomaticHistory],
+        loading: false
       }));
 
     } catch (error) {
@@ -152,14 +147,7 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
 
       await DiplomacyService.acceptTreatyProposal(proposalId);
 
-      // Remove from active proposals
-      
-        set(state => ({
-        activeProposals: state.activeProposals.filter(p => p.id !== proposalId),
-        loading: false
-      }));
-
-      // Update relationships
+      // Update proposals, relationships, and reputation atomically
       const newRelationship: DiplomaticRelationship = {
         id: `rel-${Date.now()}`,
         fromKingdom: proposal.fromKingdom,
@@ -177,16 +165,15 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
         lastAction: new Date()
       };
 
-      
-        set(state => ({
-        relationships: [...state.relationships.filter(r => 
+      set(state => ({
+        activeProposals: state.activeProposals.filter(p => p.id !== proposalId),
+        relationships: [...state.relationships.filter(r =>
           !(r.fromKingdom.id === proposal.fromKingdom.id && r.toKingdom.id === proposal.toKingdom.id) &&
           !(r.fromKingdom.id === proposal.toKingdom.id && r.toKingdom.id === proposal.fromKingdom.id)
-        ), newRelationship]
+        ), newRelationship],
+        reputation: Math.max(0, Math.min(200, state.reputation + 10)),
+        loading: false
       }));
-
-      // Increase reputation
-      get().updateReputation(10);
 
     } catch (error) {
       set({ 
@@ -204,15 +191,12 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
     try {
       await DiplomacyService.rejectTreatyProposal(proposalId);
 
-      // Remove from active proposals
-      
-        set(state => ({
+      // Remove from active proposals and apply reputation penalty atomically
+      set(state => ({
         activeProposals: state.activeProposals.filter(p => p.id !== proposalId),
+        reputation: Math.max(0, Math.min(200, state.reputation - 2)),
         loading: false
       }));
-
-      // Small reputation penalty
-      get().updateReputation(-2);
 
     } catch (error) {
       set({ 
@@ -243,20 +227,17 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
         await DiplomacyService.declareWar(useKingdomStore.getState().kingdomId ?? 'default-kingdom', targetKingdomId);
       }
 
-      // Update relationship status
-      
-        set(state => ({
+      // Update relationship status and reputation atomically
+      set(state => ({
         relationships: state.relationships.map(rel => {
           if ((rel.fromKingdom.id === targetKingdomId || rel.toKingdom.id === targetKingdomId)) {
-            return { ...rel, status: 'WAR', lastAction: new Date() };
+            return { ...rel, status: 'WAR' as const, lastAction: new Date() };
           }
           return rel;
         }),
+        reputation: Math.max(0, Math.min(200, state.reputation - 20)),
         loading: false
       }));
-
-      // Reputation penalty
-      get().updateReputation(-20);
 
     } catch (error) {
       set({ 
@@ -286,20 +267,17 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
         await DiplomacyService.makePeace(useKingdomStore.getState().kingdomId ?? 'default-kingdom', targetKingdomId);
       }
 
-      // Update relationship status
-      
-        set(state => ({
+      // Update relationship status and reputation atomically
+      set(state => ({
         relationships: state.relationships.map(rel => {
           if ((rel.fromKingdom.id === targetKingdomId || rel.toKingdom.id === targetKingdomId)) {
-            return { ...rel, status: 'NEUTRAL', lastAction: new Date() };
+            return { ...rel, status: 'NEUTRAL' as const, lastAction: new Date() };
           }
           return rel;
         }),
+        reputation: Math.max(0, Math.min(200, state.reputation + 5)),
         loading: false
       }));
-
-      // Small reputation bonus
-      get().updateReputation(5);
 
     } catch (error) {
       set({ 
@@ -308,6 +286,16 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
       });
       throw error;
     }
+  },
+
+  applyIncomingWarDeclaration: (attackerId: string) => {
+    set(state => ({
+      relationships: state.relationships.map(rel =>
+        (rel.fromKingdom.id === attackerId || rel.toKingdom.id === attackerId)
+          ? { ...rel, status: 'WAR' as const, lastAction: new Date() }
+          : rel
+      ),
+    }));
   },
 
   // Update reputation
