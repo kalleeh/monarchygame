@@ -219,9 +219,12 @@ function ActiveSeasonPanel() {
         seasonId: season.id,
       });
       const result = typeof raw === 'string' ? JSON.parse(raw) : (raw as { data?: unknown }).data ?? raw;
-      const parsed = typeof result === 'string' ? JSON.parse(result) : result as { success?: boolean; created?: number; error?: string };
+      const parsed = typeof result === 'string' ? JSON.parse(result) : result as { success?: boolean; created?: number; result?: string; error?: string };
       if (parsed?.success === false) throw new Error(parsed.error || 'Seed failed');
-      toast.success(`Seeded ${parsed?.created ?? 0} AI kingdoms for Season #${season.seasonNumber}.`);
+      // `created` may be top-level or nested inside parsed.result
+      const inner = parsed?.result ? (typeof parsed.result === 'string' ? JSON.parse(parsed.result) : parsed.result) as { created?: number } : null;
+      const created = parsed?.created ?? inner?.created ?? 0;
+      toast.success(`Seeded ${created} AI kingdoms for Season #${season.seasonNumber}.`);
     } catch (err) {
       toast.error(`Seed AI kingdoms failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
@@ -327,7 +330,7 @@ function ActiveSeasonPanel() {
             onClick={() => { void handleSeedAI(); }}
             disabled={!!actionLoading}
           >
-            {actionLoading === 'seedAI' ? 'Seeding...' : '🤖 Seed AI Kingdoms'}
+            {actionLoading === 'seedAI' ? 'Seeding…' : '⚔ Seed AI Kingdoms'}
           </button>
         )}
         {season && (
