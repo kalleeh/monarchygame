@@ -20,6 +20,25 @@ vi.mock('../aiKingdomStore', () => ({
   }))
 }));
 
+// Mock AmplifyFunctionService so war-manager lambda calls don't go to the network
+vi.mock('../../services/amplifyFunctionService', () => ({
+  AmplifyFunctionService: {
+    callFunction: vi.fn().mockResolvedValue({}),
+    updateResources: vi.fn().mockResolvedValue({ success: true, resources: '{}' }),
+  }
+}))
+
+// Mock ToastService (including warn used by combatStore error handler)
+vi.mock('../../services/toastService', () => ({
+  ToastService: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    promise: vi.fn().mockResolvedValue({}),
+  }
+}))
+
 // Mock kingdomStore
 vi.mock('../kingdomStore', () => ({
   useKingdomStore: {
