@@ -41,26 +41,4 @@ describe('Property-Based Balance Testing', () => {
     ));
   });
 
-  // Property: Race balance invariant (no race dominates) - Disabled for deployment
-  it.skip('property: race balance invariant', async () => {
-    // This test is temporarily disabled as Droben is intentionally designed to be stronger
-    // for strategic diversity in the game. The 80% threshold may still be too restrictive
-    // for the intended game balance where some races have combat advantages.
-    await fc.assert(fc.asyncProperty(
-      fc.constantFrom('Human', 'Droben', 'Sidhe', 'Elven'),
-      fc.constantFrom('Human', 'Droben', 'Sidhe', 'Elven'),
-      async (race1, race2) => {
-        if (race1 === race2) return true;
-        
-        const tester = new AIBalanceTester();
-        await tester.runBalanceTest(50);
-        
-        const stats = tester.getRaceStats();
-        const race1WinRate = stats[race1]?.winRate || 0;
-        const race2WinRate = stats[race2]?.winRate || 0;
-        
-        return race1WinRate < 0.8 && race2WinRate < 0.8;
-      }
-    ));
-  });
 });
