@@ -223,6 +223,20 @@ describe('faith-processor handler — useFocusAbility', () => {
     expect(effect.effectType).toBe('SPELL_POWER_BOOST');
   });
 
+  it('emergency ability deducts 20 FP and grants 5 turns via dbAtomicAdd', async () => {
+    mockDbGet.mockResolvedValue(mockKingdom({ stats: { focusPoints: 30 } }));
+    mockDbAtomicAdd.mockResolvedValue(undefined);
+
+    const result = await callHandler(
+      makeEvent({ kingdomId: 'kingdom-1', action: 'useFocusAbility', abilityType: 'emergency' })
+    );
+
+    expect(result.success).toBe(true);
+    expect(mockDbAtomicAdd).toHaveBeenCalledWith('Kingdom', 'kingdom-1', 'turnsBalance', 5);
+    const updateCall = mockDbUpdate.mock.calls[0];
+    expect(updateCall[2].stats.focusPoints).toBe(10); // 30 - 20
+  });
+
   it('racial_ability ability stores RACIAL_ABILITY_BOOST in activeFaithEffects', async () => {
     mockDbGet.mockResolvedValue(mockKingdom({ stats: { focusPoints: 50 } }));
 

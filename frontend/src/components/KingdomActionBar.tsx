@@ -152,6 +152,7 @@ export const KingdomActionBar: React.FC<KingdomActionBarProps> = ({
                       ? <img src={item.icon} alt={item.label} className="action-bar-icon" />
                       : <span className="action-bar-emoji">{item.emoji}</span>
                     }
+                    {prohibited && <span className="action-bar-lock-icon" aria-hidden="true">🔒</span>}
                   </button>
                 );
               })}

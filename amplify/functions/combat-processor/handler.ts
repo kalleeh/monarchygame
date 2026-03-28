@@ -535,8 +535,28 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
           buildingDestroyed = true;
         }
         log.info('combat-processor', 'pillage-applied', { attackerId, extraGoldStolen, buildingDestroyed });
+      } else if (attackType === 'siege') {
+        // Siege: sustained assault — more land, more casualties, costs 3 turns total
+        // Validate minimum unit count (siege requires organized force)
+        const totalAttackerUnits = Object.values(attackerUnits).reduce((s, v) => s + (v as number), 0);
+        if (totalAttackerUnits < 50) {
+          return JSON.stringify({ success: false, error: 'Siege requires at least 50 units', errorCode: 'VALIDATION_FAILED' });
+        }
+        // Extra turn cost: 2 more turns (1 already deducted by the standard turn deduction)
+        await dbAtomicAdd('Kingdom', attackerId, 'turnsBalance', -2);
+        // Land bonus: +50% more land
+        finalLandGained = Math.floor(finalLandGained * 1.5);
+        // Casualty penalty: +30% attacker casualties (siege is costly)
+        const casualties = combatResult.casualties as { attacker: Record<string, number>; defender: Record<string, number> };
+        for (const unitType of Object.keys(casualties.attacker)) {
+          casualties.attacker[unitType] = Math.ceil((casualties.attacker[unitType] ?? 0) * 1.3);
+        }
+        log.info('combat-processor', 'siege-applied', { attackerId, finalLandGained });
       }
     }
+
+    const attackerKingdom = attacker;
+    const defenderKingdom = defender;
 
     await dbCreate<BattleReportType>('BattleReport', {
       attackerId,
@@ -546,8 +566,13 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
         result: combatResult.result,
         powerRatio: combatResult.powerRatio,
         landGained: finalLandGained,
-        goldLooted: combatResult.goldLooted + extraGoldStolen,
-        buildingDestroyed
+        goldLooted: (combatResult.goldLooted ?? 0) + (extraGoldStolen ?? 0),
+        buildingDestroyed: buildingDestroyed ?? false,
+        // Replay data
+        attackerUnits: attackerUnits,
+        defenderUnits: defenderUnits,
+        attackerName: (attackerKingdom as Record<string, unknown>).name ?? attackerId,
+        defenderName: (defenderKingdom as Record<string, unknown>).name ?? defenderId,
       }),
       casualties: JSON.stringify(combatResult.casualties),
       landGained: finalLandGained,

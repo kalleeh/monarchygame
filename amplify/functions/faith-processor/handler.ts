@@ -1,7 +1,7 @@
 import type { Schema } from '../../data/resource';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbList, parseJsonField } from '../data-client';
+import { dbGet, dbUpdate, dbList, dbAtomicAdd, parseJsonField } from '../data-client';
 
 const VALID_ALIGNMENTS = ['angelique', 'neutral', 'elemental'] as const;
 const VALID_ABILITY_TYPES = ['racial_ability', 'spell_power', 'combat_focus', 'economic_focus', 'emergency'] as const;
@@ -141,6 +141,10 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         };
         updatedStats = { ...updatedStats, activeFaithEffects: [...activeEffects, newEffect] };
+      } else if (abilityType === 'emergency') {
+        // EMERGENCY_ACTION: immediate +5 turns — no persistent effect stored
+        await dbAtomicAdd('Kingdom', kingdomId, 'turnsBalance', 5);
+        log.info('faith-processor', 'emergency-action', { kingdomId, turnsGranted: 5 });
       }
 
       await dbUpdate('Kingdom', kingdomId, {

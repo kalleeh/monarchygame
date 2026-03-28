@@ -144,7 +144,7 @@ export const useCombatStore = create(
     },
     (set, get) => ({
       // Battle execution
-      executeBattle: async (targetId: string, attackType: 'standard' | 'raid' | 'pillage' = 'standard') => {
+      executeBattle: async (targetId: string, attackType: 'standard' | 'raid' | 'pillage' | 'siege' = 'standard') => {
         // Read formation state from formationStore
         const formationState = useFormationStore.getState();
         const { selectedUnits, activeFormation, formations } = formationState;

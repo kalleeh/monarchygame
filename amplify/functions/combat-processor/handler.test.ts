@@ -517,6 +517,65 @@ describe('combat-processor handler', () => {
       expect(data.goldLooted).toBeGreaterThanOrEqual(2000);
     });
 
+    it('siege returns ~150% land and deducts 2 extra turns', async () => {
+      const attackerKingdom = mockKingdom('attacker-1', {
+        totalUnits: { cavalry: 5000 },
+        turnsBalance: 10,
+      });
+      const defenderKingdom = mockKingdom('defender-1', {
+        totalUnits: { infantry: 10 },
+        resources: { gold: 10000, population: 1000, mana: 100, land: 5000 },
+      });
+
+      // Run standard first to get baseline landGained
+      mockDbGet
+        .mockResolvedValueOnce(attackerKingdom)
+        .mockResolvedValueOnce(defenderKingdom);
+
+      const standardResult = await callHandler(
+        makeEvent({
+          attackerId: 'attacker-1',
+          defenderId: 'defender-1',
+          attackType: 'standard',
+          units: JSON.stringify({ cavalry: 5000 }),
+        })
+      );
+      expect(standardResult.success).toBe(true);
+      const standardData = JSON.parse(standardResult.result as string);
+
+      // Reset mocks and run siege
+      vi.clearAllMocks();
+      mockDbUpdate.mockResolvedValue(undefined);
+      mockDbCreate.mockResolvedValue({ id: 'battle-siege', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), __typename: 'BattleReport' });
+      mockDbList.mockResolvedValue([]);
+      mockDbQuery.mockResolvedValue([]);
+      mockDbAtomicAdd.mockResolvedValue(undefined);
+
+      mockDbGet
+        .mockResolvedValueOnce(attackerKingdom)
+        .mockResolvedValueOnce(defenderKingdom);
+
+      const siegeResult = await callHandler(
+        makeEvent({
+          attackerId: 'attacker-1',
+          defenderId: 'defender-1',
+          attackType: 'siege',
+          units: JSON.stringify({ cavalry: 5000 }),
+        })
+      );
+
+      expect(siegeResult.success).toBe(true);
+      const siegeData = JSON.parse(siegeResult.result as string);
+
+      // Siege land should be ~150% of standard land
+      if (standardData.landGained > 0) {
+        expect(siegeData.landGained).toBeGreaterThan(standardData.landGained);
+      }
+
+      // dbAtomicAdd should have been called with -2 extra turns for siege
+      expect(mockDbAtomicAdd).toHaveBeenCalledWith('Kingdom', 'attacker-1', 'turnsBalance', -2);
+    });
+
     it('defender with fortification alliance upgrade has boosted effective defense units', async () => {
       const attackerKingdom = mockKingdom('attacker-1', {
         totalUnits: { infantry: 500 },

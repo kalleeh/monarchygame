@@ -7,6 +7,7 @@
   background: rgba(10, 10, 22, 0.98);
   border-bottom: 1px solid rgba(99, 102, 241, 0.22);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .action-bar-inner {
@@ -58,6 +59,7 @@
 
 /* Individual icon button */
 .action-bar-icon-btn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -85,6 +87,16 @@
 .action-bar-icon-btn--disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+.action-bar-lock-icon {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  font-size: 0.55rem;
+  line-height: 1;
+  pointer-events: none;
+  opacity: 0.9;
 }
 
 .action-bar-icon-btn--disabled:hover {

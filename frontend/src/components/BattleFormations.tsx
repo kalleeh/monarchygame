@@ -134,7 +134,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
   const [unitOrder, setUnitOrder] = useState<string[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<string>('');
   const [showBattleResult, setShowBattleResult] = useState(false);
-  const [selectedAttackType, setSelectedAttackType] = useState<'standard' | 'raid' | 'pillage'>('standard');
+  const [selectedAttackType, setSelectedAttackType] = useState<'standard' | 'raid' | 'pillage' | 'siege'>('standard');
   const [ambushActive, setAmbushActive] = useState(false);
   const [defensiveFormation, setDefensiveFormation] = useState<string>(() => {
     try {
@@ -605,6 +605,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
               { value: 'standard', label: 'Standard', desc: 'Captures land' },
               { value: 'raid', label: 'Raid', desc: 'Steals gold (5%), captures less land' },
               { value: 'pillage', label: 'Pillage', desc: 'Steals gold (10%), destroys buildings, no land' },
+              { value: 'siege', label: 'Siege', desc: 'Heavy assault (+50% land, 3 turns, +30% casualties)' },
             ] as const).map(opt => (
               <button
                 key={opt.value}
@@ -631,6 +632,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
             {selectedAttackType === 'standard' && 'Captures land from the defender.'}
             {selectedAttackType === 'raid' && 'Steals 5% of defender\'s gold and captures half the normal land. Lower attacker casualties.'}
             {selectedAttackType === 'pillage' && 'Steals 10% of defender\'s gold and destroys a random building. No land captured.'}
+            {selectedAttackType === 'siege' && 'Heavy assault: +50% land gained, costs 3 turns total, +30% attacker casualties.'}
           </div>
           <label className="ambush-toggle" style={{
             display: 'flex',

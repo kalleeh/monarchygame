@@ -3,7 +3,7 @@
  * Display historical battle results and detailed reports
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { BattleHistory, Army } from '../../types/combat';
 import { useCombatReplayStore } from '../../stores/combatReplayStore';
@@ -27,6 +27,12 @@ const BattleReports: React.FC<BattleReportsProps> = ({
   const navigate = useNavigate();
   const getReplay = useCombatReplayStore((state) => state.getReplay);
   const [selectedReport, setSelectedReport] = useState<BattleHistory | null>(null);
+
+  useEffect(() => {
+    if (currentKingdomId) {
+      void useCombatReplayStore.getState().loadReplaysFromBattleReports(currentKingdomId);
+    }
+  }, [currentKingdomId]);
   const [sortField, setSortField] = useState<SortField>('timestamp');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [filter, setFilter] = useState<FilterType>('all');

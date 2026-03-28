@@ -199,8 +199,9 @@ const WorldMapDesktop: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
       let label: string;
       let aiKingdom: (typeof aiKingdoms)[number] | undefined;
 
-      if (inFog && ownership === 'neutral') {
+      if (inFog && (ownership === 'neutral' || ownership === 'enemy')) {
         label = '???';
+        aiKingdom = undefined; // suppress kingdom details for fogged enemies
       } else if (ownership === 'enemy') {
         const ownerId = aiOwnerMap[wt.id];
         aiKingdom = aiKingdoms.find((k) => k.id === ownerId);
@@ -222,7 +223,7 @@ const WorldMapDesktop: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         (aiKingdom as (typeof aiKingdom) & { terrain?: string; terrainType?: string } | undefined)?.terrainType;
       const terrain = getRegionTerrain(wt.id, aiTerrainRaw);
 
-      const isFogNode = inFog && ownership === 'neutral';
+      const isFogNode = inFog && (ownership === 'neutral' || ownership === 'enemy');
       const labelWithTerrain = isFogNode ? label : `${label} ${terrainEmoji(terrain)}`;
 
       const style = buildNodeStyle(
