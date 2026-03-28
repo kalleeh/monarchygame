@@ -175,12 +175,12 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
     let faithTicked = 0;
     for (const kingdom of realKingdoms) {
       try {
-        const rawStats = (kingdom as Record<string, unknown>).stats;
+        const rawStats = (kingdom as unknown as Record<string, unknown>).stats;
         const stats: Record<string, unknown> = typeof rawStats === 'string'
           ? JSON.parse(rawStats as string)
           : ((rawStats ?? {}) as Record<string, unknown>);
 
-        const race = ((kingdom as Record<string, unknown>).race as string ?? 'human').toLowerCase();
+        const race = ((kingdom as unknown as Record<string, unknown>).race as string ?? 'human').toLowerCase();
         const modifiers = FOCUS_MECHANICS.BASE_GENERATION.RACIAL_MODIFIERS as Record<string, number>;
         const racialMod = modifiers[race] ?? 1.0;
         const regenRate = Math.floor(FOCUS_MECHANICS.BASE_GENERATION.POINTS_PER_HOUR * racialMod);

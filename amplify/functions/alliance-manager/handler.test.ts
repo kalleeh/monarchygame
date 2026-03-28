@@ -217,7 +217,7 @@ describe('alliance-manager handler', () => {
       );
 
       expect(result.success).toBe(true);
-      const allianceUpdateCall = mockDbUpdate.mock.calls.find((c: unknown[]) => c[0] === 'Alliance');
+      const allianceUpdateCall = mockDbUpdate.mock.calls.find((c: unknown[]) => c[0] === 'Alliance')!;
       const updatedMembers = JSON.parse(allianceUpdateCall[2].memberIds);
       expect(updatedMembers).not.toContain('kingdom-1');
     });

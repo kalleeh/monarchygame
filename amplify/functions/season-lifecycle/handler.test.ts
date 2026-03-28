@@ -265,10 +265,10 @@ describe('season-lifecycle handler — end action', () => {
 
     // Find the dbUpdate call that stores ageTransitions with victoryResults
     const updateCall = mockDbUpdate.mock.calls.find(
-      ([model, id]: [string, string]) => model === 'GameSeason' && id === 'season-3'
+      (c: unknown[]) => c[0] === 'GameSeason' && c[1] === 'season-3'
     );
     expect(updateCall).toBeDefined();
-    const updatePayload = updateCall[2] as Record<string, unknown>;
+    const updatePayload = updateCall![2] as Record<string, unknown>;
     const transitions = JSON.parse(updatePayload.ageTransitions as string) as Record<string, unknown>;
     const victoryResults = transitions.victoryResults as {
       militaryChampion?: { allianceName: string };

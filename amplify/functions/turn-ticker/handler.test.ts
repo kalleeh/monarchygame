@@ -88,11 +88,11 @@ describe('turn-ticker handler — faith regen', () => {
       (call: unknown[]) =>
         call[0] === 'Kingdom' &&
         call[1] === 'kingdom-1' &&
-        typeof call[2]?.stats === 'string' &&
-        JSON.parse(call[2].stats as string).focusPoints > 0
+        typeof (call[2] as Record<string, unknown>)?.stats === 'string' &&
+        JSON.parse((call[2] as Record<string, unknown>).stats as string).focusPoints > 0
     );
     expect(faithUpdateCall).toBeDefined();
-    const updatedStats = JSON.parse(faithUpdateCall![2].stats as string);
+    const updatedStats = JSON.parse((faithUpdateCall![2] as Record<string, unknown>).stats as string);
     expect(updatedStats.focusPoints).toBeGreaterThan(0);
   });
 
@@ -113,12 +113,12 @@ describe('turn-ticker handler — faith regen', () => {
       (call: unknown[]) =>
         call[0] === 'Kingdom' &&
         call[1] === 'kingdom-1' &&
-        typeof call[2]?.stats === 'string' &&
-        JSON.parse(call[2].stats as string).focusPoints !== undefined
+        typeof (call[2] as Record<string, unknown>)?.stats === 'string' &&
+        JSON.parse((call[2] as Record<string, unknown>).stats as string).focusPoints !== undefined
     );
     // Either no call or the value equals the cap (not exceeded)
     if (faithUpdateCall) {
-      const updatedStats = JSON.parse(faithUpdateCall[2].stats as string);
+      const updatedStats = JSON.parse((faithUpdateCall[2] as Record<string, unknown>).stats as string);
       expect(updatedStats.focusPoints).toBeLessThanOrEqual(100);
     }
   });
