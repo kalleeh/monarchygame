@@ -256,7 +256,9 @@ function AppContent() {
       // Always fetch kingdoms in demo mode, even on refresh
       fetchKingdoms();
     } else {
-      // Not in demo mode - stop loading and show welcome page
+      // Auth mode: release loading so the welcome/auth screen shows.
+      // KingdomRoutes uses a cancellable timeout so the brief loading=false window
+      // (before Cognito resolves ~100ms later) doesn't cause a premature redirect.
       setLoading(false);
     }
   }, [fetchKingdoms, currentUser, demoMode]);
@@ -272,9 +274,7 @@ function AppContent() {
     if (currentUser && !demoMode && !hasInitialFetch) {
       setHasInitialFetch(true);
       setLoading(true);
-      setTimeout(() => {
-        fetchKingdoms();
-      }, 1000);
+      fetchKingdoms();
     }
   }, [currentUser, demoMode, hasInitialFetch, fetchKingdoms]); // Add fetchKingdoms dependency
 

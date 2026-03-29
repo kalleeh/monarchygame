@@ -211,13 +211,20 @@ function KingdomRoutes({ kingdoms, loading }: { kingdoms: Schema['Kingdom']['typ
   }, [loadAIKingdomsFromServer]);
 
   // While kingdoms are loading, show spinner — don't redirect yet
+  // Use a useEffect-based redirect so it cancels if loading flips back to true
+  // (happens when Cognito session arrives after initial render with loading=false)
+  React.useEffect(() => {
+    if (!kingdom && !loading) {
+      const t = setTimeout(() => navigate('/kingdoms', { replace: true }), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [kingdom, loading, navigate]);
+
   if (!kingdom) {
     if (loading) {
       return <div className="loading">Loading kingdom...</div>;
     }
-    // Kingdoms loaded but this ID not found — then redirect
-    setTimeout(() => navigate('/kingdoms', { replace: true }), 1000);
-    return <div className="loading">Kingdom not found. Redirecting...</div>;
+    return <div className="loading">Loading kingdom...</div>;
   }
 
   const handleBack = () => navigate('/kingdoms');
