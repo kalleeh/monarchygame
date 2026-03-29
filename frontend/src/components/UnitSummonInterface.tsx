@@ -9,6 +9,7 @@ import { useKingdomStore } from '../stores/kingdomStore';
 import { ErrorBoundary } from './ErrorBoundary';
 import { TopNavigation } from './TopNavigation';
 import { ToastService } from '../services/toastService';
+import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 import './UnitSummonInterface.css';
 
 interface UnitSummonInterfaceProps {
@@ -41,6 +42,7 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
     calculateMaxAffordable,
     getTotalUpkeep,
     loadSummonData,
+    clearError,
     error: storeError
   } = useSummonStore();
 
@@ -52,6 +54,11 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
   const remainingCapacity = calculateRemainingCapacity();
   const totalUpkeep = getTotalUpkeep();
   const TROOP_CAP_GOLD = 10_000_000;
+
+  // On mount: refresh gold balance from server so affordability is accurate
+  useEffect(() => {
+    void AmplifyFunctionService.refreshKingdomResources(kingdomId);
+  }, [kingdomId]);
 
   // Reload summon data whenever units change so Army Value / Recruit Capacity stays fresh
   useEffect(() => {
@@ -254,7 +261,7 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
         <div className="summon-error" role="alert">
           <h3>Summon Error</h3>
           <p>{error || storeError}</p>
-          <button onClick={() => { setError(null); }}>Dismiss</button>
+          <button onClick={() => { setError(null); clearError(); }}>Dismiss</button>
         </div>
       </div>
     );
