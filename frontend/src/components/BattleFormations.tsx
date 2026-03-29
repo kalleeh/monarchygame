@@ -16,6 +16,7 @@ import { useCombatStore } from '../stores/combatStore';
 import { useFormationStore } from '../stores/formationStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
+import { getUnitsForRace } from '../utils/units';
 // Inline race offense/defense scales to avoid circular import via __mocks__
 const RACE_OFFENSE: Record<string, number> = {
   Human: 3, Elven: 2, Goblin: 4, Droben: 5, Vampire: 3,
@@ -59,9 +60,13 @@ interface SortableUnitProps {
   };
   isSelected: boolean;
   onToggle: () => void;
+  tier?: number;
 }
 
-const SortableUnit: React.FC<SortableUnitProps> = ({ id, unit, isSelected, onToggle }) => {
+const TIER_LABELS = ['T0', 'T1', 'T2', 'T3'];
+const TIER_COLORS = ['#6b7280', '#4ecdc4', '#f59e0b', '#ef4444'];
+
+const SortableUnit: React.FC<SortableUnitProps> = ({ id, unit, isSelected, onToggle, tier }) => {
   const {
     attributes,
     listeners,
@@ -84,15 +89,23 @@ const SortableUnit: React.FC<SortableUnitProps> = ({ id, unit, isSelected, onTog
       {...attributes}
       className={`unit-card ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''}`}
     >
-      <div className="unit-icon" {...listeners} style={{ cursor: 'grab' }}>
+      <div className="unit-icon" {...listeners} style={{ cursor: 'grab', position: 'relative', width: 48, height: 48, flexShrink: 0 }}>
         <img src={`/units/output/${unit.type.replace(/_/g, '-')}-icon.png`} alt={unit.type}
-          style={{ width: 32, height: 32, objectFit: 'contain' }}
+          style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 6, display: 'block' }}
           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
         />
+        {tier !== undefined && tier > 0 && (
+          <span style={{
+            position: 'absolute', bottom: 0, right: 0,
+            background: TIER_COLORS[tier] ?? '#6b7280',
+            color: '#fff', fontSize: '0.6rem', fontWeight: 700,
+            padding: '1px 3px', borderRadius: 3, lineHeight: 1,
+          }}>{TIER_LABELS[tier] ?? `T${tier}`}</span>
+        )}
       </div>
       <div className="unit-info" onClick={onToggle} style={{ cursor: 'pointer', flex: 1 }}>
-        <h4>{unit.type}</h4>
-        <span className="unit-count">{unit.count}</span>
+        <h4 style={{ textTransform: 'capitalize' }}>{unit.type.replace(/-/g, ' ')}</h4>
+        <span className="unit-count">×{unit.count}</span>
       </div>
       <div className="unit-stats" onClick={onToggle} style={{ cursor: 'pointer' }}>
         <span>⚔️{unit.attack}</span>
@@ -252,10 +265,16 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     }
   }, [preselectedTargetId]);
 
-  // Update unit order when available units change
+  // Update unit order when available units change — sort by tier (highest first)
   useEffect(() => {
-    setUnitOrder(availableUnits.map(unit => unit.id));
-  }, [availableUnits]);
+    const raceDefs = getUnitsForRace(race);
+    const withTier = availableUnits.map(unit => ({
+      id: unit.id,
+      tier: raceDefs.find(u => u.id === unit.type)?.tier ?? 0,
+    }));
+    withTier.sort((a, b) => b.tier - a.tier);
+    setUnitOrder(withTier.map(u => u.id));
+  }, [availableUnits, race]);
 
   // Battle stats animation
   const battleStats = getBattleStats();
@@ -366,7 +385,8 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     setTimeout(() => setDefensiveFormationSaved(false), 2000);
   };
 
-  // Get ordered units for display
+  // Get ordered units for display with tier info
+  const raceDefs = useMemo(() => getUnitsForRace(race), [race]);
   const orderedUnits = useMemo(() => {
     return unitOrder
       .map(id => availableUnits.find(unit => unit.id === id))
@@ -477,6 +497,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
                     unit={unit}
                     isSelected={selectedUnits.some(u => u.id === unit.id)}
                     onToggle={() => handleUnitToggle(unit.id)}
+                    tier={raceDefs.find(u => u.id === unit.type)?.tier}
                   />
                 ))}
               </div>
