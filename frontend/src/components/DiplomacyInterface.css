@@ -3,7 +3,7 @@
 
 /* ── Page wrapper ────────────────────────────────────────────────────── */
 .diplomacy-interface {
-  min-height: 0; /* avoid full-viewport black void on sparse content */
+  min-height: 100vh;
   background: var(--gm-bg-page, #0f0f1a);
   color: #e2e8f0;
 }
@@ -49,9 +49,6 @@
 
 /* ── Content max-width wrapper ───────────────────────────────────────── */
 .diplomacy-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  min-height: 60vh;
   padding: 1rem 1.5rem;
 }
 

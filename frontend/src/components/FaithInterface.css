@@ -2,7 +2,7 @@
 /* Follows the shared --gm-* design system (game-ui.css via index.css) */
 
 .faith-interface {
-  min-height: 0;
+  min-height: 100vh;
   background: var(--gm-bg-page, #0f0f1a);
   color: var(--gm-text);
 }

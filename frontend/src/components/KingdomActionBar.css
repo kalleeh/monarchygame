@@ -8,6 +8,8 @@
   border-bottom: 1px solid rgba(99, 102, 241, 0.22);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .action-bar-inner {

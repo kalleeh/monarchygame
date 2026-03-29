@@ -201,7 +201,6 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
 
   return (
     <div style={{background:'var(--color-bg-deep,#0f1629)',minHeight:'100vh'}}>
-    <div className="spell-casting-interface">
       <TopNavigation
         title={<><img src="/magic-spells-icon.png" style={{width:28,height:28,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Spell Casting</>}
         onBack={onBack}
@@ -209,7 +208,7 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
         subtitle="Cast powerful spells to aid your kingdom"
         kingdomId={kingdomId}
       />
-
+      <div className="spell-casting-interface">
       {/* Error Display */}
       {error && (
         <div className="error-banner">

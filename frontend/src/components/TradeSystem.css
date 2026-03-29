@@ -1,6 +1,12 @@
 /* Trade System — component-specific layout only */
 /* Shared panel/card/badge/button/input/banner/modal patterns → game-ui.css */
 
+/* ── Page wrapper (holds TopNavigation + content) ────────────────────── */
+.trade-system-page {
+  min-height: 100vh;
+  background: var(--color-bg-deep, #0f1629);
+}
+
 /* ── Page container ──────────────────────────────────────────────────── */
 .trade-system {
   padding: 1.5rem;

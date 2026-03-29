@@ -155,9 +155,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ kingdomId, onBack }) => {
   };
 
   return (
-    <div style={{background:'var(--color-bg-deep,#0f1629)',minHeight:'100vh'}}>
-    <div className="trade-system">
-      {/* Header with Back Navigation */}
+    <div className="trade-system-page">
       <TopNavigation
         title={<><img src="/trade-economy-icon.png" style={{width:28,height:28,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Trade System</>}
         onBack={onBack}
@@ -165,7 +163,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ kingdomId, onBack }) => {
         subtitle="Market & Resource Exchange"
         kingdomId={kingdomId}
       />
-
+      <div className="trade-system">
       {/* Error Display */}
       {error && (
         <div className="gm-error-banner">
@@ -409,7 +407,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ kingdomId, onBack }) => {
           </div>
         </div>
       )}
-    </div>
+      </div>
     </div>
   );
 };

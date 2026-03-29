@@ -3,12 +3,10 @@
 /* ── Page wrapper ───────────────────────────────────────────────────── */
 
 .spell-casting-interface {
-  padding: 1.5rem 2rem 2rem;
+  padding: 1rem 1.5rem 2rem;
   min-height: calc(100vh - 4rem);
   background: transparent;
   color: var(--gm-text, #e2e8f0);
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
 /* ── Loading state ──────────────────────────────────────────────────── */
