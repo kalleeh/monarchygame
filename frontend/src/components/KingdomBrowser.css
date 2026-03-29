@@ -1,6 +1,11 @@
 /* Kingdom Browser — uses --gm-* design system */
 .kingdom-browser {
-  padding: 2rem;
+  min-height: 100vh;
+  background: var(--gm-bg-page, #0f0f1a);
+}
+
+.kb-content {
+  padding: 1rem 1.5rem;
   max-width: 900px;
   margin: 0 auto;
 }

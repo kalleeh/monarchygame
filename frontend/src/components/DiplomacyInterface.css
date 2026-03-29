@@ -6,7 +6,6 @@
   min-height: 0; /* avoid full-viewport black void on sparse content */
   background: var(--gm-bg-page, #0f0f1a);
   color: #e2e8f0;
-  padding: 2rem;
 }
 
 /* ── Page header ─────────────────────────────────────────────────────── */
@@ -53,6 +52,7 @@
   max-width: 1200px;
   margin: 0 auto;
   min-height: 60vh;
+  padding: 1rem 1.5rem;
 }
 
 /* ── Dashboard layout ────────────────────────────────────────────────── */
@@ -261,7 +261,7 @@
 
 /* ── Responsive ──────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .diplomacy-interface   { padding: 1rem; }
+  .diplomacy-content     { padding: 0.75rem 1rem; }
   .diplomacy-navigation  { flex-wrap: wrap; }
   .nav-btn               { padding: 0.75rem 1rem; font-size: 0.9rem; }
   .relations-grid        { grid-template-columns: 1fr; }

@@ -378,6 +378,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
         kingdomId={kingdomId}
       />
 
+      <div className="bf-content">
       {/* Error Display */}
       {error && (
         <div className="error-banner">
@@ -802,6 +803,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

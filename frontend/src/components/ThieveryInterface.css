@@ -6,7 +6,6 @@
   min-height: 100vh;
   background: var(--gm-bg-page, #0f0f1a);
   color: var(--gm-text, #e2e8f0);
-  padding: 2rem;
 }
 
 /* ── Content max-width wrapper ───────────────────────────────────────── */
@@ -16,6 +15,7 @@
   display: flex;
   flex-direction: column;
   gap: 2rem;
+  padding: 1rem 1.5rem;
 }
 
 /* ── Stats section (auto-fit grid) ──────────────────────────────────── */
@@ -181,7 +181,7 @@
 
 /* ── Responsive ──────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .thievery-interface { padding: 1rem; }
+  .thievery-content   { padding: 0.75rem 1rem; }
   .thievery-stats     { grid-template-columns: repeat(2, 1fr); }
   .target-grid        { grid-template-columns: 1fr; }
   .operations-grid    { grid-template-columns: 1fr; }
@@ -222,7 +222,7 @@
 }
 
 @media (max-width: 480px) {
-  .thievery-interface { padding: 0.75rem; overflow-x: hidden; }
+  .thievery-content { padding: 0.5rem 0.75rem; overflow-x: hidden; }
   .thievery-stats     { gap: 0.75rem; }
   .thievery-stats .stat-card  { padding: 0.875rem; }
   .thievery-stats .stat-value { font-size: 1.4rem; }

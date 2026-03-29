@@ -176,6 +176,7 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
         }
       />
 
+      <div className="te-content">
       {/* Info Panel */}
       {showInfo && (
         <div className="info-panel">
@@ -393,6 +394,7 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
             </animated.div>
           ))}
         </div>
+      </div>
       </div>
     </div>
   );

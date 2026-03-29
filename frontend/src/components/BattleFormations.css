@@ -1,10 +1,13 @@
 /* Battle Formations Styles — Dark Fantasy Design System (--gm-* vars) */
 
 .battle-formations {
-  padding: 1.5rem;
   background: var(--gm-bg-page, #0f0f1a);
   color: var(--gm-text, #e2e8f0);
   min-height: 100vh;
+}
+
+.bf-content {
+  padding: 1rem 1.5rem;
 }
 
 /* ── Error Banner ──────────────────────────────────────────────────── */
@@ -517,8 +520,8 @@
 /* ── Responsive ────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
-  .battle-formations {
-    padding: 1rem;
+  .bf-content {
+    padding: 0.75rem 1rem;
   }
 
   .unit-grid,

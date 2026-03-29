@@ -1,10 +1,13 @@
 /* Territory Expansion Styles — Dark Fantasy Design System (--gm-* vars) */
 
 .territory-expansion {
-  padding: 1.5rem;
   background: var(--gm-bg-page, #0f0f1a);
   color: var(--gm-text, #e2e8f0);
   min-height: 100vh;
+}
+
+.te-content {
+  padding: 1rem 1.5rem;
 }
 
 /* Header with Back Navigation */

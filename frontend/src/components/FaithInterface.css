@@ -5,7 +5,6 @@
   min-height: 0;
   background: var(--gm-bg-page, #0f0f1a);
   color: var(--gm-text);
-  padding: 2rem;
 }
 
 /* ── Error / result banners ───────────────────────────────────────── */
@@ -46,6 +45,7 @@
   display: flex;
   flex-direction: column;
   gap: 2rem;
+  padding: 1rem 1.5rem;
 }
 
 /* ── Stats grid ───────────────────────────────────────────────────── */
@@ -314,8 +314,8 @@
 
 /* ── Responsive ───────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .faith-interface {
-    padding: 1rem;
+  .faith-content {
+    padding: 0.75rem 1rem;
   }
 
   .faith-stats {
