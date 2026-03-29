@@ -123,6 +123,7 @@ const AuthenticatedApp = React.memo(function AuthenticatedApp({
         <ErrorBoundary>
           <AppRouter
             kingdoms={kingdoms}
+            kingdomsLoading={loading}
             onGetStarted={handleGetStarted}
             onKingdomCreated={handleKingdomCreatedWithAuth}
           />
@@ -483,6 +484,7 @@ function AppContent() {
         <div className="game-content">
           <AppRouter
             kingdoms={kingdoms}
+            kingdomsLoading={loading}
             onGetStarted={handleGetStarted}
             onKingdomCreated={handleKingdomCreated}
           />

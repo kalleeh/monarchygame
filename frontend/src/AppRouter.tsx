@@ -51,11 +51,12 @@ import { KingdomActionBarConnected } from './components/KingdomActionBar';
 
 interface AppRouterProps {
   kingdoms: Schema['Kingdom']['type'][];
+  kingdomsLoading: boolean;
   onGetStarted: () => void;
   onKingdomCreated: (kingdomName: string, race: string) => void;
 }
 
-export function AppRouter({ kingdoms, onGetStarted, onKingdomCreated }: AppRouterProps) {
+export function AppRouter({ kingdoms, kingdomsLoading, onGetStarted, onKingdomCreated }: AppRouterProps) {
   return (
     <Suspense fallback={<LoadingSkeleton type="page" />}>
       <Routes>
@@ -69,7 +70,7 @@ export function AppRouter({ kingdoms, onGetStarted, onKingdomCreated }: AppRoute
         <Route path="/kingdoms" element={<KingdomList kingdoms={kingdoms} />} />
         
         {/* Kingdom routes - all nested under /kingdom/:kingdomId */}
-        <Route path="/kingdom/:kingdomId/*" element={<KingdomRoutes kingdoms={kingdoms} />} />
+        <Route path="/kingdom/:kingdomId/*" element={<KingdomRoutes kingdoms={kingdoms} loading={kingdomsLoading} />} />
         
         {/* Admin dashboard */}
         <Route path="/admin" element={<Suspense fallback={<LoadingSkeleton type="page" />}><AdminDashboard /></Suspense>} />
@@ -174,7 +175,7 @@ function KingdomList({ kingdoms: propKingdoms }: { kingdoms: Schema['Kingdom']['
 }
 
 // Kingdom-specific routes with nested Suspense boundaries
-function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) {
+function KingdomRoutes({ kingdoms, loading }: { kingdoms: Schema['Kingdom']['type'][]; loading: boolean }) {
   const { kingdomId } = useParams<{ kingdomId: string }>();
   const navigate = useNavigate();
   const loadKingdom = useKingdomStore((state) => state.loadKingdom);
@@ -209,8 +210,12 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
     }
   }, [loadAIKingdomsFromServer]);
 
-  // Redirect to kingdoms list if kingdom not found
+  // While kingdoms are loading, show spinner — don't redirect yet
   if (!kingdom) {
+    if (loading) {
+      return <div className="loading">Loading kingdom...</div>;
+    }
+    // Kingdoms loaded but this ID not found — then redirect
     setTimeout(() => navigate('/kingdoms', { replace: true }), 1000);
     return <div className="loading">Kingdom not found. Redirecting...</div>;
   }
