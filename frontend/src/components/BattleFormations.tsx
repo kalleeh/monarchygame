@@ -84,7 +84,12 @@ const SortableUnit: React.FC<SortableUnitProps> = ({ id, unit, isSelected, onTog
       {...attributes}
       className={`unit-card ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''}`}
     >
-      <div className="unit-icon" {...listeners} style={{ cursor: 'grab' }}>{getUnitIcon(unit.type)}</div>
+      <div className="unit-icon" {...listeners} style={{ cursor: 'grab' }}>
+        <img src={`/units/output/${unit.type.replace(/_/g, '-')}-icon.png`} alt={unit.type}
+          style={{ width: 32, height: 32, objectFit: 'contain' }}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+        />
+      </div>
       <div className="unit-info" onClick={onToggle} style={{ cursor: 'pointer', flex: 1 }}>
         <h4>{unit.type}</h4>
         <span className="unit-count">{unit.count}</span>
@@ -371,10 +376,10 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
   return (
     <div className="battle-formations">
       <TopNavigation
-        title="Battle Formations"
+        title="Combat Operations"
         onBack={onBack}
         backLabel="← Back to Kingdom"
-        subtitle="Manage units and execute attacks"
+        subtitle="Select units, choose attack type, and execute"
         kingdomId={kingdomId}
       />
 
@@ -556,7 +561,13 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
             {selectedUnits.map((unit, index) => (
               <div key={unit.id} className="formation-unit">
                 <span className="position">{index + 1}</span>
-                <span className="unit-type">{getUnitIcon(unit.type)} {unit.type}</span>
+                <span className="unit-type">
+                  <img src={`/units/output/${unit.type.replace(/_/g, '-')}-icon.png`} alt=""
+                    style={{ width: 20, height: 20, objectFit: 'contain', verticalAlign: 'middle', marginRight: 4 }}
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
+                  {unit.type}
+                </span>
                 <span className="unit-count">×{unit.count}</span>
               </div>
             ))}
@@ -655,28 +666,28 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
             />
             Set Ambush (95% defense bonus if attacked)
           </label>
+          {(!selectedTarget || selectedUnits.length === 0) && !loading && (
+            <p style={{ fontSize: '0.8rem', color: '#f59e0b', margin: '0.5rem 0 0.25rem', textAlign: 'center' }}>
+              {!selectedTarget
+                ? '⚠️ Select a target kingdom above'
+                : '⚠️ Click a unit card above to add it to your attack'}
+            </p>
+          )}
           <button
             onClick={handleExecuteBattle}
             disabled={!selectedTarget || selectedUnits.length === 0 || loading}
             className={`execute-battle-btn ${(!selectedTarget || selectedUnits.length === 0) ? 'disabled' : ''}`}
             style={{
               ...(!selectedTarget || selectedUnits.length === 0 || loading
-                ? {
-                    opacity: 0.45,
-                    cursor: 'not-allowed',
-                    background: '#4b5563',
-                    borderColor: '#6b7280',
-                    color: '#9ca3af',
-                    pointerEvents: 'none',
-                  }
+                ? { opacity: 0.5, cursor: 'not-allowed', background: '#4b5563', borderColor: '#6b7280', color: '#9ca3af' }
                 : {}),
             }}
             title={
               !selectedTarget
                 ? 'Select a target kingdom first'
                 : selectedUnits.length === 0
-                ? 'Select at least one unit'
-                : undefined
+                ? 'Click a unit card above to add units to your attack'
+                : `Attack ${selectedTarget} with ${selectedUnits.length} unit type(s)`
             }
           >
             {loading ? 'Executing...' : 'Execute Battle'}
