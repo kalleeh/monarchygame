@@ -490,9 +490,29 @@ export class AmplifyFunctionService {
         const resources = typeof data.resources === 'string'
           ? JSON.parse(data.resources)
           : data.resources;
-        // Lazy import to avoid circular dependency
+        // Lazy imports to avoid circular dependency
         const { useKingdomStore } = await import('../stores/kingdomStore');
-        useKingdomStore.getState().syncFromServer({ resources, units: [] });
+        const { getUnitsForRace } = await import('../utils/units');
+        const raceUnits = getUnitsForRace(data.race || 'Human');
+        const rawUnits = data.totalUnits
+          ? (typeof data.totalUnits === 'string'
+              ? JSON.parse(data.totalUnits) as Record<string, number>
+              : data.totalUnits as Record<string, number>)
+          : {};
+        const serverUnits = Object.entries(rawUnits)
+          .filter(([, count]) => (count ?? 0) > 0)
+          .map(([type, count]) => {
+            const def = raceUnits.find(u => u.id === type);
+            return {
+              id: `${type}-server`,
+              type,
+              count: count ?? 0,
+              attack: def?.stats.offense ?? 1,
+              defense: def?.stats.defense ?? 1,
+              health: def?.stats.hitPoints ?? 10,
+            };
+          });
+        useKingdomStore.getState().syncFromServer({ resources, units: serverUnits });
       }
     } catch (e) {
       console.error('[refreshKingdomResources] failed:', e);

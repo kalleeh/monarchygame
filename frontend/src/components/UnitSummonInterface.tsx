@@ -62,8 +62,12 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
     try {
       setLoading(true);
       setError(null);
-      await summonUnits(kingdomId, unitType, quantity);
-      ToastService.success(`✅ Summoned ${quantity} ${unitType}!`);
+      const result = await summonUnits(kingdomId, unitType, quantity);
+      if (result.success) {
+        ToastService.success(`✅ Summoned ${quantity} ${unitType}!`);
+      } else if (result.error) {
+        setError(result.error);
+      }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Summon failed';
       setError(errorMsg);

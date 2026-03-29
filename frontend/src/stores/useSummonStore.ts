@@ -36,7 +36,7 @@ interface SummonStore {
 
   // Actions
   loadSummonData: (kingdomId: string, race: string) => Promise<void>;
-  summonUnits: (kingdomId: string, unitType: string, quantity: number) => Promise<void>;
+  summonUnits: (kingdomId: string, unitType: string, quantity: number) => Promise<{ success: boolean; error?: string }>;
   calculateRemainingCapacity: () => number;
   calculateMaxAffordable: (unitGoldCost: number) => number;
   getTotalUpkeep: () => number;
@@ -139,8 +139,8 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
   },
 
   // Summon units (instant, gold-cost-based) - adds to kingdom store
-  summonUnits: async (_kingdomId: string, unitType: string, quantity: number) => {
-    if (get().loading) return;
+  summonUnits: async (_kingdomId: string, unitType: string, quantity: number): Promise<{ success: boolean; error?: string }> => {
+    if (get().loading) return { success: false, error: 'Already loading' };
     set({ loading: true, error: null });
 
     try {
@@ -152,7 +152,7 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
       const turnCost = calculateActionTurnCost('TRAINING');
       if ((resources.turns || 0) < turnCost) {
         set({ error: `Not enough turns (need ${turnCost})`, loading: false });
-        return;
+        return { success: false, error: `Not enough turns (need ${turnCost})` };
       }
       
       // Get unit data for costs
@@ -160,7 +160,7 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
       
       if (!unitData) {
         set({ error: 'Unit type not found', loading: false });
-        return;
+        return { success: false, error: 'Unit type not found' };
       }
 
       // Calculate total costs
@@ -171,22 +171,20 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
       if (accumulatedGoldSpent + totalGold > TROOP_CAP_GOLD) {
         const remaining = TROOP_CAP_GOLD - accumulatedGoldSpent;
         const maxUnits = Math.floor(remaining / unitData.goldCost);
-        set({ 
-          error: `Troop cap reached! Can only summon ${maxUnits} more ${unitData.name} (${remaining.toLocaleString()}g capacity remaining)`, 
-          loading: false 
-        });
-        return;
+        const capMsg = `Troop cap reached! Can only summon ${maxUnits} more ${unitData.name} (${remaining.toLocaleString()}g capacity remaining)`;
+        set({ error: capMsg, loading: false });
+        return { success: false, error: capMsg };
       }
       
       // Check resources
       if ((resources.gold || 0) < totalGold) {
         set({ error: `Not enough gold (need ${totalGold.toLocaleString()})`, loading: false });
-        return;
+        return { success: false, error: `Not enough gold (need ${totalGold.toLocaleString()})` };
       }
       
       if ((resources.population || 0) < totalPop) {
         set({ error: `Not enough population (need ${totalPop.toLocaleString()})`, loading: false });
-        return;
+        return { success: false, error: `Not enough population (need ${totalPop.toLocaleString()})` };
       }
       
       // Calculate new upkeep
@@ -219,7 +217,7 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
               ? 'Your kingdom is in restoration and cannot train units. Return to your dashboard to see when restoration ends.'
               : rawError;
             set({ error: userFacingError, loading: false });
-            return;
+            return { success: false, error: userFacingError };
           }
 
           // Server handled resource deduction and unit creation
@@ -235,10 +233,10 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
           // Fire achievement trigger on confirmed server unit training
           achievementTriggers.onGoldChanged();
 
-          return;
+          return { success: true };
         } catch (err) {
           set({ error: err instanceof Error ? err.message : 'Failed to summon units', loading: false });
-          return;
+          return { success: false, error: err instanceof Error ? err.message : 'Failed to summon units' };
         }
       }
 
@@ -264,15 +262,15 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
       }
 
       // Update accumulated gold spent
-      set({ 
+      set({
         accumulatedGoldSpent: accumulatedGoldSpent + totalGold,
-        loading: false 
+        loading: false
       });
+      return { success: true };
     } catch (error) {
-      set({ 
-        error: error instanceof Error ? error.message : 'Failed to summon units',
-        loading: false 
-      });
+      const msg = error instanceof Error ? error.message : 'Failed to summon units';
+      set({ error: msg, loading: false });
+      return { success: false, error: msg };
     }
   },
 
