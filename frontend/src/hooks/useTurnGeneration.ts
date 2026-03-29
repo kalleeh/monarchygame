@@ -29,6 +29,23 @@ interface UseTurnGenerationOptions {
 const TURN_INTERVAL = 20 * 60 * 1000; // 20 minutes in milliseconds
 const MAX_STORED_TURNS = 100; // Maximum turns that can be stored
 
+// EventBridge turn-ticker fires every 20 min at :15, :35, :55 UTC (offset = 15 min from epoch)
+const TICK_OFFSET_MS = 15 * 60 * 1000;
+
+/** Returns seconds until the next server-side EventBridge tick, aligned to real clock */
+function secondsUntilNextServerTick(): number {
+  const now = Date.now();
+  const msIntoCurrent = (now - TICK_OFFSET_MS) % TURN_INTERVAL;
+  return Math.ceil((TURN_INTERVAL - msIntoCurrent) / 1000);
+}
+
+/** Returns the timestamp of the most recent server tick */
+function lastServerTickTime(): number {
+  const now = Date.now();
+  const msIntoCurrent = (now - TICK_OFFSET_MS) % TURN_INTERVAL;
+  return now - msIntoCurrent;
+}
+
 /**
  * Hook for managing automatic turn generation
  * Follows authentic Monarchy mechanics: 3 turns per hour (20 minutes per turn)
@@ -52,7 +69,7 @@ export const useTurnGeneration = ({
   // before the first one sets isGenerating=true. A ref flips synchronously.
   const inFlightRef = useRef<boolean>(false);
   const lastGenerationRef = useRef<number>(
-    parseInt(localStorage.getItem(`turnTimer-last-${kingdomId}`) || '') || Date.now()
+    parseInt(localStorage.getItem(`turnTimer-last-${kingdomId}`) || '') || lastServerTickTime()
   );
 
   const overflowWarningShownRef = useRef(false);
@@ -198,9 +215,8 @@ export const useTurnGeneration = ({
   // Update countdown timer
   useEffect(() => {
     const updateTimer = () => {
-      const now = Date.now();
-      const elapsed = now - lastGenerationRef.current;
-      const nextTurnIn = Math.max(0, Math.ceil((TURN_INTERVAL - (elapsed % TURN_INTERVAL)) / 1000));
+      // Use server-aligned clock so countdown matches the real EventBridge schedule
+      const nextTurnIn = secondsUntilNextServerTick();
       const turnsToGenerate = calculateAvailableTurns();
 
       setState(prev => ({
