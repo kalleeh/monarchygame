@@ -61,42 +61,40 @@ const schema = a.schema({
 
   Kingdom: a
     .model({
-      // Public fields — visible to all authenticated users (leaderboard, targeting)
+      // Public fields — readable by all authenticated; owner has full access
       name: a.string().required()
-        .authorization((allow) => [allow.authenticated().to(['read'])]),
+        .authorization((allow) => [allow.authenticated().to(['read']), allow.owner()]),
       race: a.ref('RaceType').required()
-        .authorization((allow) => [allow.authenticated().to(['read'])]),
+        .authorization((allow) => [allow.authenticated().to(['read']), allow.owner()]),
       currentAge: a.ref('GameAge').required()
-        .authorization((allow) => [allow.authenticated().to(['read'])]),
+        .authorization((allow) => [allow.authenticated().to(['read']), allow.owner()]),
       isAI: a.boolean().default(false),
       isActive: a.boolean().default(true),
       networth: a.integer().default(0),
       seasonId: a.id(),
       createdAt: a.datetime(),
       ageStartTime: a.datetime(),
-      // Private fields — owner only (nullable so non-owners get null, enforced non-null by Lambdas)
-      // Note: resources/totalUnits use no field-level auth so model-level auth governs them
-      // (owner gets full create/read/update; admin reads via list_kingdoms_admin Lambda)
-      resources: a.json(),
+      // Owner fields — full owner access (create/read/update); others get null
+      resources: a.json()
+        .authorization((allow) => [allow.owner()]),
       stats: a.json()
-        .authorization((allow) => [allow.owner().to(['read'])]),
+        .authorization((allow) => [allow.owner()]),
       buildings: a.json()
-        .authorization((allow) => [allow.owner().to(['read'])]),
-      totalUnits: a.json(),
+        .authorization((allow) => [allow.owner()]),
+      totalUnits: a.json()
+        .authorization((allow) => [allow.owner()]),
       lastResourceTick: a.datetime()
-        .authorization((allow) => [allow.owner().to(['read'])]),
+        .authorization((allow) => [allow.owner()]),
       encampEndTime: a.string()
-        .authorization((allow) => [allow.owner().to(['read'])]),
+        .authorization((allow) => [allow.owner()]),
       encampBonusTurns: a.integer()
-        .authorization((allow) => [allow.owner().to(['read'])]),
-      // Presence fields — owner may update directly
+        .authorization((allow) => [allow.owner()]),
       isOnline: a.boolean().default(false)
-        .authorization((allow) => [allow.owner().to(['read', 'update'])]),
+        .authorization((allow) => [allow.owner()]),
       lastActive: a.datetime()
-        .authorization((allow) => [allow.owner().to(['read', 'update'])]),
-      // Guild membership — owner only
+        .authorization((allow) => [allow.owner()]),
       guildId: a.id()
-        .authorization((allow) => [allow.owner().to(['read', 'update'])]),
+        .authorization((allow) => [allow.owner()]),
     })
     .secondaryIndexes((index) => [
       index('seasonId').sortKeys(['networth']).queryField('listKingdomsBySeasonNetworth'),
