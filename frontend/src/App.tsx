@@ -43,6 +43,7 @@ interface AuthenticatedAppProps {
   username: string;
   isAdminUser: boolean;
   kingdoms: Schema['Kingdom']['type'][];
+  kingdomsLoading: boolean;
   currentUser: AuthUser | null;
   setCurrentUser: (user: AuthUser) => void;
   handleGetStarted: () => void;
@@ -56,6 +57,7 @@ const AuthenticatedApp = React.memo(function AuthenticatedApp({
   username,
   isAdminUser,
   kingdoms,
+  kingdomsLoading,
   currentUser,
   setCurrentUser,
   handleGetStarted,
@@ -123,7 +125,7 @@ const AuthenticatedApp = React.memo(function AuthenticatedApp({
         <ErrorBoundary>
           <AppRouter
             kingdoms={kingdoms}
-            kingdomsLoading={loading}
+            kingdomsLoading={kingdomsLoading}
             onGetStarted={handleGetStarted}
             onKingdomCreated={handleKingdomCreatedWithAuth}
           />
@@ -498,6 +500,7 @@ function AppContent() {
     return (
       <AppRouter
         kingdoms={kingdoms}
+        kingdomsLoading={loading}
         onGetStarted={handleGetStarted}
         onKingdomCreated={handleKingdomCreated}
       />
@@ -514,6 +517,7 @@ function AppContent() {
             username={username}
             isAdminUser={isAdminUser}
             kingdoms={kingdoms}
+            kingdomsLoading={loading}
             currentUser={currentUser}
             setCurrentUser={(u) => setCurrentUser(u)}
             handleGetStarted={handleGetStarted}
