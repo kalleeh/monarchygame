@@ -8,6 +8,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useSpring, useTransition, animated, config } from '@react-spring/web';
 import { useTerritoryStore, type Territory } from '../stores/territoryStore';
 import { useKingdomStore } from '../stores/kingdomStore';
+import { TopNavigation } from './TopNavigation';
 import './TerritoryExpansion.css';
 
 interface TerritoryExpansionProps {
@@ -159,22 +160,21 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
 
   return (
     <div className="territory-expansion">
-      {/* Header with Back Navigation */}
-      <div className="territory-header">
-        {onBack && (
-          <button className="back-btn" onClick={onBack}>
-            ← Back to Kingdom
+      <TopNavigation
+        title="Territory Management"
+        onBack={onBack}
+        backLabel="← Back to Kingdom"
+        kingdomId={kingdomId ?? ''}
+        actions={
+          <button
+            className="info-btn"
+            onClick={() => setShowInfo(!showInfo)}
+            aria-label="Toggle territory information"
+          >
+            {showInfo ? 'Hide Info' : 'What are territories?'}
           </button>
-        )}
-        <h1>Territory Management</h1>
-        <button
-          className="info-btn"
-          onClick={() => setShowInfo(!showInfo)}
-          aria-label="Toggle territory information"
-        >
-          {showInfo ? 'Hide Info' : 'What are territories?'}
-        </button>
-      </div>
+        }
+      />
 
       {/* Info Panel */}
       {showInfo && (

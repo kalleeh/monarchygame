@@ -369,7 +369,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
   }, [unitOrder, availableUnits]);
 
   return (
-    <div style={{ background: 'var(--gm-bg-page, #0f0f1a)', minHeight: '100vh' }}>
+    <div className="battle-formations">
       <TopNavigation
         title="Battle Formations"
         onBack={onBack}
@@ -377,7 +377,6 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
         subtitle="Manage units and execute attacks"
         kingdomId={kingdomId}
       />
-    <div className="battle-formations">
 
       {/* Error Display */}
       {error && (
@@ -803,7 +802,6 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
           </div>
         </div>
       )}
-    </div>
     </div>
   );
 };

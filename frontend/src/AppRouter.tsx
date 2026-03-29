@@ -422,7 +422,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
         {/* Leaderboard */}
         <Route path="leaderboard" element={
           <Suspense fallback={<LoadingSkeleton type="list" className="m-8" />}>
-            <div className="leaderboard-page">
+            <>
               <TopNavigation
                 title={<><img src="/overview-analytics-icon.png" style={{width:32,height:32,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Kingdom Scrolls</>}
                 onBack={handleBackToDashboard}
@@ -517,14 +517,14 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
                 })()}
                 onSendMessage={openCompose}
               />
-            </div>
+            </>
           </Suspense>
         } />
 
         {/* Achievements */}
         <Route path="achievements" element={
           <Suspense fallback={<LoadingSkeleton type="list" className="m-8" />}>
-            <div className="achievements-page" style={{ background: 'var(--color-bg-deep, #0f1629)', minHeight: '100vh' }}>
+            <>
               <TopNavigation
                 title={<><img src="/achievements-icon.png" style={{width:28,height:28,objectFit:'contain',verticalAlign:'middle',marginRight:8}} alt="" />Achievements</>}
                 onBack={handleBackToDashboard}
@@ -532,7 +532,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
                 kingdomId={kingdom.id}
               />
               <AchievementList />
-            </div>
+            </>
           </Suspense>
         } />
 
@@ -565,7 +565,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
         {/* Battle Replays list */}
         <Route path="replays" element={
           <Suspense fallback={<LoadingSkeleton type="list" className="m-8" />}>
-            <div style={{ background: 'var(--color-bg-deep, #0f1629)', minHeight: '100vh' }}>
+            <>
               <TopNavigation
                 title="Battle Replays"
                 onBack={handleBackToDashboard}
@@ -576,7 +576,7 @@ function KingdomRoutes({ kingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) 
               <ReplaysListRoute
                 onNavigate={(replayId) => navigate(`/kingdom/${kingdomId}/replay/${replayId}`)}
               />
-            </div>
+            </>
           </Suspense>
         } />
 
