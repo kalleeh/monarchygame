@@ -29,7 +29,6 @@
   flex-wrap: wrap;
   gap: 0.375rem;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Each nav button — override global button rules */
@@ -66,7 +65,6 @@
 /* ── Content Area ──────────────────────────────────────────────────────── */
 
 .guild-content {
-  border-top: 1px solid var(--gm-border, rgba(99, 102, 241, 0.3));
   padding: 1.5rem;
   min-height: 500px;
 }

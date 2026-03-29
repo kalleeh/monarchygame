@@ -28,8 +28,7 @@
 .diplomacy-navigation {
   display: flex;
   gap: 1rem;
-  margin-bottom: 2rem;
-  border-bottom: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 0 1.5rem;
 }
 
 .nav-btn {
