@@ -61,7 +61,7 @@ async function verifyKingdomOwnership(kingdomId: string, identity: any): Promise
   const _ids = [identity.sub ?? '', identity.username ?? '',
     (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
     (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-  if (!ownerField || !_ids.some(id => ownerField === id)) {
+  if (!ownerField || !_ids.some(id => ownerField.includes(id))) {
     return { error: { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN } };
   }
   return { data: kingdom };

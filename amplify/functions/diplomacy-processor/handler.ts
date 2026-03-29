@@ -219,7 +219,7 @@ async function handleDeclareDiplomaticWar(args: { kingdomId: string; targetKingd
     (callerIdentity as any).claims?.['preferred_username'] ?? '',
     (callerIdentity as any).claims?.['cognito:username'] ?? '',
   ].filter(Boolean);
-  if (!ownerField || !warCallerIds.some(id => ownerField === id)) {
+  if (!ownerField || !warCallerIds.some(id => ownerField.includes(id))) {
     return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
   }
 
@@ -285,7 +285,7 @@ async function handleMakePeace(args: { kingdomId: string; targetKingdomId: strin
     (callerIdentity as any).claims?.['preferred_username'] ?? '',
     (callerIdentity as any).claims?.['cognito:username'] ?? '',
   ].filter(Boolean);
-  if (!ownerField || !peaceCallerIds.some(id => ownerField === id)) {
+  if (!ownerField || !peaceCallerIds.some(id => ownerField.includes(id))) {
     return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
   }
 
