@@ -136,7 +136,8 @@ export const KingdomActionBar: React.FC<KingdomActionBarProps> = ({
             <React.Fragment key={group.key}>
               {groupIdx > 0 && <div className="action-bar-divider" />}
               <span className="action-bar-group-label" title={group.label}>
-                {group.emoji}
+                <span className="action-bar-group-emoji">{group.emoji}</span>
+                <span className="action-bar-group-text">{group.label}</span>
               </span>
               {group.items.map((item) => {
                 const prohibited = item.prohibitedAction ? isActionProhibited(item.prohibitedAction) : false;

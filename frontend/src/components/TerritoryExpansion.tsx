@@ -400,6 +400,16 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
   );
 };
 
+const TERRITORY_IMAGES: Record<string, string> = {
+  capital: '/territory-capital.png',
+  forest: '/territory-forest-outpost.png',
+  mine: '/territory-iron-mines.png',
+  port: '/territory-trading-post.png',
+  ruins: '/territory-ancient-ruins.png',
+  stronghold: '/territory-iron-mines.png',
+  farmland: '/territory-trading-post.png',
+};
+
 // Owned Territory Card — shows category-based production stats
 interface OwnedTerritoryCardProps {
   territory: Territory;
@@ -439,6 +449,8 @@ const OwnedTerritoryCard: React.FC<OwnedTerritoryCardProps> = ({
     }
   };
 
+  const ownedImgSrc = TERRITORY_IMAGES[territory.category || territory.type || ''];
+
   return (
     <animated.div
       style={cardSpring as unknown as React.CSSProperties}
@@ -448,6 +460,12 @@ const OwnedTerritoryCard: React.FC<OwnedTerritoryCardProps> = ({
       tabIndex={0}
       aria-label={`Territory: ${territory.name}`}
     >
+      {ownedImgSrc && (
+        <img src={ownedImgSrc} alt={territory.category}
+          style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: '8px 8px 0 0', display: 'block' }}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+        />
+      )}
       <div className="territory-header">
         <div className="territory-icon">{getCategoryIcon(territory.category)}</div>
         <div className="territory-info">
@@ -545,6 +563,8 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
 
   const production = getTerritoryProduction(territory);
 
+  const claimableImgSrc = TERRITORY_IMAGES[territory.category || territory.type || ''];
+
   return (
     <animated.div
       style={{ ...style, ...cardSpring }}
@@ -554,6 +574,12 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
       tabIndex={0}
       aria-label={`Territory: ${territory.name}`}
     >
+      {claimableImgSrc && (
+        <img src={claimableImgSrc} alt={territory.category}
+          style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: '8px 8px 0 0', display: 'block' }}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+        />
+      )}
       <div className="territory-header">
         <div className="territory-icon">{getTypeIcon(territory.type)}</div>
         <div className="territory-info">

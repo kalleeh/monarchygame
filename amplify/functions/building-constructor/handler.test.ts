@@ -156,8 +156,8 @@ describe('building-constructor handler', () => {
       expect(result.errorCode).toBe('INVALID_PARAM');
     });
 
-    it('returns INVALID_PARAM when quantity exceeds 100', async () => {
-      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 101 }));
+    it('returns INVALID_PARAM when quantity exceeds 1000', async () => {
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 1001 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INVALID_PARAM');

@@ -124,10 +124,18 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
     };
 
     const newTurns = Math.max(0, currentTurns - turnCost);
+
+    // Calculate updated networth so leaderboard stays current
+    const updatedLand = updatedResources.land ?? 0;
+    const updatedGold = updatedResources.gold ?? 0;
+    const updatedTotalCount = Object.values(updatedUnits as Record<string, number>).reduce((s, n) => s + (n ?? 0), 0);
+    const updatedNetworth = updatedLand * 1000 + updatedGold + updatedTotalCount * 100;
+
     await dbUpdate('Kingdom', kingdomId, {
       totalUnits: updatedUnits,
       resources: updatedResources,
       turnsBalance: newTurns,
+      networth: updatedNetworth,
     });
 
     log.info('unit-trainer', 'trainUnits', { kingdomId, unitType, quantity });

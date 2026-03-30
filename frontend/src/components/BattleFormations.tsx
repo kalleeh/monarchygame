@@ -401,7 +401,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
         ) : (
           <select
             value={selectedTarget}
-            onChange={(e) => setSelectedTarget(e.target.value)}
+            onChange={(e) => { setSelectedTarget(e.target.value); clearError(); }}
             style={{
               width: '100%',
               padding: '0.75rem',
@@ -612,6 +612,18 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
             />
             Set Ambush (95% defense bonus if attacked)
           </label>
+          {error && error.toLowerCase().includes('war') && (
+            <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 8, padding: '1rem', marginBottom: '1rem', textAlign: 'center' }}>
+              <p style={{ color: '#f87171', marginBottom: '0.5rem', fontWeight: 600 }}>⚔️ War Declaration Required</p>
+              <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: '0.75rem' }}>You've attacked this kingdom 3 times. You must declare war to continue.</p>
+              <button
+                onClick={() => navigate(`/kingdom/${kingdomId}/diplomacy`)}
+                style={{ background: 'rgba(239,68,68,0.3)', border: '1px solid rgba(239,68,68,0.5)', borderRadius: 6, padding: '0.5rem 1rem', color: '#fca5a5', cursor: 'pointer' }}
+              >
+                Go to Diplomacy → Declare War
+              </button>
+            </div>
+          )}
           {(!selectedTarget || availableUnits.length === 0) && !loading && (
             <p style={{ fontSize: '0.8rem', color: '#f59e0b', margin: '0.5rem 0 0.25rem', textAlign: 'center' }}>
               {!selectedTarget
@@ -709,15 +721,18 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
             width: '90%',
             color: '#fff'
           }}>
-            <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+            <h2 style={{ marginBottom: '1.5rem', textAlign: 'center', color: currentBattle.result === 'victory' ? '#22c55e' : '#ef4444' }}>
               {currentBattle.result === 'victory' ? '🎉 Victory!' : '💀 Defeat'}
             </h2>
-            
+
             <div style={{ marginBottom: '1.5rem' }}>
               <h3 style={{ marginBottom: '0.5rem' }}>Battle Summary</h3>
               <p>Defender: {currentBattle.defender}</p>
               <p>Result: {currentBattle.result.toUpperCase()}</p>
-              {currentBattle.landGained && <p>Land Gained: +{currentBattle.landGained}</p>}
+              {currentBattle.landGained && <p style={{ color: '#4ecdc4' }}>🏞️ Land Gained: +{currentBattle.landGained}</p>}
+              {currentBattle.resourcesGained?.gold && currentBattle.resourcesGained.gold > 0 && (
+                <p style={{ color: '#fbbf24' }}>💰 Gold Looted: +{currentBattle.resourcesGained.gold.toLocaleString()}</p>
+              )}
               {currentBattle.degradedTerritory && (
                 <p style={{ color: '#f59e0b' }}>⚔️ Damaged: {currentBattle.degradedTerritory} territory defense reduced</p>
               )}
@@ -728,15 +743,21 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <h4>Your Losses:</h4>
-                  {Object.entries(currentBattle.casualties.attacker).map(([unit, count]) => (
-                    <p key={unit}>{unit}: -{count}</p>
-                  ))}
+                  {Object.entries(currentBattle.casualties.attacker).length > 0
+                    ? Object.entries(currentBattle.casualties.attacker).map(([unit, count]) => (
+                        <p key={unit}>{unit}: -{count}</p>
+                      ))
+                    : <p style={{ color: '#6b7280' }}>No losses</p>
+                  }
                 </div>
                 <div>
                   <h4>Enemy Losses:</h4>
-                  {Object.entries(currentBattle.casualties.defender).map(([unit, count]) => (
-                    <p key={unit}>{unit}: -{count}</p>
-                  ))}
+                  {Object.entries(currentBattle.casualties.defender).length > 0
+                    ? Object.entries(currentBattle.casualties.defender).map(([unit, count]) => (
+                        <p key={unit}>{unit}: -{count}</p>
+                      ))
+                    : <p style={{ color: '#6b7280' }}>No losses</p>
+                  }
                 </div>
               </div>
             </div>

@@ -690,23 +690,35 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
     let degradedTerritoryName: string | null = null;
     if (combatResult.success && (finalLandGained > 0 || extraGoldStolen > 0)) {
+      const defenderNewLand = Math.max(1000, (defenderResources.land ?? 1000) - finalLandGained);
+      const defenderNewGold = Math.max(0, (defenderResources.gold ?? 0) - combatResult.goldLooted - extraGoldStolen);
+      const defenderUnitsCount = Object.values(updatedDefenderUnits).reduce((s, n) => s + (n ?? 0), 0);
+      const defenderNetworth = defenderNewLand * 1000 + defenderNewGold + defenderUnitsCount * 100;
+
+      const attackerNewLand = (attackerResources.land ?? 1000) + finalLandGained;
+      const attackerNewGold = (attackerResources.gold ?? 0) + combatResult.goldLooted + extraGoldStolen;
+      const attackerUnitsCount = Object.values(updatedAttackerUnits).reduce((s, n) => s + (n ?? 0), 0);
+      const attackerNetworth = attackerNewLand * 1000 + attackerNewGold + attackerUnitsCount * 100;
+
       await Promise.all([
         dbUpdate('Kingdom', defenderId, {
           resources: {
             ...defenderResources,
-            land: Math.max(1000, (defenderResources.land ?? 1000) - finalLandGained),
-            gold: Math.max(0, (defenderResources.gold ?? 0) - combatResult.goldLooted - extraGoldStolen)
+            land: defenderNewLand,
+            gold: defenderNewGold,
           },
           totalUnits: updatedDefenderUnits,
+          networth: defenderNetworth,
           ...(buildingDestroyed ? { buildings: defender.buildings } : {})
         }),
         dbUpdate('Kingdom', attackerId, {
           resources: {
             ...attackerResources,
-            land: (attackerResources.land ?? 1000) + finalLandGained,
-            gold: (attackerResources.gold ?? 0) + combatResult.goldLooted + extraGoldStolen,
+            land: attackerNewLand,
+            gold: attackerNewGold,
           },
           totalUnits: updatedAttackerUnits,
+          networth: attackerNetworth,
           ...(sidheBuildings ? { buildings: JSON.stringify(sidheBuildings) } : {})
         })
       ]);
@@ -762,15 +774,23 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       }
     } else {
       // Even if combat was not successful, still deduct casualties and turns
+      const attackerFailUnitsCount = Object.values(updatedAttackerUnits).reduce((s, n) => s + (n ?? 0), 0);
+      const attackerFailNetworth = (attackerResources.land ?? 1000) * 1000 + (attackerResources.gold ?? 0) + attackerFailUnitsCount * 100;
+
+      const defenderFailUnitsCount = Object.values(updatedDefenderUnits).reduce((s, n) => s + (n ?? 0), 0);
+      const defenderFailNetworth = (defenderResources.land ?? 1000) * 1000 + (defenderResources.gold ?? 0) + defenderFailUnitsCount * 100;
+
       await Promise.all([
         dbUpdate('Kingdom', attackerId, {
           resources: {
             ...attackerResources,
           },
-          totalUnits: updatedAttackerUnits
+          totalUnits: updatedAttackerUnits,
+          networth: attackerFailNetworth,
         }),
         dbUpdate('Kingdom', defenderId, {
-          totalUnits: updatedDefenderUnits
+          totalUnits: updatedDefenderUnits,
+          networth: defenderFailNetworth,
         })
       ]);
     }
