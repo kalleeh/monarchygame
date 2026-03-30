@@ -66,6 +66,109 @@ interface SortableUnitProps {
 const TIER_LABELS = ['T0', 'T1', 'T2', 'T3'];
 const TIER_COLORS = ['#6b7280', '#4ecdc4', '#f59e0b', '#ef4444'];
 
+// ── Battle Result Modal ────────────────────────────────────────────────────
+
+/** Converts raw unit type key to a readable display name */
+function formatUnitName(type: string): string {
+  return type
+    .replace(/-/g, ' ')
+    .replace(/_/g, ' ')
+    .replace(/\btier(\d)\b/gi, 'Tier $1')
+    .replace(/\bT(\d)\b/g, 'Tier $1')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function CasualtyRow({ unitType, count }: { unitType: string; count: number }) {
+  const imgSrc = `/units/output/${unitType.replace(/_/g, '-')}-icon.png`;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.3rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <img
+        src={imgSrc}
+        alt={unitType}
+        style={{ width: 28, height: 28, objectFit: 'contain', borderRadius: 4, flexShrink: 0 }}
+        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+      />
+      <span style={{ flex: 1, fontSize: '0.85rem', color: '#e2e8f0' }}>{formatUnitName(unitType)}</span>
+      <span style={{ fontSize: '0.85rem', color: '#ef4444', fontWeight: 600 }}>−{count}</span>
+    </div>
+  );
+}
+
+function BattleResultModal({ battle, onClose }: { battle: import('../types/combat').BattleReport; onClose: () => void }) {
+  const isVictory = battle.result === 'victory';
+  const accentColor = isVictory ? '#22c55e' : '#ef4444';
+  const borderColor = isVictory ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)';
+  const attackerEntries = Object.entries(battle.casualties?.attacker ?? {}).filter(([, v]) => (v as number) > 0);
+  const defenderEntries = Object.entries(battle.casualties?.defender ?? {}).filter(([, v]) => (v as number) > 0);
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+      <div style={{ background: 'linear-gradient(160deg, #0f0f1a 0%, #16213e 100%)', border: `2px solid ${borderColor}`, borderRadius: 18, padding: '2rem', maxWidth: 580, width: '100%', color: '#fff', maxHeight: '90vh', overflowY: 'auto' }}>
+
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '0.25rem' }}>{isVictory ? '⚔️' : '🛡️'}</div>
+          <h2 style={{ margin: 0, fontSize: '1.8rem', color: accentColor, fontFamily: 'var(--font-display, serif)' }}>
+            {isVictory ? 'Victory!' : 'Defeat'}
+          </h2>
+          <p style={{ margin: '0.25rem 0 0', color: '#9ca3af', fontSize: '0.9rem' }}>
+            vs {battle.defender}
+          </p>
+        </div>
+
+        {/* Spoils */}
+        {(battle.landGained || (battle.resourcesGained?.gold ?? 0) > 0 || battle.degradedTerritory) && (
+          <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '1rem', marginBottom: '1.25rem', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'center' }}>
+            {battle.landGained != null && battle.landGained > 0 && (
+              <div style={{ textAlign: 'center', minWidth: 80 }}>
+                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#4ecdc4' }}>+{battle.landGained}</div>
+                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>🏞️ Land</div>
+              </div>
+            )}
+            {(battle.resourcesGained?.gold ?? 0) > 0 && (
+              <div style={{ textAlign: 'center', minWidth: 80 }}>
+                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fbbf24' }}>+{(battle.resourcesGained?.gold ?? 0).toLocaleString()}</div>
+                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>💰 Gold</div>
+              </div>
+            )}
+            {battle.degradedTerritory && (
+              <div style={{ textAlign: 'center', minWidth: 100 }}>
+                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#f59e0b' }}>Degraded</div>
+                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>⚔️ Territory</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Casualties */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>Your Losses</div>
+            {attackerEntries.length > 0
+              ? attackerEntries.map(([t, c]) => <CasualtyRow key={t} unitType={t} count={c as number} />)
+              : <p style={{ color: '#22c55e', fontSize: '0.85rem' }}>✓ No losses</p>
+            }
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>Enemy Losses</div>
+            {defenderEntries.length > 0
+              ? defenderEntries.map(([t, c]) => <CasualtyRow key={t} unitType={t} count={c as number} />)
+              : <p style={{ color: '#6b7280', fontSize: '0.85rem' }}>No data</p>
+            }
+          </div>
+        </div>
+
+        <button
+          onClick={onClose}
+          style={{ width: '100%', padding: '0.75rem', background: `linear-gradient(135deg, ${accentColor}33, ${accentColor}22)`, border: `1px solid ${accentColor}66`, borderRadius: 8, color: accentColor, fontSize: '1rem', cursor: 'pointer', fontWeight: 600 }}
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const SortableUnit: React.FC<SortableUnitProps> = ({ id, unit, isSelected, onToggle, tier }) => {
   const {
     attributes,
@@ -700,86 +803,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
 
       {/* Battle Result Modal */}
       {showBattleResult && currentBattle && (
-        <div className="battle-result-modal" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.8)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(26, 26, 46, 0.98) 0%, rgba(22, 33, 62, 0.98) 100%)',
-            border: '2px solid rgba(139, 92, 246, 0.5)',
-            borderRadius: '16px',
-            padding: '2rem',
-            maxWidth: '600px',
-            width: '90%',
-            color: '#fff'
-          }}>
-            <h2 style={{ marginBottom: '1.5rem', textAlign: 'center', color: currentBattle.result === 'victory' ? '#22c55e' : '#ef4444' }}>
-              {currentBattle.result === 'victory' ? '🎉 Victory!' : '💀 Defeat'}
-            </h2>
-
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ marginBottom: '0.5rem' }}>Battle Summary</h3>
-              <p>Defender: {currentBattle.defender}</p>
-              <p>Result: {currentBattle.result.toUpperCase()}</p>
-              {currentBattle.landGained && <p style={{ color: '#4ecdc4' }}>🏞️ Land Gained: +{currentBattle.landGained}</p>}
-              {currentBattle.resourcesGained?.gold && currentBattle.resourcesGained.gold > 0 && (
-                <p style={{ color: '#fbbf24' }}>💰 Gold Looted: +{currentBattle.resourcesGained.gold.toLocaleString()}</p>
-              )}
-              {currentBattle.degradedTerritory && (
-                <p style={{ color: '#f59e0b' }}>⚔️ Damaged: {currentBattle.degradedTerritory} territory defense reduced</p>
-              )}
-            </div>
-
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ marginBottom: '0.5rem' }}>Casualties</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <h4>Your Losses:</h4>
-                  {Object.entries(currentBattle.casualties.attacker).length > 0
-                    ? Object.entries(currentBattle.casualties.attacker).map(([unit, count]) => (
-                        <p key={unit}>{unit}: -{count}</p>
-                      ))
-                    : <p style={{ color: '#6b7280' }}>No losses</p>
-                  }
-                </div>
-                <div>
-                  <h4>Enemy Losses:</h4>
-                  {Object.entries(currentBattle.casualties.defender).length > 0
-                    ? Object.entries(currentBattle.casualties.defender).map(([unit, count]) => (
-                        <p key={unit}>{unit}: -{count}</p>
-                      ))
-                    : <p style={{ color: '#6b7280' }}>No losses</p>
-                  }
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setShowBattleResult(false)}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
-                border: 'none',
-                borderRadius: '8px',
-                color: '#fff',
-                fontSize: '1rem',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
-            >
-              Close
-            </button>
-          </div>
-        </div>
+        <BattleResultModal battle={currentBattle} onClose={() => setShowBattleResult(false)} />
       )}
       </div>
     </div>
