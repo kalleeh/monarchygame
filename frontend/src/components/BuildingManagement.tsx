@@ -162,7 +162,7 @@ export default function BuildingManagement({
   const handleQuantityChange = useCallback((buildingId: string, value: number) => {
     setQuantities((prev) => ({
       ...prev,
-      [buildingId]: Math.max(1, Math.min(100, value)),
+      [buildingId]: Math.max(1, Math.min(1000, value)),
     }));
   }, []);
 
@@ -318,7 +318,7 @@ export default function BuildingManagement({
                       type="number"
                       className="bm-qty-input"
                       min={1}
-                      max={100}
+                      max={1000}
                       value={quantity}
                       onChange={(e) =>
                         handleQuantityChange(building.id, parseInt(e.target.value, 10) || 1)
@@ -329,7 +329,7 @@ export default function BuildingManagement({
                     <button
                       className="bm-qty-btn"
                       onClick={() => handleQuantityChange(building.id, quantity + 1)}
-                      disabled={quantity >= 100 || isLoading}
+                      disabled={quantity >= 1000 || isLoading}
                       aria-label="Increase quantity"
                     >
                       +

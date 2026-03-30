@@ -7,9 +7,10 @@ import { dbGet, dbUpdate, dbList } from '../data-client';
 const VALID_BUILDING_TYPES = ['castle', 'barracks', 'farm', 'mine', 'temple', 'tower', 'wall'] as const;
 type BuildingType = typeof VALID_BUILDING_TYPES[number];
 
-const BUILDING_QUANTITY = { min: 1, max: 100 } as const;
-const MAX_BUILDINGS_PER_TYPE = 10;
-const MAX_TOTAL_BUILDINGS = 50;
+const BUILDING_QUANTITY = { min: 1, max: 1000 } as const;
+// Buildings scale with land: up to 80% of land can be built on (original Monarchy mechanic)
+// Per-type cap removed — players can specialise freely
+const BUILDINGS_PER_LAND_RATIO = 0.8;
 
 type KingdomType = {
   id: string;
@@ -98,13 +99,13 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
     }
     const currentCount = buildings[buildingType as keyof KingdomBuildings] ?? 0;
 
-    // VAL-1: enforce per-type and total building caps
-    if (currentCount + quantity > MAX_BUILDINGS_PER_TYPE) {
-      return { success: false, error: `Building limit reached: max ${MAX_BUILDINGS_PER_TYPE} per type (have ${currentCount})`, errorCode: ErrorCode.VALIDATION_FAILED };
-    }
+    // VAL-1: enforce land-based building cap (80% of land, no per-type limit)
     const totalBuildings = Object.values(buildings).reduce((sum, n) => sum + (n ?? 0), 0);
-    if (totalBuildings + quantity > MAX_TOTAL_BUILDINGS) {
-      return { success: false, error: `Total building limit reached: max ${MAX_TOTAL_BUILDINGS} (have ${totalBuildings})`, errorCode: ErrorCode.VALIDATION_FAILED };
+    const currentLand = resources.land ?? 0;
+    const maxBuildings = Math.max(50, Math.floor(currentLand * BUILDINGS_PER_LAND_RATIO));
+    if (totalBuildings + quantity > maxBuildings) {
+      const available = Math.max(0, maxBuildings - totalBuildings);
+      return { success: false, error: `Building limit reached: max ${maxBuildings} total (${Math.round(BUILDINGS_PER_LAND_RATIO * 100)}% of your ${currentLand} land). You can build ${available} more.`, errorCode: ErrorCode.VALIDATION_FAILED };
     }
 
     const updatedBuildings: KingdomBuildings = {
