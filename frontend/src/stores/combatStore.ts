@@ -126,12 +126,14 @@ export const useCombatStore = create(
     (set, get) => ({
       // Battle execution
       executeBattle: async (targetId: string, attackType: 'standard' | 'raid' | 'pillage' | 'siege' = 'standard') => {
-        // Read formation state from formationStore
+        // Use all kingdom units automatically (original Monarchy: no unit selection, just total power)
+        // Formation choice is an optional modifier applied via formationId
         const formationState = useFormationStore.getState();
-        const { selectedUnits, activeFormation, formations } = formationState;
+        const { activeFormation, formations } = formationState;
+        const kingdomUnits = useKingdomStore.getState().units;
 
-        if (selectedUnits.length === 0) {
-          set({ error: 'No units selected for battle' });
+        if (kingdomUnits.length === 0) {
+          set({ error: 'You have no units trained. Train units before attacking.' });
           return null;
         }
 
@@ -149,9 +151,9 @@ export const useCombatStore = create(
               return null;
             }
 
-            // Convert selected units to record format for Lambda
+            // Use all available units (Lambda reads totalUnits from DynamoDB directly)
             const unitPayload: Record<string, number> = {};
-            selectedUnits.forEach(unit => {
+            kingdomUnits.forEach(unit => {
               unitPayload[unit.type] = (unitPayload[unit.type] || 0) + unit.count;
             });
 
@@ -196,7 +198,7 @@ export const useCombatStore = create(
               timestamp: Date.now(),
               attacker: kingdomId,
               defender: targetId,
-              attackerUnits: selectedUnits,
+              attackerUnits: kingdomUnits,
               defenderUnits: [],
               result: combatData.result === 'with_ease' || combatData.result === 'good_fight' ? 'victory' : 'defeat',
               casualties: combatData.casualties || { attacker: {}, defender: {} },
@@ -320,7 +322,7 @@ export const useCombatStore = create(
 
           // Battle calculation with real defender data
           const battleResult = await simulateBattle(
-            selectedUnits,
+            kingdomUnits as unknown as Unit[],
             resolvedDefender as AIKingdom,
             activeFormation ? (formations.find(f => f.id === activeFormation) || null) : null,
             activeFormation ?? undefined,
@@ -332,7 +334,7 @@ export const useCombatStore = create(
             timestamp: Date.now(),
             attacker: 'current-player',
             defender: targetId,
-            attackerUnits: selectedUnits,
+            attackerUnits: kingdomUnits as unknown as Unit[],
             defenderUnits: battleResult.defenderUnits,
             result: battleResult.result,
             casualties: battleResult.casualties,
@@ -341,7 +343,6 @@ export const useCombatStore = create(
           };
 
           // Apply casualties atomically to avoid race conditions between sequential removeUnits calls
-          const kingdomUnits = useKingdomStore.getState().units;
           const updatedUnits = kingdomUnits.map(unit => {
             const casualties = battleResult.casualties.attacker[unit.id] || 0;
             if (casualties > 0) {

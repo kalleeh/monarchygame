@@ -123,9 +123,6 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     selectedUnits,
     formations,
     activeFormation,
-    selectUnit,
-    deselectUnit,
-    createFormation,
     setActiveFormation,
   } = useFormationStore();
 
@@ -143,7 +140,6 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
   const availableUnits = useKingdomStore((state) => state.units);
   const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
   const generateAIKingdoms = useAIKingdomStore((state) => state.generateAIKingdoms);
-  const loadAIKingdomsFromServer = useAIKingdomStore((state) => state.loadAIKingdomsFromServer);
   const attackerRace = race;
 
   // Combat targeting uses AI kingdoms from the store (loaded from server in auth mode via loadAIKingdomsFromServer)
@@ -284,13 +280,6 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     config: config.gentle
   });
 
-  // Formation animation
-  const formationSpring = useSpring({
-    opacity: selectedUnits.length > 0 ? 1 : 0.5,
-    transform: selectedUnits.length > 0 ? 'scale(1)' : 'scale(0.95)',
-    config: config.wobbly
-  });
-
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -306,49 +295,12 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     }
   };
 
-  const handleUnitToggle = (unitId: string) => {
-    const isSelected = selectedUnits.some(u => u.id === unitId);
-    console.log('Toggle unit:', unitId, 'Currently selected:', isSelected, 'Total selected:', selectedUnits.length);
-    if (isSelected) {
-      deselectUnit(unitId);
-    } else {
-      selectUnit(unitId);
-    }
-    // Log after action
-    setTimeout(() => {
-      console.log('After toggle, selected units:', selectedUnits.length);
-    }, 100);
-  };
-
   const handleExecuteBattle = async () => {
-    if (selectedUnits.length > 0 && selectedTarget) {
+    if (selectedTarget) {
       const result = await executeBattle(selectedTarget, selectedAttackType);
       if (result) {
         setShowBattleResult(true);
       }
-    }
-  };
-
-  const handleCreateFormation = () => {
-    if (selectedUnits.length > 0) {
-      const formationName = `Formation ${formations.length + 1}`;
-      createFormation(formationName, selectedUnits);
-    }
-  };
-
-  const handleLoadFormation = (formationId: string) => {
-    const formation = formations.find(f => f.id === formationId);
-    if (formation) {
-      // Clear current selection
-      selectedUnits.forEach(unit => deselectUnit(unit.id));
-      
-      // Select units from formation
-      formation.units.forEach(unit => {
-        selectUnit(unit.id);
-      });
-      
-      // Set as active
-      setActiveFormation(formationId);
     }
   };
 
@@ -475,7 +427,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
         )}
       </div>
 
-      {/* Drag & Drop Unit Selection */}
+      {/* Army Overview — read-only display */}
       <div className="unit-selection">
         <h3>Available Units (Drag to Reorder)</h3>
         {availableUnits.length === 0 ? (
@@ -495,14 +447,19 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
                     key={unit.id}
                     id={unit.id}
                     unit={unit}
-                    isSelected={selectedUnits.some(u => u.id === unit.id)}
-                    onToggle={() => handleUnitToggle(unit.id)}
+                    isSelected={false}
+                    onToggle={() => {}}
                     tier={raceDefs.find(u => u.id === unit.type)?.tier}
                   />
                 ))}
               </div>
             </SortableContext>
           </DndContext>
+        )}
+        {availableUnits.length > 0 && (
+          <p style={{ fontSize: '0.78rem', color: '#6b7280', margin: '0.5rem 0 0', textAlign: 'center' }}>
+            All units commit to the attack automatically. Drag to reorder for display.
+          </p>
         )}
       </div>
 
@@ -573,54 +530,22 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
         </div>
       )}
 
-      {/* Formation Builder */}
-      <animated.div style={formationSpring} className="formation-builder">
-        <h3>Formation Builder</h3>
-        <div className="selected-units">
-          <h4>Selected Units ({selectedUnits.length})</h4>
-          <div className="formation-preview">
-            {selectedUnits.map((unit, index) => (
-              <div key={unit.id} className="formation-unit">
-                <span className="position">{index + 1}</span>
-                <span className="unit-type">
-                  <img src={`/units/output/${unit.type.replace(/_/g, '-')}-icon.png`} alt=""
-                    style={{ width: 20, height: 20, objectFit: 'contain', verticalAlign: 'middle', marginRight: 4 }}
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                  />
-                  {unit.type}
-                </span>
-                <span className="unit-count">×{unit.count}</span>
-              </div>
-            ))}
-          </div>
-          <button
-            onClick={handleCreateFormation}
-            disabled={selectedUnits.length === 0}
-            className="create-formation-btn"
-          >
-            Save Formation
-          </button>
-        </div>
-      </animated.div>
-
-      {/* Saved Formations */}
+      {/* Formation Modifier — optional bonus applied to this attack */}
       <div className="saved-formations">
-        <h3>Saved Formations</h3>
+        <h3>Formation Modifier <span style={{ fontSize: '0.8rem', fontWeight: 400, color: '#6b7280' }}>(optional)</span></h3>
         <div className="formations-list">
           {formations.map(formation => (
             <div
               key={formation.id}
               className={`formation-card ${activeFormation === formation.id ? 'active' : ''}`}
-              onClick={() => handleLoadFormation(formation.id)}
+              onClick={() => setActiveFormation(activeFormation === formation.id ? null : formation.id)}
+              title={activeFormation === formation.id ? 'Click to deselect' : 'Click to apply this bonus to your attack'}
             >
               <h4>{formation.name}</h4>
               <p className="formation-desc">{FORMATION_DESCRIPTIONS[formation.name] || ''}</p>
               <div className="formation-bonuses">
                 <span>⚔️+{formation.bonuses.attack}</span>
                 <span>🛡️+{formation.bonuses.defense}</span>
-              </div>
-              <div className="formation-units">
-                {formation.units.length} units
               </div>
             </div>
           ))}
@@ -687,28 +612,28 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
             />
             Set Ambush (95% defense bonus if attacked)
           </label>
-          {(!selectedTarget || selectedUnits.length === 0) && !loading && (
+          {(!selectedTarget || availableUnits.length === 0) && !loading && (
             <p style={{ fontSize: '0.8rem', color: '#f59e0b', margin: '0.5rem 0 0.25rem', textAlign: 'center' }}>
               {!selectedTarget
                 ? '⚠️ Select a target kingdom above'
-                : '⚠️ Click a unit card above to add it to your attack'}
+                : '⚠️ Train units before attacking'}
             </p>
           )}
           <button
             onClick={handleExecuteBattle}
-            disabled={!selectedTarget || selectedUnits.length === 0 || loading}
-            className={`execute-battle-btn ${(!selectedTarget || selectedUnits.length === 0) ? 'disabled' : ''}`}
+            disabled={!selectedTarget || availableUnits.length === 0 || loading}
+            className={`execute-battle-btn ${(!selectedTarget || availableUnits.length === 0) ? 'disabled' : ''}`}
             style={{
-              ...(!selectedTarget || selectedUnits.length === 0 || loading
+              ...(!selectedTarget || availableUnits.length === 0 || loading
                 ? { opacity: 0.5, cursor: 'not-allowed', background: '#4b5563', borderColor: '#6b7280', color: '#9ca3af' }
                 : {}),
             }}
             title={
               !selectedTarget
                 ? 'Select a target kingdom first'
-                : selectedUnits.length === 0
-                ? 'Click a unit card above to add units to your attack'
-                : `Attack ${selectedTarget} with ${selectedUnits.length} unit type(s)`
+                : availableUnits.length === 0
+                ? 'Train units before attacking'
+                : `Attack with all ${availableUnits.reduce((s, u) => s + u.count, 0)} units`
             }
           >
             {loading ? 'Executing...' : 'Execute Battle'}
@@ -839,18 +764,5 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     </div>
   );
 };
-
-// Helper function
-function getUnitIcon(type: string) {
-  const icons = {
-    peasant: '👨‍🌾',
-    militia: '🛡️',
-    knight: '⚔️',
-    cavalry: '🐎',
-    archer: '🏹',
-    mage: '🔮'
-  };
-  return icons[type as keyof typeof icons] || '⚔️';
-}
 
 export default BattleFormations;

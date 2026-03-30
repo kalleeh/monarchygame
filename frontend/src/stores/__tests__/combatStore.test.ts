@@ -6,18 +6,20 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock aiKingdomStore before importing combatStore
+const mockAIKingdoms = [
+  {
+    id: 'enemy-territory',
+    name: 'Enemy Kingdom',
+    race: 'Human',
+    resources: { land: 1000, gold: 50000 },
+    units: { tier1: 100, tier2: 50, tier3: 25, tier4: 10 }
+  }
+];
 vi.mock('../aiKingdomStore', () => ({
-  useAIKingdomStore: vi.fn(() => ({
-    aiKingdoms: [
-      {
-        id: 'enemy-territory',
-        name: 'Enemy Kingdom',
-        race: 'Human',
-        resources: { land: 1000, gold: 50000 },
-        units: { tier1: 100, tier2: 50, tier3: 25, tier4: 10 }
-      }
-    ]
-  }))
+  useAIKingdomStore: Object.assign(
+    vi.fn(() => ({ aiKingdoms: mockAIKingdoms })),
+    { getState: vi.fn(() => ({ aiKingdoms: mockAIKingdoms, loadAIKingdomsFromServer: vi.fn(), generateAIKingdoms: vi.fn() })) }
+  )
 }));
 
 // Mock AmplifyFunctionService so war-manager lambda calls don't go to the network
@@ -156,11 +158,21 @@ describe('CombatStore', () => {
   it('should handle battle execution errors', async () => {
     const { executeBattle } = useCombatStore.getState();
 
-    // Try to execute battle without units (formationStore.selectedUnits is empty)
+    // Temporarily mock kingdom with no units to trigger the "no units" error
+    const { useKingdomStore } = await import('../kingdomStore');
+    (useKingdomStore.getState as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+      units: [],
+      resources: { land: 1000, gold: 50000, population: 0, turns: 0 },
+      removeUnits: vi.fn(),
+      updateResources: vi.fn(),
+      setUnits: vi.fn(),
+      kingdomId: null,
+    });
+
     const result = await executeBattle('enemy-territory');
 
     expect(result).toBeNull();
-    expect(useCombatStore.getState().error).toBe('No units selected for battle');
+    expect(useCombatStore.getState().error).toBe('You have no units trained. Train units before attacking.');
   });
 
   it('should calculate battle statistics', () => {
