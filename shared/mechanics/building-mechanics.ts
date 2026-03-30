@@ -247,5 +247,5 @@ export const RACE_BUILDING_IMAGES: Record<string, Record<string, string>> = {
 /** Get the image path for a building, or empty string if not available */
 export function getBuildingImage(race: string, category: string): string {
   const filename = RACE_BUILDING_IMAGES[race.toUpperCase()]?.[category];
-  return filename ? `/buildings/${filename}` : '';
+  return filename ? `/buildings/output/${filename}` : '';
 }
