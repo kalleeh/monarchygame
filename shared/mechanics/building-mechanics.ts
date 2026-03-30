@@ -229,3 +229,23 @@ export function getBuildingName(race: string, buildingType: string): string {
   const raceNames = RACE_BUILDING_NAMES[race.toUpperCase()];
   return raceNames?.[buildingType] || buildingType;
 }
+
+/** Race-specific building image filenames (stored in /public/buildings/) */
+export const RACE_BUILDING_IMAGES: Record<string, Record<string, string>> = {
+  HUMAN:     { income: 'guildhall-icon.png',     peasant: 'hovel-icon.png',         troop: 'barracks-icon.png',    buildrate: 'quarry-icon.png',       magic: 'temple-icon.png',       fortress: 'fortress-icon.png',   castle: 'castle-human-icon.png'     },
+  ELVEN:     { income: 'market-icon.png',         peasant: 'lodge-icon.png',          troop: 'garrison-icon.png',    buildrate: 'mill-icon.png',         magic: 'grove-icon.png',        fortress: 'tower-icon.png',      castle: 'castle-elven-icon.png'     },
+  GOBLIN:    { income: 'smithy-icon.png',         peasant: 'den-icon.png',            troop: 'barrak-icon.png',      buildrate: 'mine-icon.png',         magic: 'shrine-icon.png',       fortress: 'tunnels-icon.png',    castle: 'castle-goblin-icon.png'    },
+  DROBEN:    { income: 'timoton-icon.png',        peasant: 'baklav-icon.png',         troop: 'rumana-icon.png',      buildrate: 'waterfall-icon.png',    magic: 'enclave-icon.png',      fortress: 'arch-icon.png',       castle: 'castle-droben-icon.png'    },
+  VAMPIRE:   { income: 'underwood-icon.png',      peasant: 'tomb-icon.png',           troop: 'great-hall-icon.png',  buildrate: 'bloodbath-icon.png',    magic: 'focus-point-icon.png',  fortress: 'centroc-icon.png',    castle: 'castle-vampire-icon.png'   },
+  ELEMENTAL: { income: 'slave-market-icon.png',   peasant: 'charging-cell-icon.png',  troop: 'cage-icon.png',        buildrate: 'spectral-mist-icon.png',magic: 'casting-pit-icon.png',  fortress: 'altar-icon.png',      castle: 'castle-elemental-icon.png' },
+  CENTAUR:   { income: 'trinket-shop-icon.png',   peasant: 'hollowed-oak-icon.png',   troop: 'thicket-icon.png',     buildrate: 'forge-icon.png',        magic: 'fires-icon.png',        fortress: 'briars-icon.png',     castle: 'castle-centaur-icon.png'   },
+  SIDHE:     { income: 'wagon-icon.png',          peasant: 'tent-icon.png',           troop: 'sacred-fields-icon.png',buildrate: 'loom-icon.png',         magic: 'magick-circle-icon.png',fortress: 'spires-icon.png',     castle: 'castle-sidhe-icon.png'     },
+  DWARVEN:   { income: 'gem-mine-icon.png',       peasant: 'cave-icon.png',           troop: 'cavern-icon.png',      buildrate: 'ore-mine-icon.png',     magic: 'sanctum-icon.png',      fortress: 'stronghold-icon.png', castle: 'castle-dwarven-icon.png'   },
+  FAE:       { income: 'dolmen-icon.png',         peasant: 'bramble-icon.png',        troop: 'henge-icon.png',       buildrate: 'wishing-well-icon.png', magic: 'cairn-icon.png',        fortress: 'ringfort-icon.png',   castle: 'castle-fae-icon.png'       },
+};
+
+/** Get the image path for a building, or empty string if not available */
+export function getBuildingImage(race: string, category: string): string {
+  const filename = RACE_BUILDING_IMAGES[race.toUpperCase()]?.[category];
+  return filename ? `/buildings/${filename}` : '';
+}

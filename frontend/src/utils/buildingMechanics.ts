@@ -3,7 +3,7 @@
  * Re-exports authoritative implementations from shared mechanics
  */
 
-export { calculateBRT, getBuildingName, RACE_BUILDING_NAMES } from '../../../shared/mechanics/building-mechanics';
+export { calculateBRT, getBuildingName, getBuildingImage, RACE_BUILDING_NAMES } from '../../../shared/mechanics/building-mechanics';
 
 export interface BuildingMechanics {
   calculateBRT: (quarryPercentage: number) => number;

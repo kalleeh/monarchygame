@@ -15,7 +15,7 @@ import { TopNavigation } from './TopNavigation';
 import { constructBuildings } from '../services/domain/BuildingService';
 import { refreshKingdomResources } from '../services/domain/CombatService';
 import { ToastService } from '../services/toastService';
-import { getBuildingName } from '../utils/buildingMechanics';
+import { getBuildingName, getBuildingImage } from '../utils/buildingMechanics';
 import { isDemoMode } from '../utils/authMode';
 import './BuildingManagement.css';
 
@@ -286,6 +286,7 @@ export default function BuildingManagement({
             const canAfford = gold >= totalCost && turns >= 1;
             const currentCount = kingdomBuildings[building.id] ?? 0;
             const displayName = getBuildingName(race, building.category);
+            const imageSrc = getBuildingImage(race, building.category);
             const isLoading = loading[building.id] ?? false;
 
             return (
@@ -293,6 +294,16 @@ export default function BuildingManagement({
                 key={building.id}
                 className={`bm-card${!canAfford ? ' bm-card--unaffordable' : ''}`}
               >
+                {imageSrc && (
+                  <div className="bm-card-image">
+                    <img
+                      src={imageSrc}
+                      alt={displayName}
+                      style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: '8px 8px 0 0', display: 'block' }}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).parentElement!.style.display = 'none'; }}
+                    />
+                  </div>
+                )}
                 <div className="bm-card-header">
                   <div className="bm-card-title-row">
                     <span className="bm-card-name">{displayName}</span>
