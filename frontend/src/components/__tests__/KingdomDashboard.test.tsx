@@ -195,7 +195,7 @@ describe('KingdomDashboard', () => {
       render(<KingdomDashboard kingdom={mockKingdom} onBack={mockOnBack} />)
     })
 
-    expect(screen.getByText('Race Abilities')).toBeInTheDocument()
+    expect(screen.getByText(/Race Abilities/)).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.getByText('✨ Special Ability')).toBeInTheDocument()
     })

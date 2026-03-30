@@ -71,6 +71,7 @@ export const KingdomActionBar: React.FC<KingdomActionBarProps> = ({
         { icon: '/world-map-icon.png', label: 'World Map', onClick: () => onViewWorldMap?.() },
         { emoji: '🎯', label: 'Bounty Board', onClick: () => navigate(`/kingdom/${kingdom.id}/bounties`) },
         { emoji: '🙏', label: 'Faith & Focus', onClick: () => navigate(`/kingdom/${kingdom.id}/faith`) },
+        { icon: '/achievements-icon.png', label: 'Achievements', onClick: () => navigate(`/kingdom/${kingdom.id}/achievements`) },
       ],
     },
     {

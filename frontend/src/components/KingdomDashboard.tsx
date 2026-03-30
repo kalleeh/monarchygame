@@ -25,7 +25,8 @@ import { useKingdomDashboardState } from '../hooks/useKingdomDashboardState';
 import { DashboardBanners } from './dashboard/DashboardBanners';
 import { ResourcesSection } from './dashboard/ResourcesSection';
 import { TerritoriesSection } from './dashboard/TerritoriesSection';
-import { BuildingEconomySection } from './dashboard/BuildingEconomySection';
+import { RaceAbilitiesPanel } from './ui/RaceAbilitiesPanel';
+import { BuildingStatsPanel } from './ui/BuildingStatsPanel';
 
 interface KingdomDashboardProps {
   kingdom: Schema['Kingdom']['type'];
@@ -205,7 +206,8 @@ function KingdomDashboard({
             encampLoading={encampLoading}
           />
 
-          <div className="turn-generation-panel">
+          {/* Kingdom Status: Turn Generation + Race Abilities stacked in right column */}
+          <div className="kingdom-status-panel">
             <TurnTimer
               kingdomId={kingdom.id}
               onTurnGenerated={(newTurns) => {
@@ -230,14 +232,15 @@ function KingdomDashboard({
                   ...({ mana: Math.min(((resources as any).mana || 0) + manaEarned, 50000) } as any)
                 });
 
-                // Fire achievement triggers after each turn generation
                 achievementTriggers.onGoldChanged();
                 achievementTriggers.onPopulationChanged();
               }}
             />
+            <div className="kingdom-status-divider" />
+            <RaceAbilitiesPanel raceData={raceData} compact />
           </div>
 
-          {/* Row 3: Territories (full width) */}
+          {/* Territories (full width) */}
           <TerritoriesSection
             ownedTerritories={ownedTerritories as any}
             loading={loading}
@@ -245,13 +248,11 @@ function KingdomDashboard({
             onManageTerritories={onManageTerritories}
           />
 
-          {/* Row 4+5: Buildings, Race Abilities, Achievements */}
-          <BuildingEconomySection
+          {/* Buildings & Economy (full width — race abilities moved to status panel) */}
+          <BuildingStatsPanel
             buildingStats={buildingStats}
             upkeepInfo={upkeepInfo}
             race={kingdom.race || 'Human'}
-            raceData={raceData}
-            kingdomId={kingdom.id}
           />
         </div>
 
