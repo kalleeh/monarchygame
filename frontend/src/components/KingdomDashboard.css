@@ -89,9 +89,16 @@
   color: var(--gm-text-teal, #4ecdc4);
 }
 
-/* BuildingStatsPanel spans full width when alone */
+/* Kingdom Status right panel spans 2 rows (rows 1-2) at desktop */
 @media (min-width: 1024px) {
-  .race-stats-panel:not(.race-abilities-compact) {
+  .kingdom-status-panel--span {
+    grid-row: span 2;
+  }
+}
+
+/* Territories always full width */
+@media (min-width: 768px) {
+  .territories-panel {
     grid-column: 1 / -1;
   }
 }

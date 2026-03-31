@@ -191,7 +191,9 @@ function KingdomDashboard({
         />
 
         <div className="dashboard-grid">
-          {/* Row 1: Resources (2fr left) + Turn Generation (1fr right) */}
+          {/* Left col (2fr): Resources stacked above Buildings & Economy
+              Right col (1fr): Kingdom Status spans both rows */}
+
           <ResourcesSection
             networth={networth}
             resources={resources}
@@ -206,8 +208,8 @@ function KingdomDashboard({
             encampLoading={encampLoading}
           />
 
-          {/* Kingdom Status: Turn Generation + Race Abilities stacked in right column */}
-          <div className="kingdom-status-panel">
+          {/* Kingdom Status spans rows 1-2 in the right column */}
+          <div className="kingdom-status-panel kingdom-status-panel--span">
             <TurnTimer
               kingdomId={kingdom.id}
               onTurnGenerated={(newTurns) => {
@@ -240,19 +242,19 @@ function KingdomDashboard({
             <RaceAbilitiesPanel raceData={raceData} compact />
           </div>
 
-          {/* Territories (full width) */}
+          {/* Buildings & Economy — below Resources in the same left column */}
+          <BuildingStatsPanel
+            buildingStats={buildingStats}
+            upkeepInfo={upkeepInfo}
+            race={kingdom.race || 'Human'}
+          />
+
+          {/* Territories — full width at the bottom */}
           <TerritoriesSection
             ownedTerritories={ownedTerritories as any}
             loading={loading}
             kingdomStats={kingdom.stats}
             onManageTerritories={onManageTerritories}
-          />
-
-          {/* Buildings & Economy (full width — race abilities moved to status panel) */}
-          <BuildingStatsPanel
-            buildingStats={buildingStats}
-            upkeepInfo={upkeepInfo}
-            race={kingdom.race || 'Human'}
           />
         </div>
 
