@@ -507,6 +507,39 @@ export const useTerritoryStore = create(
         });
       },
 
+      /** Load real territories from server (auth mode only) so upgrade/claim uses real DynamoDB IDs */
+      loadTerritoriesFromServer: async (kingdomId: string) => {
+        if (isDemoMode() || !kingdomId) return;
+        try {
+          const { generateClient } = await import('aws-amplify/data');
+          const { default: outputs } = await import('../amplify-config');
+          const { Amplify } = await import('aws-amplify');
+          Amplify.configure(outputs);
+          const client = generateClient<import('../../../amplify/data/resource').Schema>();
+          const { data } = await client.models.Territory.list({
+            filter: { kingdomId: { eq: kingdomId } },
+            limit: 100,
+          });
+          if (!data) return;
+          const serverTerritories: Territory[] = data.map(t => ({
+            id: t.id,
+            name: t.name ?? 'Territory',
+            type: t.type ?? 'settlement',
+            position: { x: 0, y: 0 },
+            ownerId: 'current-player',
+            resources: (() => { try { return typeof t.resources === 'string' ? JSON.parse(t.resources) : (t.resources ?? {}); } catch { return {}; } })(),
+            buildings: (() => { try { return typeof t.buildings === 'string' ? JSON.parse(t.buildings) : (t.buildings ?? {}); } catch { return {}; } })(),
+            defenseLevel: t.defenseLevel ?? 0,
+            adjacentTerritories: [],
+            regionId: t.regionId ?? undefined,
+            category: (t.category as Territory['category']) ?? undefined,
+          }));
+          set({ ownedTerritories: serverTerritories });
+        } catch (err) {
+          console.error('[territoryStore] loadTerritoriesFromServer failed:', err);
+        }
+      },
+
       // Reset state
       resetTerritoryState: () => {
         set({

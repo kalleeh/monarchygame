@@ -86,13 +86,15 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
     getClaimCost,
     canAffordUpgrade,
     clearError,
-    initializeTerritories
+    initializeTerritories,
+    loadTerritoriesFromServer,
   } = useTerritoryStore();
 
-  // Initialize territories on mount
+  // Initialize demo territory data, then load real server territories in auth mode
   useEffect(() => {
     initializeTerritories();
-  }, [initializeTerritories]);
+    void loadTerritoriesFromServer(kingdomId);
+  }, [initializeTerritories, loadTerritoriesFromServer, kingdomId]);
 
   // Territory grid animation
   const gridSpring = useSpring({
