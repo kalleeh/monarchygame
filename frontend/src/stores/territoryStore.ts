@@ -537,7 +537,14 @@ export const useTerritoryStore = create(
             category: (t.category as Territory['category']) ?? undefined,
             serverConfirmed: true,
           }));
-          set({ ownedTerritories: serverTerritories });
+          // Update both lists: canAffordUpgrade() searches `territories`, upgrade uses `ownedTerritories`
+          set(state => ({
+            ownedTerritories: serverTerritories,
+            territories: [
+              ...state.territories.filter(t => !serverTerritories.some(s => s.id === t.id)),
+              ...serverTerritories,
+            ],
+          }));
         } catch (err) {
           console.error('[territoryStore] loadTerritoriesFromServer failed:', err);
         }
