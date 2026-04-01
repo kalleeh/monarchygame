@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import { RACES } from "../shared-races";
 import { StatBar } from './StatBar';
 import './KingdomCreation.css';
@@ -98,6 +98,62 @@ interface Race {
 interface KingdomCreationProps {
   onKingdomCreated: (kingdomName: string, race: string) => void;
 }
+
+/** Memoized race grid — only re-renders when selectedRace changes, not on every name keystroke */
+const RaceGrid = memo(function RaceGrid({
+  races, selectedRaceId, onSelect,
+}: { races: Race[]; selectedRaceId: string | undefined; onSelect: (race: Race) => void }) {
+  return (
+    <div className="race-grid">
+      {races.map((race) => (
+        <div
+          key={race.id}
+          className={`race-card ${selectedRaceId === race.id ? 'selected' : ''}`}
+          onClick={() => onSelect(race)}
+          role="button"
+          tabIndex={0}
+          aria-pressed={selectedRaceId === race.id}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onSelect(race);
+            }
+          }}
+        >
+          <img src={race.image} alt={race.name} />
+          <h4>{race.name}</h4>
+          {(() => {
+            const ps = RACE_PLAYSTYLE[race.name];
+            if (!ps) return null;
+            return (
+              <div className="race-playstyle">
+                <span className="race-style-badge" style={{ color: ps.color }}>{ps.style}</span>
+                <span className={`race-difficulty difficulty-${ps.difficulty.toLowerCase()}`}>{ps.difficulty}</span>
+              </div>
+            );
+          })()}
+          <p className="race-best-for">Best for: {RACE_PLAYSTYLE[race.name]?.bestFor}</p>
+          <p>{race.description}</p>
+          {race.name === 'Vampire' && (
+            <div className="race-cost-warning">⚠️ Requires 2× resources to maintain</div>
+          )}
+          <div className="stats">
+            <div title={STAT_DESCRIPTIONS['offense']}><StatBar value={race.stats.warOffense} statType="offense" /></div>
+            <div title={STAT_DESCRIPTIONS['defense']}><StatBar value={race.stats.warDefense} statType="defense" /></div>
+            <div title={STAT_DESCRIPTIONS['sorcery']}><StatBar value={race.stats.sorcery} statType="sorcery" /></div>
+            <div title={STAT_DESCRIPTIONS['scum']}><StatBar value={race.stats.scum} statType="scum" /></div>
+            <div title={STAT_DESCRIPTIONS['forts']}><StatBar value={race.stats.forts} statType="forts" /></div>
+            <div title={STAT_DESCRIPTIONS['tithe']}><StatBar value={race.stats.tithe} statType="tithe" /></div>
+            <div title={STAT_DESCRIPTIONS['training']}><StatBar value={race.stats.training} statType="training" /></div>
+            <div title={STAT_DESCRIPTIONS['siege']}><StatBar value={race.stats.siege} statType="siege" /></div>
+            <div title={STAT_DESCRIPTIONS['economy']}><StatBar value={race.stats.economy} statType="economy" /></div>
+            <div title={STAT_DESCRIPTIONS['building']}><StatBar value={race.stats.building} statType="building" /></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+});
 
 const KingdomCreation: React.FC<KingdomCreationProps> = ({ onKingdomCreated }) => {
   const [kingdomName, setKingdomName] = useState('');
@@ -233,57 +289,11 @@ const KingdomCreation: React.FC<KingdomCreationProps> = ({ onKingdomCreated }) =
             </div>
           )}
           
-          <div className="race-grid">
-            {races.map((race) => (
-              <div
-                key={race.id}
-                className={`race-card ${selectedRace?.id === race.id ? 'selected' : ''}`}
-                onClick={() => handleRaceSelect(race)}
-                role="button"
-                tabIndex={0}
-                aria-pressed={selectedRace?.id === race.id}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleRaceSelect(race);
-                  }
-                }}
-              >
-                <img src={race.image} alt={race.name} />
-                <h4>{race.name}</h4>
-                {(() => {
-                  const ps = RACE_PLAYSTYLE[race.name];
-                  if (!ps) return null;
-                  return (
-                    <div className="race-playstyle">
-                      <span className="race-style-badge" style={{ color: ps.color }}>{ps.style}</span>
-                      <span className={`race-difficulty difficulty-${ps.difficulty.toLowerCase()}`}>{ps.difficulty}</span>
-                    </div>
-                  );
-                })()}
-                <p className="race-best-for">Best for: {RACE_PLAYSTYLE[race.name]?.bestFor}</p>
-                <p>{race.description}</p>
-                {race.name === 'Vampire' && (
-                  <div className="race-cost-warning">
-                    ⚠️ Requires 2× resources to maintain
-                  </div>
-                )}
-
-                <div className="stats">
-                  <div title={STAT_DESCRIPTIONS['offense']}><StatBar value={race.stats.warOffense} statType="offense" /></div>
-                  <div title={STAT_DESCRIPTIONS['defense']}><StatBar value={race.stats.warDefense} statType="defense" /></div>
-                  <div title={STAT_DESCRIPTIONS['sorcery']}><StatBar value={race.stats.sorcery} statType="sorcery" /></div>
-                  <div title={STAT_DESCRIPTIONS['scum']}><StatBar value={race.stats.scum} statType="scum" /></div>
-                  <div title={STAT_DESCRIPTIONS['forts']}><StatBar value={race.stats.forts} statType="forts" /></div>
-                  <div title={STAT_DESCRIPTIONS['tithe']}><StatBar value={race.stats.tithe} statType="tithe" /></div>
-                  <div title={STAT_DESCRIPTIONS['training']}><StatBar value={race.stats.training} statType="training" /></div>
-                  <div title={STAT_DESCRIPTIONS['siege']}><StatBar value={race.stats.siege} statType="siege" /></div>
-                  <div title={STAT_DESCRIPTIONS['economy']}><StatBar value={race.stats.economy} statType="economy" /></div>
-                  <div title={STAT_DESCRIPTIONS['building']}><StatBar value={race.stats.building} statType="building" /></div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <RaceGrid
+            races={races}
+            selectedRaceId={selectedRace?.id}
+            onSelect={handleRaceSelect}
+          />
         </div>
 
         {/* Playstyle Selector */}
