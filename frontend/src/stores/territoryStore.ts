@@ -512,23 +512,21 @@ export const useTerritoryStore = create(
         if (isDemoMode() || !kingdomId) return;
         try {
           const { generateClient } = await import('aws-amplify/data');
-          const { default: outputs } = await import('../amplify-config');
-          const { Amplify } = await import('aws-amplify');
-          Amplify.configure(outputs);
-          const client = generateClient<import('../../../amplify/data/resource').Schema>();
+          type Schema = import('../../../amplify/data/resource').Schema;
+          const client = generateClient<Schema>();
           const { data } = await client.models.Territory.list({
             filter: { kingdomId: { eq: kingdomId } },
-            limit: 100,
+            limit: 200,
           });
-          if (!data) return;
+          if (!data || data.length === 0) return;
           const serverTerritories: Territory[] = data.map(t => ({
             id: t.id,
             name: t.name ?? 'Territory',
             type: t.type ?? 'settlement',
             position: { x: 0, y: 0 },
             ownerId: 'current-player',
-            resources: (() => { try { return typeof t.resources === 'string' ? JSON.parse(t.resources) : (t.resources ?? {}); } catch { return {}; } })(),
-            buildings: (() => { try { return typeof t.buildings === 'string' ? JSON.parse(t.buildings) : (t.buildings ?? {}); } catch { return {}; } })(),
+            resources: (() => { try { return typeof t.resources === 'string' ? JSON.parse(t.resources as string) : (t.resources ?? {}); } catch { return {}; } })(),
+            buildings: (() => { try { return typeof t.buildings === 'string' ? JSON.parse(t.buildings as string) : (t.buildings ?? {}); } catch { return {}; } })(),
             defenseLevel: t.defenseLevel ?? 0,
             adjacentTerritories: [],
             regionId: t.regionId ?? undefined,

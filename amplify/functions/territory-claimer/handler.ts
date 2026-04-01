@@ -173,9 +173,7 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
 
     // Check for duplicate territory at same coordinates
     const coordStr = JSON.stringify(coordObj);
-    const kingdomTerritories = await dbQuery<TerritoryType>(
-      'Territory', 'kingdomId', { field: 'kingdomId', value: kingdomId }
-    );
+    const kingdomTerritories = (await dbList<TerritoryType>('Territory')).filter(t => t.kingdomId === kingdomId);
     const duplicate = kingdomTerritories.find(
       (t: TerritoryType) => t.coordinates === coordStr
     );

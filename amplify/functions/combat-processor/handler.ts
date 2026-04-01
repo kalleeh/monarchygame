@@ -318,9 +318,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     if (!resolvedTerrainId) {
       // Attempt to read terrain from the defender's first non-capital territory
       try {
-        const territories = await dbQuery<TerritoryType>(
-          'Territory', 'kingdomId', { field: 'kingdomId', value: defenderId }
-        );
+        const territories = (await dbList<TerritoryType>('Territory')).filter(t => t.kingdomId === defenderId);
         const capital = territories.find((t: TerritoryType) => t.type === 'capital') ?? territories[0];
         if (capital) {
           resolvedTerrainId = capital.terrainType ?? '';
@@ -746,9 +744,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
       // Transfer territory: find defender's least important territory and reassign to attacker — skip for pillage
       if (finalLandGained > 0) try {
-        const defenderTerritories = await dbQuery<TerritoryType>(
-          'Territory', 'kingdomId', { field: 'kingdomId', value: defenderId }
-        );
+        const defenderTerritories = (await dbList<TerritoryType>('Territory')).filter(t => t.kingdomId === defenderId);
 
         // Sort by defense level ascending (take least developed first), never take the capital
         const sorted = defenderTerritories
