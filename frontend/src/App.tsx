@@ -421,6 +421,21 @@ function AppContent() {
         });
 
         if (newKingdom.data) {
+          // Create the Royal Capital territory for this kingdom
+          try {
+            await getClient().models.Territory.create({
+              name: 'Royal Capital',
+              type: 'capital',
+              coordinates: JSON.stringify({ x: 0, y: 0 }),
+              terrainType: 'plains',
+              resources: JSON.stringify({ gold: 1000, population: 500, land: 100 }),
+              buildings: JSON.stringify({}),
+              defenseLevel: 1,
+              kingdomId: newKingdom.data.id,
+            });
+          } catch {
+            // Non-fatal — kingdom still works without capital territory record
+          }
           // Add to local state
           setKingdoms(prev => [...prev, newKingdom.data].filter(Boolean) as typeof prev);
           navigate('/kingdoms');
