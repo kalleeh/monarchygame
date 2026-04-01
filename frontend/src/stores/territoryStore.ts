@@ -29,6 +29,8 @@ interface Territory {
   adjacentTerritories: string[];
   regionId?: string;
   category?: 'farmland' | 'mine' | 'forest' | 'port' | 'stronghold' | 'ruins';
+  /** True when loaded from server (has real DynamoDB UUID). False for client-side pending territories. */
+  serverConfirmed?: boolean;
 }
 
 export type { Territory };
@@ -533,6 +535,7 @@ export const useTerritoryStore = create(
             adjacentTerritories: [],
             regionId: t.regionId ?? undefined,
             category: (t.category as Territory['category']) ?? undefined,
+            serverConfirmed: true,
           }));
           set({ ownedTerritories: serverTerritories });
         } catch (err) {

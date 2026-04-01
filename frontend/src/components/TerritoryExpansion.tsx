@@ -502,10 +502,18 @@ const OwnedTerritoryCard: React.FC<OwnedTerritoryCardProps> = ({
             e.stopPropagation();
             onUpgrade();
           }}
-          disabled={!canAfford}
-          title={canAfford ? 'Upgrade this territory' : 'Not enough gold'}
+          disabled={!canAfford || territory.serverConfirmed === false}
+          title={
+            territory.serverConfirmed === false
+              ? 'Settling in progress — upgrade available once settlers arrive'
+              : canAfford ? 'Upgrade this territory' : 'Not enough gold'
+          }
         >
-          {canAfford ? `Upgrade to Lv.${territory.defenseLevel + 1} (+${(territory.defenseLevel + 1) * 10}% income)` : 'Insufficient Gold'}
+          {territory.serverConfirmed === false
+            ? '⏳ Settling...'
+            : canAfford
+              ? `Upgrade to Lv.${territory.defenseLevel + 1} (+${(territory.defenseLevel + 1) * 10}% income)`
+              : 'Insufficient Gold'}
         </button>
       </div>
     </animated.div>
@@ -622,10 +630,18 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
                 e.stopPropagation();
                 onUpgrade();
               }}
-              disabled={!canAfford}
-              title={canAfford ? 'Upgrade this territory' : 'Not enough gold'}
+              disabled={!canAfford || territory.serverConfirmed === false}
+              title={
+                territory.serverConfirmed === false
+                  ? 'Settling in progress — upgrade available once settlers arrive'
+                  : canAfford ? 'Upgrade this territory' : 'Not enough gold'
+              }
             >
-              {canAfford ? `Upgrade to Lv.${territory.defenseLevel + 1} (+${(territory.defenseLevel + 1) * 10}% income)` : 'Insufficient Gold'}
+              {territory.serverConfirmed === false
+                ? '⏳ Settling...'
+                : canAfford
+                  ? `Upgrade to Lv.${territory.defenseLevel + 1} (+${(territory.defenseLevel + 1) * 10}% income)`
+                  : 'Insufficient Gold'}
             </button>
           </>
         ) : canClaim ? (
