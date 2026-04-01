@@ -12,6 +12,8 @@ export interface ClaimTerritoryPayload {
   coordinates: { x: number; y: number };
   territoryAmount?: number;
   goldCost?: number;
+  regionId?: string;
+  category?: string;
 }
 
 export interface TerritoryResult {

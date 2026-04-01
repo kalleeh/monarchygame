@@ -165,7 +165,8 @@ describe('territory-claimer handler', () => {
 
     it('returns INVALID_PARAM when territory already claimed at these coordinates', async () => {
       mockDbGet.mockResolvedValue(mockKingdom());
-      mockDbQuery.mockImplementation(async (model: string) => {
+      // Handler now uses dbList + client-side filter instead of dbQuery
+      mockDbList.mockImplementation(async (model: string) => {
         if (model === 'Territory') return [{ id: 'existing', kingdomId: 'kingdom-1', coordinates: JSON.stringify({ x: 5, y: 5 }) }];
         return [];
       });

@@ -400,7 +400,9 @@ export class AmplifyFunctionService {
         territoryName: territoryData.name,
         territoryType: (territoryData as any).territoryType || 'settlement',
         terrainType: (territoryData.terrainType || 'plains') as 'plains' | 'forest' | 'mountains' | 'desert' | 'swamp' | 'coastal',
-        coordinates: coordsArg
+        coordinates: coordsArg,
+        ...(territoryData.regionId ? { regionId: territoryData.regionId } : {}),
+        ...(territoryData.category ? { category: territoryData.category } : {}),
       });
 
       if (errors && errors.length > 0) {

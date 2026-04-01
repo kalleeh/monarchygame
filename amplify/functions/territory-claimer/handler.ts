@@ -7,6 +7,31 @@ import { dbGet, dbUpdate, dbList, dbAtomicAdd, dbQuery } from '../data-client';
 const TERRITORY_NAME_LIMITS = { min: 2, max: 50 } as const;
 const COORDINATE_LIMITS = { min: -10000, max: 10000 } as const;
 
+// Region slot limits by type — matches REGION_SLOT_COUNTS in TerritoryExpansion.tsx
+const REGION_SLOT_COUNTS: Record<string, number> = {
+  capital: 5,
+  settlement: 3,
+  outpost: 2,
+  fortress: 4,
+};
+
+// World region type lookup — derived from KingdomNode.tsx WORLD_REGIONS
+const WORLD_REGION_TYPES: Record<string, string> = {
+  'wt-01': 'fortress', 'wt-02': 'outpost',  'wt-03': 'capital',   'wt-04': 'settlement',
+  'wt-05': 'fortress', 'wt-06': 'outpost',  'wt-07': 'capital',   'wt-08': 'settlement',
+  'wt-09': 'capital',  'wt-10': 'outpost',  'wt-11': 'settlement','wt-12': 'outpost',
+  'wt-13': 'fortress', 'wt-14': 'outpost',  'wt-15': 'settlement','wt-16': 'capital',
+  'wt-17': 'outpost',  'wt-18': 'settlement','wt-19': 'settlement','wt-20': 'capital',
+  'wt-21': 'outpost',  'wt-22': 'capital',  'wt-23': 'settlement','wt-24': 'outpost',
+  'wt-25': 'capital',  'wt-26': 'outpost',  'wt-27': 'capital',   'wt-28': 'settlement',
+  'wt-29': 'outpost',  'wt-30': 'capital',  'wt-31': 'settlement','wt-32': 'outpost',
+  'wt-33': 'outpost',  'wt-34': 'settlement','wt-35': 'outpost',  'wt-36': 'settlement',
+  'wt-37': 'outpost',  'wt-38': 'settlement','wt-39': 'outpost',  'wt-40': 'fortress',
+  'wt-41': 'capital',  'wt-42': 'settlement','wt-43': 'outpost',  'wt-44': 'outpost',
+  'wt-45': 'outpost',  'wt-46': 'outpost',  'wt-47': 'outpost',  'wt-48': 'outpost',
+  'wt-49': 'outpost',  'wt-50': 'outpost',
+};
+
 type KingdomType = Record<string, unknown> & { turnsBalance?: number | null };
 type TerritoryType = { id: string; kingdomId?: string; regionId?: string; coordinates?: string };
 
@@ -181,13 +206,13 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
       return { success: false, error: 'Territory already claimed at these coordinates', errorCode: ErrorCode.INVALID_PARAM };
     }
 
-    // Slot-count validation: cap at 5 territories per region
+    // Slot-count validation: cap per region type
     if (regionId) {
-      const regionTerritories = kingdomTerritories.filter(
-        t => t.regionId === regionId
-      );
-      if (regionTerritories.length >= 5) {
-        return { success: false, error: 'Region is full', errorCode: 'REGION_FULL' };
+      const regionType = WORLD_REGION_TYPES[regionId] ?? 'settlement';
+      const maxSlots = REGION_SLOT_COUNTS[regionType] ?? 3;
+      const regionTerritories = kingdomTerritories.filter((t: TerritoryType) => t.regionId === regionId);
+      if (regionTerritories.length >= maxSlots) {
+        return { success: false, error: `Region is full (max ${maxSlots} territories)`, errorCode: 'REGION_FULL' as const };
       }
     }
 

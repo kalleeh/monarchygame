@@ -8,6 +8,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useSpring, useTransition, animated, config } from '@react-spring/web';
 import { useTerritoryStore, type Territory } from '../stores/territoryStore';
 import { useKingdomStore } from '../stores/kingdomStore';
+import { WORLD_REGIONS } from './worldmap/KingdomNode';
 import { TopNavigation } from './TopNavigation';
 import './TerritoryExpansion.css';
 
@@ -16,19 +17,6 @@ interface TerritoryExpansionProps {
   onBack?: () => void;
 }
 
-// Region metadata — maps wt-XX IDs from WorldMap to display names and archetypes
-const REGION_NAMES: Record<string, { name: string; type: 'capital' | 'settlement' | 'outpost' | 'fortress' }> = {
-  'wt-01': { name: 'Frostwall Keep', type: 'fortress' },
-  'wt-02': { name: 'Ashfen Marsh', type: 'outpost' },
-  'wt-03': { name: 'Crystalpeak', type: 'capital' },
-  'wt-04': { name: 'Thornwood', type: 'settlement' },
-  'wt-05': { name: 'Duskwall Fortress', type: 'fortress' },
-  'wt-06': { name: 'Rimstone Outpost', type: 'outpost' },
-  'wt-07': { name: 'Ironhold Keep', type: 'capital' },
-  'wt-08': { name: 'Embervale', type: 'settlement' },
-  'wt-09': { name: 'Silvergate', type: 'capital' },
-  'wt-10': { name: 'Coldbrook Pass', type: 'outpost' },
-};
 
 // Maximum territory slots per region archetype
 const REGION_SLOT_COUNTS: Record<string, number> = {
@@ -296,9 +284,9 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
         <div className="owned-territories-section">
           <h2>Your Territories</h2>
           {Object.entries(territoriesByRegion).map(([regionId, regionTerritories]) => {
-            const regionMeta = REGION_NAMES[regionId];
-            const regionName = regionMeta ? regionMeta.name : regionId === 'unassigned' ? 'Unassigned Region' : regionId;
-            const regionType = regionMeta ? regionMeta.type : 'settlement';
+            const regionMeta = WORLD_REGIONS.find(r => r.id === regionId);
+            const regionName = regionMeta?.name ?? (regionId === 'unassigned' ? 'Unassigned Region' : regionId);
+            const regionType = regionMeta?.type ?? 'settlement';
             const slotMax = REGION_SLOT_COUNTS[regionType] ?? 3;
             const slotCount = regionTerritories.length;
             const isFullyControlled = slotCount >= slotMax;

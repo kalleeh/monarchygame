@@ -211,7 +211,9 @@ export const useTerritoryStore = create(
                 terrainType: 'plains',
                 coordinates: territory?.position || { x: 0, y: 0 },
                 territoryAmount: 1,
-                goldCost: expansion.cost.gold
+                goldCost: expansion.cost.gold,
+                ...(territory?.regionId ? { regionId: territory.regionId } : {}),
+                ...(territory?.category ? { category: territory.category } : {}),
               });
 
               const parsed = typeof result === 'string' ? JSON.parse(result) : result;
@@ -394,7 +396,7 @@ export const useTerritoryStore = create(
       },
       
       getUpgradeCost: (territoryId: string) => {
-        const territory = get().territories.find(t => t.id === territoryId);
+        const territory = get().ownedTerritories.find(t => t.id === territoryId);
         if (!territory) return null;
         
         const currentLevel = territory.defenseLevel || 0;
@@ -406,7 +408,7 @@ export const useTerritoryStore = create(
       },
       
       canAffordUpgrade: (territoryId: string): boolean => {
-        const territory = get().territories.find(t => t.id === territoryId);
+        const territory = get().ownedTerritories.find(t => t.id === territoryId);
         if (!territory) return false;
         
         const currentLevel = territory.defenseLevel || 0;

@@ -432,6 +432,8 @@ function AppContent() {
               buildings: JSON.stringify({}),
               defenseLevel: 1,
               kingdomId: newKingdom.data.id,
+              regionId: 'wt-03',
+              category: 'farmland',
             });
           } catch {
             // Non-fatal — kingdom still works without capital territory record
