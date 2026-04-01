@@ -518,7 +518,9 @@ export const useTerritoryStore = create(
             filter: { kingdomId: { eq: kingdomId } },
             limit: 200,
           });
-          if (!data || data.length === 0) return;
+          // In auth mode, always use server data (even empty) — mock IDs cause upgrade failures
+          if (!data) return;
+          if (data.length === 0) { set({ ownedTerritories: [] }); return; }
           const serverTerritories: Territory[] = data.map(t => ({
             id: t.id,
             name: t.name ?? 'Territory',
