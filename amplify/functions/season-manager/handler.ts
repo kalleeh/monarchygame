@@ -41,7 +41,7 @@ export const handler: Schema['getActiveSeason']['functionHandler'] = async (even
   return handleGetActiveSeason(event);
 };
 
-async function handleGetActiveSeason(event: { identity: unknown }): Promise<string> {
+async function handleGetActiveSeason(event: { identity?: unknown }): Promise<string> {
   try {
     const identity = event.identity as { sub?: string; username?: string } | null;
     if (!identity?.sub) {
@@ -95,7 +95,7 @@ async function handleGetActiveSeason(event: { identity: unknown }): Promise<stri
   }
 }
 
-async function handleFetchWorldState(event: { identity: unknown; arguments: unknown }): Promise<string> {
+async function handleFetchWorldState(event: { identity?: unknown; arguments?: unknown }): Promise<string> {
   try {
     const identity = event.identity as { sub?: string } | null;
     if (!identity?.sub) {

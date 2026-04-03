@@ -69,7 +69,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
         const allianceData = await dbGet<{ stats?: string }>('Alliance', attackerGuildId);
         if (allianceData?.stats) {
           const aStats = parseJsonField<Record<string, unknown>>(allianceData.stats, {});
-          espionageBonus = aStats?.compositionBonus?.espionage ?? 1.0;
+          espionageBonus = (aStats?.compositionBonus as Record<string, number> | undefined)?.espionage ?? 1.0;
           const now = new Date().toISOString();
           const activeUpgrades = (aStats?.activeUpgrades ?? []) as Array<{ type: string; expiresAt: string; effect: Record<string, number> }>;
           for (const u of activeUpgrades.filter(x => x.expiresAt > now)) {
