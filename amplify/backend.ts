@@ -102,12 +102,18 @@ for (const fn of lambdaFunctions) {
         'dynamodb:Scan',
         'dynamodb:BatchGetItem',
         'dynamodb:BatchWriteItem',
-        'dynamodb:ListTables',
       ],
       resources: [
         tableArnPattern,
         `${tableArnPattern}/index/*`,
       ],
+    })
+  );
+  // ListTables is a service-level action that cannot be scoped to specific table ARNs
+  fn.resources.lambda.addToRolePolicy(
+    new iam.PolicyStatement({
+      actions: ['dynamodb:ListTables'],
+      resources: ['*'],
     })
   );
 }
