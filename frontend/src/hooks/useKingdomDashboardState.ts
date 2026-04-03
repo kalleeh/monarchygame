@@ -377,29 +377,15 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
         kingdomId: kingdom.id,
         amount: action === 'generate_turns' ? 3 : undefined,
       });
-      const payload = (raw as any)?.data ?? raw;
-      const serverResources = payload?.resources
-        ? (JSON.parse(payload.resources as string) as { gold?: number; population?: number; land?: number })
-        : null;
 
-      if (serverResources) {
-        updateResources({
-          gold: serverResources.gold,
-          population: serverResources.population,
-          land: serverResources.land,
-        });
-      } else {
-        if (action === 'generate_income') addGold(1000);
-      }
-
-      if (action === 'generate_turns') addTurns(3);
+      // Refresh from server to get authoritative state (turns, gold, etc.)
+      await AmplifyFunctionService.refreshKingdomResources(kingdom.id);
 
       ToastService.success(action === 'generate_turns' ? 'Turns generated!' : 'Income generated!');
     } catch (error) {
       console.error('Resource generation error:', error);
-      if (action === 'generate_turns') addTurns(3);
-      else addGold(1000);
-      ToastService.success(action === 'generate_turns' ? 'Turns generated!' : 'Income generated!');
+      // Don't apply phantom local resources in auth mode — server is the authority
+      ToastService.error('Resource generation failed. Please try again.');
     } finally {
       setResourceLoading(false);
     }
@@ -479,13 +465,12 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
 
       ToastService.success(`Time traveled ${hours} hours! +${generated.turns} turns, +${generated.gold} gold, +${generated.population} population.`);
 
-      addTurns(generated.turns);
-
-      // In auth mode, the Lambda already calculated and persisted income.
+      // In auth mode, the Lambda already calculated and persisted everything.
       // Refresh from server to get the authoritative values.
       if (!isDemoMode()) {
         await AmplifyFunctionService.refreshKingdomResources(kingdom.id);
       } else {
+        addTurns(generated.turns);
         addGold(generated.gold);
         useKingdomStore.getState().updateResources({
           population: (resources.population || 0) + generated.population

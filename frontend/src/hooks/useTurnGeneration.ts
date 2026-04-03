@@ -153,6 +153,11 @@ export const useTurnGeneration = ({
 
         onTurnGenerated?.(totalTurns);
 
+        // In auth mode, sync authoritative state from server after Lambda processed turns
+        if (!isDemoMode()) {
+          try { await AmplifyFunctionService.refreshKingdomResources(kingdomId); } catch { /* non-fatal */ }
+        }
+
         // Apply passive resource income in demo mode (auth mode: server handles this via Lambda)
         if (isDemoMode()) {
           const ownedTerritories = useTerritoryStore.getState().ownedTerritories;
