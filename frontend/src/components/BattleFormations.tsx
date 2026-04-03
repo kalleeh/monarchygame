@@ -3,7 +3,7 @@
  * IQC Compliant: Integrity (validation), Quality (animations), Consistency (patterns)
  */
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
@@ -27,10 +27,7 @@ const RACE_DEFENSE: Record<string, number> = {
   Elemental: 3, Centaur: 2, Sidhe: 3, Dwarven: 5, Fae: 3,
 };
 import { isDemoMode } from '../utils/authMode';
-// NOTE: useKingdomTargets is intentionally NOT imported here — it pulls in
-// KingdomSearchService → aws-amplify/data which creates a Vite TDZ crash in
-// this lazy chunk. Combat targeting uses the aiKingdomStore directly instead.
-// Server-side target loading for combat is handled via aiKingdomStore.loadAIKingdomsFromServer.
+import { useKingdomTargets } from '../hooks/useKingdomTargets';
 import { TopNavigation } from './TopNavigation';
 import './BattleFormations.css';
 
@@ -71,10 +68,13 @@ const TIER_COLORS = ['#6b7280', '#4ecdc4', '#f59e0b', '#ef4444'];
 /** Converts raw unit type key to a readable display name */
 function formatUnitName(type: string): string {
   return type
+    .replace(/-server$/i, '')
     .replace(/-/g, ' ')
     .replace(/_/g, ' ')
-    .replace(/\btier(\d)\b/gi, 'Tier $1')
+    .replace(/\btier\s*(\d)\b/gi, 'Tier $1')
     .replace(/\bT(\d)\b/g, 'Tier $1')
+    .replace(/\bdef\s+/gi, '')
+    .trim()
     .replace(/\b\w/g, c => c.toUpperCase());
 }
 
@@ -94,7 +94,7 @@ function CasualtyRow({ unitType, count }: { unitType: string; count: number }) {
   );
 }
 
-function BattleResultModal({ battle, onClose }: { battle: import('../types/combat').BattleReport; onClose: () => void }) {
+function BattleResultModal({ battle, onClose, defenderName }: { battle: import('../types/combat').BattleReport; onClose: () => void; defenderName?: string }) {
   const isVictory = battle.result === 'victory';
   const accentColor = isVictory ? '#22c55e' : '#ef4444';
   const borderColor = isVictory ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)';
@@ -112,7 +112,7 @@ function BattleResultModal({ battle, onClose }: { battle: import('../types/comba
             {isVictory ? 'Victory!' : 'Defeat'}
           </h2>
           <p style={{ margin: '0.25rem 0 0', color: '#9ca3af', fontSize: '0.9rem' }}>
-            vs {battle.defender}
+            vs {defenderName || battle.defender}
           </p>
         </div>
 
@@ -245,8 +245,23 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
   const generateAIKingdoms = useAIKingdomStore((state) => state.generateAIKingdoms);
   const attackerRace = race;
 
-  // Combat targeting uses AI kingdoms from the store (loaded from server in auth mode via loadAIKingdomsFromServer)
-  const kingdomTargets = aiKingdoms;
+  // In auth mode, load real player kingdoms from server; in demo mode, use AI kingdoms only
+  const { targets: serverTargets } = useKingdomTargets();
+  const kingdomTargets = useMemo(() => {
+    if (isDemoMode()) return aiKingdoms;
+    const serverIds = new Set(serverTargets.map(t => t.id));
+    const aiOnly = aiKingdoms.filter(k => !serverIds.has(k.id));
+    return [...serverTargets.map(t => ({
+      id: t.id,
+      name: t.name,
+      race: t.race,
+      resources: t.resources,
+      units: { tier1: 0, tier2: 0, tier3: 0, tier4: 0 },
+      difficulty: t.difficulty,
+      terrain: undefined,
+      terrainType: undefined,
+    })), ...aiOnly];
+  }, [aiKingdoms, serverTargets]);
 
   const [unitOrder, setUnitOrder] = useState<string[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<string>('');
@@ -518,7 +533,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
             <option value="">-- Select a target kingdom --</option>
             {kingdomTargets.map(kingdom => (
               <option key={kingdom.id} value={kingdom.id}>
-                {kingdom.name} ({kingdom.race}) - Land: {kingdom.resources.land}
+                {kingdom.name} ({kingdom.race}) - NW: {((kingdom.resources.land ?? 0) * 1000 + (kingdom.resources.gold ?? 0)).toLocaleString()}
               </option>
             ))}
             {preselectedTargetId && !kingdomTargets.some(k => k.id === preselectedTargetId) && (
@@ -803,7 +818,13 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
 
       {/* Battle Result Modal */}
       {showBattleResult && currentBattle && (
-        <BattleResultModal battle={currentBattle} onClose={() => setShowBattleResult(false)} />
+        <BattleResultModal
+          battle={currentBattle}
+          onClose={() => setShowBattleResult(false)}
+          defenderName={kingdomTargets.find(k => k.id === currentBattle.defender)?.name
+            ?? aiKingdoms.find(k => k.id === currentBattle.defender)?.name
+            ?? currentBattle.defender}
+        />
       )}
       </div>
     </div>
