@@ -32,16 +32,22 @@ function isSeasonExpired(startDate: Date): boolean {
   return elapsed >= SEASON_DURATION_WEEKS * WEEK_MS;
 }
 
-// Handler for getActiveSeason query
-export const handler: Schema["getActiveSeason"]["functionHandler"] = async (event) => {
+// Router: both getActiveSeason and fetchWorldState route to this handler
+export const handler: Schema['getActiveSeason']['functionHandler'] = async (event) => {
+  const args = event.arguments as Record<string, string> | null;
+  if (args && 'kingdomId' in args && 'seasonId' in args) {
+    return handleFetchWorldState(event);
+  }
+  return handleGetActiveSeason(event);
+};
+
+async function handleGetActiveSeason(event: { identity: unknown }): Promise<string> {
   try {
-    // Verify caller identity
     const identity = event.identity as { sub?: string; username?: string } | null;
     if (!identity?.sub) {
       return JSON.stringify({ success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED });
     }
 
-    // Find the active season
     const allSeasons = await dbList<SeasonType>('GameSeason');
     const seasons = allSeasons.filter(s => s.status === 'active');
 
@@ -53,7 +59,6 @@ export const handler: Schema["getActiveSeason"]["functionHandler"] = async (even
     const startDate = new Date(season.startDate);
     const currentAge = calculateCurrentAge(startDate);
 
-    // Check if season has expired
     if (isSeasonExpired(startDate)) {
       await dbUpdate('GameSeason', season.id, {
         status: 'completed',
@@ -62,7 +67,6 @@ export const handler: Schema["getActiveSeason"]["functionHandler"] = async (even
       return JSON.stringify({ success: false, error: 'Season has ended', errorCode: ErrorCode.SEASON_INACTIVE });
     }
 
-    // Update age if it has changed
     if (currentAge !== season.currentAge) {
       await dbUpdate('GameSeason', season.id, {
         currentAge,
@@ -89,4 +93,30 @@ export const handler: Schema["getActiveSeason"]["functionHandler"] = async (even
     log.error('season-manager', error);
     return JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Season query failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }
-};
+}
+
+async function handleFetchWorldState(event: { identity: unknown; arguments: unknown }): Promise<string> {
+  try {
+    const identity = event.identity as { sub?: string } | null;
+    if (!identity?.sub) {
+      return JSON.stringify({ success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED });
+    }
+
+    const { kingdomId, seasonId } = event.arguments as { kingdomId: string; seasonId: string };
+    if (!kingdomId || !seasonId) {
+      return JSON.stringify({ success: false, error: 'Missing kingdomId or seasonId', errorCode: ErrorCode.MISSING_PARAMS });
+    }
+
+    const allStates = await dbList<{ id: string; kingdomId: string; seasonId: string; visibleKingdoms: unknown; fogOfWar: unknown }>('WorldState');
+    const state = allStates.find(s => s.kingdomId === kingdomId && s.seasonId === seasonId);
+
+    log.info('season-manager', 'fetchWorldState', { kingdomId, seasonId, found: !!state });
+    return JSON.stringify({
+      success: true,
+      worldState: state ?? { kingdomId, seasonId, visibleKingdoms: [], fogOfWar: {} },
+    });
+  } catch (error) {
+    log.error('season-manager', error);
+    return JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'World state query failed', errorCode: ErrorCode.INTERNAL_ERROR });
+  }
+}

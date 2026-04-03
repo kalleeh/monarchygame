@@ -10,6 +10,7 @@ const mockDbCreate = vi.hoisted(() => vi.fn());
 const mockDbList = vi.hoisted(() => vi.fn());
 const mockDbDelete = vi.hoisted(() => vi.fn());
 const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
+const mockDbQuery = vi.hoisted(() => vi.fn());
 
 vi.mock('../data-client', () => ({
   dbGet: mockDbGet,
@@ -18,12 +19,15 @@ vi.mock('../data-client', () => ({
   dbList: mockDbList,
   dbDelete: mockDbDelete,
   dbAtomicAdd: mockDbAtomicAdd,
+  dbQuery: mockDbQuery,
   parseJsonField: <T>(value: unknown, defaultValue: T): T => {
     if (value === null || value === undefined) return defaultValue;
     if (typeof value === 'string') { try { return JSON.parse(value) as T; } catch { return defaultValue; } }
     return value as T;
   },
 }));
+
+vi.mock('../rate-limiter', () => ({ checkRateLimit: vi.fn().mockReturnValue(null) }));
 
 import { handler } from './handler';
 
@@ -73,6 +77,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockDbUpdate.mockResolvedValue(undefined);
   mockDbList.mockResolvedValue([]);
+  mockDbQuery.mockResolvedValue([]);
 });
 
 describe('building-constructor handler', () => {

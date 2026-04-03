@@ -575,3 +575,13 @@ export class AmplifyFunctionService {
     }
   }
 }
+
+export async function cleanupKingdom(kingdomId: string): Promise<{ success: boolean; deleted?: Record<string, number>; error?: string }> {
+  if (isDemoMode()) {
+    return { success: true, deleted: { territories: 0, battleReports: 0 } };
+  }
+  const raw = await getClient().mutations.cleanupKingdom({ kingdomId, confirmation: 'DELETE' });
+  const result = AmplifyFunctionService['parseResult'](raw) as { success?: boolean; deleted?: Record<string, number>; error?: string } | null;
+  if (!result) return { success: false, error: 'Empty response from server' };
+  return { success: result.success ?? false, deleted: result.deleted, error: result.error };
+}

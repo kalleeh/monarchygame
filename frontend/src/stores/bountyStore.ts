@@ -11,6 +11,7 @@ import { useKingdomStore } from './kingdomStore';
 import type { AIKingdom } from './aiKingdomStore';
 import { claimBounty as claimBountyApi, completeBounty as completeBountyApi } from '../services/domain/BountyService';
 import { isDemoMode } from '../utils/authMode';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 import { ToastService } from '../services/toastService';
 
 // ---------------------------------------------------------------------------
@@ -65,28 +66,28 @@ interface BountyState {
 // Constants
 // ---------------------------------------------------------------------------
 
-const STORAGE_KEY_BOUNTIES = 'bounty-available';
-const STORAGE_KEY_COMPLETED = 'bounty-completed';
+const STORAGE_KEY_BOUNTIES = STORAGE_KEYS.BOUNTIES;
+const STORAGE_KEY_COMPLETED = STORAGE_KEYS.BOUNTIES_COMPLETED;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function saveBounties(bounties: BountyEntry[]): void {
-  localStorage.setItem(STORAGE_KEY_BOUNTIES, JSON.stringify(bounties));
+  if (isDemoMode()) { localStorage.setItem(STORAGE_KEY_BOUNTIES, JSON.stringify(bounties)); }
 }
 
 function loadBounties(): BountyEntry[] {
-  const raw = localStorage.getItem(STORAGE_KEY_BOUNTIES);
+  const raw = isDemoMode() ? localStorage.getItem(STORAGE_KEY_BOUNTIES) : null;
   return raw ? JSON.parse(raw) : [];
 }
 
 function saveCompleted(completed: CompletedBounty[]): void {
-  localStorage.setItem(STORAGE_KEY_COMPLETED, JSON.stringify(completed));
+  if (isDemoMode()) { localStorage.setItem(STORAGE_KEY_COMPLETED, JSON.stringify(completed)); }
 }
 
 function loadCompleted(): CompletedBounty[] {
-  const raw = localStorage.getItem(STORAGE_KEY_COMPLETED);
+  const raw = isDemoMode() ? localStorage.getItem(STORAGE_KEY_COMPLETED) : null;
   return raw ? JSON.parse(raw) : [];
 }
 
@@ -318,8 +319,8 @@ export const useBountyStore = create<BountyState>((set, get) => ({
   // reset — clear all bounty state and localStorage
   // -----------------------------------------------------------------------
   reset: () => {
-    localStorage.removeItem(STORAGE_KEY_BOUNTIES);
-    localStorage.removeItem(STORAGE_KEY_COMPLETED);
+    if (isDemoMode()) { localStorage.removeItem(STORAGE_KEY_BOUNTIES); }
+    if (isDemoMode()) { localStorage.removeItem(STORAGE_KEY_COMPLETED); }
     set({
       availableBounties: [],
       completedBounties: [],

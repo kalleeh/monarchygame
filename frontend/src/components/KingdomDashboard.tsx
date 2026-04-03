@@ -27,6 +27,7 @@ import { ResourcesSection } from './dashboard/ResourcesSection';
 import { TerritoriesSection } from './dashboard/TerritoriesSection';
 import { RaceAbilitiesPanel } from './ui/RaceAbilitiesPanel';
 import { BuildingStatsPanel } from './ui/BuildingStatsPanel';
+import { AchievementWidget } from './achievements/AchievementWidget';
 
 interface KingdomDashboardProps {
   kingdom: Schema['Kingdom']['type'];
@@ -248,6 +249,9 @@ function KingdomDashboard({
             upkeepInfo={upkeepInfo}
             race={kingdom.race || 'Human'}
           />
+
+          {/* Achievements — compact widget */}
+          <AchievementWidget kingdomId={kingdom.id} />
 
           {/* Territories — full width at the bottom */}
           <TerritoriesSection

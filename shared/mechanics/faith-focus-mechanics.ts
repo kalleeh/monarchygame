@@ -228,7 +228,7 @@ export const applyFocusEffect = (
   }
   
   return {
-    enhancedValue,
+    enhancedValue: Math.round(enhancedValue * 1e10) / 1e10,
     duration: effects.EFFECT_DURATION
   }
 }

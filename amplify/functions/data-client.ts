@@ -176,6 +176,39 @@ export async function dbUpdate(
   }));
 }
 
+/** Updates specific fields with a condition expression. Throws ConditionalCheckFailedException if condition fails. */
+export async function dbConditionalUpdate(
+  modelName: string,
+  id: string,
+  updates: Record<string, unknown>,
+  conditionExpression: string,
+  conditionValues: Record<string, unknown>,
+  conditionNames?: Record<string, string>
+): Promise<void> {
+  const TableName = await getTableName(modelName);
+  const names: Record<string, string> = {};
+  const values: Record<string, unknown> = {};
+  const setParts: string[] = [];
+
+  const safeUpdates = { ...updates, updatedAt: new Date().toISOString() };
+  for (const [k, v] of Object.entries(safeUpdates)) {
+    const alias = `#${k}`;
+    const valAlias = `:${k}`;
+    names[alias] = k;
+    values[valAlias] = v;
+    setParts.push(`${alias} = ${valAlias}`);
+  }
+
+  await docClient.send(new UpdateCommand({
+    TableName,
+    Key: { id },
+    UpdateExpression: `SET ${setParts.join(', ')}`,
+    ConditionExpression: conditionExpression,
+    ExpressionAttributeNames: { ...names, ...(conditionNames ?? {}) },
+    ExpressionAttributeValues: { ...values, ...conditionValues },
+  }));
+}
+
 /** Deletes an item by id. */
 export async function dbDelete(modelName: string, id: string): Promise<void> {
   const TableName = await getTableName(modelName);

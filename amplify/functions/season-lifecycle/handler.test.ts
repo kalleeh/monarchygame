@@ -309,3 +309,104 @@ describe('season-lifecycle handler — unknown action', () => {
     expect(parsed.errorCode).toBe('INVALID_PARAM');
   });
 });
+
+describe('season-lifecycle handler — rankings on season end', () => {
+  it('sets previousSeasonRank and previousSeasonNetworth on each kingdom, ordered by networth', async () => {
+    // Three kingdoms with different networthes
+    // Kingdom A: land=1000 => 1,000,000 + gold=50,000 = 1,050,000
+    // Kingdom B: land=500  => 500,000 + gold=20,000   = 520,000
+    // Kingdom C: land=200  => 200,000 + gold=5,000    = 205,000
+    const kingdomA = { id: 'k-a', isActive: true, resources: JSON.stringify({ land: 1000, gold: 50000 }), stats: '{}' };
+    const kingdomB = { id: 'k-b', isActive: true, resources: JSON.stringify({ land: 500, gold: 20000 }),  stats: '{}' };
+    const kingdomC = { id: 'k-c', isActive: true, resources: JSON.stringify({ land: 200, gold: 5000 }),   stats: '{}' };
+
+    mockDbGet.mockImplementation(async (model: string, id: string) => {
+      if (model === 'GameSeason') return { id: 'season-end', status: 'active', seasonNumber: 7, ageTransitions: '{}' };
+      return null;
+    });
+
+    mockDbList.mockImplementation(async (model: string) => {
+      if (model === 'Kingdom') return [kingdomA, kingdomB, kingdomC];
+      if (model === 'BattleReport') return [];
+      if (model === 'Territory') return [];
+      if (model === 'TradeOffer') return [];
+      return [];
+    });
+
+    await callHandler(makeEvent({ action: 'end', seasonId: 'season-end' }));
+
+    // Collect all dbUpdate calls for Kingdom
+    const kingdomUpdates = mockDbUpdate.mock.calls.filter(
+      (call: unknown[]) => call[0] === 'Kingdom'
+    ) as [string, string, Record<string, unknown>][];
+
+    // Helper to find the stats update for a given kingdom id
+    const getStatsUpdate = (id: string) =>
+      kingdomUpdates.find(call => call[1] === id)?.[2].stats as Record<string, unknown> | undefined;
+
+    const statsA = getStatsUpdate('k-a');
+    const statsB = getStatsUpdate('k-b');
+    const statsC = getStatsUpdate('k-c');
+
+    expect(statsA).toBeDefined();
+    expect(statsB).toBeDefined();
+    expect(statsC).toBeDefined();
+
+    // Highest networth = rank 1
+    expect(statsA!.previousSeasonRank).toBe(1);
+    expect(statsB!.previousSeasonRank).toBe(2);
+    expect(statsC!.previousSeasonRank).toBe(3);
+
+    expect(statsA!.previousSeasonNetworth).toBe(1050000);
+    expect(statsB!.previousSeasonNetworth).toBe(520000);
+    expect(statsC!.previousSeasonNetworth).toBe(205000);
+  });
+});
+
+describe('season-lifecycle handler — empty season (no kingdoms)', () => {
+  it('completes without error when there are no kingdoms', async () => {
+    mockDbGet.mockImplementation(async (model: string) => {
+      if (model === 'GameSeason') return { id: 'season-empty', status: 'active', seasonNumber: 2, ageTransitions: '{}' };
+      return null;
+    });
+
+    mockDbList.mockImplementation(async (model: string) => {
+      if (model === 'Kingdom') return [];
+      if (model === 'BattleReport') return [];
+      if (model === 'Territory') return [];
+      if (model === 'TradeOffer') return [];
+      return [];
+    });
+
+    const result = await callHandler(makeEvent({ action: 'end', seasonId: 'season-empty' }));
+
+    const parsed = JSON.parse(result as string);
+    expect(parsed.success).toBe(true);
+  });
+});
+
+describe('season-lifecycle handler — age transition', () => {
+  it('transitions from early to middle when the season is past the age boundary', async () => {
+    // Season started 3 weeks ago → weeksElapsed=3 ≥ AGE_DURATION_WEEKS(2), so 'middle'
+    const threeWeeksAgo = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString();
+    const season = freshSeason({ startDate: threeWeeksAgo, currentAge: 'early' });
+
+    mockDbList.mockResolvedValue([season]);
+
+    const result = await callHandler(makeEvent({ action: 'check' }));
+
+    const parsed = JSON.parse(result as string);
+    expect(parsed.success).toBe(true);
+
+    const transition = parsed.processed[0];
+    expect(transition.action).toBe('age_transition');
+    expect(transition.from).toBe('early');
+    expect(transition.to).toBe('middle');
+
+    expect(mockDbUpdate).toHaveBeenCalledWith(
+      'GameSeason',
+      season.id,
+      expect.objectContaining({ currentAge: 'middle' })
+    );
+  });
+});

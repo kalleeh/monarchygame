@@ -2,7 +2,8 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate } from '../data-client';
+import { dbGet, dbUpdate, parseJsonField } from '../data-client';
+import { verifyOwnership } from '../verify-ownership';
 
 type AllianceRecord = {
   id: string;
@@ -58,18 +59,10 @@ async function handleContribute(args: { allianceId?: string | null; kingdomId?: 
   }
 
   // Verify caller owns the kingdom via identity
-  const contribIds = [
-    identity.sub ?? '',
-    (identity as any).username ?? '',
-    (identity as any).claims?.email ?? '',
-    (identity as any).claims?.['preferred_username'] ?? '',
-    (identity as any).claims?.['cognito:username'] ?? '',
-  ].filter(Boolean);
-  if (!kingdom.owner || !contribIds.some(id => kingdom.owner === id)) {
-    return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
-  }
+  const denied = verifyOwnership(identity, kingdom.owner);
+  if (denied) return denied;
 
-  const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
+  const resources = parseJsonField<KingdomResources>(kingdom.resources, {} as KingdomResources);
   const currentGold = resources.gold ?? 0;
 
   if (currentGold < amount) {
@@ -84,9 +77,7 @@ async function handleContribute(args: { allianceId?: string | null; kingdomId?: 
 
   // Update alliance treasury
   const rawTreasury = alliance.treasury;
-  const treasury: Record<string, number> = rawTreasury
-    ? (typeof rawTreasury === 'string' ? JSON.parse(rawTreasury) : (rawTreasury as Record<string, number>))
-    : {};
+  const treasury: Record<string, number> = parseJsonField<Record<string, number>>(rawTreasury, {});
   treasury.gold = (treasury.gold ?? 0) + amount;
 
   await dbUpdate('Kingdom', kingdomId, { resources: updatedResources });
@@ -126,9 +117,7 @@ async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: st
 
   // Parse treasury and verify sufficient gold
   const rawTreasury = alliance.treasury;
-  const treasury: Record<string, number> = rawTreasury
-    ? (typeof rawTreasury === 'string' ? JSON.parse(rawTreasury) : (rawTreasury as Record<string, number>))
-    : {};
+  const treasury: Record<string, number> = parseJsonField<Record<string, number>>(rawTreasury, {});
   const treasuryGold = treasury.gold ?? 0;
 
   if (treasuryGold < amount) {
@@ -142,7 +131,7 @@ async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: st
   }
 
   // Add gold to kingdom
-  const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
+  const resources = parseJsonField<KingdomResources>(kingdom.resources, {} as KingdomResources);
   const updatedResources: KingdomResources = {
     ...resources,
     gold: (resources.gold ?? 0) + amount
@@ -152,9 +141,7 @@ async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: st
   treasury.gold = treasuryGold - amount;
 
   // Append withdrawal audit log entry (capped to last 50 entries)
-  const existingStats = typeof alliance.stats === 'string'
-    ? JSON.parse(alliance.stats as string)
-    : (alliance.stats ?? {});
+  const existingStats = parseJsonField<Record<string, unknown>>(alliance.stats, {});
   const withdrawalLog: Array<{ type: string; amount: number; performedBy: string; timestamp: string }> =
     (existingStats.withdrawalLog as Array<{ type: string; amount: number; performedBy: string; timestamp: string }>) ?? [];
   withdrawalLog.push({ type: 'withdrawal', amount, performedBy: identity?.sub ?? '', timestamp: new Date().toISOString() });
@@ -193,9 +180,7 @@ async function handleUpgrade(args: { allianceId?: string | null; kingdomId?: str
     return { success: false, error: 'Only alliance leader can purchase upgrades', errorCode: ErrorCode.FORBIDDEN };
   }
 
-  const treasury = typeof alliance.treasury === 'string'
-    ? JSON.parse(alliance.treasury as string)
-    : (alliance.treasury ?? {}) as Record<string, number>;
+  const treasury = parseJsonField<Record<string, number>>(alliance.treasury, {});
 
   if ((treasury.gold ?? 0) < upgrade.cost) {
     return { success: false, error: `Insufficient treasury gold: need ${upgrade.cost}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
@@ -203,9 +188,7 @@ async function handleUpgrade(args: { allianceId?: string | null; kingdomId?: str
 
   treasury.gold = (treasury.gold ?? 0) - upgrade.cost;
 
-  const existingStats = typeof alliance.stats === 'string'
-    ? JSON.parse(alliance.stats as string)
-    : (alliance.stats ?? {});
+  const existingStats = parseJsonField<Record<string, unknown>>(alliance.stats, {});
 
   const activeUpgrades: ActiveUpgrade[] = (existingStats.activeUpgrades as ActiveUpgrade[]) ?? [];
 

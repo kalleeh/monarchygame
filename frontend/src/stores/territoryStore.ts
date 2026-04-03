@@ -59,13 +59,6 @@ interface TerritoryExpansion {
 export const useTerritoryStore = create(
   combine(
     {
-      // Kingdom resources (demo mode)
-      kingdomResources: {
-        gold: 2000,
-        population: 1000,
-        land: 500
-      },
-      
       // Territory state
       territories: [] as Territory[],
       ownedTerritories: [] as Territory[],
@@ -105,7 +98,7 @@ export const useTerritoryStore = create(
       startSettlement: (settlement: PendingSettlement): void => {
         set((state) => {
           const updated = [...state.pendingSettlements, settlement];
-          localStorage.setItem('pendingSettlements', JSON.stringify(updated));
+          if (isDemoMode()) localStorage.setItem('pendingSettlements', JSON.stringify(updated));
           return { pendingSettlements: updated };
         });
       },
@@ -117,7 +110,7 @@ export const useTerritoryStore = create(
         );
         if (!target) return null;
         const remaining = state.pendingSettlements.filter((ps) => ps !== target);
-        localStorage.setItem('pendingSettlements', JSON.stringify(remaining));
+        if (isDemoMode()) localStorage.setItem('pendingSettlements', JSON.stringify(remaining));
         set({ pendingSettlements: remaining });
         return { refundGold: target.goldRefund };
       },
@@ -140,7 +133,7 @@ export const useTerritoryStore = create(
           }
         }
 
-        localStorage.setItem('pendingSettlements', JSON.stringify(remaining));
+        if (isDemoMode()) localStorage.setItem('pendingSettlements', JSON.stringify(remaining));
         set({ pendingSettlements: remaining });
         return completed;
       },
@@ -229,7 +222,28 @@ export const useTerritoryStore = create(
           }
 
           if (success) {
-            // Find the territory object
+            if (!isDemoMode()) {
+              // Auth mode: server owns all territory state — don't add mock-ID entries.
+              // Just clean up local UI and reload authoritative data from server.
+              set(state => ({
+                availableExpansions: state.availableExpansions.filter(e => e.territoryId !== territoryId),
+                expansionHistory: [{
+                  territoryId,
+                  timestamp: Date.now(),
+                  success: true,
+                  cost: expansion.cost
+                }, ...state.expansionHistory.slice(0, 49)],
+                loading: false,
+              }));
+              const kingdomId = useKingdomStore.getState().kingdomId;
+              if (kingdomId) {
+                void refreshKingdomResources(kingdomId);
+                void get().loadTerritoriesFromServer(kingdomId);
+              }
+              return true;
+            }
+
+            // Demo mode: manage territory state locally
             const territory = state.territories.find(t => t.id === territoryId);
             if (!territory) {
               set({ error: 'Territory not found', loading: false });
@@ -238,15 +252,15 @@ export const useTerritoryStore = create(
 
             // Update territory ownership and add settlers
             // The population moves FROM kingdom TO territory (settlers relocate)
-            const updatedTerritory = { 
-              ...territory, 
+            const updatedTerritory = {
+              ...territory,
               ownerId: DEMO_KINGDOM_ID,
               resources: {
                 ...territory.resources,
                 population: territory.resources.population + expansion.cost.population
               }
             };
-            
+
             // Deduct costs from centralized kingdom store (re-read fresh state to avoid race conditions)
             const freshResources = useKingdomStore.getState().resources;
             useKingdomStore.getState().updateResources({
@@ -254,9 +268,9 @@ export const useTerritoryStore = create(
               population: (freshResources.population || 0) - expansion.cost.population,
               turns: (freshResources.turns || 0) - turnCost
             });
-            
+
             set((state) => ({
-              territories: state.territories.map(t => 
+              territories: state.territories.map(t =>
                 t.id === territoryId ? updatedTerritory : t
               ),
               ownedTerritories: [...state.ownedTerritories, updatedTerritory],
@@ -269,13 +283,6 @@ export const useTerritoryStore = create(
               }, ...state.expansionHistory.slice(0, 49)],
               loading: false
             }));
-
-            // Sync authoritative resource values from server — the Lambda
-            // deducts costs server-side; re-fetch to avoid local desync.
-            if (!isDemoMode()) {
-              const kingdomId = useKingdomStore.getState().kingdomId;
-              if (kingdomId) void refreshKingdomResources(kingdomId);
-            }
 
             return true;
           }
@@ -292,8 +299,10 @@ export const useTerritoryStore = create(
       // Territory upgrades
       upgradeTerritory: async (territoryId: string) => {
         const state = get();
-        const territory = state.territories.find(t => t.id === territoryId);
-        
+        // Prefer ownedTerritories (server-confirmed real UUIDs in auth mode)
+        const territory = state.ownedTerritories.find(t => t.id === territoryId)
+          ?? state.territories.find(t => t.id === territoryId);
+
         if (!territory) {
           set({ error: 'Territory not found' });
           return false;
@@ -428,7 +437,7 @@ export const useTerritoryStore = create(
         set({ error: null });
       },
 
-      // Initialize with mock data (only once)
+      // Initialize territory state (only once)
       initializeTerritories: () => {
         const state = get();
 
@@ -437,7 +446,14 @@ export const useTerritoryStore = create(
           return;
         }
 
-        // Load any saved pending settlements from localStorage
+        // Auth mode: pure server cache — no mock seeds, no localStorage.
+        // loadTerritoriesFromServer() will populate state from DynamoDB.
+        if (!isDemoMode()) {
+          set({ initialized: true });
+          return;
+        }
+
+        // Demo mode: load saved pending settlements from localStorage
         const savedSettlements = localStorage.getItem('pendingSettlements');
         if (savedSettlements) {
           try {
@@ -445,7 +461,7 @@ export const useTerritoryStore = create(
             set({ pendingSettlements: parsed });
           } catch { /* ignore malformed data */ }
         }
-        
+
         const mockTerritories: Territory[] = [
           {
             id: 'capital-1',
@@ -539,14 +555,12 @@ export const useTerritoryStore = create(
             category: (t.category as Territory['category']) ?? undefined,
             serverConfirmed: true,
           }));
-          // Update both lists: canAffordUpgrade() searches `territories`, upgrade uses `ownedTerritories`
-          set(state => ({
+          // Auth mode: territories IS the server data — replace entirely, no mock accumulation.
+          // Mock IDs (capital-1, settlement-1) must never mix with real DynamoDB UUIDs.
+          set({
             ownedTerritories: serverTerritories,
-            territories: [
-              ...state.territories.filter(t => !serverTerritories.some(s => s.id === t.id)),
-              ...serverTerritories,
-            ],
-          }));
+            territories: serverTerritories,
+          });
         } catch (err) {
           console.error('[territoryStore] loadTerritoriesFromServer failed:', err);
         }

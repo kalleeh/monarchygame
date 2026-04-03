@@ -6,7 +6,9 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 const mockDbGet = vi.hoisted(() => vi.fn());
 const mockDbUpdate = vi.hoisted(() => vi.fn());
+const mockDbConditionalUpdate = vi.hoisted(() => vi.fn());
 const mockDbCreate = vi.hoisted(() => vi.fn());
+const mockDbQuery = vi.hoisted(() => vi.fn());
 const mockDbList = vi.hoisted(() => vi.fn());
 const mockDbDelete = vi.hoisted(() => vi.fn());
 const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
@@ -14,7 +16,9 @@ const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
 vi.mock('../data-client', () => ({
   dbGet: mockDbGet,
   dbUpdate: mockDbUpdate,
+  dbConditionalUpdate: mockDbConditionalUpdate,
   dbCreate: mockDbCreate,
+  dbQuery: mockDbQuery,
   dbList: mockDbList,
   dbDelete: mockDbDelete,
   dbAtomicAdd: mockDbAtomicAdd,
@@ -24,6 +28,8 @@ vi.mock('../data-client', () => ({
     return value as T;
   },
 }));
+
+vi.mock('../rate-limiter', () => ({ checkRateLimit: vi.fn().mockReturnValue(null) }));
 
 import { handler } from './handler';
 
@@ -65,6 +71,8 @@ function mockKingdom(id: string, overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockDbUpdate.mockResolvedValue(undefined);
+  mockDbConditionalUpdate.mockResolvedValue(undefined);
+  mockDbQuery.mockResolvedValue([]);
   mockDbCreate.mockResolvedValue({ id: 'offer-1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), __typename: 'TradeOffer' });
   mockDbList.mockResolvedValue([]);
 });
@@ -167,12 +175,9 @@ describe('trade-processor handler — createTradeOffer', () => {
 describe('trade-processor handler — acceptTradeOffer', () => {
   it('transfers resources and gold between buyer and seller', async () => {
     const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    let tradeOfferCallCount = 0;
 
     mockDbGet.mockImplementation(async (model: string, id: string) => {
       if (model === 'TradeOffer') {
-        tradeOfferCallCount++;
-        // First call: the open offer. Second call (after update): return with buyerId set to confirm claim.
         return {
           id: 'offer-1',
           sellerId: 'seller-1',
@@ -180,8 +185,7 @@ describe('trade-processor handler — acceptTradeOffer', () => {
           quantity: 100,
           pricePerUnit: 5,
           totalPrice: 500,
-          status: tradeOfferCallCount > 1 ? 'accepted' : 'open',
-          buyerId: tradeOfferCallCount > 1 ? 'buyer-1' : undefined,
+          status: 'open',
           expiresAt: futureDate,
         };
       }

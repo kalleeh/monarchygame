@@ -1,7 +1,8 @@
 import type { Schema } from '../../data/resource';
-import { dbList, dbGet, dbCreate, dbUpdate } from '../data-client';
+import { dbList, dbGet, dbCreate, dbUpdate, dbQuery } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
+import { verifyOwnership } from '../verify-ownership';
 
 const TREATY_DURATION_DAYS = 30;
 
@@ -89,16 +90,8 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
       return JSON.stringify({ success: false, error: 'Proposer kingdom not found', errorCode: ErrorCode.NOT_FOUND });
     }
     const proposerOwnerField = (proposerKingdom as any).owner as string | null;
-    const proposerCallerIds = [
-      callerIdentity.sub ?? '',
-      (callerIdentity as any).username ?? '',
-      (callerIdentity as any).claims?.email ?? '',
-      (callerIdentity as any).claims?.['preferred_username'] ?? '',
-      (callerIdentity as any).claims?.['cognito:username'] ?? '',
-    ].filter(Boolean);
-    if (!proposerOwnerField || !proposerCallerIds.some(id => proposerOwnerField === id)) {
-      return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
-    }
+    const proposerDenied = verifyOwnership(callerIdentity, proposerOwnerField);
+    if (proposerDenied) return JSON.stringify(proposerDenied);
 
     // Check for conflicting treaties
     const allTreaties = await dbList<TreatyType>('Treaty');
@@ -212,16 +205,8 @@ async function handleDeclareDiplomaticWar(args: { kingdomId: string; targetKingd
     return JSON.stringify({ success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND });
   }
   const ownerField = (kingdom as any).owner as string | null;
-  const warCallerIds = [
-    callerIdentity.sub ?? '',
-    (callerIdentity as any).username ?? '',
-    (callerIdentity as any).claims?.email ?? '',
-    (callerIdentity as any).claims?.['preferred_username'] ?? '',
-    (callerIdentity as any).claims?.['cognito:username'] ?? '',
-  ].filter(Boolean);
-  if (!ownerField || !warCallerIds.some(id => ownerField.includes(id))) {
-    return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
-  }
+  const denied = verifyOwnership(callerIdentity, ownerField);
+  if (denied) return JSON.stringify(denied);
 
   // Break any active treaties
   const allTreaties = await dbList<TreatyType>('Treaty');
@@ -278,21 +263,12 @@ async function handleMakePeace(args: { kingdomId: string; targetKingdomId: strin
     return JSON.stringify({ success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND });
   }
   const ownerField = (kingdom as any).owner as string | null;
-  const peaceCallerIds = [
-    callerIdentity.sub ?? '',
-    (callerIdentity as any).username ?? '',
-    (callerIdentity as any).claims?.email ?? '',
-    (callerIdentity as any).claims?.['preferred_username'] ?? '',
-    (callerIdentity as any).claims?.['cognito:username'] ?? '',
-  ].filter(Boolean);
-  if (!ownerField || !peaceCallerIds.some(id => ownerField.includes(id))) {
-    return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
-  }
+  const denied = verifyOwnership(callerIdentity, ownerField);
+  if (denied) return JSON.stringify(denied);
 
   // Resolve any active wars
-  const allWars = await dbList<WarDeclarationType>('WarDeclaration');
+  const allWars = await dbQuery<WarDeclarationType>('WarDeclaration', 'attackerId', { field: 'attackerId', value: kingdomId });
   const wars = allWars.filter(w =>
-    w.attackerId === kingdomId &&
     w.defenderId === targetKingdomId &&
     w.status === 'active'
   );

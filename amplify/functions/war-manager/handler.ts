@@ -2,6 +2,7 @@ import type { Schema } from '../../data/resource';
 import { dbList, dbGet, dbCreate, dbUpdate, dbQuery } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
+import { verifyOwnership } from '../verify-ownership';
 
 type KingdomType = {
   id: string;
@@ -49,7 +50,7 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
 
     // Route based on which mutation was called
     if ('warId' in args && 'resolution' in args) {
-      return await handleResolveWar(args as { warId: string; resolution: string });
+      return await handleResolveWar(args as { warId: string; resolution: string }, identity);
     }
 
     // declareWar
@@ -74,9 +75,8 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
       return JSON.stringify({ success: false, error: 'Attacker kingdom not found', errorCode: ErrorCode.NOT_FOUND });
     }
     const attackerOwnerField = (attackerKingdom as any).owner as string | null;
-    if (!attackerOwnerField || (attackerOwnerField !== identity.sub && attackerOwnerField !== (identity.username ?? ''))) {
-      return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
-    }
+    const denied = verifyOwnership(identity, attackerOwnerField);
+    if (denied) return JSON.stringify(denied);
 
     // Verify defender exists
     const defenderKingdom = await dbGet('Kingdom', defenderId);
@@ -177,7 +177,7 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
   }
 };
 
-async function handleResolveWar(args: { warId: string; resolution: string }): Promise<string> {
+async function handleResolveWar(args: { warId: string; resolution: string }, identity: { sub?: string; username?: string }): Promise<string> {
   const { warId, resolution } = args;
 
   if (!warId || !resolution) {
@@ -187,6 +187,19 @@ async function handleResolveWar(args: { warId: string; resolution: string }): Pr
   const war = await dbGet<WarDeclarationType>('WarDeclaration', warId);
   if (!war) {
     return JSON.stringify({ success: false, error: 'War declaration not found', errorCode: ErrorCode.NOT_FOUND });
+  }
+
+  // Verify caller is a party to this war (attacker or defender)
+  const _rids = [identity.sub, identity.username].filter(Boolean) as string[];
+  const [attackerKingdom, defenderKingdom] = await Promise.all([
+    dbGet<{ owner?: string | null }>('Kingdom', war.attackerId as string),
+    dbGet<{ owner?: string | null }>('Kingdom', war.defenderId as string),
+  ]);
+  const attackerOwner = (attackerKingdom?.owner ?? '') as string;
+  const defenderOwner = (defenderKingdom?.owner ?? '') as string;
+  const isParty = _rids.some(id => attackerOwner.includes(id) || defenderOwner.includes(id));
+  if (!isParty) {
+    return JSON.stringify({ success: false, error: 'You are not a party to this war', errorCode: ErrorCode.FORBIDDEN });
   }
 
   await dbUpdate('WarDeclaration', warId, {

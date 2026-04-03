@@ -27,6 +27,8 @@ vi.mock('../data-client', () => ({
   },
 }));
 
+vi.mock('../rate-limiter', () => ({ checkRateLimit: vi.fn().mockReturnValue(null) }));
+
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
@@ -636,16 +638,14 @@ describe('combat-processor handler', () => {
       });
 
       // 3 existing battle reports with matching attackerId/defenderId — threshold reached
-      mockDbList.mockImplementation(async (model: string) => {
+      mockDbList.mockResolvedValue([]);
+      // Handler uses dbQuery (GSI) to check for active WarDeclaration — no active war
+      mockDbQuery.mockImplementation(async (model: string) => {
         if (model === 'BattleReport') return [
           { id: 'b1', attackerId: 'attacker-1', defenderId: 'defender-1' },
           { id: 'b2', attackerId: 'attacker-1', defenderId: 'defender-1' },
           { id: 'b3', attackerId: 'attacker-1', defenderId: 'defender-1' },
         ];
-        return [];
-      });
-      // Handler uses dbQuery (GSI) to check for active WarDeclaration — no active war
-      mockDbQuery.mockImplementation(async (model: string) => {
         if (model === 'WarDeclaration') return [];
         return [];
       });
@@ -661,6 +661,160 @@ describe('combat-processor handler', () => {
       const parsed = typeof result === 'string' ? JSON.parse(result) : result;
       expect(parsed.success).toBe(false);
       expect(parsed.errorCode).toBe('WAR_REQUIRED');
+    });
+  });
+
+  describe('newbie protection', () => {
+    it('returns NEWBIE_PROTECTION when defender is < 72h old and attacker has 3x+ the networth', async () => {
+      // Defender created 10 hours ago (well within 72h window)
+      const recentCreatedAt = new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString();
+
+      const attackerKingdom = mockKingdom('attacker-1', {
+        // land 10000 => networth = 10000 * 1000 + 50000 = 10,050,000
+        resources: { gold: 50000, population: 5000, mana: 500, land: 10000 },
+      });
+      const defenderKingdom = mockKingdom('defender-1', {
+        createdAt: recentCreatedAt,
+        // land 100 => networth = 100 * 1000 + 500 = 100,500 — attacker is >> 3×
+        resources: { gold: 500, population: 200, mana: 10, land: 100 },
+      });
+
+      mockDbGet.mockImplementation(async (model: string, id: string) => {
+        if (model === 'Kingdom' && id === 'attacker-1') return attackerKingdom;
+        if (model === 'Kingdom' && id === 'defender-1') return defenderKingdom;
+        return null;
+      });
+      mockDbList.mockResolvedValue([]);
+      mockDbQuery.mockResolvedValue([]);
+
+      const result = await callHandler(
+        makeEvent({
+          attackerId: 'attacker-1',
+          defenderId: 'defender-1',
+          attackType: 'standard',
+          units: JSON.stringify({ cavalry: 100 }),
+        })
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('NEWBIE_PROTECTION');
+    });
+  });
+
+  describe('war required gate', () => {
+    it('returns WAR_REQUIRED when attacker has already attacked defender 3+ times', async () => {
+      const attackerKingdom = mockKingdom('attacker-1', {
+        totalUnits: { infantry: 1000 },
+      });
+      const defenderKingdom = mockKingdom('defender-1');
+
+      mockDbGet.mockImplementation(async (model: string, id: string) => {
+        if (model === 'Kingdom' && id === 'attacker-1') return attackerKingdom;
+        if (model === 'Kingdom' && id === 'defender-1') return defenderKingdom;
+        return null;
+      });
+
+      mockDbList.mockResolvedValue([]);
+      // No active WarDeclaration
+      mockDbQuery.mockImplementation(async (model: string) => {
+        if (model === 'BattleReport') return [
+          { id: 'b1', attackerId: 'attacker-1', defenderId: 'defender-1' },
+          { id: 'b2', attackerId: 'attacker-1', defenderId: 'defender-1' },
+          { id: 'b3', attackerId: 'attacker-1', defenderId: 'defender-1' },
+        ];
+        if (model === 'WarDeclaration') return [];
+        return [];
+      });
+
+      const result = await callHandler(
+        makeEvent({
+          attackerId: 'attacker-1',
+          defenderId: 'defender-1',
+          attackType: 'standard',
+          units: JSON.stringify({ infantry: 100 }),
+        })
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('WAR_REQUIRED');
+    });
+  });
+
+  describe('restoration blocked', () => {
+    it('returns RESTORATION_ACTIVE when the attacker kingdom is under restoration', async () => {
+      const attackerKingdom = mockKingdom('attacker-1', {
+        totalUnits: { cavalry: 5000 },
+      });
+      const defenderKingdom = mockKingdom('defender-1', {
+        totalUnits: { infantry: 10 },
+        resources: { gold: 10000, population: 1000, mana: 100, land: 5000 },
+      });
+
+      mockDbGet.mockImplementation(async (model: string, id: string) => {
+        if (model === 'Kingdom' && id === 'attacker-1') return attackerKingdom;
+        if (model === 'Kingdom' && id === 'defender-1') return defenderKingdom;
+        return null;
+      });
+
+      // RestorationStatus with 'attack' in prohibitedActions, endTime in the future
+      const futureEnd = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+      mockDbQuery.mockImplementation(async (model: string) => {
+        if (model === 'RestorationStatus') return [
+          {
+            kingdomId: 'attacker-1',
+            endTime: futureEnd,
+            prohibitedActions: JSON.stringify(['attack', 'trade', 'build', 'train']),
+          },
+        ];
+        return [];
+      });
+      mockDbList.mockResolvedValue([]);
+
+      const result = await callHandler(
+        makeEvent({
+          attackerId: 'attacker-1',
+          defenderId: 'defender-1',
+          attackType: 'standard',
+          units: JSON.stringify({ cavalry: 5000 }),
+        })
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('RESTORATION_ACTIVE');
+    });
+  });
+
+  describe('land gain on successful attack', () => {
+    it('returns landGained > 0 when attacker wins', async () => {
+      const attackerKingdom = mockKingdom('attacker-1', {
+        totalUnits: { infantry: 0, archers: 0, cavalry: 5000, siege: 0, mages: 0, scouts: 0 },
+        resources: { gold: 50000, population: 5000, mana: 500, land: 10000 },
+      });
+      const defenderKingdom = mockKingdom('defender-1', {
+        totalUnits: { infantry: 10, archers: 0, cavalry: 0, siege: 0, mages: 0, scouts: 0 },
+        resources: { gold: 10000, population: 1000, mana: 100, land: 5000 },
+      });
+
+      mockDbGet.mockImplementation(async (model: string, id: string) => {
+        if (model === 'Kingdom' && id === 'attacker-1') return attackerKingdom;
+        if (model === 'Kingdom' && id === 'defender-1') return defenderKingdom;
+        return null;
+      });
+      mockDbList.mockResolvedValue([]);
+      mockDbQuery.mockResolvedValue([]);
+
+      const result = await callHandler(
+        makeEvent({
+          attackerId: 'attacker-1',
+          defenderId: 'defender-1',
+          attackType: 'standard',
+          units: JSON.stringify({ cavalry: 5000 }),
+        })
+      );
+
+      expect(result.success).toBe(true);
+      const parsed = JSON.parse(result.result as string);
+      expect(parsed.landGained).toBeGreaterThan(0);
     });
   });
 });

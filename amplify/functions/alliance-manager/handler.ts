@@ -37,7 +37,7 @@ interface CompositionBonus {
 
 async function calculateCompositionBonus(memberIds: string[]): Promise<CompositionBonus> {
   const kingdoms = await Promise.all(
-    memberIds.slice(0, 20).map(id => dbGet<{ race?: string }>('Kingdom', id))
+    memberIds.map(id => dbGet<{ race?: string }>('Kingdom', id))
   );
   const races = kingdoms.map(k => k?.race ?? '').filter(Boolean);
   const hasMage = races.some(r => MAGE_RACES.includes(r));

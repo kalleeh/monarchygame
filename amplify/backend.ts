@@ -22,6 +22,10 @@ import { faithProcessor } from './functions/faith-processor/resource';
 import { bountyProcessor } from './functions/bounty-processor/resource';
 import { allianceTreasury } from './functions/alliance-treasury/resource';
 import { allianceManager } from './functions/alliance-manager/resource';
+import { kingdomCleanup } from './functions/kingdom-cleanup/resource';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
 
 export const backend = defineBackend({
   auth,
@@ -42,6 +46,7 @@ export const backend = defineBackend({
   bountyProcessor,
   allianceTreasury,
   allianceManager,
+  kingdomCleanup,
   turnTicker,
 });
 
@@ -66,6 +71,7 @@ const lambdaFunctions = [
   backend.bountyProcessor,
   backend.allianceTreasury,
   backend.allianceManager,
+  backend.kingdomCleanup,
   backend.turnTicker,
 ];
 
@@ -78,9 +84,12 @@ for (const fn of lambdaFunctions) {
   );
 }
 
-// Grant all Lambda functions direct DynamoDB access so they can use data-client.ts
-// (replacing the generateClient<Schema>() Amplify frontend pattern which requires
-// model_introspection that is unavailable inside Lambda bundles).
+// Grant all Lambda functions DynamoDB access scoped to this app's tables.
+// Amplify Gen 2 tables follow: arn:aws:dynamodb:<region>:<account>:table/<Model>-<apiId>-NONE
+// We scope to tables ending in '-NONE' within this account/region.
+const dataStack = cdk.Stack.of(backend.data.resources.graphqlApi);
+const tableArnPattern = `arn:aws:dynamodb:${dataStack.region}:${dataStack.account}:table/*-NONE`;
+
 for (const fn of lambdaFunctions) {
   fn.resources.lambda.addToRolePolicy(
     new iam.PolicyStatement({
@@ -95,7 +104,10 @@ for (const fn of lambdaFunctions) {
         'dynamodb:BatchWriteItem',
         'dynamodb:ListTables',
       ],
-      resources: ['*'],
+      resources: [
+        tableArnPattern,
+        `${tableArnPattern}/index/*`,
+      ],
     })
   );
 }
@@ -138,6 +150,94 @@ turnTickRule.addTarget(
     retryAttempts: 1,
   })
 );
+
+// ── Production Monitoring ────────────────────────────────────────────────
+
+const monitoringStack = backend.createStack('monitoring');
+
+// SNS topic for alerts (subscribe via AWS Console or CLI)
+const alertTopic = new sns.Topic(monitoringStack, 'GameAlerts', {
+  displayName: 'Monarchy Game Alerts',
+});
+
+// Lambda error alarm — fires when any function errors ≥5 times in 5 minutes
+const lambdaErrorAlarm = new cloudwatch.Alarm(monitoringStack, 'LambdaErrorAlarm', {
+  metric: new cloudwatch.Metric({
+    namespace: 'AWS/Lambda',
+    metricName: 'Errors',
+    statistic: 'Sum',
+    period: cdk.Duration.minutes(5),
+  }),
+  threshold: 5,
+  evaluationPeriods: 1,
+  alarmDescription: 'Lambda errors ≥5 in 5 minutes',
+  treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+});
+lambdaErrorAlarm.addAlarmAction(new SnsAction(alertTopic));
+
+// Lambda duration alarm — fires when p99 latency exceeds 10s
+const lambdaDurationAlarm = new cloudwatch.Alarm(monitoringStack, 'LambdaDurationAlarm', {
+  metric: new cloudwatch.Metric({
+    namespace: 'AWS/Lambda',
+    metricName: 'Duration',
+    statistic: 'p99',
+    period: cdk.Duration.minutes(5),
+  }),
+  threshold: 10000,
+  evaluationPeriods: 2,
+  alarmDescription: 'Lambda p99 duration >10s for 10 minutes',
+  treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+});
+lambdaDurationAlarm.addAlarmAction(new SnsAction(alertTopic));
+
+// DynamoDB throttle alarm
+const dynamoThrottleAlarm = new cloudwatch.Alarm(monitoringStack, 'DynamoThrottleAlarm', {
+  metric: new cloudwatch.Metric({
+    namespace: 'AWS/DynamoDB',
+    metricName: 'ThrottledRequests',
+    statistic: 'Sum',
+    period: cdk.Duration.minutes(5),
+  }),
+  threshold: 10,
+  evaluationPeriods: 1,
+  alarmDescription: 'DynamoDB throttled requests ≥10 in 5 minutes',
+  treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+});
+dynamoThrottleAlarm.addAlarmAction(new SnsAction(alertTopic));
+
+// CloudWatch Dashboard
+new cloudwatch.Dashboard(monitoringStack, 'GameDashboard', {
+  dashboardName: 'MonarchyGame',
+  widgets: [
+    [
+      new cloudwatch.GraphWidget({
+        title: 'Lambda Invocations',
+        left: [new cloudwatch.Metric({ namespace: 'AWS/Lambda', metricName: 'Invocations', statistic: 'Sum', period: cdk.Duration.minutes(5) })],
+        width: 12,
+      }),
+      new cloudwatch.GraphWidget({
+        title: 'Lambda Errors',
+        left: [new cloudwatch.Metric({ namespace: 'AWS/Lambda', metricName: 'Errors', statistic: 'Sum', period: cdk.Duration.minutes(5) })],
+        width: 12,
+      }),
+    ],
+    [
+      new cloudwatch.GraphWidget({
+        title: 'Lambda Duration (p50/p99)',
+        left: [
+          new cloudwatch.Metric({ namespace: 'AWS/Lambda', metricName: 'Duration', statistic: 'p50', period: cdk.Duration.minutes(5) }),
+          new cloudwatch.Metric({ namespace: 'AWS/Lambda', metricName: 'Duration', statistic: 'p99', period: cdk.Duration.minutes(5) }),
+        ],
+        width: 12,
+      }),
+      new cloudwatch.GraphWidget({
+        title: 'DynamoDB Throttles',
+        left: [new cloudwatch.Metric({ namespace: 'AWS/DynamoDB', metricName: 'ThrottledRequests', statistic: 'Sum', period: cdk.Duration.minutes(5) })],
+        width: 12,
+      }),
+    ],
+  ],
+});
 
 // CDK escape hatch: prevent the Cognito UserPool Schema from being updated.
 // Cognito does not allow changing attribute definitions (AttributeDataType,

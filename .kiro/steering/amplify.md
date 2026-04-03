@@ -3,238 +3,122 @@
 ## Lambda Function Development (MANDATORY)
 
 ### Data Access Pattern
-Always use Amplify Data Client, never direct DynamoDB SDK:
+All Lambda functions use direct DynamoDB SDK via the shared `data-client.ts` module:
 
 ```typescript
-// ✅ CORRECT
-import { getAmplifyDataClientConfig } from '@aws-amplify/backend-function/runtime';
+// ✅ CORRECT — Direct DynamoDB SDK via shared client
+import { dbGet, dbCreate, dbUpdate, dbDelete, dbQuery, dbConditionalUpdate, parseJsonField } from '../data-client';
+
+const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
+const resources = parseJsonField(kingdom.resources, {} as KingdomResources);
+await dbUpdate('Kingdom', kingdomId, { resources: updatedResources });
+
+// ✅ Use GSI queries instead of full-table scans
+const territories = await dbQuery('Territory', 'kingdomId', { field: 'kingdomId', value: kingdomId });
+
+// ✅ Atomic conditional updates for race-condition prevention
+await dbConditionalUpdate('TradeOffer', offerId, { status: 'accepted' }, '#s = :open', { ':open': 'open' }, { '#s': 'status' });
+
+// ❌ WRONG — Amplify Data Client does NOT work in Lambda (no model_introspection)
 import { generateClient } from 'aws-amplify/data';
+```
 
-const config = await getAmplifyDataClientConfig(process.env);
-const client = generateClient({ config });
-const result = await client.models.Kingdom.get({ id: kingdomId });
+### Shared Utilities
 
-// ❌ WRONG - Never use direct DynamoDB SDK
-import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+```typescript
+// Ownership verification — use in every handler
+import { verifyOwnership } from '../verify-ownership';
+const denied = verifyOwnership(identity, kingdom.owner);
+if (denied) return denied;
+
+// Rate limiting — use in expensive handlers
+import { checkRateLimit } from '../rate-limiter';
+const rateLimited = checkRateLimit(identity.sub, 'combat');
+if (rateLimited) return rateLimited;
+
+// JSON field parsing — always use instead of inline JSON.parse
+import { parseJsonField } from '../data-client';
+const stats = parseJsonField(kingdom.stats, {});
 ```
 
 ### Function Handler Pattern
 ```typescript
+import { verifyOwnership } from '../verify-ownership';
+import { checkRateLimit } from '../rate-limiter';
+import { dbGet, dbUpdate, dbQuery, parseJsonField } from '../data-client';
+import { ErrorCode } from '../../../shared/types/kingdom';
+import { log } from '../logger';
+
 export const handler = async (event: any) => {
   try {
-    const config = await getAmplifyDataClientConfig(process.env);
-    const client = generateClient({ config });
-    
+    const identity = event.identity as { sub?: string; username?: string } | null;
+    if (!identity?.sub) {
+      return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
+    }
+
+    const kingdom = await dbGet('Kingdom', kingdomId);
+    const denied = verifyOwnership(identity, kingdom?.owner);
+    if (denied) return denied;
+
+    const rateLimited = checkRateLimit(identity.sub, 'action-name');
+    if (rateLimited) return rateLimited;
+
     // Business logic here
-    
-    return { statusCode: 200, body: JSON.stringify(result) };
+    return { success: true, result: JSON.stringify(data) };
   } catch (error) {
-    console.error('Function failed:', error);
-    return { statusCode: 500, body: JSON.stringify({ error: 'Function failed' }) };
+    log.error('handler-name', error);
+    return { success: false, error: 'Operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };
 ```
 
 ### Function Configuration
 ```typescript
+import { defineFunction } from '@aws-amplify/backend';
+
 export const myFunction = defineFunction({
   name: 'my-function',
   entry: './handler.ts',
+  timeoutSeconds: 15,
+  memoryMB: 256,
   runtime: 20,
-  timeoutSeconds: 30,
-  memoryMB: 512,
-  logging: {
-    format: 'json',
-    level: 'info',
-    retention: 'ONE_WEEK'
-  },
-  bundling: {
-    minify: true
-  }
 });
 ```
 
-### Package.json Requirements
-```json
-{
-  "name": "function-name",
-  "version": "1.0.0",
-  "type": "module",
-  "dependencies": {
-    "@aws-amplify/backend-function": "latest",
-    "aws-amplify": "latest"
-  }
-}
-```
+## Frontend Integration
 
-## Frontend Integration (REQUIRED)
-
-### GraphQL Mutations Only
-Never invoke Lambda functions directly from frontend:
-
+### GraphQL Custom Mutations via AmplifyFunctionService
 ```typescript
-// ✅ CORRECT - Use GraphQL mutations
-const client = generateClient<Schema>();
-const result = await client.graphql({
-  query: `mutation ProcessCombat($input: CombatInput!) {
-    processCombat(input: $input) { success }
-  }`,
-  variables: { input: payload }
-});
+// ✅ CORRECT — Frontend calls Lambda via GraphQL custom mutations
+import { callFunction } from '../services/amplifyFunctionService';
+const result = await callFunction('processCombat', { attackerId, defenderId, attackType });
 
-// ❌ WRONG - Never use direct Lambda invocation
-import { LambdaClient } from '@aws-sdk/client-lambda';
+// Domain services wrap AmplifyFunctionService:
+import { processCombat } from '../services/domain/CombatService';
+const result = await processCombat(attackerId, defenderId, 'standard');
 ```
 
-### Schema Custom Mutations
-```typescript
-const schema = a.schema({
-  // ... models ...
-}).addToSchema({
-  processCombat: a
-    .mutation()
-    .arguments({ input: a.ref('CombatInput') })
-    .returns(a.ref('CombatResult'))
-    .handler(a.handler.function(combatProcessor))
-});
-```
-
-## Development Workflow
-
-### 1. Create Function Structure
-```bash
-mkdir amplify/functions/my-function
-cd amplify/functions/my-function
-```
-
-### 2. Required Files (MANDATORY)
-- `handler.ts` - Function implementation with Amplify Data Client
-- `resource.ts` - Function definition with proper configuration
-- `package.json` - Dependencies with correct versions
-
-### 3. Backend Registration (MANDATORY)
+## Backend Registration (MANDATORY)
 ```typescript
 // amplify/backend.ts
 import { myFunction } from './functions/my-function/resource';
 
-export const backend = defineBackend({
-  auth,
-  data,
-  myFunction
-});
+export const backend = defineBackend({ auth, data, myFunction });
 
-// Grant database access
-backend.data.addDatabaseAccess(backend.myFunction);
-```
-
-## Environment Variables
-
-### Auto-Injection (AUTOMATIC)
-- Table names: Auto-injected by Amplify
-- GraphQL endpoint: Available via `getAmplifyDataClientConfig`
-- Region: Auto-configured
-- Credentials: Auto-managed
-- Never hardcode secrets in code
-
-## Error Handling
-
-### Standard Pattern (MANDATORY)
-```typescript
-try {
-  // Operation
-} catch (error) {
-  console.error('Operation failed:', error);
-  return {
-    statusCode: 400,
-    body: JSON.stringify({ error: 'Operation failed' })
-  };
-}
-```
-
-### Never Expose Sensitive Information
-```typescript
-// ✅ CORRECT
-return {
-  statusCode: 400,
-  body: JSON.stringify({ error: 'Invalid request' })
-};
-
-// ❌ WRONG
-return {
-  statusCode: 500,
-  body: JSON.stringify({ error: error.message, stack: error.stack })
-};
-```
-
-## Testing
-
-### Local Development
-```bash
-npx ampx sandbox  # Start local Amplify environment
-```
-
-### Function Testing
-- Test through GraphQL mutations
-- Mock `getAmplifyDataClientConfig` for unit tests
-- Use Amplify Data Client in integration tests
-
-### Deployment
-```bash
-npx ampx sandbox deploy  # Deploy to sandbox
-npx ampx pipeline deploy  # Deploy to production
-```
-
-## Common Patterns
-
-### Resource Updates (Atomic)
-```typescript
-// Always validate before update
-const kingdom = await client.models.Kingdom.get({ id: kingdomId });
-if (!kingdom.data) throw new Error('Kingdom not found');
-
-// Atomic update
-await client.models.Kingdom.update({
-  id: kingdomId,
-  resources: {
-    ...kingdom.data.resources,
-    gold: kingdom.data.resources.gold - cost
-  }
-});
-```
-
-### Input Validation
-```typescript
-// Define in GraphQL schema for automatic validation
-input CombatInput {
-  attackerId: ID!
-  defenderId: ID!
-  attackType: String!
-}
+// DynamoDB permissions are granted via IAM policy (scoped to *-NONE tables)
+// AppSync ListGraphqlApis permission for table name discovery
 ```
 
 ## Common Mistakes to Avoid
 
-1. ❌ Using direct DynamoDB SDK instead of Amplify Data Client
-2. ❌ Direct Lambda invocation from frontend
-3. ❌ Missing database access grants in backend.ts
-4. ❌ Exposing error details in responses
-5. ❌ Client-side authoritative calculations
-6. ❌ Hardcoding environment variables
+1. ❌ Using Amplify Data Client (`generateClient`) in Lambda — use `data-client.ts` instead
+2. ❌ Using `dbList` (full table scan) when a GSI exists — use `dbQuery` instead
+3. ❌ Inline JSON.parse for DynamoDB JSON fields — use `parseJsonField` instead
+4. ❌ Duplicating ownership checks — use `verifyOwnership` utility
+5. ❌ Missing rate limiting on expensive operations
+6. ❌ Wildcard DynamoDB permissions — scoped to `*-NONE` ARN pattern
 7. ❌ Missing function registration in backend.ts
 
-## Code Quality Checklist
+---
 
-### Before Commit (MANDATORY)
-- [ ] Function uses Amplify Data Client
-- [ ] Proper error handling implemented
-- [ ] Logging configuration added
-- [ ] Package.json includes correct dependencies
-- [ ] GraphQL mutations defined
-- [ ] Frontend uses GraphQL (not direct Lambda calls)
-
-### Before Deploy (MANDATORY)
-- [ ] All functions registered in backend.ts
-- [ ] Database access granted to functions
-- [ ] Environment variables configured
-- [ ] Input validation implemented
-- [ ] Error responses don't leak sensitive data
+**Last Updated:** April 2026

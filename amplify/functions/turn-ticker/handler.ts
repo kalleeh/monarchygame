@@ -1,7 +1,7 @@
 /**
  * Turn ticker — scheduled Lambda invoked by EventBridge every 20 minutes.
  *
- * Generates +1 turn for every active kingdom, capped at MAX_STORED_TURNS (100).
+ * Generates +1 turn for every active kingdom, capped at MAX_STORED_TURNS (72).
  * This is the server-side equivalent of the client-side useTurnGeneration hook,
  * ensuring turns accumulate even when players are offline.
  *
@@ -10,8 +10,9 @@
 import { dbList, dbAtomicAdd, dbUpdate, dbCreate, dbGet, dbQuery } from '../data-client';
 import { log } from '../logger';
 import { FOCUS_MECHANICS } from '../../../shared/mechanics/faith-focus-mechanics';
+import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
 
-const MAX_STORED_TURNS = 100;
+const MAX_STORED_TURNS = TURN_MECHANICS.BASE_GENERATION.MAX_STORED_TURNS; // 72
 const FOCUS_REGEN_PER_TICK = 1 / 3; // 20-min tick = 1/3 hour
 const AI_GOLD_PER_TICK = 5000;
 const AI_POPULATION_PER_TICK = 500;
@@ -199,7 +200,8 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
         });
         faithTicked++;
       } catch (err) {
-        // Non-fatal
+        // Non-fatal — log for observability
+        log.warn('turn-ticker', 'faithRegenFailed', { kingdomId: kingdom.id, error: err instanceof Error ? err.message : String(err) });
       }
     }
 

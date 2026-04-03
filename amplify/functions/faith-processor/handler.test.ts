@@ -10,6 +10,7 @@ const mockDbCreate = vi.hoisted(() => vi.fn());
 const mockDbList = vi.hoisted(() => vi.fn());
 const mockDbDelete = vi.hoisted(() => vi.fn());
 const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
+const mockDbQuery = vi.hoisted(() => vi.fn());
 
 vi.mock('../data-client', () => ({
   dbGet: mockDbGet,
@@ -18,6 +19,7 @@ vi.mock('../data-client', () => ({
   dbList: mockDbList,
   dbDelete: mockDbDelete,
   dbAtomicAdd: mockDbAtomicAdd,
+  dbQuery: mockDbQuery,
   parseJsonField: <T>(value: unknown, defaultValue: T): T => {
     if (value === null || value === undefined) return defaultValue;
     if (typeof value === 'string') { try { return JSON.parse(value) as T; } catch { return defaultValue; } }
@@ -73,6 +75,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockDbUpdate.mockResolvedValue(undefined);
   mockDbList.mockResolvedValue([]);
+  mockDbQuery.mockResolvedValue([]);
 });
 
 describe('faith-processor handler — selectAlignment', () => {

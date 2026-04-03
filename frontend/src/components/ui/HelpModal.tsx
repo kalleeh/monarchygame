@@ -1,10 +1,22 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface HelpModalProps {
   onClose: () => void;
 }
 
 export function HelpModal({ onClose }: HelpModalProps) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
     <div
       onClick={onClose}
@@ -20,6 +32,9 @@ export function HelpModal({ onClose }: HelpModalProps) {
       }}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="help-modal-title"
         onClick={(e) => e.stopPropagation()}
         style={{
           background: '#1a1a2e',
@@ -32,15 +47,16 @@ export function HelpModal({ onClose }: HelpModalProps) {
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h3 style={{ margin: 0, color: '#4ecdc4', fontSize: '1rem', letterSpacing: '0.05em' }}>
+          <h3 id="help-modal-title" style={{ margin: 0, color: '#4ecdc4', fontSize: '1rem', letterSpacing: '0.05em' }}>
             MONARCHY QUICK REFERENCE
           </h3>
           <button
+            ref={closeButtonRef}
             onClick={onClose}
             style={{
               background: 'none',
               border: 'none',
-              color: '#9ca3af',
+              color: 'var(--text-muted-accessible, #b0b8c4)',
               cursor: 'pointer',
               fontSize: '1.2rem',
               lineHeight: 1,

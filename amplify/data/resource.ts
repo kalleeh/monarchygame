@@ -17,6 +17,8 @@ import { allianceTreasury } from '../functions/alliance-treasury/resource';
 import { allianceManager } from '../functions/alliance-manager/resource';
 import { turnTicker } from '../functions/turn-ticker/resource';
 
+import { kingdomCleanup } from '../functions/kingdom-cleanup/resource';
+
 /**
  * Monarchy Game Data Schema - Enhanced with Field-Level Authorization & Input Validation
  * IQC Compliant: Integrity (proper types), Quality (clean structure), Consistency (naming)
@@ -195,6 +197,9 @@ const schema = a.schema({
       isRead: a.boolean().default(false),
       createdAt: a.datetime().required()
     })
+    .secondaryIndexes((index) => [
+      index('recipientId'),
+    ])
     .authorization((allow) => [allow.owner()]),
 
   AllianceInvitation: a
@@ -207,6 +212,9 @@ const schema = a.schema({
       createdAt: a.datetime().required(),
       respondedAt: a.datetime()
     })
+    .secondaryIndexes((index) => [
+      index('inviteeId'),
+    ])
     .authorization((allow) => [allow.owner()]),
 
   AllianceMessage: a
@@ -268,6 +276,9 @@ const schema = a.schema({
       expiresAt: a.datetime().required(),
       acceptedAt: a.datetime(),
     })
+    .secondaryIndexes((index) => [
+      index('sellerId'),
+    ])
     .authorization((allow) => [
       allow.authenticated().to(['read']),
       allow.owner()
@@ -281,6 +292,9 @@ const schema = a.schema({
       reputation: a.integer().default(0),
       lastActionAt: a.datetime(),
     })
+    .secondaryIndexes((index) => [
+      index('kingdomId'),
+    ])
     .authorization((allow) => [
       allow.authenticated().to(['read']),
       allow.owner()
@@ -298,6 +312,9 @@ const schema = a.schema({
       respondedAt: a.datetime(),
       expiresAt: a.datetime().required(),
     })
+    .secondaryIndexes((index) => [
+      index('proposerId'),
+    ])
     .authorization((allow) => [
       allow.authenticated().to(['read']),
       allow.owner()
@@ -680,6 +697,13 @@ const schema = a.schema({
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(resourceManager)),
+
+  cleanupKingdom: a
+    .mutation()
+    .arguments({ kingdomId: a.string().required(), confirmation: a.string().required() })
+    .returns(a.json())
+    .authorization(allow => [allow.authenticated()])
+    .handler(a.handler.function(kingdomCleanup)),
 })
 // Schema-level resource grants — allow.resource() requires AllowModifier (available
 // here) not BaseAllowModifier (available on model-level .authorization() callbacks).
@@ -703,6 +727,7 @@ const schema = a.schema({
   allow.resource(allianceTreasury),
   allow.resource(allianceManager),
   allow.resource(turnTicker),
+  allow.resource(kingdomCleanup),
 ]);
 
 export type Schema = ClientSchema<typeof schema>;

@@ -10,8 +10,9 @@ import {
 import type { KingdomResources, CombatResultData } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbCreate, dbUpdate, dbList, dbAtomicAdd, dbQuery, parseJsonField } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbAtomicAdd, dbQuery, parseJsonField } from '../data-client';
 import { isRacialAbilityActive } from '../../../shared/mechanics/age-mechanics';
+import { checkRateLimit } from '../rate-limiter';
 
 // Race offensive combat bonuses (based on warOffense stat 1-5)
 const RACE_OFFENSE_BONUSES: Record<string, number> = {
@@ -89,14 +90,26 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
     }
 
-    // Shared BattleReport scan — reused across alliance bonus, war check, and kill bounty
-    let cachedBattleReports: Array<{ id?: string; attackerId: string; defenderId: string; landGained?: number; timestamp?: string }> | null = null;
+    // Rate limit check
+    const rateLimited = checkRateLimit(identity.sub, 'combat');
+    if (rateLimited) return rateLimited;
 
-    const getBattleReports = async () => {
-      if (!cachedBattleReports) {
-        cachedBattleReports = await dbList<{ id?: string; attackerId: string; defenderId: string; landGained?: number; timestamp?: string }>('BattleReport');
+    // Targeted BattleReport queries — reused across alliance bonus, war check, and kill bounty
+    let cachedDefenderReports: Array<{ id?: string; attackerId: string; defenderId: string; landGained?: number; timestamp?: string }> | null = null;
+    let cachedAttackerReports: Array<{ id?: string; attackerId: string; defenderId: string; landGained?: number; timestamp?: string }> | null = null;
+
+    const getDefenderReports = async () => {
+      if (!cachedDefenderReports) {
+        cachedDefenderReports = await dbQuery<{ id?: string; attackerId: string; defenderId: string; landGained?: number; timestamp?: string }>('BattleReport', 'defenderId', { field: 'defenderId', value: defenderId });
       }
-      return cachedBattleReports;
+      return cachedDefenderReports;
+    };
+
+    const getAttackerReports = async () => {
+      if (!cachedAttackerReports) {
+        cachedAttackerReports = await dbQuery<{ id?: string; attackerId: string; defenderId: string; landGained?: number; timestamp?: string }>('BattleReport', 'attackerId', { field: 'attackerId', value: attackerId });
+      }
+      return cachedAttackerReports;
     };
 
     // Alliance coordination bonus: +10% if an ally attacked this defender recently
@@ -107,7 +120,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       attackerGuildId = attackerKingdomData?.guildId;
       const defenderKingdomData = await dbGet<{ guildId?: string }>('Kingdom', defenderId);
       if (attackerKingdomData?.guildId && attackerKingdomData.guildId !== defenderKingdomData?.guildId) {
-        const recentBattles = await getBattleReports();
+        const recentBattles = await getDefenderReports();
         const twentyMinAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
         const allyRecentAttack = recentBattles.find(r =>
           r.defenderId === defenderId &&
@@ -128,12 +141,12 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     }
 
     // Check attacker restoration status — cannot attack while under restoration
-    const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
-    const attackerRestoration = allRestoration.find(r => r.kingdomId === attackerId && new Date(r.endTime) > new Date());
+    const allRestoration = await dbQuery<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus', 'kingdomId', { field: 'kingdomId', value: attackerId });
+    const attackerRestoration = allRestoration.find(r => new Date(r.endTime) > new Date());
     if (attackerRestoration) {
       const prohibited: string[] = parseJsonField<string[]>(attackerRestoration.prohibitedActions, []);
       if (prohibited.includes('attack')) {
-        return JSON.stringify({ success: false, error: 'Kingdom is in restoration and cannot attack', errorCode: 'RESTORATION_ACTIVE' });
+        return { success: false, error: 'Kingdom is in restoration and cannot attack', errorCode: 'RESTORATION_ACTIVE' };
       }
     }
 
@@ -155,7 +168,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     const attackerNetworth = (_aRes.land ?? 100) * 1000 + (_aRes.gold ?? 0);
     const defenderNetworth = (_dRes.land ?? 100) * 1000 + (_dRes.gold ?? 0);
     if (defenderAgeHours < 72 && attackerNetworth > defenderNetworth * 3) {
-      return JSON.stringify({ success: false, error: 'This kingdom is under new player protection (72 hours)', errorCode: 'NEWBIE_PROTECTION' });
+      return { success: false, error: 'This kingdom is under new player protection (72 hours)', errorCode: 'NEWBIE_PROTECTION' };
     }
 
     // Check and deduct turns
@@ -168,9 +181,9 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
     // Enforce war declaration requirement for repeated attacks
     // After 3 attacks against the same defender (regardless of season), a formal WarDeclaration is required
-    const allBattleReports = await getBattleReports();
+    const allBattleReports = await getAttackerReports();
     const recentAttacks = allBattleReports.filter(
-      (r: BattleReportType) => (r as any).attackerId === attackerId && (r as any).defenderId === defenderId
+      (r: BattleReportType) => (r as any).defenderId === defenderId
     );
     const attackCount = recentAttacks.length;
 
@@ -182,7 +195,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
         (w: WarDeclarationType) => w.defenderId === defenderId && w.status === 'active'
       );
       if (!activeWar) {
-        return JSON.stringify({ success: false, error: 'You must declare war before attacking this kingdom again', errorCode: 'WAR_REQUIRED' });
+        return { success: false, error: 'You must declare war before attacking this kingdom again', errorCode: 'WAR_REQUIRED' };
       }
 
       // Increment attack count on the active war declaration
@@ -318,7 +331,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     if (!resolvedTerrainId) {
       // Attempt to read terrain from the defender's first non-capital territory
       try {
-        const territories = (await dbList<TerritoryType>('Territory')).filter(t => t.kingdomId === defenderId);
+        const territories = await dbQuery<TerritoryType>('Territory', 'kingdomId', { field: 'kingdomId', value: defenderId });
         const capital = territories.find((t: TerritoryType) => t.type === 'capital') ?? territories[0];
         if (capital) {
           resolvedTerrainId = capital.terrainType ?? '';
@@ -538,7 +551,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
         // Validate minimum unit count (siege requires organized force)
         const totalAttackerUnits = Object.values(attackerUnits).reduce((s, v) => s + (v as number), 0);
         if (totalAttackerUnits < 50) {
-          return JSON.stringify({ success: false, error: 'Siege requires at least 50 units', errorCode: 'VALIDATION_FAILED' });
+          return { success: false, error: 'Siege requires at least 50 units', errorCode: 'VALIDATION_FAILED' };
         }
         // Extra turn cost: 2 more turns (1 already deducted by the standard turn deduction)
         await dbAtomicAdd('Kingdom', attackerId, 'turnsBalance', -2);
@@ -602,7 +615,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     if (combatResult.success && defenderPostLand <= 1000) {
       try {
         const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const allRecent = await getBattleReports();
+        const allRecent = await getDefenderReports();
         const assists = allRecent.filter(r =>
           r.defenderId === defenderId &&
           r.attackerId !== attackerId &&
@@ -744,7 +757,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
       // Transfer territory: find defender's least important territory and reassign to attacker — skip for pillage
       if (finalLandGained > 0) try {
-        const defenderTerritories = (await dbList<TerritoryType>('Territory')).filter(t => t.kingdomId === defenderId);
+        const defenderTerritories = await dbQuery<TerritoryType>('Territory', 'kingdomId', { field: 'kingdomId', value: defenderId });
 
         // Sort by defense level ascending (take least developed first), never take the capital
         const sorted = defenderTerritories

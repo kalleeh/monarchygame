@@ -157,7 +157,7 @@ describe('faith-focus-mechanics', () => {
     });
 
     it('should default to 1.0 for unknown race', () => {
-      expect(calculateFocusGeneration('goblin')).toBe(Math.floor(2 * 1.0));
+      expect(calculateFocusGeneration('dragon')).toBe(Math.floor(2 * 1.0));
     });
 
     it('should accept custom base generation rate', () => {

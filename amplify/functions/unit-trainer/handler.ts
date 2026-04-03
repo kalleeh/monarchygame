@@ -2,7 +2,9 @@ import type { Schema } from '../../data/resource';
 import type { KingdomUnits, KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbList } from '../data-client';
+import { dbGet, dbUpdate, dbQuery, parseJsonField } from '../data-client';
+import { verifyOwnership } from '../verify-ownership';
+import { checkRateLimit } from '../rate-limiter';
 
 const UNIT_QUANTITY = { min: 1, max: 1000 } as const;
 
@@ -56,33 +58,24 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
     }
 
     // Verify kingdom ownership
-    const ownerField = kingdom.owner ?? null;
-    const _allIds = [identity.sub ?? '', (identity as any).username ?? '',
-      (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
-      (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-    if (!ownerField || !_allIds.some(id => ownerField.includes(id))) {
-      return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
-    }
+    const denied = verifyOwnership(identity, kingdom.owner ?? null);
+    if (denied) return denied;
+
+    // Rate limit check
+    const rateLimited = checkRateLimit(identity.sub, 'training');
+    if (rateLimited) return rateLimited;
 
     // Check restoration status
-    const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
+    const allRestoration = await dbQuery<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus', 'kingdomId', { field: 'kingdomId', value: kingdomId });
     const activeRestoration = allRestoration.find(r => r.kingdomId === kingdomId && new Date(r.endTime) > new Date());
     if (activeRestoration) {
-      const prohibited: string[] = typeof activeRestoration.prohibitedActions === 'string'
-        ? JSON.parse(activeRestoration.prohibitedActions)
-        : (activeRestoration.prohibitedActions ?? []);
+      const prohibited: string[] = parseJsonField(activeRestoration.prohibitedActions, []);
       if (prohibited.some(a => ['train'].includes(a))) {
         return { success: false, error: 'Kingdom is in restoration and cannot perform this action', errorCode: ErrorCode.RESTORATION_BLOCKED };
       }
     }
 
-    let resources: KingdomResources;
-    try {
-      resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
-    } catch (parseErr) {
-      log.warn('unit-trainer', 'Failed to parse resources JSON, using empty object', { parseErr });
-      resources = {} as KingdomResources;
-    }
+    const resources = parseJsonField(kingdom.resources, {} as KingdomResources);
     const goldCost = quantity * resolvedGoldCostPerUnit;
     const currentGold = resources.gold ?? 0;
 
@@ -97,13 +90,7 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
-    let units: KingdomUnits;
-    try {
-      units = (typeof kingdom.totalUnits === 'string' ? JSON.parse(kingdom.totalUnits) : (kingdom.totalUnits ?? {})) as KingdomUnits;
-    } catch (parseErr) {
-      log.warn('unit-trainer', 'Failed to parse totalUnits JSON, using empty object', { parseErr });
-      units = {} as KingdomUnits;
-    }
+    const units = parseJsonField(kingdom.totalUnits, {} as KingdomUnits);
 
     // VAL-2: enforce total unit cap
     const currentTotal = Object.values(units).reduce((sum, n) => sum + (n ?? 0), 0);

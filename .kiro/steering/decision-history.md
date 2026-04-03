@@ -121,3 +121,65 @@
 - Built-in zoom, pan, and selection capabilities
 - Extensible with custom node and edge types
 - Strong TypeScript support and documentation
+
+
+## April 2026 Architecture Decisions
+
+### Decision: Direct DynamoDB SDK over Amplify Data Client in Lambda
+**Date**: March 2026  
+**Context**: Amplify Data Client requires model_introspection from amplify_outputs.json which is unavailable in Lambda bundles  
+**Decision**: Use direct DynamoDB SDK via shared `data-client.ts` module  
+**Rationale**:
+- Table names auto-discovered via ListTables API at cold start
+- Provides dbGet, dbCreate, dbUpdate, dbDelete, dbQuery, dbConditionalUpdate, dbBatchWrite
+- parseJsonField handles DynamoDB's string-serialized JSON fields consistently
+- No dependency on Amplify frontend libraries in Lambda
+
+### Decision: Shared verifyOwnership Utility
+**Date**: April 2026  
+**Context**: Ownership verification was copy-pasted across all 19 Lambda handlers (~8 lines each)  
+**Decision**: Extract to shared `verify-ownership.ts` utility  
+**Rationale**:
+- Checks all Cognito identity representations (sub, username, email, preferred_username, cognito:username)
+- Returns null on success or error object on failure
+- Reduces duplication from ~150 lines to 19 one-line calls
+
+### Decision: GSI Queries over Full Table Scans
+**Date**: April 2026  
+**Context**: Lambda handlers used `dbList` (DynamoDB Scan) filtered client-side, which is O(n) on table size  
+**Decision**: Add GSIs and use `dbQuery` for all relationship lookups  
+**Rationale**:
+- 10 GSIs across 10 models cover all common query patterns
+- Reduces DynamoDB read costs by 10-100x at scale
+- Eliminates scalability bottleneck for 500+ kingdom games
+
+### Decision: In-Memory Rate Limiting over DynamoDB-Based
+**Date**: April 2026  
+**Context**: Need server-side rate limiting to prevent Lambda spam from malicious clients  
+**Decision**: In-memory sliding window per Lambda instance  
+**Rationale**:
+- Sufficient for expected scale (50-200 concurrent players)
+- Zero additional infrastructure cost
+- Per-action limits (5 combat/min, 10 builds/min, etc.)
+- Trade-off: not distributed — concurrent Lambda instances each have their own window
+
+### Decision: CloudWatch Monitoring Stack
+**Date**: April 2026  
+**Context**: Production deployment needs observability  
+**Decision**: CDK-defined monitoring in backend.ts with dedicated stack  
+**Rationale**:
+- 3 alarms: Lambda errors (≥5/5min), p99 duration (>10s), DynamoDB throttles (≥10/5min)
+- Dashboard with 4 widgets (invocations, errors, duration p50/p99, throttles)
+- SNS topic for alert notifications
+- Deployed automatically with `ampx deploy`
+
+### Decision: Keep 17 Zustand Stores Separate (Not Consolidate)
+**Date**: April 2026  
+**Context**: Considered merging combatStore + combatReplayStore + formationStore  
+**Decision**: Keep stores separate  
+**Rationale**:
+- Many small stores is the Zustand-recommended pattern
+- The 3 stores map to distinct lifecycle phases: prepare → execute → review
+- Data flows one direction (no bidirectional dependency)
+- combatReplayStore uses `persist` middleware — merging would complicate persistence
+- Separate stores enable independent future evolution (replay export, formation sharing, spectator mode)

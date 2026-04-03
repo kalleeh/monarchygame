@@ -550,7 +550,10 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-      <AppContent />
+      <a href="#main-content" className="skip-to-content">Skip to main content</a>
+      <div id="main-content">
+        <AppContent />
+      </div>
     </BrowserRouter>
   );
 }

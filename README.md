@@ -11,17 +11,26 @@ A modern recreation of the classic Monarchy/Canon browser-based strategy game, b
 - **Kingdom Management** - Resource management and dashboard (localStorage-backed)
 - **Territory System** - Land expansion and building management
 - **Combat System** - Battles with detailed reports (single-player vs AI)
+- **Combat Replay System** - Battle recording and playback
 - **Alliance System** - Chat, invitations, and diplomacy (demo mode only)
 - **World Map System** - Interactive territory visualization with React Flow
 - **Magic System** - Animated spell casting with React Spring
 - **Trade & Economy System** - Data visualization and resource trading with Recharts
+- **Thievery/Espionage System** - 8 operations with race-specific bonuses
+- **Faith & Focus System** - Alignment selection and focus point abilities
+- **Bounty System** - Target claiming and reward mechanics
+- **Season System** - 6-week seasons with age progression (early/middle/late)
+- **Achievement System** - 22 achievements across 6 categories with dashboard widget
+- **Leaderboard** - Race tabs, guild rankings, rank deltas
+- **Kingdom Cleanup** - Full kingdom deletion with cascading record removal
 
 ### **Technical Stack**
 - **Frontend:** React 19 + TypeScript + Vite
-- **Backend:** AWS Amplify Gen 2 + Aurora Serverless v2
-- **Real-time:** GraphQL Subscriptions + WebSockets
+- **Backend:** AWS Amplify Gen 2 + DynamoDB
+- **Real-time:** GraphQL Subscriptions via Amplify observeQuery
 - **Authentication:** AWS Cognito User Pools
-- **Database:** PostgreSQL with GraphQL API
+- **Database:** DynamoDB with GraphQL API
+- **State Management:** Zustand
 - **Deployment:** AWS Amplify Hosting
 - **Visualization:** React Flow for interactive maps
 - **Animations:** React Spring for magical effects
@@ -90,18 +99,19 @@ monarchygame/
 │   ├── src/
 │   │   ├── components/      # React components
 │   │   ├── services/        # API services
-│   │   ├── types/          # TypeScript types
-│   │   └── __tests__/      # Test files
-│   └── public/             # Static assets
-├── amplify/                 # AWS Amplify backend
-│   ├── data/               # GraphQL schema
-│   └── functions/          # Lambda functions
-├── game-data/              # Game configuration
-├── docs/                   # Documentation
-├── tests/                  # E2E tests
-├── output/                 # Generated assets
-├── dev-start.sh           # Development startup script
-└── AmazonQ.md             # Development backlog
+│   │   ├── stores/          # Zustand state management
+│   │   ├── hooks/           # Custom React hooks
+│   │   └── types/           # TypeScript types
+│   └── public/              # Static assets
+├── amplify/                  # AWS Amplify backend
+│   ├── data/                # GraphQL schema
+│   └── functions/           # 19 Lambda functions
+├── shared/                   # Game mechanics shared between frontend and backend
+├── reference/                # Historical source documentation
+├── docs/                     # Documentation
+├── tests/                    # E2E tests (Playwright)
+├── dev-start.sh              # Development startup script
+└── AmazonQ.md                # Development backlog
 ```
 
 ## 🧪 **Testing**
@@ -118,9 +128,10 @@ npx playwright test
 ```
 
 ### **Test Coverage**
-- Alliance System: 15+ test cases
-- Combat System: 12+ test cases  
-- Kingdom Management: 10+ test cases
+- Backend Lambda tests: 220 tests across 18 files
+- Shared mechanics tests: 433 tests across 10 files
+- Frontend store/service tests: 125 tests across 23 files
+- E2E tests: 21 Playwright specs
 
 ## 🎯 **Game Mechanics**
 
@@ -164,17 +175,18 @@ npx ampx generate    # Generate GraphQL types
 ### **Code Quality**
 - **TypeScript**: 0 compilation errors (strict mode enabled)
 - **ESLint**: 0 errors, 0 warnings (perfect compliance)
-- **Tests**: 53/53 passing (100% pass rate)
-- **Build**: Production ready (1.44MB, 3.35s)
+- **Tests**: 778/778 passing (100% pass rate)
+- **Build**: Production ready (2.0MB JS, 8.28s)
+- **Lambda Functions**: 19 registered + 2 EventBridge schedules
 - **Component Testing**: React Testing Library
 - **Mobile-first**: Responsive design
 
 ## 📊 **Performance Metrics**
-- **Bundle Size:** 1.44MB (optimized)
-- **Build Time:** 3.35s
+- **Bundle Size:** 2.0MB (JS assets)
+- **Build Time:** 8.28s
 - **Load Time:** <3s on 3G
 - **Lighthouse Score:** 95+ (Performance)
-- **Test Pass Rate:** 100% (53/53 tests)
+- **Test Pass Rate:** 100% (778/778 tests)
 - **Code Quality:** Perfect (0 errors, 0 warnings)
 
 ## 🤝 **Contributing**
@@ -195,4 +207,4 @@ Experience the strategic depth of the classic Monarchy game with modern features
 
 **Current Version:** v0.0.1 - In Development
 **Code Quality:** 0 errors, 0 warnings, tests passing
-**Last Updated:** February 15, 2026
+**Last Updated:** April 3, 2026

@@ -1,7 +1,8 @@
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbList } from '../data-client';
+import { dbGet, dbUpdate, dbQuery, parseJsonField } from '../data-client';
+import { verifyOwnership } from '../verify-ownership';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type KingdomType = {
@@ -30,42 +31,20 @@ async function handleClaim(args: { kingdomId?: string | null; targetId?: string 
   }
 
   // Verify kingdom ownership
-  const ownerField = kingdom.owner ?? null;
-  if (!ownerField || (ownerField !== callerIdentity.sub && ownerField !== (callerIdentity.username ?? ''))) {
-    return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
-  }
+  const denied = verifyOwnership(callerIdentity, kingdom.owner ?? null);
+  if (denied) return denied;
 
   // Check restoration status — claiming a new bounty target counts as an attack action
-  const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
-  const activeRestoration = allRestoration.find(r => r.kingdomId === kingdomId && new Date(r.endTime) > new Date());
+  const restorations = await dbQuery<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus', 'kingdomId', { field: 'kingdomId', value: kingdomId });
+  const activeRestoration = restorations.find(r => new Date(r.endTime) > new Date());
   if (activeRestoration) {
-    let prohibited: string[] = [];
-    if (typeof activeRestoration.prohibitedActions === 'string') {
-      try {
-        prohibited = JSON.parse(activeRestoration.prohibitedActions);
-      } catch {
-        log.warn('bounty-processor', 'prohibitedActionsParseError', { kingdomId });
-        prohibited = [];
-      }
-    } else {
-      prohibited = activeRestoration.prohibitedActions ?? [];
-    }
+    const prohibited: string[] = parseJsonField<string[]>(activeRestoration.prohibitedActions, []);
     if (prohibited.some(a => ['attack'].includes(a))) {
       return { success: false, error: 'Kingdom is in restoration and cannot perform this action', errorCode: ErrorCode.RESTORATION_BLOCKED };
     }
   }
 
-  let stats: Record<string, unknown>;
-  if (typeof kingdom.stats === 'string') {
-    try {
-      stats = JSON.parse(kingdom.stats) as Record<string, unknown>;
-    } catch {
-      log.warn('bounty-processor', 'statsParseError', { kingdomId });
-      stats = {};
-    }
-  } else {
-    stats = (kingdom.stats ?? {}) as Record<string, unknown>;
-  }
+  const stats = parseJsonField<Record<string, unknown>>(kingdom.stats, {});
 
   if (stats.activeBountyTargetId) {
     return { success: false, error: 'Bounty already active — complete or abandon the current bounty first', errorCode: ErrorCode.VALIDATION_FAILED };
@@ -106,22 +85,10 @@ async function handleComplete(args: { kingdomId?: string | null; targetId?: stri
   }
 
   // Verify kingdom ownership
-  const ownerField = kingdom.owner ?? null;
-  if (!ownerField || (ownerField !== callerIdentity.sub && ownerField !== (callerIdentity.username ?? ''))) {
-    return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
-  }
+  const denied = verifyOwnership(callerIdentity, kingdom.owner ?? null);
+  if (denied) return denied;
 
-  let stats: Record<string, unknown>;
-  if (typeof kingdom.stats === 'string') {
-    try {
-      stats = JSON.parse(kingdom.stats) as Record<string, unknown>;
-    } catch {
-      log.warn('bounty-processor', 'statsParseError', { kingdomId });
-      stats = {};
-    }
-  } else {
-    stats = (kingdom.stats ?? {}) as Record<string, unknown>;
-  }
+  const stats = parseJsonField<Record<string, unknown>>(kingdom.stats, {});
 
   if (stats.activeBountyTargetId !== targetId) {
     return { success: false, error: 'No active bounty matches the provided targetId', errorCode: ErrorCode.VALIDATION_FAILED };
@@ -133,7 +100,7 @@ async function handleComplete(args: { kingdomId?: string | null; targetId?: stri
   const populationReward = structuresGained * 2;
 
   // Update resources
-  const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
+  const resources = parseJsonField<KingdomResources>(kingdom.resources, {} as KingdomResources);
   const updatedResources: KingdomResources = {
     ...resources,
     gold: (resources.gold ?? 0) + goldReward,

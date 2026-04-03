@@ -130,13 +130,10 @@ export const useAIKingdomStore = create<AIKingdomState>((set) => ({
     if (isDemoMode()) return; // demo mode uses generated kingdoms
     try {
       const client = generateClient<Schema>();
-      // @ts-ignore — isAI field is being added by the backend agent
-      const { data } = await client.models.Kingdom.list({
-        // @ts-ignore
-        filter: { isAI: { eq: true } },
-        limit: 20,
-      });
-      if (!data || data.length === 0) return;
+      const { data: allKingdoms } = await client.models.Kingdom.list({ limit: 100 });
+      if (!allKingdoms || allKingdoms.length === 0) return;
+      const data = allKingdoms.filter(k => (k as Record<string, unknown>).isAI === true);
+      if (data.length === 0) return;
       const transformed = data.map(k => {
         const res = typeof k.resources === 'string' ? JSON.parse(k.resources) : (k.resources ?? {});
         const units = typeof k.totalUnits === 'string' ? JSON.parse(k.totalUnits) : (k.totalUnits ?? {});

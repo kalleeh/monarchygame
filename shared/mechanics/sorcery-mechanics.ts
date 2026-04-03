@@ -265,7 +265,7 @@ export const calculateSorceryKillProgression = (
   while (currentPeasants > 0 && castCount < 100) { // Safety limit
     castCount++
     const damage = calculateSpellDamage(killSpell, casterRace, 0, 0, currentPeasants)
-    const killed = Math.min(damage.peasantKills, currentPeasants)
+    const killed = Math.min(Math.max(damage.peasantKills, currentPeasants > 0 ? 1 : 0), currentPeasants)
     
     currentPeasants -= killed
     const percentageKilled = ((initialPeasants - currentPeasants) / initialPeasants) * 100

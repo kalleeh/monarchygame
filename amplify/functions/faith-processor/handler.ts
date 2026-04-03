@@ -1,7 +1,8 @@
 import type { Schema } from '../../data/resource';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbList, dbAtomicAdd, parseJsonField } from '../data-client';
+import { dbGet, dbUpdate, dbQuery, dbAtomicAdd, parseJsonField } from '../data-client';
+import { verifyOwnership } from '../verify-ownership';
 
 const VALID_ALIGNMENTS = ['angelique', 'neutral', 'elemental'] as const;
 const VALID_ABILITY_TYPES = ['racial_ability', 'spell_power', 'combat_focus', 'economic_focus', 'emergency'] as const;
@@ -53,12 +54,8 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
 
       // Verify kingdom ownership
       const ownerField = kingdom.owner ?? null;
-      const _oids = [identity.sub ?? '', (identity as any).username ?? '',
-        (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
-        (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-      if (!ownerField || !_oids.some(id => ownerField.includes(id))) {
-        return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
-      }
+      const denied = verifyOwnership(identity, ownerField);
+      if (denied) return denied;
 
       const kingdomRace = kingdom.race as string;
 
@@ -92,16 +89,12 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
 
       // Verify kingdom ownership
       const ownerField = kingdom.owner ?? null;
-      const _oids = [identity.sub ?? '', (identity as any).username ?? '',
-        (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
-        (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-      if (!ownerField || !_oids.some(id => ownerField.includes(id))) {
-        return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
-      }
+      const denied = verifyOwnership(identity, ownerField);
+      if (denied) return denied;
 
       // Check restoration status
-      const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
-      const activeRestoration = allRestoration.find(r => r.kingdomId === kingdomId && new Date(r.endTime) > new Date());
+      const restorations = await dbQuery<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus', 'kingdomId', { field: 'kingdomId', value: kingdomId });
+      const activeRestoration = restorations.find(r => new Date(r.endTime) > new Date());
       if (activeRestoration) {
         const prohibited: string[] = typeof activeRestoration.prohibitedActions === 'string'
           ? JSON.parse(activeRestoration.prohibitedActions)

@@ -21,15 +21,16 @@ import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { AIActionService } from '../services/aiActionService';
 import { RESOURCE_GENERATION } from '../constants/gameConfig';
 import { isDemoMode } from '../utils/authMode';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
 const TICK_INTERVAL_MS = 20 * 60 * 1000; // 20 minutes — one turn
-const STORAGE_KEY = 'ai-last-tick';
+const STORAGE_KEY = STORAGE_KEYS.AI_LAST_TICK;
 const MAX_CATCHUP_TICKS = 72; // cap catch-up at ~24 h of missed ticks
 
 // ── Tab-leader mutex ──────────────────────────────────────────────────────────
 // Only the elected leader tab runs AI ticks. Leadership is re-confirmed on
 // every tick cycle; if the leader tab closes, the next tab to run takes over.
-const LEADER_KEY = 'ai-tick-leader';
+const LEADER_KEY = STORAGE_KEYS.AI_TICK_LEADER;
 const LEADER_TTL_MS = TICK_INTERVAL_MS + 60_000; // leader must renew within 21 min
 
 // Stable per-tab ID generated once at module load.

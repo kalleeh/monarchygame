@@ -17,20 +17,28 @@ export const LoadingButton: React.FC<LoadingButtonProps> = ({
   children,
   onClick,
   className = '',
-  type = 'button'
+  type = 'button',
 }) => {
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={loading || disabled}
-      className={`
-        inline-flex items-center justify-center gap-2 px-4 py-2 
-        bg-blue-600 text-white rounded-md hover:bg-blue-700 
-        disabled:opacity-50 disabled:cursor-not-allowed
-        transition-colors duration-200
-        ${className}
-      `}
+      className={className}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '0.5rem',
+        padding: '0.5rem 1rem',
+        background: loading || disabled ? 'rgba(78,205,196,0.3)' : 'rgba(78,205,196,0.15)',
+        color: '#4ecdc4',
+        border: '1px solid rgba(78,205,196,0.4)',
+        borderRadius: '6px',
+        cursor: loading || disabled ? 'not-allowed' : 'pointer',
+        opacity: loading || disabled ? 0.6 : 1,
+        transition: 'background 0.2s, opacity 0.2s',
+      }}
       aria-label={loading ? 'Loading...' : undefined}
     >
       {loading && <Spinner size="sm" />}

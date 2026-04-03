@@ -2,7 +2,9 @@ import type { Schema } from '../../data/resource';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbCreate, dbUpdate, dbList } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbConditionalUpdate, dbQuery, parseJsonField } from '../data-client';
+import { verifyOwnership } from '../verify-ownership';
+import { checkRateLimit } from '../rate-limiter';
 
 const TRADE_OFFER_EXPIRY_HOURS = 48;
 
@@ -41,6 +43,10 @@ export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event
     }
     const callerIdentity: CallerIdentity = { sub: identity.sub, username: identity.username };
 
+    // Rate limit check
+    const rateLimited = checkRateLimit(identity.sub, 'trade');
+    if (rateLimited) return JSON.stringify(rateLimited);
+
     // Route based on arguments
     if ('offerId' in args && 'buyerId' in args) {
       return await handleAcceptOffer(args as { offerId: string; buyerId: string }, callerIdentity);
@@ -73,20 +79,18 @@ export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event
     }
 
     // Verify kingdom ownership (seller)
-    const sellerOwnerField = (seller as any).owner as string | null;
-    if (!sellerOwnerField || (sellerOwnerField !== callerIdentity.sub && sellerOwnerField !== (callerIdentity.username ?? ''))) {
-      return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
-    }
+    const sellerDenied = verifyOwnership(callerIdentity, (seller as any).owner as string | null);
+    if (sellerDenied) return JSON.stringify(sellerDenied);
 
-    const sellerResources = (typeof seller.resources === 'string' ? JSON.parse(seller.resources) : (seller.resources ?? {})) as KingdomResources;
+    const sellerResources = parseJsonField<KingdomResources>(seller.resources, {} as KingdomResources);
     const available = (sellerResources as unknown as Record<string, number>)[resourceType] ?? 0;
     if (available < quantity) {
       return JSON.stringify({ success: false, error: `Insufficient ${resourceType}: have ${available}, need ${quantity}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES });
     }
 
     // Enforce active trade offer limit (Human race: 2, others: 1)
-    const allOffers = await dbList<{ sellerId: string; status: string }>('TradeOffer');
-    const activeOffers = allOffers.filter(o => o.sellerId === sellerId && o.status === 'open');
+    const allOffers = await dbQuery<{ sellerId: string; status: string }>('TradeOffer', 'sellerId', { field: 'sellerId', value: sellerId });
+    const activeOffers = allOffers.filter(o => o.status === 'open');
     const isHuman = (seller.race as string | undefined)?.toLowerCase() === 'human';
     const maxOffers = isHuman ? 2 : 1;
     if (activeOffers.length >= maxOffers) {
@@ -165,7 +169,7 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }, cal
     // Refund escrowed resources to seller
     const seller = await dbGet<KingdomRecord>('Kingdom', offer.sellerId);
     if (seller) {
-      const sellerResources = (typeof seller.resources === 'string' ? JSON.parse(seller.resources) : (seller.resources ?? {})) as Record<string, number>;
+      const sellerResources = parseJsonField<Record<string, number>>(seller.resources, {});
       sellerResources[offer.resourceType] = (sellerResources[offer.resourceType] ?? 0) + offer.quantity;
       await dbUpdate('Kingdom', offer.sellerId, { resources: sellerResources });
     }
@@ -180,24 +184,30 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }, cal
   }
 
   // Verify kingdom ownership (buyer)
-  const buyerOwnerField = (buyer as any).owner as string | null;
-  if (!buyerOwnerField || (buyerOwnerField !== callerIdentity.sub && buyerOwnerField !== (callerIdentity.username ?? ''))) {
-    return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
-  }
+  const buyerDenied = verifyOwnership(callerIdentity, (buyer as any).owner as string | null);
+  if (buyerDenied) return JSON.stringify(buyerDenied);
 
-  const buyerResources = (typeof buyer.resources === 'string' ? JSON.parse(buyer.resources) : (buyer.resources ?? {})) as KingdomResources;
+  const buyerResources = parseJsonField<KingdomResources>(buyer.resources, {} as KingdomResources);
   if ((buyerResources.gold ?? 0) < offer.totalPrice) {
     return JSON.stringify({ success: false, error: `Insufficient gold: have ${buyerResources.gold ?? 0}, need ${offer.totalPrice}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES });
   }
 
-  // PERF-3: Atomically claim the offer by flipping status to 'accepted' FIRST.
-  // This is the gate that prevents two concurrent buyers from accepting the same offer.
-  // We re-fetch the offer after the update and verify it reflects our buyerId to confirm
-  // we won the race; if it was already changed by another request, we bail out.
-  await dbUpdate('TradeOffer', offerId, { status: 'accepted', buyerId, acceptedAt: new Date().toISOString() });
-  const claimedOffer = await dbGet<TradeOfferRecord>('TradeOffer', offerId);
-  if (!claimedOffer || claimedOffer.buyerId !== buyerId) {
-    return JSON.stringify({ success: false, error: 'Trade offer was already accepted by another buyer', errorCode: ErrorCode.TRADE_EXPIRED });
+  // Atomically claim the offer using a conditional expression.
+  // Only succeeds if status is still 'open' — prevents two concurrent buyers.
+  try {
+    await dbConditionalUpdate(
+      'TradeOffer',
+      offerId,
+      { status: 'accepted', buyerId, acceptedAt: new Date().toISOString() },
+      '#offerStatus = :open',
+      { ':open': 'open' },
+      { '#offerStatus': 'status' }
+    );
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'name' in err && (err as { name: string }).name === 'ConditionalCheckFailedException') {
+      return JSON.stringify({ success: false, error: 'Trade offer was already accepted by another buyer', errorCode: ErrorCode.TRADE_EXPIRED });
+    }
+    throw err;
   }
 
   // 1. Deduct gold from buyer, add resource
@@ -209,7 +219,7 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }, cal
 
   // 2. Add gold to seller (resources already escrowed)
   const seller = await dbGet<KingdomRecord>('Kingdom', offer.sellerId);
-  const sellerResources = (typeof seller?.resources === 'string' ? JSON.parse(seller.resources) : (seller?.resources ?? {})) as KingdomResources;
+  const sellerResources = parseJsonField<KingdomResources>(seller?.resources, {} as KingdomResources);
   const updatedSellerResources = {
     ...sellerResources,
     gold: (sellerResources.gold ?? 0) + offer.totalPrice
@@ -258,12 +268,10 @@ async function handleCancelOffer(args: { offerId: string; sellerId: string }, ca
   const seller = await dbGet<KingdomRecord>('Kingdom', sellerId);
   if (seller) {
     // Verify kingdom ownership (seller cancelling their own offer)
-    const sellerOwnerField = (seller as any).owner as string | null;
-    if (!sellerOwnerField || (sellerOwnerField !== callerIdentity.sub && sellerOwnerField !== (callerIdentity.username ?? ''))) {
-      return JSON.stringify({ success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN });
-    }
+    const cancelDenied = verifyOwnership(callerIdentity, (seller as any).owner as string | null);
+    if (cancelDenied) return JSON.stringify(cancelDenied);
 
-    const sellerResources = (typeof seller.resources === 'string' ? JSON.parse(seller.resources) : (seller.resources ?? {})) as Record<string, number>;
+    const sellerResources = parseJsonField<Record<string, number>>(seller.resources, {});
     sellerResources[offer.resourceType] = (sellerResources[offer.resourceType] ?? 0) + offer.quantity;
     await dbUpdate('Kingdom', sellerId, { resources: sellerResources });
   }

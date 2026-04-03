@@ -9,6 +9,7 @@ import { fetchUserAttributes } from 'aws-amplify/auth';
 import toast from 'react-hot-toast';
 import type { Schema } from '../../../../amplify/data/resource';
 import { isDemoMode } from '../../utils/authMode';
+import { cleanupKingdom } from '../../services/amplifyFunctionService';
 import SeasonResults from '../SeasonResults';
 import './AdminDashboard.css';
 
@@ -477,6 +478,7 @@ function KingdomManagementPanel() {
   const [editPop, setEditPop] = useState(0);
   const [editTurns, setEditTurns] = useState(0);
   const [applying, setApplying] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchKingdoms = useCallback(async () => {
     if (isDemoMode()) {
@@ -537,6 +539,25 @@ function KingdomManagementPanel() {
       toast.error(`Update failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setApplying(false);
+    }
+  };
+
+  const handleDelete = async (k: KingdomRow) => {
+    if (!window.confirm(`Delete kingdom "${k.name ?? k.id}" and all its data? This cannot be undone.`)) return;
+    if (isDemoMode()) {
+      toast.success('[Demo] Kingdom deleted (no-op)');
+      return;
+    }
+    setDeletingId(k.id);
+    try {
+      const result = await cleanupKingdom(k.id);
+      if (!result.success) throw new Error(result.error || 'Delete failed');
+      toast.success(`Kingdom "${k.name ?? k.id}" deleted.`);
+      setKingdoms(prev => prev.filter(kk => kk.id !== k.id));
+    } catch (err) {
+      toast.error(`Delete failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -605,12 +626,19 @@ function KingdomManagementPanel() {
                     <td>{res.land > 0 ? res.land.toLocaleString() : '—'}</td>
                     <td>{res.turns > 0 ? res.turns : '—'}</td>
                     <td className="admin-table-networth">{((k.networth ?? nw) || 0).toLocaleString()}</td>
-                    <td>
+                    <td style={{ display: 'flex', gap: '0.5rem' }}>
                       <button
                         className="admin-btn admin-btn--secondary admin-btn--sm"
                         onClick={() => isEditing ? cancelEdit() : openEdit(k)}
                       >
                         {isEditing ? 'Cancel' : 'Edit'}
+                      </button>
+                      <button
+                        className="admin-btn admin-btn--danger admin-btn--sm"
+                        onClick={() => { void handleDelete(k); }}
+                        disabled={deletingId === k.id}
+                      >
+                        {deletingId === k.id ? 'Deleting…' : 'Delete'}
                       </button>
                     </td>
                   </tr>

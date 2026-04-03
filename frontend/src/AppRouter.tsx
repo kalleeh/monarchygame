@@ -4,14 +4,10 @@
  * Implements code splitting with React.lazy and Suspense
  */
 
-import React, { Suspense, lazy, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { Suspense, lazy, useState, useCallback } from 'react';
 import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
-import { generateClient } from 'aws-amplify/data';
 import { useKingdomStore } from './stores/kingdomStore';
-import { useCombatReplayStore } from './stores/combatReplayStore';
-import { useCombatStore, type Unit } from './stores/combatStore';
 import { useAIKingdomStore } from './stores/aiKingdomStore';
-import type { BattleHistory, Army } from './types/combat';
 import type { Schema } from '../../amplify/data/resource';
 import { LoadingSkeleton } from './components/ui/loading/LoadingSkeleton';
 import { TopNavigation } from './components/TopNavigation';
@@ -22,11 +18,14 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { useRestorationStore } from './stores/restorationStore';
 import UnitRoster from './components/UnitRoster';
 import { HelpModal } from './components/ui/HelpModal';
-import './components/KingdomList.css';
+import BattleReportsRoute from './components/BattleReportsRoute';
+import ReplaysListRoute from './components/ReplaysListRoute';
+import ReplayRoute from './components/ReplayRoute';
 
 // Lazy-loaded components for code splitting
 const WelcomePage = lazy(() => import('./components/WelcomePage'));
 const KingdomCreation = lazy(() => import('./components/KingdomCreation'));
+const KingdomList = lazy(() => import('./components/KingdomList'));
 const KingdomDashboard = lazy(() => import('./components/KingdomDashboard'));
 const TerritoryExpansion = lazy(() => import('./components/TerritoryExpansion'));
 const BattleFormations = lazy(() => import('./components/BattleFormations'));
@@ -38,8 +37,6 @@ const Leaderboard = lazy(() => import('./components/Leaderboard'));
 const AchievementList = lazy(() => import('./components/achievements/AchievementList'));
 const GuildManagement = lazy(() => import('./components/GuildManagement'));
 const WorldMap = lazy(() => import('./components/WorldMap'));
-const BattleReports = lazy(() => import('./components/combat/BattleReports'));
-const CombatReplayViewer = lazy(() => import('./components/combat/CombatReplayViewer').then(m => ({ default: m.CombatReplayViewer })));
 const ThieveryInterface = lazy(() => import('./components/ThieveryInterface'));
 const BountyBoard = lazy(() => import('./components/BountyBoard'));
 const FaithInterface = lazy(() => import('./components/FaithInterface'));
@@ -47,7 +44,6 @@ const MultiplayerLobby = lazy(() => import('./components/MultiplayerLobby'));
 const KingdomBrowser = lazy(() => import('./components/KingdomBrowser'));
 const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard'));
 const BuildingManagement = lazy(() => import('./components/BuildingManagement'));
-import { KingdomActionBarConnected } from './components/KingdomActionBar';
 
 interface AppRouterProps {
   kingdoms: Schema['Kingdom']['type'][];
@@ -79,98 +75,6 @@ export function AppRouter({ kingdoms, kingdomsLoading, onGetStarted, onKingdomCr
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
-  );
-}
-
-// Kingdom list component
-function KingdomList({ kingdoms: propKingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) {
-  const navigate = useNavigate();
-
-  // Use kingdoms from App.tsx (already filtered by owner, with limit:1000)
-  const kingdoms = propKingdoms;
-
-  const getKingdomResources = (kingdom: Schema['Kingdom']['type']) => {
-    // In auth mode prefer server-side resources stored on the kingdom record
-    if (!isDemoMode()) {
-      if (typeof kingdom.resources === 'string') {
-        try { return JSON.parse(kingdom.resources); } catch { /* fall through */ }
-      } else if (kingdom.resources && typeof kingdom.resources === 'object') {
-        return kingdom.resources as { gold: number; population: number; land: number; turns: number };
-      }
-    }
-    // Demo mode (or auth mode with no server resources): read from localStorage
-    const stored = localStorage.getItem(`kingdom-${kingdom.id}`);
-    if (stored) {
-      const data = JSON.parse(stored);
-      return data.resources;
-    }
-    return { gold: 0, population: 0, land: 0, turns: 0 };
-  };
-
-  return (
-    <div className="kingdom-management">
-      <div className="kingdoms-header">
-        <div>
-          <h2>Your Kingdoms</h2>
-          <p style={{margin:'0.25rem 0 0 0',fontSize:'0.9rem',color:'#9ca3af',fontStyle:'italic'}}>Rule wisely. Conquer boldly.</p>
-        </div>
-        <button className="create-new-btn" onClick={() => navigate('/creation')}>
-          Create New Kingdom
-        </button>
-      </div>
-
-      {kingdoms.length === 0 ? (
-        <div className="no-kingdoms">
-          <p>You haven't created any kingdoms yet.</p>
-          <button className="create-first-btn" onClick={() => navigate('/creation')}>
-            Create Your First Kingdom
-          </button>
-        </div>
-      ) : (
-        <div className="kingdoms-grid">
-          {kingdoms.map((kingdom) => {
-            const resources = getKingdomResources(kingdom);
-            return (
-              <div key={kingdom.id} className="kingdom-card">
-                <h3 style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
-                  <img src="/logo.png" style={{width:'24px',height:'24px',objectFit:'contain',flexShrink:0}} alt="" />
-                  {kingdom.name}
-                </h3>
-                <div className="kingdom-info">
-                  <p><strong>Race:</strong> {kingdom.race}</p>
-                  <p><strong>💰 Gold:</strong> {resources?.gold?.toLocaleString() || 0}</p>
-                  <p><strong>👥 Population:</strong> {resources?.population?.toLocaleString() || 0}</p>
-                  <p><strong>🏞️ Land:</strong> {resources?.land?.toLocaleString() || 0}</p>
-                  <p><strong>⏱️ Turns:</strong> {resources?.turns || 0}</p>
-                </div>
-                <div className="kingdom-actions">
-                  <button 
-                    className="enter-kingdom-btn"
-                    onClick={() => navigate(`/kingdom/${kingdom.id}`)}
-                  >
-                    Enter Kingdom
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {kingdoms.length > 0 && (
-        <div style={{
-          marginTop:'2rem',
-          padding:'0.875rem 1rem',
-          border:'1px solid rgba(255,255,255,0.1)',
-          borderRadius:'8px',
-          background:'rgba(255,255,255,0.03)'
-        }}>
-          <p style={{margin:0,fontSize:'0.85rem',color:'#9ca3af'}}>
-            💡 Tip: Claim territories to increase your income each turn.
-          </p>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -602,221 +506,4 @@ function KingdomRoutes({ kingdoms, loading }: { kingdoms: Schema['Kingdom']['typ
     </Suspense>
     </>
   );
-}
-
-// Lists recent replays stored in the replay store
-function ReplaysListRoute({ onNavigate }: { onNavigate: (replayId: string) => void }) {
-  const { kingdomId } = useParams<{ kingdomId: string }>();
-  const loadReplays = useCombatReplayStore((state) => state.loadReplaysFromBattleReports);
-  const getRecentReplays = useCombatReplayStore((state) => state.getRecentReplays);
-
-  useEffect(() => {
-    if (kingdomId) void loadReplays(kingdomId);
-  }, [kingdomId, loadReplays]);
-
-  const replays = getRecentReplays(20);
-
-  if (replays.length === 0) {
-    return (
-      <div style={{ padding: '2rem', color: '#9ca3af', textAlign: 'center' }}>
-        <p>No replays available yet. Fight a battle to record one.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ padding: '1rem 2rem' }}>
-      {replays.map((replay) => (
-        <div
-          key={replay.battleId}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0.75rem 1rem',
-            marginBottom: '0.5rem',
-            background: 'rgba(255,255,255,0.04)',
-            borderRadius: '6px',
-            border: '1px solid rgba(255,255,255,0.08)',
-          }}
-        >
-          <div>
-            <span style={{ color: replay.result === 'victory' ? '#22c55e' : '#ef4444', marginRight: '0.5rem' }}>
-              {replay.result === 'victory' ? 'Victory' : 'Defeat'}
-            </span>
-            <span style={{ color: '#d1d5db' }}>vs {replay.defenderName}</span>
-            <span style={{ color: '#6b7280', fontSize: '0.8rem', marginLeft: '0.75rem' }}>
-              {new Date(replay.timestamp).toLocaleDateString()}
-            </span>
-          </div>
-          <button
-            className="action-btn"
-            style={{ fontSize: '0.8rem', padding: '0.25rem 0.75rem' }}
-            onClick={() => onNavigate(replay.battleId)}
-          >
-            View Replay
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// Reads live battle history from combatStore + server (in auth mode) and transforms
-// to the BattleHistory shape expected by the BattleReports component.
-function BattleReportsRoute({ kingdom }: { kingdom: Schema['Kingdom']['type'] }) {
-  const rawHistory = useCombatStore((state) => state.battleHistory);
-  const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
-  const [serverHistory, setServerHistory] = useState<BattleHistory[]>([]);
-
-  // In auth mode, fetch persisted battle reports from DynamoDB on mount
-  useEffect(() => {
-    if (isDemoMode()) return;
-    const fetchServerHistory = async () => {
-      try {
-        const client = generateClient<Schema>();
-        const { data } = await client.models.BattleReport.list({
-          filter: { attackerId: { eq: kingdom.id } },
-          limit: 50,
-        });
-        if (!data || data.length === 0) return;
-        const parsed: BattleHistory[] = data.map(r => {
-          const result = typeof r.result === 'string' ? JSON.parse(r.result) : (r.result ?? {});
-          const outcome: 'victory' | 'defeat' | 'draw' =
-            result.result === 'with_ease' || result.result === 'good_fight' || result.result === 'victory' ? 'victory'
-            : result.result === 'failed' || result.result === 'defeat' ? 'defeat' : 'draw';
-          const attackerInfo = { kingdomName: kingdom.name ?? 'Your Kingdom', race: kingdom.race ?? 'Human' };
-          const defenderInfo = { kingdomName: r.defenderId };
-          return {
-            id: r.id,
-            timestamp: new Date(r.timestamp),
-            attackerId: r.attackerId,
-            defenderId: r.defenderId,
-            attacker: attackerInfo,
-            defender: defenderInfo,
-            outcome,
-            result: { outcome, attacker: attackerInfo, defender: defenderInfo, attackType: (r.attackType as any) ?? 'full_attack', success: outcome === 'victory', landGained: r.landGained ?? 0 },
-            casualties: {},
-            netGain: { gold: result.goldLooted ?? 0, land: r.landGained ?? 0, population: 0 },
-            isAttacker: true,
-            attackType: (r.attackType as any) ?? 'full_attack',
-          } satisfies BattleHistory;
-        });
-        setServerHistory(parsed);
-      } catch (err) {
-        console.warn('[BattleReportsRoute] Server fetch failed:', err);
-      }
-    };
-    void fetchServerHistory();
-  }, [kingdom.id, kingdom.name, kingdom.race]);
-
-  const battleHistory: BattleHistory[] = useMemo(() => {
-    const unitsToArmy = (units: Unit[]): Army => {
-      const army: Army = {};
-      units.forEach(u => {
-        army[u.type] = (army[u.type] ?? 0) + u.count;
-      });
-      return army;
-    };
-
-    const casualtiesToArmy = (casualties: Record<string, number>, units: Unit[]): Army => {
-      const army: Army = {};
-      Object.entries(casualties).forEach(([unitId, count]) => {
-        const unit = units.find(u => u.id === unitId);
-        const type = unit?.type ?? unitId;
-        army[type] = (army[type] ?? 0) + count;
-      });
-      return army;
-    };
-
-    return rawHistory.map(report => {
-      const defenderAI = aiKingdoms.find(k => k.id === report.defender);
-      const defenderName = defenderAI?.name ?? report.defender;
-      const defenderRace = defenderAI?.race ?? 'Unknown';
-      const attackerName = kingdom.name ?? 'Your Kingdom';
-      const attackerRace = kingdom.race ?? 'Human';
-
-      const attackerArmyBefore = unitsToArmy(report.attackerUnits);
-      const attackerCasualties = casualtiesToArmy(report.casualties.attacker, report.attackerUnits);
-      const attackerArmyAfter: Army = { ...attackerArmyBefore };
-      Object.entries(attackerCasualties).forEach(([type, lost]) => {
-        attackerArmyAfter[type] = Math.max(0, (attackerArmyAfter[type] ?? 0) - (lost ?? 0));
-      });
-
-      const defenderArmyBefore = unitsToArmy(report.defenderUnits);
-      const defenderCasualties = casualtiesToArmy(report.casualties.defender, report.defenderUnits);
-
-      const attackerInfo = {
-        kingdomName: attackerName,
-        race: attackerRace,
-        armyBefore: attackerArmyBefore,
-        armyAfter: attackerArmyAfter,
-        casualties: attackerCasualties,
-      };
-      const defenderInfo = {
-        kingdomName: defenderName,
-        race: defenderRace,
-        armyBefore: Object.keys(defenderArmyBefore).length > 0 ? defenderArmyBefore : undefined,
-        casualties: Object.keys(defenderCasualties).length > 0 ? defenderCasualties : undefined,
-      };
-
-      return {
-        id: report.id,
-        timestamp: new Date(report.timestamp),
-        attackerId: report.attacker,
-        defenderId: report.defender,
-        attacker: attackerInfo,
-        defender: defenderInfo,
-        outcome: report.result,
-        result: {
-          outcome: report.result,
-          attacker: attackerInfo,
-          defender: defenderInfo,
-          attackType: 'full_attack' as const,
-          success: report.result === 'victory',
-          spoils: {
-            gold: report.resourcesGained?.gold ?? 0,
-            population: 0,
-            land: report.landGained ?? 0,
-          },
-          landGained: report.landGained,
-        },
-        casualties: { ...report.casualties.attacker, ...report.casualties.defender },
-        netGain: {
-          gold: report.resourcesGained?.gold ?? 0,
-          land: report.landGained ?? 0,
-          population: 0,
-        },
-        isAttacker: true,
-        attackType: 'full_attack' as const,
-      } satisfies BattleHistory;
-    });
-  }, [rawHistory, aiKingdoms, kingdom]);
-
-  // Merge local session history with server-persisted history (dedup by id)
-  const mergedHistory = useMemo(() => {
-    const localIds = new Set(battleHistory.map(b => b.id));
-    const serverOnly = serverHistory.filter(b => !localIds.has(b.id));
-    return [...battleHistory, ...serverOnly].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  }, [battleHistory, serverHistory]);
-
-  return <BattleReports battleHistory={mergedHistory} className="battle-reports-content" currentKingdomId={kingdom.id} />;
-}
-
-// Wrapper component that looks up the replay from the store by replayId param
-function ReplayRoute({ onBack }: { onBack: () => void }) {
-  const { replayId } = useParams<{ replayId: string }>();
-  const getReplay = useCombatReplayStore((state) => state.getReplay);
-  const replay = replayId ? getReplay(replayId) : undefined;
-
-  if (!replay) {
-    return (
-      <div style={{ padding: '2rem', color: '#9ca3af', textAlign: 'center' }}>
-        <p>Replay not found.</p>
-        <button className="back-btn" onClick={onBack}>← Back to Kingdom</button>
-      </div>
-    );
-  }
-
-  return <CombatReplayViewer replay={replay} onClose={onBack} />;
 }

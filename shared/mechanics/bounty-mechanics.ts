@@ -73,7 +73,7 @@ export const BOUNTY_MECHANICS = {
   ENVIRONMENT: {
     MAJOR_GUILD_COUNT: 3,            // Typical major guild count
     MINOR_GUILD_COUNT: 3,            // Typical minor guild count
-    SAFE_ENGAGEMENT_RATIO: 0.67,     // 2 of 3 major guilds engaged = safe
+    SAFE_ENGAGEMENT_RATIO: 0.66,     // 2 of 3 major guilds engaged = safe
   }
 }
 

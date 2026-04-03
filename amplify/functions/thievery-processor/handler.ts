@@ -2,8 +2,10 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources, KingdomUnits } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbList, dbAtomicAdd } from '../data-client';
+import { dbGet, dbUpdate, dbQuery, dbAtomicAdd, parseJsonField } from '../data-client';
+import { verifyOwnership } from '../verify-ownership';
 import { THIEVERY_MECHANICS } from '../../../shared/mechanics/thievery-mechanics';
+import { checkRateLimit } from '../rate-limiter';
 
 const VALID_OPERATIONS = ['scout', 'steal', 'sabotage', 'burn', 'desecrate', 'spread_dissention', 'intercept_caravans', 'scum_kill'] as const;
 const MIN_SCOUTS = 100;
@@ -35,35 +37,24 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     }
 
     // Verify kingdom ownership
-    const ownerField = attackerKingdom.owner as string | null;
-    const _allIds = [identity.sub ?? '', (identity as any).username ?? '',
-      (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
-      (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-    if (!ownerField || !_allIds.some(id => ownerField.includes(id))) {
-      return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
-    }
+    const denied = verifyOwnership(identity, attackerKingdom.owner as string | null);
+    if (denied) return denied;
+
+    // Rate limit check
+    const rateLimited = checkRateLimit(identity.sub, 'thievery');
+    if (rateLimited) return rateLimited;
 
     // Check restoration status
-    const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
-    const activeRestoration = allRestoration.find(r => r.kingdomId === kingdomId && new Date(r.endTime) > new Date());
+    const restorations = await dbQuery<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus', 'kingdomId', { field: 'kingdomId', value: kingdomId });
+    const activeRestoration = restorations.find(r => new Date(r.endTime) > new Date());
     if (activeRestoration) {
-      let prohibited: string[] = [];
-      if (typeof activeRestoration.prohibitedActions === 'string') {
-        try {
-          prohibited = JSON.parse(activeRestoration.prohibitedActions);
-        } catch {
-          log.warn('thievery-processor', 'prohibitedActionsParseError', { kingdomId });
-          prohibited = [];
-        }
-      } else {
-        prohibited = activeRestoration.prohibitedActions ?? [];
-      }
+      const prohibited: string[] = parseJsonField<string[]>(activeRestoration.prohibitedActions, []);
       if (prohibited.some(a => ['espionage'].includes(a))) {
         return { success: false, error: 'Kingdom is in restoration and cannot perform this action', errorCode: ErrorCode.RESTORATION_BLOCKED };
       }
     }
 
-    const attackerUnits = (typeof attackerKingdom.totalUnits === 'string' ? JSON.parse(attackerKingdom.totalUnits) : (attackerKingdom.totalUnits ?? {})) as Record<string, number>;
+    const attackerUnits = parseJsonField<Record<string, number>>(attackerKingdom.totalUnits, {});
     const attackerScouts = attackerUnits.scouts ?? 0;
 
     if (attackerScouts < MIN_SCOUTS) {
@@ -77,7 +68,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
       if (attackerGuildId) {
         const allianceData = await dbGet<{ stats?: string }>('Alliance', attackerGuildId);
         if (allianceData?.stats) {
-          const aStats = typeof allianceData.stats === 'string' ? JSON.parse(allianceData.stats) : allianceData.stats;
+          const aStats = parseJsonField<Record<string, unknown>>(allianceData.stats, {});
           espionageBonus = aStats?.compositionBonus?.espionage ?? 1.0;
           const now = new Date().toISOString();
           const activeUpgrades = (aStats?.activeUpgrades ?? []) as Array<{ type: string; expiresAt: string; effect: Record<string, number> }>;
@@ -89,7 +80,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     } catch { /* non-fatal */ }
 
     // Check turns from turnsBalance (server-side pool), falling back to resources.turns
-    const attackerResources = (typeof attackerKingdom.resources === 'string' ? JSON.parse(attackerKingdom.resources) : (attackerKingdom.resources ?? {})) as KingdomResources;
+    const attackerResources = parseJsonField<KingdomResources>(attackerKingdom.resources, {} as KingdomResources);
     const currentTurns = attackerKingdom.turnsBalance ?? attackerResources.turns ?? 72;
     const OPERATION_TURN_COSTS: Record<string, number> = {
       scout:              THIEVERY_MECHANICS.OPERATION_COSTS.SCOUT,
@@ -112,8 +103,8 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
       return { success: false, error: 'Target kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
-    const targetUnits = (typeof targetKingdom.totalUnits === 'string' ? JSON.parse(targetKingdom.totalUnits) : (targetKingdom.totalUnits ?? {})) as Record<string, number>;
-    const targetResources = (typeof targetKingdom.resources === 'string' ? JSON.parse(targetKingdom.resources) : (targetKingdom.resources ?? {})) as KingdomResources;
+    const targetUnits = parseJsonField<Record<string, number>>(targetKingdom.totalUnits, {});
+    const targetResources = parseJsonField<KingdomResources>(targetKingdom.resources, {} as KingdomResources);
 
     // Calculate detection rate
     let detectionRate = Math.min(0.95, ((targetUnits.scouts ?? 0) / Math.max(1, attackerScouts)) * 0.85);
@@ -180,7 +171,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
       } else if (operation === 'desecrate') {
         // Desecrate Temples: destroy ~10% of target's temples, reducing their elan generation.
         // This is the primary counter to sorcery-focused kingdoms (Sidhe, Vampire).
-        const targetBuildings = (typeof targetKingdom.buildings === 'string' ? JSON.parse(targetKingdom.buildings) : (targetKingdom.buildings ?? {})) as Record<string, number>;
+        const targetBuildings = parseJsonField<Record<string, number>>(targetKingdom.buildings, {});
         const currentTemples = targetBuildings.temple ?? 0;
         const templesDestroyed = Math.floor(currentTemples * 0.10);
         if (templesDestroyed > 0) {
@@ -243,9 +234,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
 
     // BL-6: If operation was detected (spy caught), record detection on the target kingdom
     if (!succeeded) {
-      const targetStats = (typeof targetKingdom.stats === 'string'
-        ? (() => { try { return JSON.parse(targetKingdom.stats as string); } catch { return {}; } })()
-        : (targetKingdom.stats ?? {})) as Record<string, unknown>;
+      const targetStats = parseJsonField<Record<string, unknown>>(targetKingdom.stats, {});
       const updatedTargetStats = {
         ...targetStats,
         lastDetectedThievery: new Date().toISOString(),

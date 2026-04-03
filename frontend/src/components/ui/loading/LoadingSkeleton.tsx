@@ -5,74 +5,67 @@ interface LoadingSkeletonProps {
   className?: string;
 }
 
-export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({ 
-  type = 'page', 
-  className = '' 
-}) => {
-  const baseClasses = 'animate-pulse bg-gray-200 rounded';
+const pulse: React.CSSProperties = {
+  background: 'linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%)',
+  backgroundSize: '200% 100%',
+  animation: 'skeleton-pulse 1.5s ease-in-out infinite',
+  borderRadius: '6px',
+};
+
+const Bar = ({ w = '100%', h = '1rem' }: { w?: string; h?: string }) => (
+  <div style={{ ...pulse, width: w, height: h }} />
+);
+
+export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({ type = 'page', className = '' }) => {
+  const wrap: React.CSSProperties = { padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' };
 
   switch (type) {
     case 'dashboard':
       return (
-        <div className={`p-6 space-y-6 ${className}`}>
-          {/* Header */}
-          <div className="flex justify-between items-center">
-            <div className={`h-8 w-48 ${baseClasses}`} />
-            <div className={`h-8 w-24 ${baseClasses}`} />
+        <div style={wrap} className={className}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Bar w="12rem" h="2rem" />
+            <Bar w="6rem" h="2rem" />
           </div>
-          
-          {/* Resource cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-white p-4 rounded-lg shadow">
-                <div className={`h-6 w-16 mb-2 ${baseClasses}`} />
-                <div className={`h-4 w-12 ${baseClasses}`} />
-              </div>
-            ))}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '1rem' }}>
+            {[...Array(4)].map((_, i) => <div key={i} style={{ ...pulse, height: '4rem', borderRadius: '8px' }} />)}
           </div>
-          
-          {/* Action buttons */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className={`h-12 ${baseClasses}`} />
-            ))}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '1rem' }}>
+            {[...Array(8)].map((_, i) => <div key={i} style={{ ...pulse, height: '3rem' }} />)}
           </div>
         </div>
       );
-
     case 'list':
       return (
-        <div className={`space-y-4 ${className}`}>
+        <div style={{ ...wrap, gap: '1rem' }} className={className}>
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="flex items-center space-x-4 p-4 bg-white rounded-lg shadow">
-              <div className={`h-12 w-12 rounded-full ${baseClasses}`} />
-              <div className="flex-1 space-y-2">
-                <div className={`h-4 w-3/4 ${baseClasses}`} />
-                <div className={`h-3 w-1/2 ${baseClasses}`} />
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+              <div style={{ ...pulse, width: '3rem', height: '3rem', borderRadius: '50%', flexShrink: 0 }} />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <Bar w="75%" />
+                <Bar w="50%" h="0.75rem" />
               </div>
             </div>
           ))}
         </div>
       );
-
     case 'card':
       return (
-        <div className={`p-6 bg-white rounded-lg shadow ${className}`}>
-          <div className={`h-6 w-3/4 mb-4 ${baseClasses}`} />
-          <div className="space-y-2">
-            <div className={`h-4 w-full ${baseClasses}`} />
-            <div className={`h-4 w-5/6 ${baseClasses}`} />
-            <div className={`h-4 w-4/6 ${baseClasses}`} />
+        <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }} className={className}>
+          <Bar w="75%" h="1.5rem" />
+          <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <Bar />
+            <Bar w="83%" />
+            <Bar w="66%" />
           </div>
         </div>
       );
-
     default:
       return (
-        <div className={`flex items-center justify-center min-h-screen ${className}`}>
-          <div className="text-center space-y-4">
-            <div className={`h-16 w-16 rounded-full mx-auto ${baseClasses}`} />
-            <div className={`h-4 w-32 mx-auto ${baseClasses}`} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }} className={className}>
+          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ ...pulse, width: '4rem', height: '4rem', borderRadius: '50%' }} />
+            <Bar w="8rem" />
           </div>
         </div>
       );

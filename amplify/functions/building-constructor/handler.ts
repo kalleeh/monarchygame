@@ -2,7 +2,9 @@ import type { Schema } from '../../data/resource';
 import type { KingdomBuildings, KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbList } from '../data-client';
+import { dbGet, dbUpdate, dbQuery, parseJsonField } from '../data-client';
+import { verifyOwnership } from '../verify-ownership';
+import { checkRateLimit } from '../rate-limiter';
 
 const VALID_BUILDING_TYPES = ['castle', 'barracks', 'farm', 'mine', 'temple', 'tower', 'wall'] as const;
 type BuildingType = typeof VALID_BUILDING_TYPES[number];
@@ -49,33 +51,24 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
     }
 
     // Verify kingdom ownership
-    const ownerField = kingdom.owner ?? null;
-    const _allIds = [identity.sub ?? '', (identity as any).username ?? '',
-      (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
-      (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-    if (!ownerField || !_allIds.some(id => ownerField.includes(id))) {
-      return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
-    }
+    const denied = verifyOwnership(identity, kingdom.owner ?? null);
+    if (denied) return denied;
+
+    // Rate limit check
+    const rateLimited = checkRateLimit(identity.sub, 'building');
+    if (rateLimited) return rateLimited;
 
     // Check restoration status
-    const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
+    const allRestoration = await dbQuery<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus', 'kingdomId', { field: 'kingdomId', value: kingdomId });
     const activeRestoration = allRestoration.find(r => r.kingdomId === kingdomId && new Date(r.endTime) > new Date());
     if (activeRestoration) {
-      const prohibited: string[] = typeof activeRestoration.prohibitedActions === 'string'
-        ? JSON.parse(activeRestoration.prohibitedActions)
-        : (activeRestoration.prohibitedActions ?? []);
+      const prohibited: string[] = parseJsonField(activeRestoration.prohibitedActions, []);
       if (prohibited.some(a => ['build'].includes(a))) {
         return { success: false, error: 'Kingdom is in restoration and cannot perform this action', errorCode: ErrorCode.RESTORATION_BLOCKED };
       }
     }
 
-    let resources: KingdomResources;
-    try {
-      resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
-    } catch (parseErr) {
-      log.warn('building-constructor', 'Failed to parse resources JSON, using empty object', { parseErr });
-      resources = {} as KingdomResources;
-    }
+    const resources = parseJsonField(kingdom.resources, {} as KingdomResources);
     const goldCost = quantity * 250;
     const currentGold = resources.gold ?? 0;
 
@@ -90,13 +83,7 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
-    let buildings: KingdomBuildings;
-    try {
-      buildings = (typeof kingdom.buildings === 'string' ? JSON.parse(kingdom.buildings) : (kingdom.buildings ?? {})) as KingdomBuildings;
-    } catch (parseErr) {
-      log.warn('building-constructor', 'Failed to parse buildings JSON, using empty object', { parseErr });
-      buildings = {} as KingdomBuildings;
-    }
+    const buildings = parseJsonField(kingdom.buildings, {} as KingdomBuildings);
     const currentCount = buildings[buildingType as keyof KingdomBuildings] ?? 0;
 
     // VAL-1: enforce land-based building cap (80% of land, no per-type limit)

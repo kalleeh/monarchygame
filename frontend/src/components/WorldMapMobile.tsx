@@ -157,9 +157,27 @@ const TerritoryCard: React.FC<CardProps> = ({
   // Action button
   let actionEl: React.ReactNode = null;
   if (category === 'owned') {
-    actionEl = (
+    const ownedTerritories = useTerritoryStore.getState().ownedTerritories;
+    const territory = ownedTerritories.find(t => t.regionId === region.id);
+    const upgradeCost = territory ? useTerritoryStore.getState().getUpgradeCost(territory.id) : null;
+    const canAfford = territory ? useTerritoryStore.getState().canAffordUpgrade(territory.id) : false;
+    const isSettlingTerritory = territory?.serverConfirmed === false;
+
+    actionEl = territory ? (
+      <button
+        className="wm-territory-action wm-action-upgrade"
+        disabled={!canAfford || isSettlingTerritory}
+        onClick={() => void useTerritoryStore.getState().upgradeTerritory(territory.id)}
+      >
+        {isSettlingTerritory
+          ? '⏳ Settling...'
+          : canAfford && upgradeCost
+            ? `Upgrade to Lv.${(territory.defenseLevel ?? 0) + 1} · 💰${Math.floor(upgradeCost.gold).toLocaleString()}`
+            : 'Insufficient Gold'}
+      </button>
+    ) : (
       <button className="wm-territory-action wm-action-upgrade" disabled>
-        Upgrade (coming soon)
+        Upgrade
       </button>
     );
   } else if (isSettling) {

@@ -8,55 +8,75 @@
 
 ## Server-Side Authority Architecture
 
-### Critical Security Decision: Server-Side Game Mechanics
+### Design: All Game Logic Server-Side
 
-**Problem Resolved:** Frontend was making fetch calls to non-existent `/api/` endpoints, creating broken functionality and potential security vulnerabilities with client-side calculations.
+All 19 Lambda functions enforce server-side authority. The frontend never performs authoritative calculations — only preview estimates for UI display.
 
-**Solution Implemented:** Complete server-side authority through AWS Lambda functions with direct invocation.
+### Data Access Pattern
 
-### Implementation Details
+Lambda functions use direct DynamoDB SDK via a shared `data-client.ts` module (NOT Amplify Data Client):
 
-**AmplifyFunctionService Created:**
-- **File:** `/frontend/src/services/amplifyFunctionService.ts`
-- **Purpose:** Direct Lambda function invocation using AWS SDK
-- **Features:**
-  - Proper AWS credentials handling through Amplify auth
-  - Direct Lambda invocation with `@aws-sdk/client-lambda`
-  - Error handling and response parsing
-  - Type-safe interfaces for all game operations
+```typescript
+// amplify/functions/data-client.ts — shared across all 19 functions
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
-**CombatService Updated:**
-- Replaced all `fetch('/api/...)` calls with `AmplifyFunctionService` methods
-- Methods: `launchAttack()`, `claimTerritory()`, `constructBuildings()`, `trainUnits()`, `castSpell()`, `generateResources()`
+export const dbGet = async (tableName, key) => { ... };
+export const dbPut = async (tableName, item) => { ... };
+export const dbUpdate = async (tableName, key, updates) => { ... };
+export const dbQuery = async (tableName, indexName, keyCondition) => { ... };
+export const dbConditionalUpdate = async (tableName, key, updates, condition) => { ... };
+export const parseJsonField = (field) => { ... };
+```
 
-**Dependencies Added:**
-- `@aws-sdk/client-lambda@^3.709.0`
-- Environment: `VITE_AWS_REGION=us-east-1`
+Key utilities:
+- **`dbQuery` with GSIs** — replaces full-table `dbList` scans for efficient lookups
+- **`dbConditionalUpdate`** — atomic conditional operations to prevent race conditions
+- **`parseJsonField`** — consistent JSON field parsing across all handlers
+- **`verifyOwnership`** (`verify-ownership.ts`) — shared ownership validation
+- **`rate-limiter.ts`** — shared server-side rate limiting per kingdom/action
 
-### Lambda Functions Architecture
+### Lambda Functions (19 total)
 
-All 6 Lambda functions properly configured in `amplify/backend.ts`:
+All registered in `amplify/backend.ts` with database access granted:
 
-1. **combatProcessor** - Combat calculations with DynamoDB transactions
-2. **territoryManager** - Territory claiming with resource validation
-3. **buildingConstructor** - Building construction with BR limits
-4. **unitTrainer** - Unit training with barracks capacity checks
-5. **spellCaster** - Spell casting with temple requirements
-6. **resourceManager** - Turn generation and resource updates
+| # | Function | Purpose |
+|---|----------|---------|
+| 1 | combat-processor | Combat calculations, land acquisition, casualty resolution |
+| 2 | resource-manager | Turn-based resource generation |
+| 3 | building-constructor | Building construction with BR limits |
+| 4 | unit-trainer | Unit training with barracks capacity checks |
+| 5 | spell-caster | Spell casting with temple/mana requirements |
+| 6 | territory-claimer | Territory claiming with resource validation |
+| 7 | season-manager | Season creation and management |
+| 8 | war-manager | War declarations and resolution |
+| 9 | trade-processor | Trade offer creation and acceptance |
+| 10 | diplomacy-processor | Diplomatic relations and treaties |
+| 11 | season-lifecycle | Season start/end transitions |
+| 12 | thievery-processor | Espionage operations |
+| 13 | faith-processor | Faith/religion system |
+| 14 | bounty-processor | Bounty placement and collection |
+| 15 | alliance-treasury | Alliance shared treasury operations |
+| 16 | alliance-manager | Alliance creation, invitations, membership |
+| 17 | turn-ticker | Automated turn generation (EventBridge: every 20 min) |
+| 18 | kingdom-cleanup | Abandoned kingdom cleanup |
 
-### Security Architecture Achieved
+**EventBridge Schedules:**
+- **Season check** — runs hourly, triggers `season-lifecycle`
+- **Turn ticker** — runs every 20 minutes, triggers `turn-ticker`
+
+### Security Architecture
 
 **Server-Side Authority:**
 - ✅ All resource changes happen in Lambda functions only
-- ✅ Atomic DynamoDB transactions prevent race conditions
-- ✅ Input validation with AWS Powertools schemas
-- ✅ Conditional expressions ensure data consistency
+- ✅ `dbConditionalUpdate` for atomic operations preventing race conditions
+- ✅ `verifyOwnership` validates kingdom ownership on every mutation
+- ✅ `rate-limiter.ts` prevents abuse per kingdom/action type
 
 **Client-Side Safety:**
 - ✅ Frontend only makes preview calculations (clearly marked)
-- ✅ All authoritative calculations moved to Lambda
+- ✅ All authoritative calculations in Lambda
 - ✅ No direct database access from frontend
-- ✅ Proper error handling and user feedback
+- ✅ Domain service layer → AmplifyFunctionService → GraphQL mutations
 
 ---
 
@@ -66,51 +86,54 @@ All 6 Lambda functions properly configured in `amplify/backend.ts`:
 
 **Technology Stack:**
 - **Frontend:** React 19 + TypeScript + Vite
-- **Backend:** AWS Amplify Gen 2 + Aurora Serverless v2
-- **Real-time:** GraphQL Subscriptions + WebSockets
+- **Backend:** AWS Amplify Gen 2 + DynamoDB
+- **Real-time:** GraphQL Subscriptions via Amplify `observeQuery`
 - **Authentication:** AWS Cognito User Pools
-- **Database:** PostgreSQL with GraphQL API
+- **Database:** DynamoDB with GraphQL API
+- **State Management:** Zustand (17 stores)
 - **Deployment:** AWS Amplify Hosting
+- **Visualization:** React Flow (interactive maps), Recharts (economic data)
+- **Animations:** React Spring (spell effects)
 
-### GraphQL Schema Design
+### Database: DynamoDB
 
-**Core Models:**
-```graphql
-type Kingdom @model @auth(rules: [{allow: owner}]) {
-  id: ID!
-  name: String!
-  race: String!
-  resources: Resources!
-  buildings: Buildings!
-  units: Units!
-  stats: Stats!
-}
+Table naming convention: `<ModelName>-<API_ID>-NONE`
 
-type Alliance @model @auth(rules: [{allow: authenticated}]) {
-  id: ID!
-  name: String!
-  members: [Kingdom!]!
-  invitations: [AllianceInvitation!]!
-}
+DynamoDB permissions scoped to `*-NONE` table ARN pattern (least privilege).
 
-type BattleReport @model @auth(rules: [{allow: owner}]) {
-  id: ID!
-  attackerId: ID!
-  defenderId: ID!
-  result: BattleResult!
-  timestamp: AWSDateTime!
-}
+**17 Models with GSIs:**
+
+| Model | GSI Fields |
+|-------|-----------|
+| Kingdom | seasonId |
+| Territory | kingdomId |
+| BattleReport | defenderId, attackerId |
+| WarDeclaration | attackerId, defenderId |
+| RestorationStatus | kingdomId |
+| CombatNotification | recipientId |
+| TradeOffer | sellerId |
+| DiplomaticRelation | kingdomId |
+| Treaty | proposerId |
+| AllianceInvitation | inviteeId |
+| Alliance | — |
+| Season | — |
+| ChatMessage | — |
+| Bounty | — |
+| Achievement | — |
+| Leaderboard | — |
+| FaithStatus | — |
+
+### Function Invocation Pattern
+
+Frontend → Domain Service → `AmplifyFunctionService` → GraphQL custom mutations → Lambda handler
+
+```typescript
+// Schema custom mutations (amplify/data/resource.ts)
+processCombat: a.mutation()
+  .arguments({ input: a.json() })
+  .returns(a.json())
+  .handler(a.handler.function(combatProcessor))
 ```
-
-### Function Naming Convention
-
-Lambda functions follow Amplify naming: `amplify-monarchygame-{functionName}`
-- `amplify-monarchygame-combatProcessor`
-- `amplify-monarchygame-territoryManager`
-- `amplify-monarchygame-buildingConstructor`
-- `amplify-monarchygame-unitTrainer`
-- `amplify-monarchygame-spellCaster`
-- `amplify-monarchygame-resourceManager`
 
 ---
 
@@ -158,50 +181,77 @@ game-data/
 
 ```
 src/components/
-├── combat/
-│   ├── CombatInterface.tsx
-│   ├── AttackPlanner.tsx
-│   └── BattleReport.tsx
-├── kingdom/
-│   ├── KingdomDashboard.tsx
-│   ├── KingdomCreation.tsx
-│   └── ResourcePanel.tsx
-├── alliance/
-│   ├── AllianceManagement.tsx
-│   ├── AllianceChat.tsx
-│   └── AllianceInvitations.tsx
-├── magic/
-│   ├── MagicSystem.tsx
-│   └── SpellCasting.tsx
-├── trade/
-│   ├── TradeSystem.tsx
-│   └── TradeEconomy.tsx
+├── KingdomDashboard.tsx        # Main kingdom management view
+├── KingdomList.tsx             # Kingdom browser/list
+├── BattleReportsRoute.tsx      # Battle report viewer
+├── ReplayRoute.tsx             # Single replay viewer
+├── ReplaysListRoute.tsx        # Replay browser
+├── UnitRoster.tsx              # Unit management
+├── WorldMapMobile.tsx          # Interactive territory map
+├── admin/
+│   └── AdminDashboard.tsx      # Admin tools
+├── guild/
+│   └── DeclareWarModal.tsx     # War declaration UI
 └── ui/
-    ├── Tutorial.tsx
-    ├── TurnTimer.tsx
-    └── Leaderboard.tsx
+    ├── FirstSteps.tsx          # Onboarding tutorial
+    ├── HelpModal.tsx           # Help system
+    └── loading/
+        ├── LoadingButton.tsx
+        ├── LoadingSkeleton.tsx
+        ├── Skeleton.tsx
+        └── Spinner.tsx
 ```
 
-### State Management (Zustand)
+### State Management — 17 Zustand Stores
 
-**Store Architecture:**
 ```typescript
-// Core stores
-- useKingdomStore      // Kingdom state + resources
-- useCombatStore       // Combat state + battle history
-- useAllianceStore     // Alliance state + real-time chat
-- useSpellStore        // Magic state + elan tracking
-- useTradeStore        // Trade state + economy
-- useTutorialStore     // Tutorial progress + localStorage
+// Core game stores
+useKingdomStore         // Kingdom state, resources, buildings
+useCombatStore          // Combat state, battle history
+useAllianceStore        // Alliance membership, chat
+useSpellStore           // Magic state, elan tracking
+useTradeStore           // Trade offers, economy
+useTutorialStore        // Tutorial progress (localStorage)
+useTerritoryStore       // Territory/land management
+useFaithStore           // Faith alignment, focus points
+useBountyStore          // Bounty targets and rewards
+useAiKingdomStore       // AI kingdom behavior/tick
+
+// System stores
+useSeasonStore          // Season lifecycle, age progression
+useLeaderboardStore     // Rankings, race tabs
+useAchievementStore     // 22 achievements across 6 categories
+useThieveryStore        // Espionage operations
+useDiplomacyStore       // Diplomatic relations, treaties
+useWarStore             // War declarations, guild warfare
+useNotificationStore    // Real-time notifications
 ```
 
-### Real-Time Features
+### Dual-Mode Architecture
 
-**GraphQL Subscriptions:**
-- Alliance chat messages
-- Battle notifications
-- Resource updates
-- Kingdom status changes
+The app supports two modes:
+- **Demo mode** — localStorage-backed, no authentication required
+- **Auth mode** — Cognito authentication, DynamoDB-backed via GraphQL
+
+### Code Splitting
+
+All routes use `React.lazy` with `Suspense` for code splitting:
+
+```typescript
+const KingdomDashboard = lazy(() => import('./components/KingdomDashboard'));
+const BattleReportsRoute = lazy(() => import('./components/BattleReportsRoute'));
+// ... all routes lazy-loaded
+```
+
+### Domain Service Layer
+
+```
+Frontend Component
+  → Domain Service (services/domain/*.ts)
+    → AmplifyFunctionService (services/amplifyFunctionService.ts)
+      → GraphQL custom mutation
+        → Lambda handler
+```
 
 ---
 
@@ -247,10 +297,11 @@ src/components/
 ### Build Metrics
 
 ```
-Bundle Size:     1.44MB (optimized)
-Build Time:      3.35s
+Bundle Size:     2.0MB (JS assets)
+Build Time:      8.28s
 Load Time:       <3s on 3G
 Lighthouse:      95+ Performance
+Lambda Functions: 19 registered + 2 EventBridge schedules
 ```
 
 ### Optimization Strategies
@@ -276,24 +327,28 @@ Lighthouse:      95+ Performance
 
 ### Test Coverage
 
-**Current Status:**
-- **Tests:** 53/53 passing (100%)
-- **Coverage:** Core components tested
+**Current Status (April 2026):**
+- **Total:** 778/778 passing (100%)
+  - Backend Lambda tests: 220 tests across 18 files
+  - Shared mechanics tests: 433 tests across 10 files
+  - Frontend store/service tests: 125 tests across 23 files
+- **E2E:** 21 Playwright specs
 - **Framework:** Vitest + React Testing Library
+- **Property-Based Testing:** fast-check for game balance invariants
 
 **Test Categories:**
+- Unit tests (Lambda handlers, shared mechanics, stores)
+- Property-based tests (race balance, combat mechanics, economic systems)
 - Component tests (rendering, interactions)
-- Service tests (API calls, data transformation)
-- Integration tests (component interactions)
-- E2E tests (Playwright - user flows)
+- E2E tests (Playwright — user flows)
 
 ### Quality Gates
 
 **Zero Tolerance Policy:**
-- ✅ TypeScript: 0 compilation errors
+- ✅ TypeScript: 0 compilation errors (strict mode)
 - ✅ ESLint: 0 errors, 0 warnings
-- ✅ Tests: 100% pass rate
-- ✅ Build: Production successful
+- ✅ Tests: 778/778 passing (100%)
+- ✅ Build: Production successful (2.0MB, 8.28s)
 
 ---
 
@@ -331,81 +386,79 @@ npx ampx sandbox deploy --branch main
 - Secure password requirements
 - Session management
 - Token refresh handling
-- Demo mode for testing
+- Demo mode for testing (localStorage-backed, no auth required)
 
 ### Authorization Patterns
 
-**GraphQL Authorization:**
-```graphql
-@auth(rules: [
-  {allow: owner}           # User owns the resource
-  {allow: authenticated}   # Any authenticated user
-  {allow: groups, groups: ["Admin"]}  # Admin only
-])
+**Lambda-Level Authorization:**
+```typescript
+// Every handler validates ownership via shared utility
+import { verifyOwnership } from '../verify-ownership';
+const denied = verifyOwnership(identity, kingdom.owner);
+if (denied) return denied;
 ```
 
 ### Data Protection
 
 **Security Measures:**
-- Server-side validation for all game actions
-- Atomic DynamoDB transactions
-- Input sanitization
-- Rate limiting on Lambda functions
+- `verifyOwnership` on every mutation handler
+- `rate-limiter.ts` per kingdom/action type (in-memory sliding window)
+- `dbConditionalUpdate` for atomic operations
+- DynamoDB permissions scoped to `*-NONE` table ARN pattern
+- Input validation in all Lambda handlers
 - Encrypted data at rest and in transit
 
 ---
 
 ## Monitoring & Observability
 
-### CloudWatch Integration
+### CloudWatch Dashboard
 
-**Logging:**
-- Lambda function logs
-- API Gateway logs
-- Application logs
-- Error tracking
+**Dashboard:** `MonarchyGame` — 4 widgets:
+1. Lambda invocation counts
+2. Lambda error counts
+3. Lambda duration (p50/p99)
+4. DynamoDB throttle events
 
-**Metrics:**
-- Function invocation counts
-- Error rates
-- Latency percentiles
-- Database performance
+### CloudWatch Alarms (3)
 
-### Performance Monitoring
+| Alarm | Threshold | Period |
+|-------|-----------|--------|
+| Lambda Errors | ≥ 5 errors | 5 minutes |
+| Lambda p99 Duration | > 10 seconds | 5 minutes |
+| DynamoDB Throttles | ≥ 10 events | 5 minutes |
 
-**Key Metrics:**
-- Page load times
-- API response times
-- Database query performance
-- Real-time subscription latency
+### SNS Alerts
+
+SNS topic configured for alarm notifications. Subscribe to receive email/SMS alerts for production issues.
+
+### Logging
+
+- Structured logging via shared `logger.ts` utility
+- Lambda function logs in CloudWatch Logs
+- No sensitive data in logs (PII, tokens, credentials)
 
 ---
 
 ## Future Architecture Considerations
 
+### Remaining Backlog
+
+- Territory system unification (3 disconnected implementations → unified two-tier model)
+- Server-side rate limiting with DynamoDB (current is in-memory per Lambda instance)
+- Additional GSIs for reverse-relationship queries (buyerId on TradeOffer, recipientId on Treaty, etc.)
+- Bundle size optimization (2.0MB → target <1.5MB)
+
 ### Scalability
 
-**Horizontal Scaling:**
-- Lambda auto-scaling
-- Aurora Serverless auto-scaling
+**Current Design:**
+- Lambda auto-scaling for compute
+- DynamoDB on-demand billing with auto-scaling
 - CloudFront CDN for static assets
-
-**Vertical Optimization:**
-- Database query optimization
-- Caching strategies
-- Connection pooling
-
-### Feature Expansion
-
-**Planned Enhancements:**
-- Advanced combat mechanics (terrain, formations)
-- Guild warfare system
-- Achievement system
-- Player rankings/leaderboards
-- Tutorial/onboarding flow
+- GSI queries ensure O(1) lookups instead of O(n) scans
 
 ---
 
-**Last Updated:** November 2025  
-**Status:** Production-ready architecture  
+**Last Updated:** April 2026  
+**Status:** Feature complete, production deployment pending  
 **Deployment:** AWS Amplify Gen 2

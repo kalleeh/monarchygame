@@ -29,13 +29,15 @@ const DeclareWarModal: React.FC<DeclareWarModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div style={{
+    <div
+      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+      style={{
       position: 'fixed', inset: 0,
       background: 'rgba(0,0,0,0.7)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 1000,
     }}>
-      <div style={{
+      <div role="dialog" aria-modal="true" aria-labelledby="declare-war-title" style={{
         background: 'linear-gradient(135deg, rgba(26, 26, 46, 0.99) 0%, rgba(22, 33, 62, 0.99) 100%)',
         border: '1px solid rgba(239,68,68,0.5)',
         borderRadius: '12px',
@@ -46,7 +48,7 @@ const DeclareWarModal: React.FC<DeclareWarModalProps> = ({
         display: 'flex',
         flexDirection: 'column',
       }}>
-        <h4 style={{ marginTop: 0, color: '#ef4444', flexShrink: 0 }}>Declare Guild War</h4>
+        <h4 id="declare-war-title" style={{ marginTop: 0, color: '#ef4444', flexShrink: 0 }}>Declare Guild War</h4>
         <p style={{ color: '#a0a0a0', fontSize: '0.875rem', marginBottom: '1rem', flexShrink: 0 }}>
           Select a target guild below. Wars last 72 hours — the guild with
           the higher combined score wins.

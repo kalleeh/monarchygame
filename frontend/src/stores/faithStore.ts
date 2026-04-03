@@ -20,9 +20,10 @@ import {
 import { updateFaith } from '../services/domain/FaithService';
 import { ToastService } from '../services/toastService';
 import { isDemoMode } from '../utils/authMode';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
 // --- localStorage helpers for FP persistence ---
-const FP_STORAGE_KEY = (kingdomId: string) => `faith-fp-${kingdomId}`;
+const FP_STORAGE_KEY = STORAGE_KEYS.FAITH_FP;
 
 interface PersistedFP {
   focusPoints: number;
@@ -32,7 +33,7 @@ interface PersistedFP {
 function loadPersistedFP(kingdomId: string): PersistedFP | null {
   if (!kingdomId) return null;
   try {
-    const raw = localStorage.getItem(FP_STORAGE_KEY(kingdomId));
+    const raw = isDemoMode() ? localStorage.getItem(FP_STORAGE_KEY(kingdomId)) : null;
     return raw ? (JSON.parse(raw) as PersistedFP) : null;
   } catch {
     return null;
@@ -43,7 +44,7 @@ function savePersistedFP(kingdomId: string, fp: number, regenTime: Date) {
   if (!kingdomId) return;
   try {
     const data: PersistedFP = { focusPoints: fp, lastFocusRegenTime: regenTime.toISOString() };
-    localStorage.setItem(FP_STORAGE_KEY(kingdomId), JSON.stringify(data));
+    if (isDemoMode()) { localStorage.setItem(FP_STORAGE_KEY(kingdomId), JSON.stringify(data)); }
   } catch {
     // ignore storage errors
   }
@@ -111,7 +112,7 @@ export const useFaithStore = create(
         if (serverFocusPoints !== undefined && serverFocusPoints > restoredFP) {
           restoredFP = serverFocusPoints;
           try {
-            if (resolvedKingdomId) {
+            if (isDemoMode() && resolvedKingdomId) {
               localStorage.setItem('faith-fp-' + resolvedKingdomId, JSON.stringify({
                 focusPoints: restoredFP,
                 lastRegenTime: Date.now(),

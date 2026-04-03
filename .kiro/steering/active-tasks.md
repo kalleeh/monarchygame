@@ -2,113 +2,58 @@
 
 **Purpose:** Current work, recent decisions, and next steps  
 **When to use:** Understanding current development status and priorities  
-**Updated:** 2025-11-23
+**Updated:** 2026-04-03
 
 ---
 
-## Current Sprint: Context Optimization
+## Current Status: Feature Complete
 
-### Goal
-Reduce .kiro context files from 33 to 5 for better Claude 4.5 Sonnet performance.
+All planned features and code quality improvements are complete.
 
-### Progress
-- ✅ Analyzed all 33 context files
-- ✅ Identified duplication and irrelevant content
-- ✅ Researched Claude 4.5 Sonnet best practices
-- ✅ Created consolidated file structure
-- 🔄 **IN PROGRESS:** Creating optimized files
+### Completed (April 2026 Sprint)
+- ✅ All 5 feature enhancement streams (Tutorial, Leaderboard, Achievements, Combat Mechanics, Guild Warfare)
+- ✅ All 3 remaining streams (E: Combat Replay, F: Guild Browser, G: Achievement Widget)
+- ✅ Server-side rate limiting on all expensive Lambda handlers
+- ✅ CloudWatch monitoring: 3 alarms + dashboard + SNS alerts
+- ✅ Shared `verifyOwnership` utility — eliminated ownership check duplication across 11 handlers
+- ✅ Shared `parseJsonField` — standardized JSON parsing across all handlers
+- ✅ `dbQuery` with GSIs — replaced full-table scans in 8 handlers (13 scan replacements)
+- ✅ `dbConditionalUpdate` — atomic trade offer acceptance (race condition fix)
+- ✅ 5 new GSIs added (CombatNotification, TradeOffer, DiplomaticRelation, Treaty, AllianceInvitation)
+- ✅ Dead code removed: amplify-configure.ts, backend-monitoring.ts, CombatPage, LazyKingdomCreation, TradeEconomy, MagicSystem, ResourceDisplay, ErrorAlert
+- ✅ Tailwind utility classes replaced with inline styles (LoadingSkeleton, LoadingButton, Spinner, Skeleton)
+- ✅ Accessibility: skip-to-content, focus traps in HelpModal/UnitRoster/DeclareWarModal, WCAG color contrast
+- ✅ AppRouter refactored: 4 inline components extracted (KingdomList, BattleReportsRoute, ReplaysListRoute, ReplayRoute)
+- ✅ kingdom-cleanup: proper resource.ts + package.json, registered in backend.ts
+- ✅ DynamoDB permissions scoped to `*-NONE` table ARN pattern (least privilege)
+- ✅ fetchWorldState handler added to season-manager
+- ✅ 4 shared mechanics test failures fixed
+- ✅ All documentation updated
 
-### Files Created
-1. ✅ `01-MECHANICS-REFERENCE.md` - Complete game mechanics with JSON index
-2. ✅ `02-ARCHITECTURE-DECISIONS.md` - Technical architecture and design
-3. ✅ `03-QUALITY-STANDARDS.md` - Code quality rules and standards
-4. ✅ `project-state.json` - Structured current state
-5. ✅ `ACTIVE-TASKS.md` - This file
-
-### Expected Results
-- **Token Reduction:** 91,837 → ~45,000 tokens (-51%)
-- **File Reduction:** 33 → 5 files (-85%)
-- **Better Organization:** Explicit structure for Claude 4.5
-- **Improved Performance:** Faster responses, better context awareness
-
----
-
-## Recent Decisions
-
-### Context File Organization (2025-11-23)
-- **Decision:** Consolidate 33 files into 5 structured files
-- **Rationale:** Claude 4.5 Sonnet performs better with explicit, structured context
-- **Implementation:** JSON index for mechanics, structured sections, clear purposes
-
-### Prompt Caching Limitation (2025-11-23)
-- **Finding:** Cannot implement prompt caching directly in .kiro files
-- **Reason:** Caching requires API-level `cache_control` parameters
-- **Recommendation:** Kiro CLI should implement caching at API request level
-- **Benefit:** Potential 90% cost savings on cached content
+### Quality Metrics
+- **Tests:** 778/778 passing (220 backend + 433 shared + 125 frontend)
+- **TypeScript:** 0 compilation errors (strict mode)
+- **ESLint:** 0 errors, 0 warnings
+- **Build:** 2.0MB JS, 8.28s
+- **Lambda Functions:** 19 registered + 2 EventBridge schedules
+- **E2E Tests:** 21 Playwright specs (audited, no stale selectors)
 
 ---
 
-## Active Development Backlog
+## Remaining Backlog
 
-### From AmazonQ.md
+### Production Deployment
+- Deploy to AWS Amplify production (monarchy.gurum.se)
+- Subscribe to SNS alert topic for monitoring notifications
+- Validate CloudWatch dashboard and alarms
 
-**✅ COMPLETED:**
-- Quality Sprint (October 2025)
-- Target Selection Enhancement (October 2025)
-- Tutorial/Onboarding System (December 2024)
-- Auto Turn Generation (December 2024)
-- All game systems implemented
-
-**📋 BACKLOG:**
-- Production deployment
-- Monitoring and observability setup
-- Feature enhancements (from FEATURE-ENHANCEMENT-PLAN.md)
+### Future Enhancements
+- Territory system unification (3 disconnected implementations → unified two-tier model)
+- Server-side rate limiting with DynamoDB (current is in-memory per Lambda instance)
+- Additional GSIs for reverse-relationship queries (buyerId on TradeOffer, recipientId on Treaty, etc.)
+- Bundle size optimization (2.0MB → target <1.5MB)
 
 ---
 
-## Next Steps
-
-### Immediate (This Week)
-1. ✅ Complete context file consolidation
-2. ⏳ Update .kiro configuration to use new files
-3. ⏳ Remove old/redundant context files
-4. ⏳ Test new context structure with Claude 4.5
-
-### Short Term (This Month)
-1. Deploy to AWS Amplify production
-2. Set up CloudWatch monitoring
-3. Configure production environment variables
-4. Enable production optimizations
-
-### Medium Term (Next Quarter)
-1. Implement feature enhancements from plan
-2. Add advanced combat mechanics
-3. Implement guild warfare system
-4. Add achievement system
-
----
-
-## Blockers
-
-**None currently.**
-
----
-
-## Notes
-
-### Claude 4.5 Sonnet Optimization Insights
-- Prefers explicit, structured instructions
-- Excellent at state tracking across sessions
-- Works well with JSON for structured data
-- Benefits from clear section purposes
-- Context awareness: tracks own token budget
-
-### Token Usage Tracking
-- **Before optimization:** 91,837 tokens (46% of 200K limit)
-- **After optimization:** ~45,000 tokens (23% of 200K limit)
-- **Headroom:** 155,000 tokens available for dynamic content
-
----
-
-**Last Updated:** 2025-11-23  
-**Status:** Context optimization in progress
+**Last Updated:** 2026-04-03  
+**Status:** Feature complete, production deployment pending

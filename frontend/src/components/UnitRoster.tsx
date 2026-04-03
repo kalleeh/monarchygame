@@ -4,7 +4,7 @@
  * Opened as a modal from KingdomDashboard via the "? Units" button.
  */
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface UnitRosterProps {
   onClose: () => void;
@@ -55,6 +55,14 @@ function StatBar({ value, max = 5 }: { value: number; max?: number }) {
 }
 
 const UnitRoster: React.FC<UnitRosterProps> = ({ onClose }) => {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    closeRef.current?.focus();
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
   return (
     <div
       onClick={onClose}
@@ -70,7 +78,7 @@ const UnitRoster: React.FC<UnitRosterProps> = ({ onClose }) => {
       }}
       aria-modal="true"
       role="dialog"
-      aria-label="Unit Roster Reference"
+      aria-labelledby="unit-roster-title"
     >
       <div
         onClick={e => e.stopPropagation()}
@@ -89,16 +97,17 @@ const UnitRoster: React.FC<UnitRosterProps> = ({ onClose }) => {
       >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-          <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#a78bfa', letterSpacing: '0.05em' }}>
+          <h3 id="unit-roster-title" style={{ margin: 0, fontSize: '1.05rem', color: '#a78bfa', letterSpacing: '0.05em' }}>
             UNIT ROSTER REFERENCE
           </h3>
           <button
+            ref={closeRef}
             onClick={onClose}
             aria-label="Close unit roster"
             style={{
               background: 'none',
               border: 'none',
-              color: '#9ca3af',
+              color: 'var(--text-muted-accessible, #b0b8c4)',
               cursor: 'pointer',
               fontSize: '1.25rem',
               lineHeight: 1,
@@ -150,21 +159,21 @@ const UnitRoster: React.FC<UnitRosterProps> = ({ onClose }) => {
                 {/* Stats row */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.4rem', fontSize: '0.78rem' }}>
                   <div>
-                    <div style={{ color: '#9ca3af', marginBottom: '0.2rem' }}>Attack</div>
+                    <div style={{ color: 'var(--text-muted-accessible, #b0b8c4)', marginBottom: '0.2rem' }}>Attack</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                       <span style={{ color: '#f87171', fontWeight: 700, minWidth: '1ch' }}>{unit.attack}</span>
                       <StatBar value={unit.attack} max={5} />
                     </div>
                   </div>
                   <div>
-                    <div style={{ color: '#9ca3af', marginBottom: '0.2rem' }}>Defense</div>
+                    <div style={{ color: 'var(--text-muted-accessible, #b0b8c4)', marginBottom: '0.2rem' }}>Defense</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                       <span style={{ color: '#60a5fa', fontWeight: 700, minWidth: '1ch' }}>{unit.defense}</span>
                       <StatBar value={unit.defense} max={5} />
                     </div>
                   </div>
                   <div>
-                    <div style={{ color: '#9ca3af', marginBottom: '0.2rem' }}>Cost</div>
+                    <div style={{ color: 'var(--text-muted-accessible, #b0b8c4)', marginBottom: '0.2rem' }}>Cost</div>
                     <div style={{ color: '#fbbf24', fontWeight: 600 }}>{unit.cost}</div>
                   </div>
                 </div>

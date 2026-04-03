@@ -3,6 +3,8 @@ import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { dbGet, dbList, dbUpdate, parseJsonField } from '../data-client';
+import { verifyOwnership } from '../verify-ownership';
+import { checkRateLimit } from '../rate-limiter';
 
 const SPELL_ELAN_COSTS: Record<string, number> = {
   calming_chant: 5,        // No damage, cheapest
@@ -66,13 +68,12 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     }
 
     // Verify kingdom ownership
-    const ownerField = casterKingdom.owner as string | null;
-    const _allIds = [identity.sub ?? '', (identity as any).username ?? '',
-      (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
-      (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-    if (!ownerField || !_allIds.some(id => ownerField.includes(id))) {
-      return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
-    }
+    const denied = verifyOwnership(identity, (casterKingdom.owner as string | null) ?? null);
+    if (denied) return denied;
+
+    // Rate limit check
+    const rateLimited = checkRateLimit(identity.sub, 'spell');
+    if (rateLimited) return rateLimited;
 
     // Elven-only: remote_fog
     if (spellId === 'remote_fog') {

@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { isDemoMode } from '../../utils/authMode';
+import { STORAGE_KEYS } from '../../constants/storageKeys';
 import './FirstSteps.css';
 
 interface StepDef {
@@ -20,8 +21,8 @@ interface FirstStepsProps {
   onManageTerritories?: () => void;
 }
 
-const DISMISSED_KEY = 'firstSteps_dismissed';
-const stepKey = (id: string) => `firstSteps_${id}`;
+const DISMISSED_KEY = STORAGE_KEYS.FIRST_STEPS_DISMISSED;
+const stepKey = STORAGE_KEYS.FIRST_STEPS_STEP;
 
 function isDismissed(): boolean {
   try {

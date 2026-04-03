@@ -15,4 +15,17 @@ export const STORAGE_KEYS = {
   DEFENSIVE_FORMATION: (kingdomId: string) => `defensive-formation-${kingdomId}`,
   TURN_TIMER_LAST: (kingdomId: string) => `turnTimer-last-${kingdomId}`,
   AGE_START_TIME: (kingdomId: string) => `kingdom-${kingdomId}-ageStartTime`,
+  // Previously ad-hoc keys, now centralised
+  VISITED_TERRITORIES: 'visited-territories',
+  ACHIEVEMENT_REWARDS: 'achievement-rewards-granted',
+  GUILD_WARS: 'monarchygame_guild_wars',
+  BOUNTIES: 'bounty-available',
+  BOUNTIES_COMPLETED: 'bounty-completed',
+  TRADE_OFFERS: 'trade-offers',
+  TRADE_PRICE_HISTORY: 'trade-price-history',
+  FIRST_STEPS_DISMISSED: 'firstSteps_dismissed',
+  FIRST_STEPS_STEP: (id: string) => `firstSteps_${id}`,
+  AI_TICK_LEADER: 'ai-tick-leader',
+  AI_LAST_TICK: 'ai-last-tick',
+  FAITH_FP: (kingdomId: string) => `faith-fp-${kingdomId}`,
 } as const;
