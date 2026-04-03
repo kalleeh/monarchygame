@@ -36,7 +36,7 @@ async function handleClaim(args: { kingdomId?: string | null; targetId?: string 
   if (denied) return denied;
 
   // Check restoration status — claiming a new bounty target counts as an attack action
-  const restorations = await dbQuery<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus', 'kingdomId', { field: 'kingdomId', value: kingdomId });
+  const restorations = await dbQuery<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus', 'restorationStatusesByKingdomIdAndEndTime', { field: 'kingdomId', value: kingdomId });
   const activeRestoration = restorations.find(r => new Date(r.endTime) > new Date());
   if (activeRestoration) {
     const prohibited: string[] = parseJsonField<string[]>(activeRestoration.prohibitedActions, []);

@@ -59,7 +59,7 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
     if (rateLimited) return rateLimited;
 
     // Check restoration status
-    const allRestoration = await dbQuery<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus', 'kingdomId', { field: 'kingdomId', value: kingdomId });
+    const allRestoration = await dbQuery<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus', 'restorationStatusesByKingdomIdAndEndTime', { field: 'kingdomId', value: kingdomId });
     const activeRestoration = allRestoration.find(r => r.kingdomId === kingdomId && new Date(r.endTime) > new Date());
     if (activeRestoration) {
       const prohibited: string[] = parseJsonField(activeRestoration.prohibitedActions, []);

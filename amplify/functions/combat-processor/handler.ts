@@ -96,14 +96,14 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
     const getDefenderReports = async () => {
       if (!cachedDefenderReports) {
-        cachedDefenderReports = await dbQuery<{ id?: string; attackerId: string; defenderId: string; landGained?: number; timestamp?: string }>('BattleReport', 'defenderId', { field: 'defenderId', value: defenderId });
+        cachedDefenderReports = await dbQuery<{ id?: string; attackerId: string; defenderId: string; landGained?: number; timestamp?: string }>('BattleReport', 'battleReportsByDefenderIdAndTimestamp', { field: 'defenderId', value: defenderId });
       }
       return cachedDefenderReports;
     };
 
     const getAttackerReports = async () => {
       if (!cachedAttackerReports) {
-        cachedAttackerReports = await dbQuery<{ id?: string; attackerId: string; defenderId: string; landGained?: number; timestamp?: string }>('BattleReport', 'attackerId', { field: 'attackerId', value: attackerId });
+        cachedAttackerReports = await dbQuery<{ id?: string; attackerId: string; defenderId: string; landGained?: number; timestamp?: string }>('BattleReport', 'battleReportsByAttackerIdAndDefenderId', { field: 'attackerId', value: attackerId });
       }
       return cachedAttackerReports;
     };
@@ -137,7 +137,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     }
 
     // Check attacker restoration status — cannot attack while under restoration
-    const allRestoration = await dbQuery<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus', 'kingdomId', { field: 'kingdomId', value: attackerId });
+    const allRestoration = await dbQuery<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus', 'restorationStatusesByKingdomIdAndEndTime', { field: 'kingdomId', value: attackerId });
     const attackerRestoration = allRestoration.find(r => new Date(r.endTime) > new Date());
     if (attackerRestoration) {
       const prohibited: string[] = parseJsonField<string[]>(attackerRestoration.prohibitedActions, []);
@@ -327,7 +327,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     if (!resolvedTerrainId) {
       // Attempt to read terrain from the defender's first non-capital territory
       try {
-        const territories = await dbQuery<TerritoryType>('Territory', 'kingdomId', { field: 'kingdomId', value: defenderId });
+        const territories = await dbQuery<TerritoryType>('Territory', 'territoriesByKingdomIdAndCreatedAt', { field: 'kingdomId', value: defenderId });
         const capital = territories.find((t: TerritoryType) => t.type === 'capital') ?? territories[0];
         if (capital) {
           resolvedTerrainId = capital.terrainType ?? '';
@@ -753,7 +753,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
       // Transfer territory: find defender's least important territory and reassign to attacker — skip for pillage
       if (finalLandGained > 0) try {
-        const defenderTerritories = await dbQuery<TerritoryType>('Territory', 'kingdomId', { field: 'kingdomId', value: defenderId });
+        const defenderTerritories = await dbQuery<TerritoryType>('Territory', 'territoriesByKingdomIdAndCreatedAt', { field: 'kingdomId', value: defenderId });
 
         // Sort by defense level ascending (take least developed first), never take the capital
         const sorted = defenderTerritories

@@ -85,7 +85,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
 
     // Check diplomatic ally protection for offensive spells
     if (targetId && OFFENSIVE_SPELL_TYPES.has(spellId)) {
-      const allRelations = await dbQuery<{ kingdomId: string; targetKingdomId: string; status: string }>('DiplomaticRelation', 'kingdomId', { field: 'kingdomId', value: casterId });
+      const allRelations = await dbQuery<{ kingdomId: string; targetKingdomId: string; status: string }>('DiplomaticRelation', 'diplomaticRelationsByKingdomId', { field: 'kingdomId', value: casterId });
       const isDiplomaticAlly = allRelations.some(r =>
         ((r.kingdomId === casterId && r.targetKingdomId === targetId) ||
          (r.kingdomId === targetId && r.targetKingdomId === casterId)) &&

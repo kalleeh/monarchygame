@@ -350,7 +350,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     let territoryLand = 0;
 
     try {
-      territories = await dbQuery<TerritoryType>('Territory', 'kingdomId', { field: 'kingdomId', value: kingdomId });
+      territories = await dbQuery<TerritoryType>('Territory', 'territoriesByKingdomIdAndCreatedAt', { field: 'kingdomId', value: kingdomId });
 
       for (const t of territories) {
         const cat = t.category ?? 'farmland';

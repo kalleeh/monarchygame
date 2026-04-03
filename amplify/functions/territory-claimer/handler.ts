@@ -142,7 +142,7 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
     if (denied) return denied;
 
     // Check restoration status — territory claiming is blocked during restoration
-    const allRestoration = await dbQuery<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus', 'kingdomId', { field: 'kingdomId', value: kingdomId });
+    const allRestoration = await dbQuery<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus', 'restorationStatusesByKingdomIdAndEndTime', { field: 'kingdomId', value: kingdomId });
     const activeRestoration = allRestoration.find(r => r.kingdomId === kingdomId && new Date(r.endTime) > new Date());
     if (activeRestoration) {
       let prohibited: string[] = [];
@@ -177,7 +177,7 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
 
     // Check for duplicate territory at same coordinates
     const coordStr = JSON.stringify(coordObj);
-    const kingdomTerritories = await dbQuery<TerritoryType>('Territory', 'kingdomId', { field: 'kingdomId', value: kingdomId });
+    const kingdomTerritories = await dbQuery<TerritoryType>('Territory', 'territoriesByKingdomIdAndCreatedAt', { field: 'kingdomId', value: kingdomId });
     const duplicate = kingdomTerritories.find(
       (t: TerritoryType) => t.coordinates === coordStr
     );

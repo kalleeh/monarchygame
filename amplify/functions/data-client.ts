@@ -66,7 +66,7 @@ export async function dbList<T>(modelName: string): Promise<T[]> {
 
 /**
  * Queries a GSI by partition key (exact match).
- * indexName: the GSI name WITHOUT the '-index' suffix (e.g. 'kingdomId' → 'kingdomId-index')
+ * indexName: the full GSI name as it appears in DynamoDB (e.g. 'territoriesByKingdomIdAndCreatedAt')
  */
 export async function dbQuery<T>(
   modelName: string,
@@ -79,7 +79,7 @@ export async function dbQuery<T>(
   do {
     const result = await docClient.send(new QueryCommand({
       TableName,
-      IndexName: `${indexName}-index`,
+      IndexName: indexName,
       KeyConditionExpression: '#pk = :pk',
       ExpressionAttributeNames: { '#pk': partitionKey.field },
       ExpressionAttributeValues: { ':pk': partitionKey.value },
@@ -93,7 +93,7 @@ export async function dbQuery<T>(
 
 /**
  * Queries a GSI with a filter expression applied server-side.
- * filterExpression: e.g. '#status = :status'
+ * indexName: the full GSI name as it appears in DynamoDB
  */
 export async function dbQueryFilter<T>(
   modelName: string,
@@ -109,7 +109,7 @@ export async function dbQueryFilter<T>(
   do {
     const result = await docClient.send(new QueryCommand({
       TableName,
-      IndexName: `${indexName}-index`,
+      IndexName: indexName,
       KeyConditionExpression: '#pk = :pk',
       FilterExpression: filterExpression,
       ExpressionAttributeNames: { '#pk': partitionKey.field, ...(filterNames ?? {}) },

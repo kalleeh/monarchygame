@@ -89,7 +89,7 @@ export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event
     }
 
     // Enforce active trade offer limit (Human race: 2, others: 1)
-    const allOffers = await dbQuery<{ sellerId: string; status: string }>('TradeOffer', 'sellerId', { field: 'sellerId', value: sellerId });
+    const allOffers = await dbQuery<{ sellerId: string; status: string }>('TradeOffer', 'tradeOffersBySellerId', { field: 'sellerId', value: sellerId });
     const activeOffers = allOffers.filter(o => o.status === 'open');
     const isHuman = (seller.race as string | undefined)?.toLowerCase() === 'human';
     const maxOffers = isHuman ? 2 : 1;

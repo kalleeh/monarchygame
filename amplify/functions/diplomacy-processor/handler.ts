@@ -97,7 +97,7 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
     if (proposerDenied) return JSON.stringify(proposerDenied);
 
     // Check for conflicting treaties
-    const allTreaties = await dbQuery<TreatyType>('Treaty', 'proposerId', { field: 'proposerId', value: proposerId });
+    const allTreaties = await dbQuery<TreatyType>('Treaty', 'treatiesByProposerId', { field: 'proposerId', value: proposerId });
     const existingTreaties = allTreaties.filter(t =>
       t.recipientId === recipientId &&
       t.status === 'proposed'
@@ -160,7 +160,7 @@ async function handleRespondToTreaty(args: { treatyId: string; accepted: boolean
 
   if (accepted) {
     // Update diplomatic relation
-    const allRelations = await dbQuery<DiplomaticRelationType>('DiplomaticRelation', 'kingdomId', { field: 'kingdomId', value: treaty.proposerId });
+    const allRelations = await dbQuery<DiplomaticRelationType>('DiplomaticRelation', 'diplomaticRelationsByKingdomId', { field: 'kingdomId', value: treaty.proposerId });
     const relations = allRelations.filter(r =>
       r.targetKingdomId === treaty.recipientId
     );
@@ -210,7 +210,7 @@ async function handleDeclareDiplomaticWar(args: { kingdomId: string; targetKingd
   if (denied) return JSON.stringify(denied);
 
   // Break any active treaties
-  const allTreaties = await dbQuery<TreatyType>('Treaty', 'proposerId', { field: 'proposerId', value: kingdomId });
+  const allTreaties = await dbQuery<TreatyType>('Treaty', 'treatiesByProposerId', { field: 'proposerId', value: kingdomId });
   const treaties = allTreaties.filter(t =>
     t.recipientId === targetKingdomId &&
     t.status === 'active'
@@ -223,7 +223,7 @@ async function handleDeclareDiplomaticWar(args: { kingdomId: string; targetKingd
   }
 
   // Update diplomatic relation
-  const allRelations = await dbQuery<DiplomaticRelationType>('DiplomaticRelation', 'kingdomId', { field: 'kingdomId', value: kingdomId });
+  const allRelations = await dbQuery<DiplomaticRelationType>('DiplomaticRelation', 'diplomaticRelationsByKingdomId', { field: 'kingdomId', value: kingdomId });
   const relations = allRelations.filter(r =>
     r.targetKingdomId === targetKingdomId
   );
@@ -266,7 +266,7 @@ async function handleMakePeace(args: { kingdomId: string; targetKingdomId: strin
   if (denied) return JSON.stringify(denied);
 
   // Resolve any active wars
-  const allWars = await dbQuery<WarDeclarationType>('WarDeclaration', 'attackerId', { field: 'attackerId', value: kingdomId });
+  const allWars = await dbQuery<WarDeclarationType>('WarDeclaration', 'warDeclarationsByAttackerIdAndStatus', { field: 'attackerId', value: kingdomId });
   const wars = allWars.filter(w =>
     w.defenderId === targetKingdomId &&
     w.status === 'active'
@@ -282,7 +282,7 @@ async function handleMakePeace(args: { kingdomId: string; targetKingdomId: strin
   }
 
   // Update diplomatic relation
-  const allRelations = await dbQuery<DiplomaticRelationType>('DiplomaticRelation', 'kingdomId', { field: 'kingdomId', value: kingdomId });
+  const allRelations = await dbQuery<DiplomaticRelationType>('DiplomaticRelation', 'diplomaticRelationsByKingdomId', { field: 'kingdomId', value: kingdomId });
   const relations = allRelations.filter(r =>
     r.targetKingdomId === targetKingdomId
   );

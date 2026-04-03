@@ -42,18 +42,18 @@ export const handler = async (event: Parameters<Schema['cleanupKingdom']['functi
     }
 
     // Delete related records
-    const territories = await dbQuery<{ id: string; kingdomId?: string }>('Territory', 'kingdomId', { field: 'kingdomId', value: kingdomId });
+    const territories = await dbQuery<{ id: string; kingdomId?: string }>('Territory', 'territoriesByKingdomIdAndCreatedAt', { field: 'kingdomId', value: kingdomId });
     for (const t of territories) await dbDelete('Territory', t.id);
 
-    const restorations = await dbQuery<{ id: string; kingdomId?: string }>('RestorationStatus', 'kingdomId', { field: 'kingdomId', value: kingdomId });
+    const restorations = await dbQuery<{ id: string; kingdomId?: string }>('RestorationStatus', 'restorationStatusesByKingdomIdAndEndTime', { field: 'kingdomId', value: kingdomId });
     for (const r of restorations) await dbDelete('RestorationStatus', r.id);
 
-    const notifications = await dbQuery<{ id: string; recipientId?: string }>('CombatNotification', 'recipientId', { field: 'recipientId', value: kingdomId });
+    const notifications = await dbQuery<{ id: string; recipientId?: string }>('CombatNotification', 'combatNotificationsByRecipientId', { field: 'recipientId', value: kingdomId });
     for (const n of notifications) await dbDelete('CombatNotification', n.id);
 
     const [attackerReports, defenderReports] = await Promise.all([
-      dbQuery<{ id: string; attackerId?: string; defenderId?: string }>('BattleReport', 'attackerId', { field: 'attackerId', value: kingdomId }),
-      dbQuery<{ id: string; attackerId?: string; defenderId?: string }>('BattleReport', 'defenderId', { field: 'defenderId', value: kingdomId }),
+      dbQuery<{ id: string; attackerId?: string; defenderId?: string }>('BattleReport', 'battleReportsByAttackerIdAndDefenderId', { field: 'attackerId', value: kingdomId }),
+      dbQuery<{ id: string; attackerId?: string; defenderId?: string }>('BattleReport', 'battleReportsByDefenderIdAndTimestamp', { field: 'defenderId', value: kingdomId }),
     ]);
     const battleReportIds = new Set<string>();
     const battleReports = [...attackerReports, ...defenderReports].filter(r => {
@@ -64,8 +64,8 @@ export const handler = async (event: Parameters<Schema['cleanupKingdom']['functi
     for (const r of battleReports) await dbDelete('BattleReport', r.id);
 
     const [attackerWars, defenderWars] = await Promise.all([
-      dbQuery<{ id: string; attackerId?: string; defenderId?: string }>('WarDeclaration', 'attackerId', { field: 'attackerId', value: kingdomId }),
-      dbQuery<{ id: string; attackerId?: string; defenderId?: string }>('WarDeclaration', 'defenderId', { field: 'defenderId', value: kingdomId }),
+      dbQuery<{ id: string; attackerId?: string; defenderId?: string }>('WarDeclaration', 'warDeclarationsByAttackerIdAndStatus', { field: 'attackerId', value: kingdomId }),
+      dbQuery<{ id: string; attackerId?: string; defenderId?: string }>('WarDeclaration', 'warDeclarationsByDefenderIdAndStatus', { field: 'defenderId', value: kingdomId }),
     ]);
     const warIds = new Set<string>();
     const wars = [...attackerWars, ...defenderWars].filter(w => {
@@ -76,19 +76,19 @@ export const handler = async (event: Parameters<Schema['cleanupKingdom']['functi
     for (const w of wars) await dbDelete('WarDeclaration', w.id);
 
     // TODO: Only finds offers where kingdom is seller. Offers where buyerId = kingdomId won't be found (no GSI for buyerId).
-    const tradeOffers = await dbQuery<{ id: string; sellerId?: string }>('TradeOffer', 'sellerId', { field: 'sellerId', value: kingdomId });
+    const tradeOffers = await dbQuery<{ id: string; sellerId?: string }>('TradeOffer', 'tradeOffersBySellerId', { field: 'sellerId', value: kingdomId });
     for (const o of tradeOffers) await dbDelete('TradeOffer', o.id);
 
     // TODO: Only finds relations where kingdomId matches. Relations where targetKingdomId = kingdomId won't be found (no GSI for targetKingdomId).
-    const relations = await dbQuery<{ id: string; kingdomId?: string }>('DiplomaticRelation', 'kingdomId', { field: 'kingdomId', value: kingdomId });
+    const relations = await dbQuery<{ id: string; kingdomId?: string }>('DiplomaticRelation', 'diplomaticRelationsByKingdomId', { field: 'kingdomId', value: kingdomId });
     for (const r of relations) await dbDelete('DiplomaticRelation', r.id);
 
     // TODO: Only finds treaties where proposerId matches. Treaties where recipientId = kingdomId won't be found (no GSI for recipientId).
-    const treaties = await dbQuery<{ id: string; proposerId?: string }>('Treaty', 'proposerId', { field: 'proposerId', value: kingdomId });
+    const treaties = await dbQuery<{ id: string; proposerId?: string }>('Treaty', 'treatiesByProposerId', { field: 'proposerId', value: kingdomId });
     for (const t of treaties) await dbDelete('Treaty', t.id);
 
     // TODO: Only finds invitations where inviteeId matches. Invitations where inviterId = kingdomId won't be found (no GSI for inviterId).
-    const invitations = await dbQuery<{ id: string; inviteeId?: string }>('AllianceInvitation', 'inviteeId', { field: 'inviteeId', value: kingdomId });
+    const invitations = await dbQuery<{ id: string; inviteeId?: string }>('AllianceInvitation', 'allianceInvitationsByInviteeId', { field: 'inviteeId', value: kingdomId });
     for (const i of invitations) await dbDelete('AllianceInvitation', i.id);
 
     await dbDelete('Kingdom', kingdomId);
