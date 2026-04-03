@@ -1,8 +1,9 @@
 import type { Schema } from '../../data/resource';
-import { dbList, dbGet, dbCreate, dbUpdate, dbQuery } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbQuery } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { verifyOwnership } from '../verify-ownership';
+import { checkRateLimit } from '../rate-limiter';
 
 const TREATY_DURATION_DAYS = 30;
 
@@ -54,6 +55,8 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
     if (!identity?.sub) {
       return JSON.stringify({ success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED });
     }
+    const rateLimited = checkRateLimit(identity.sub, 'diplomacy');
+    if (rateLimited) return JSON.stringify(rateLimited);
     const callerIdentity: CallerIdentity = { sub: identity.sub, username: identity.username };
 
     // Route based on arguments
@@ -94,9 +97,8 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
     if (proposerDenied) return JSON.stringify(proposerDenied);
 
     // Check for conflicting treaties
-    const allTreaties = await dbList<TreatyType>('Treaty');
+    const allTreaties = await dbQuery<TreatyType>('Treaty', 'proposerId', { field: 'proposerId', value: proposerId });
     const existingTreaties = allTreaties.filter(t =>
-      t.proposerId === proposerId &&
       t.recipientId === recipientId &&
       t.status === 'proposed'
     );
@@ -158,9 +160,8 @@ async function handleRespondToTreaty(args: { treatyId: string; accepted: boolean
 
   if (accepted) {
     // Update diplomatic relation
-    const allRelations = await dbList<DiplomaticRelationType>('DiplomaticRelation');
+    const allRelations = await dbQuery<DiplomaticRelationType>('DiplomaticRelation', 'kingdomId', { field: 'kingdomId', value: treaty.proposerId });
     const relations = allRelations.filter(r =>
-      r.kingdomId === treaty.proposerId &&
       r.targetKingdomId === treaty.recipientId
     );
 
@@ -209,9 +210,8 @@ async function handleDeclareDiplomaticWar(args: { kingdomId: string; targetKingd
   if (denied) return JSON.stringify(denied);
 
   // Break any active treaties
-  const allTreaties = await dbList<TreatyType>('Treaty');
+  const allTreaties = await dbQuery<TreatyType>('Treaty', 'proposerId', { field: 'proposerId', value: kingdomId });
   const treaties = allTreaties.filter(t =>
-    t.proposerId === kingdomId &&
     t.recipientId === targetKingdomId &&
     t.status === 'active'
   );
@@ -223,9 +223,8 @@ async function handleDeclareDiplomaticWar(args: { kingdomId: string; targetKingd
   }
 
   // Update diplomatic relation
-  const allRelations = await dbList<DiplomaticRelationType>('DiplomaticRelation');
+  const allRelations = await dbQuery<DiplomaticRelationType>('DiplomaticRelation', 'kingdomId', { field: 'kingdomId', value: kingdomId });
   const relations = allRelations.filter(r =>
-    r.kingdomId === kingdomId &&
     r.targetKingdomId === targetKingdomId
   );
 
@@ -283,9 +282,8 @@ async function handleMakePeace(args: { kingdomId: string; targetKingdomId: strin
   }
 
   // Update diplomatic relation
-  const allRelations = await dbList<DiplomaticRelationType>('DiplomaticRelation');
+  const allRelations = await dbQuery<DiplomaticRelationType>('DiplomaticRelation', 'kingdomId', { field: 'kingdomId', value: kingdomId });
   const relations = allRelations.filter(r =>
-    r.kingdomId === kingdomId &&
     r.targetKingdomId === targetKingdomId
   );
 

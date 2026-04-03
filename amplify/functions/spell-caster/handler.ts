@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbList, dbUpdate, parseJsonField } from '../data-client';
+import { dbGet, dbUpdate, dbQuery, parseJsonField } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 
@@ -85,7 +85,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
 
     // Check diplomatic ally protection for offensive spells
     if (targetId && OFFENSIVE_SPELL_TYPES.has(spellId)) {
-      const allRelations = await dbList<{ kingdomId: string; targetKingdomId: string; status: string }>('DiplomaticRelation');
+      const allRelations = await dbQuery<{ kingdomId: string; targetKingdomId: string; status: string }>('DiplomaticRelation', 'kingdomId', { field: 'kingdomId', value: casterId });
       const isDiplomaticAlly = allRelations.some(r =>
         ((r.kingdomId === casterId && r.targetKingdomId === targetId) ||
          (r.kingdomId === targetId && r.targetKingdomId === casterId)) &&

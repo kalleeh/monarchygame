@@ -27,6 +27,8 @@ vi.mock('../data-client', () => ({
   },
 }));
 
+vi.mock('../rate-limiter', () => ({ checkRateLimit: vi.fn().mockReturnValue(null) }));
+
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
@@ -90,7 +92,7 @@ describe('war-manager handler — declareWar', () => {
     });
 
     it('updates existing diplomatic relation to war status', async () => {
-      mockDbList.mockImplementation(async (model: string) => {
+      mockDbQuery.mockImplementation(async (model: string) => {
         if (model === 'DiplomaticRelation') return [{ id: 'rel-1', kingdomId: 'king-1', targetKingdomId: 'king-2', status: 'neutral', reputation: 10 }];
         return [];
       });
@@ -106,7 +108,7 @@ describe('war-manager handler — declareWar', () => {
     });
 
     it('breaks active treaties when war is declared', async () => {
-      mockDbList.mockImplementation(async (model: string) => {
+      mockDbQuery.mockImplementation(async (model: string) => {
         if (model === 'Treaty') return [{ id: 'treaty-1', proposerId: 'king-1', recipientId: 'king-2', status: 'active' }];
         return [];
       });
@@ -179,7 +181,7 @@ describe('war-manager handler — resolveWar', () => {
         if (model === 'WarDeclaration') return { id: 'war-1', attackerId: 'king-1', defenderId: 'king-2', status: 'active' };
         return mockKingdom('king-1');
       });
-      mockDbList.mockImplementation(async (model: string) => {
+      mockDbQuery.mockImplementation(async (model: string) => {
         if (model === 'DiplomaticRelation') return [{ id: 'rel-1', kingdomId: 'king-1', targetKingdomId: 'king-2', status: 'war', reputation: -50 }];
         return [];
       });

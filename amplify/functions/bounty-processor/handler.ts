@@ -3,6 +3,7 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { dbGet, dbUpdate, dbQuery, parseJsonField } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
+import { checkRateLimit } from '../rate-limiter';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type KingdomType = {
@@ -134,6 +135,8 @@ export const handler = async (event: any) => {
     if (!identity?.sub) {
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
+    const rateLimited = checkRateLimit(identity.sub, 'bounty');
+    if (rateLimited) return rateLimited;
     const callerIdentity: CallerIdentity = { sub: identity.sub, username: identity.username };
 
     if (fieldName === 'claimBounty') {

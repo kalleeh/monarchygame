@@ -4,6 +4,7 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { dbGet, dbUpdate, parseJsonField } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
+import { checkRateLimit } from '../rate-limiter';
 
 type AllianceRecord = {
   id: string;
@@ -217,6 +218,12 @@ export const handler: Schema["manageAllianceTreasury"]["functionHandler"] = asyn
     if (!action) {
       return { success: false, error: 'Missing required parameter: action', errorCode: ErrorCode.MISSING_PARAMS };
     }
+
+    if (!identity?.sub) {
+      return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
+    }
+    const rateLimited = checkRateLimit(identity.sub, 'alliance');
+    if (rateLimited) return rateLimited;
 
     switch (action) {
       case 'contribute':

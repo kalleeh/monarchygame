@@ -3,6 +3,7 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { dbGet, dbUpdate, dbQuery, dbAtomicAdd, parseJsonField } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
+import { checkRateLimit } from '../rate-limiter';
 
 const VALID_ALIGNMENTS = ['angelique', 'neutral', 'elemental'] as const;
 const VALID_ABILITY_TYPES = ['racial_ability', 'spell_power', 'combat_focus', 'economic_focus', 'emergency'] as const;
@@ -41,6 +42,8 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
     if (!identity?.sub) {
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
+    const rateLimited = checkRateLimit(identity.sub, 'faith');
+    if (rateLimited) return rateLimited;
 
     if (action === 'selectAlignment') {
       if (!alignment || !(VALID_ALIGNMENTS as readonly string[]).includes(alignment)) {

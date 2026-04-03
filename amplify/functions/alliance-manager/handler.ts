@@ -2,6 +2,8 @@ import type { Schema } from '../../data/resource';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { dbGet, dbCreate, dbUpdate, dbDelete, dbList } from '../data-client';
+import { verifyOwnership } from '../verify-ownership';
+import { checkRateLimit } from '../rate-limiter';
 
 type KingdomRecord = { id: string; owner?: string | null; race?: string };
 type AllianceRecord = {
@@ -51,21 +53,6 @@ async function calculateCompositionBonus(memberIds: string[]): Promise<Compositi
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function verifyKingdomOwnership(kingdomId: string, identity: any): Promise<{ error?: { success: boolean; error: string; errorCode: string }; data?: KingdomRecord }> {
-  const kingdom = await dbGet<KingdomRecord>('Kingdom', kingdomId);
-  if (!kingdom) {
-    return { error: { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND } };
-  }
-  const ownerField = kingdom.owner as string | null;
-  const _ids = [identity.sub ?? '', identity.username ?? '',
-    (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
-    (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-  if (!ownerField || !_ids.some(id => ownerField.includes(id))) {
-    return { error: { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN } };
-  }
-  return { data: kingdom };
-}
 
 export const handler: Schema["manageAlliance"]["functionHandler"] = async (event) => {
   const { kingdomId, action, allianceId, name, description, isPublic, targetKingdomId } = event.arguments;
@@ -83,6 +70,8 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
     if (!identity?.sub) {
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
+    const rateLimited = checkRateLimit(identity.sub, 'alliance');
+    if (rateLimited) return rateLimited;
 
     switch (action) {
       case 'create': {
@@ -91,8 +80,10 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         }
 
         // Verify kingdom ownership
-        const kingdomCheck = await verifyKingdomOwnership(kingdomId, identity);
-        if (kingdomCheck.error) return kingdomCheck.error;
+        const kingdom = await dbGet<KingdomRecord>('Kingdom', kingdomId);
+        if (!kingdom) return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+        const denied = verifyOwnership(identity, kingdom.owner ?? null);
+        if (denied) return denied;
 
         const newAlliance = await dbCreate<Record<string, unknown>>('Alliance', {
           name,
@@ -125,8 +116,10 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         }
 
         // Verify kingdom ownership
-        const kingdomCheck = await verifyKingdomOwnership(kingdomId, identity);
-        if (kingdomCheck.error) return kingdomCheck.error;
+        const kingdom = await dbGet<KingdomRecord>('Kingdom', kingdomId);
+        if (!kingdom) return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+        const denied = verifyOwnership(identity, kingdom.owner ?? null);
+        if (denied) return denied;
 
         // Fetch alliance
         const alliance = await dbGet<AllianceRecord>('Alliance', allianceId);
@@ -148,7 +141,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
           // Check for pending invitation
           const allInvitations = await dbList<AllianceInvitationRecord>('AllianceInvitation');
           const pendingInvite = allInvitations.find(
-            inv => inv.guildId === allianceId && inv.inviteeId === kingdomId && inv.status === 'pending'
+            inv => inv.guildId === allianceId && inv.status === 'pending'
           );
           if (!pendingInvite) {
             return { success: false, error: 'Alliance is private and you have no pending invitation', errorCode: ErrorCode.FORBIDDEN };
@@ -210,8 +203,10 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         }
 
         // Verify kingdom ownership
-        const kingdomCheck = await verifyKingdomOwnership(kingdomId, identity);
-        if (kingdomCheck.error) return kingdomCheck.error;
+        const kingdom = await dbGet<KingdomRecord>('Kingdom', kingdomId);
+        if (!kingdom) return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+        const denied = verifyOwnership(identity, kingdom.owner ?? null);
+        if (denied) return denied;
 
         // Fetch alliance
         const alliance = await dbGet<AllianceRecord>('Alliance', allianceId);
@@ -280,8 +275,10 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         }
 
         // Verify kingdom ownership
-        const kingdomCheck = await verifyKingdomOwnership(kingdomId, identity);
-        if (kingdomCheck.error) return kingdomCheck.error;
+        const kingdom = await dbGet<KingdomRecord>('Kingdom', kingdomId);
+        if (!kingdom) return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+        const denied = verifyOwnership(identity, kingdom.owner ?? null);
+        if (denied) return denied;
 
         // Fetch alliance
         const alliance = await dbGet<AllianceRecord>('Alliance', allianceId);
@@ -340,8 +337,10 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         }
 
         // Verify kingdom ownership
-        const kingdomCheck = await verifyKingdomOwnership(kingdomId, identity);
-        if (kingdomCheck.error) return kingdomCheck.error;
+        const kingdom = await dbGet<KingdomRecord>('Kingdom', kingdomId);
+        if (!kingdom) return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+        const denied = verifyOwnership(identity, kingdom.owner ?? null);
+        if (denied) return denied;
 
         // Fetch alliance
         const alliance = await dbGet<AllianceRecord>('Alliance', allianceId);
@@ -377,8 +376,10 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         }
 
         // Verify kingdom ownership
-        const kingdomCheck = await verifyKingdomOwnership(kingdomId, identity);
-        if (kingdomCheck.error) return kingdomCheck.error;
+        const kingdom = await dbGet<KingdomRecord>('Kingdom', kingdomId);
+        if (!kingdom) return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+        const denied = verifyOwnership(identity, kingdom.owner ?? null);
+        if (denied) return denied;
 
         // Find and mark the invitation as declined
         const allInvitations = await dbList<AllianceInvitationRecord>('AllianceInvitation');

@@ -2,7 +2,9 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources, KingdomBuildings } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbList } from '../data-client';
+import { dbGet, dbUpdate, dbQuery } from '../data-client';
+import { verifyOwnership } from '../verify-ownership';
+import { checkRateLimit } from '../rate-limiter';
 import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
 
 const RESOURCE_LIMITS = {
@@ -67,17 +69,14 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       if (!identity?.sub) {
         return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
       }
+      const rateLimited = checkRateLimit(identity.sub, 'resource');
+      if (rateLimited) return rateLimited;
       const kingdom = await dbGet<{ id: string; owner?: string; stats?: unknown }>('Kingdom', kingdomId);
       if (!kingdom) {
         return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
       }
-      const ownerField = (kingdom.owner ?? null) as string | null;
-      const _ownerIds = [identity.sub ?? '', (identity as any).username ?? '',
-        (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
-        (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-      if (!ownerField || !_ownerIds.some(id => ownerField.includes(id))) {
-        return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
-      }
+      const denied = verifyOwnership(identity, (kingdom.owner ?? null) as string | null);
+      if (denied) return denied;
       const currentStats: Record<string, unknown> = typeof kingdom.stats === 'string'
         ? (JSON.parse(kingdom.stats as string) as Record<string, unknown>)
         : ((kingdom.stats ?? {}) as Record<string, unknown>);
@@ -115,17 +114,14 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       if (!identity?.sub) {
         return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
       }
+      const rateLimited = checkRateLimit(identity.sub, 'resource');
+      if (rateLimited) return rateLimited;
       const kingdom = await dbGet<{ id: string; owner?: string; stats?: unknown }>('Kingdom', kingdomId);
       if (!kingdom) {
         return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
       }
-      const ownerField = (kingdom.owner ?? null) as string | null;
-      const _ownerIds = [identity.sub ?? '', (identity as any).username ?? '',
-        (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
-        (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-      if (!ownerField || !_ownerIds.some(id => ownerField.includes(id))) {
-        return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
-      }
+      const denied = verifyOwnership(identity, (kingdom.owner ?? null) as string | null);
+      if (denied) return denied;
       const currentStats: Record<string, unknown> = typeof kingdom.stats === 'string'
         ? (JSON.parse(kingdom.stats as string) as Record<string, unknown>)
         : ((kingdom.stats ?? {}) as Record<string, unknown>);
@@ -158,19 +154,16 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       if (!identity?.sub) {
         return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
       }
+      const rateLimited = checkRateLimit(identity.sub, 'resource');
+      if (rateLimited) return rateLimited;
 
       const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
       if (!kingdom) {
         return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
       }
 
-      const ownerField = (kingdom.owner ?? null) as string | null;
-      const _frmIds = [identity.sub ?? '', (identity as any).username ?? '',
-        (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
-        (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-      if (!ownerField || !_frmIds.some(id => ownerField.includes(id))) {
-        return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
-      }
+      const denied = verifyOwnership(identity, (kingdom.owner ?? null) as string | null);
+      if (denied) return denied;
 
       // Reject if already encamped
       if (kingdom.encampEndTime) {
@@ -217,6 +210,8 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     if (!identity?.sub) {
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
+    const rateLimited = checkRateLimit(identity.sub, 'resource');
+    if (rateLimited) return rateLimited;
 
     const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
 
@@ -225,13 +220,8 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     }
 
     // Verify kingdom ownership
-    const ownerField = (kingdom.owner ?? null) as string | null;
-    const _ids = [identity.sub ?? '', identity.username ?? '',
-      (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
-      (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-    if (!ownerField || !_ids.some(id => ownerField.includes(id))) {
-      return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
-    }
+    const denied = verifyOwnership(identity, (kingdom.owner ?? null) as string | null);
+    if (denied) return denied;
 
     const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
     const buildings = (typeof kingdom.buildings === 'string' ? JSON.parse(kingdom.buildings) : (kingdom.buildings ?? {})) as KingdomBuildings;
@@ -360,8 +350,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     let territoryLand = 0;
 
     try {
-      const allTerritories = await dbList<TerritoryType>('Territory');
-      territories = allTerritories.filter(t => t.kingdomId === kingdomId);
+      territories = await dbQuery<TerritoryType>('Territory', 'kingdomId', { field: 'kingdomId', value: kingdomId });
 
       for (const t of territories) {
         const cat = t.category ?? 'farmland';

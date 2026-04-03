@@ -27,6 +27,8 @@ vi.mock('../data-client', () => ({
   },
 }));
 
+vi.mock('../rate-limiter', () => ({ checkRateLimit: vi.fn().mockReturnValue(null) }));
+
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
@@ -165,8 +167,8 @@ describe('territory-claimer handler', () => {
 
     it('returns INVALID_PARAM when territory already claimed at these coordinates', async () => {
       mockDbGet.mockResolvedValue(mockKingdom());
-      // Handler now uses dbList + client-side filter instead of dbQuery
-      mockDbList.mockImplementation(async (model: string) => {
+      // Handler uses dbQuery with kingdomId GSI for Territory
+      mockDbQuery.mockImplementation(async (model: string) => {
         if (model === 'Territory') return [{ id: 'existing', kingdomId: 'kingdom-1', coordinates: JSON.stringify({ x: 5, y: 5 }) }];
         return [];
       });

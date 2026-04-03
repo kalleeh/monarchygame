@@ -13,6 +13,7 @@ import { log } from '../logger';
 import { dbGet, dbCreate, dbUpdate, dbAtomicAdd, dbQuery, parseJsonField } from '../data-client';
 import { isRacialAbilityActive } from '../../../shared/mechanics/age-mechanics';
 import { checkRateLimit } from '../rate-limiter';
+import { verifyOwnership } from '../verify-ownership';
 
 // Race offensive combat bonuses (based on warOffense stat 1-5)
 const RACE_OFFENSE_BONUSES: Record<string, number> = {
@@ -82,13 +83,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     }
 
     // Verify kingdom ownership (attacker only)
-    const attackerOwnerField = attacker.owner as string | null;
-    const _attackerIds = [identity.sub ?? '', (identity as any).username ?? '',
-      (identity as any).claims?.email ?? '', (identity as any).claims?.['preferred_username'] ?? '',
-      (identity as any).claims?.['cognito:username'] ?? ''].filter(Boolean);
-    if (!attackerOwnerField || !_attackerIds.some((id: string) => attackerOwnerField!.includes(id))) {
-      return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
-    }
+    const denied = verifyOwnership(identity, attacker.owner as string | null);
+    if (denied) return denied;
 
     // Rate limit check
     const rateLimited = checkRateLimit(identity.sub, 'combat');

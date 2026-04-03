@@ -1,8 +1,9 @@
 import type { Schema } from '../../data/resource';
-import { dbList, dbGet, dbCreate, dbUpdate, dbQuery } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbQuery } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { verifyOwnership } from '../verify-ownership';
+import { checkRateLimit } from '../rate-limiter';
 
 type KingdomType = {
   id: string;
@@ -47,6 +48,8 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
     if (!identity?.sub) {
       return JSON.stringify({ success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED });
     }
+    const rateLimited = checkRateLimit(identity.sub, 'diplomacy');
+    if (rateLimited) return JSON.stringify(rateLimited);
 
     // Route based on which mutation was called
     if ('warId' in args && 'resolution' in args) {
@@ -99,9 +102,8 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
     }
 
     // Check for treaty conflicts
-    const allTreaties = await dbList<TreatyType>('Treaty');
+    const allTreaties = await dbQuery<TreatyType>('Treaty', 'proposerId', { field: 'proposerId', value: attackerId });
     const treaties = allTreaties.filter(t =>
-      t.proposerId === attackerId &&
       t.recipientId === defenderId &&
       t.status === 'active'
     );
@@ -137,9 +139,8 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
     });
 
     // Update diplomatic relation to war
-    const allRelations = await dbList<DiplomaticRelationType>('DiplomaticRelation');
+    const allRelations = await dbQuery<DiplomaticRelationType>('DiplomaticRelation', 'kingdomId', { field: 'kingdomId', value: attackerId });
     const relations = allRelations.filter(r =>
-      r.kingdomId === attackerId &&
       r.targetKingdomId === defenderId
     );
 
@@ -208,9 +209,8 @@ async function handleResolveWar(args: { warId: string; resolution: string }, ide
   });
 
   // Update diplomatic relation
-  const allRelations = await dbList<DiplomaticRelationType>('DiplomaticRelation');
+  const allRelations = await dbQuery<DiplomaticRelationType>('DiplomaticRelation', 'kingdomId', { field: 'kingdomId', value: war.attackerId });
   const relations = allRelations.filter(r =>
-    r.kingdomId === war.attackerId &&
     r.targetKingdomId === war.defenderId
   );
 

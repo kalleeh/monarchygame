@@ -2,7 +2,9 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbList, dbAtomicAdd, dbQuery } from '../data-client';
+import { dbGet, dbUpdate, dbAtomicAdd, dbQuery } from '../data-client';
+import { verifyOwnership } from '../verify-ownership';
+import { checkRateLimit } from '../rate-limiter';
 
 const TERRITORY_NAME_LIMITS = { min: 2, max: 50 } as const;
 const COORDINATE_LIMITS = { min: -10000, max: 10000 } as const;
@@ -44,6 +46,8 @@ async function handleUpgrade(
     if (!identity?.sub) {
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
+    const rateLimited = checkRateLimit(identity.sub, 'territory');
+    if (rateLimited) return rateLimited;
     if (!kingdomId || !territoryId) {
       return { success: false, error: 'Missing kingdomId or territoryId', errorCode: ErrorCode.MISSING_PARAMS };
     }
@@ -53,17 +57,8 @@ async function handleUpgrade(
     if (!kingdom) {
       return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
-    const ownerField = kingdom.owner as string | null;
-    const userSub = identity.sub ?? '';
-    const userName = identity.username ?? '';
-    const userEmail = identity.claims?.email ?? '';
-    const preferredUsername = identity.claims?.['preferred_username'] ?? identity.claims?.['cognito:username'] ?? '';
-    const identifiers = [userSub, userName, userEmail, preferredUsername].filter(Boolean);
-    const ownerMatches = ownerField && identifiers.some(id => ownerField.includes(id));
-    if (!ownerMatches) {
-      log.warn('territory-claimer', 'upgradeOwnershipMismatch', { ownerField, userSub, userName, userEmail, kingdomId });
-      return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
-    }
+    const denied = verifyOwnership(identity, kingdom.owner as string | null);
+    if (denied) return denied;
 
     // Verify territory ownership
     const territory = await dbGet<{ id: string; kingdomId?: string }>('Territory', territoryId);
@@ -133,6 +128,8 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
     if (!identity?.sub) {
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
+    const rateLimited = checkRateLimit(identity.sub, 'territory');
+    if (rateLimited) return rateLimited;
 
     // Verify the kingdom exists
     const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
@@ -140,30 +137,12 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
       return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
     }
 
-    // Verify kingdom ownership.
-    // Amplify Gen 2 stores the owner field using the Cognito username attribute (varies by pool config).
-    // We check all possible identity representations: sub, username, email, preferred_username.
-    const ownerField = kingdom.owner as string | null;
-    const userSub = identity.sub ?? '';
-    const userName = identity.username ?? '';
-    const userEmail = identity.claims?.email ?? '';
-    const preferredUsername = identity.claims?.['preferred_username'] ?? identity.claims?.['cognito:username'] ?? '';
-    const identifiers = [userSub, userName, userEmail, preferredUsername].filter(Boolean);
-    const ownerMatches = ownerField && identifiers.some(id => ownerField.includes(id));
-    if (!ownerMatches) {
-      log.warn('territory-claimer', 'ownershipMismatch', {
-        ownerField,
-        userSub,
-        userName,
-        userEmail,
-        preferredUsername,
-        kingdomId,
-      });
-      return { success: false, error: 'You do not own this kingdom', errorCode: ErrorCode.FORBIDDEN };
-    }
+    // Verify kingdom ownership
+    const denied = verifyOwnership(identity, kingdom.owner as string | null);
+    if (denied) return denied;
 
     // Check restoration status — territory claiming is blocked during restoration
-    const allRestoration = await dbList<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus');
+    const allRestoration = await dbQuery<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus', 'kingdomId', { field: 'kingdomId', value: kingdomId });
     const activeRestoration = allRestoration.find(r => r.kingdomId === kingdomId && new Date(r.endTime) > new Date());
     if (activeRestoration) {
       let prohibited: string[] = [];
@@ -198,7 +177,7 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
 
     // Check for duplicate territory at same coordinates
     const coordStr = JSON.stringify(coordObj);
-    const kingdomTerritories = (await dbList<TerritoryType>('Territory')).filter(t => t.kingdomId === kingdomId);
+    const kingdomTerritories = await dbQuery<TerritoryType>('Territory', 'kingdomId', { field: 'kingdomId', value: kingdomId });
     const duplicate = kingdomTerritories.find(
       (t: TerritoryType) => t.coordinates === coordStr
     );

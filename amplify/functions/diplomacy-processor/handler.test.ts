@@ -27,6 +27,8 @@ vi.mock('../data-client', () => ({
   },
 }));
 
+vi.mock('../rate-limiter', () => ({ checkRateLimit: vi.fn().mockReturnValue(null) }));
+
 import { handler } from './handler';
 
 // ---------------------------------------------------------------------------
@@ -99,6 +101,7 @@ describe('diplomacy-processor handler — sendTreatyProposal', () => {
       for (const treatyType of types) {
         vi.clearAllMocks();
         mockDbList.mockResolvedValue([]);
+        mockDbQuery.mockResolvedValue([]);
         mockDbCreate.mockResolvedValue({ id: 'treaty-x', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), __typename: 'Treaty' });
 
         const result = await callHandler(
@@ -144,7 +147,7 @@ describe('diplomacy-processor handler — sendTreatyProposal', () => {
     });
 
     it('returns TREATY_CONFLICT when a pending proposal already exists', async () => {
-      mockDbList.mockResolvedValue([{ id: 'existing-treaty', proposerId: 'king-1', recipientId: 'king-2', status: 'proposed' }]);
+      mockDbQuery.mockResolvedValue([{ id: 'existing-treaty', proposerId: 'king-1', recipientId: 'king-2', status: 'proposed' }]);
 
       const result = await callHandler(
         makeEvent({ proposerId: 'king-1', recipientId: 'king-2', seasonId: 'season-1', treatyType: 'non_aggression' })
@@ -210,7 +213,7 @@ describe('diplomacy-processor handler — respondToTreaty', () => {
 
 describe('diplomacy-processor handler — declareDiplomaticWar', () => {
   it('breaks active treaties and sets diplomatic relation to war', async () => {
-    mockDbList.mockImplementation(async (model: string) => {
+    mockDbQuery.mockImplementation(async (model: string) => {
       if (model === 'Treaty') return [{ id: 'treaty-1', proposerId: 'king-1', recipientId: 'king-2', status: 'active' }];
       if (model === 'DiplomaticRelation') return [{ id: 'rel-1', kingdomId: 'king-1', targetKingdomId: 'king-2', reputation: 20 }];
       return [];
@@ -229,8 +232,8 @@ describe('diplomacy-processor handler — declareDiplomaticWar', () => {
 
 describe('diplomacy-processor handler — makePeace', () => {
   it('resolves active wars and sets relation to neutral', async () => {
-    mockDbQuery.mockResolvedValue([{ id: 'war-1', attackerId: 'king-1', defenderId: 'king-2', status: 'active' }]);
-    mockDbList.mockImplementation(async (model: string) => {
+    mockDbQuery.mockImplementation(async (model: string) => {
+      if (model === 'WarDeclaration') return [{ id: 'war-1', attackerId: 'king-1', defenderId: 'king-2', status: 'active' }];
       if (model === 'DiplomaticRelation') return [{ id: 'rel-1', kingdomId: 'king-1', targetKingdomId: 'king-2', reputation: -30 }];
       return [];
     });

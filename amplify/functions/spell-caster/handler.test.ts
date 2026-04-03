@@ -7,6 +7,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 const mockDbGet = vi.hoisted(() => vi.fn());
 const mockDbUpdate = vi.hoisted(() => vi.fn());
 const mockDbCreate = vi.hoisted(() => vi.fn());
+const mockDbQuery = vi.hoisted(() => vi.fn());
 const mockDbList = vi.hoisted(() => vi.fn());
 const mockDbDelete = vi.hoisted(() => vi.fn());
 const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
@@ -15,6 +16,7 @@ vi.mock('../data-client', () => ({
   dbGet: mockDbGet,
   dbUpdate: mockDbUpdate,
   dbCreate: mockDbCreate,
+  dbQuery: mockDbQuery,
   dbList: mockDbList,
   dbDelete: mockDbDelete,
   dbAtomicAdd: mockDbAtomicAdd,
@@ -74,6 +76,7 @@ function mockKingdom(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockDbUpdate.mockResolvedValue(undefined);
+  mockDbQuery.mockResolvedValue([]);
   mockDbList.mockResolvedValue([]);
 });
 
