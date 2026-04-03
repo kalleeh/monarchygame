@@ -480,10 +480,17 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
       ToastService.success(`Time traveled ${hours} hours! +${generated.turns} turns, +${generated.gold} gold, +${generated.population} population.`);
 
       addTurns(generated.turns);
-      addGold(generated.gold);
-      useKingdomStore.getState().updateResources({
-        population: (resources.population || 0) + generated.population
-      });
+
+      // In auth mode, the Lambda already calculated and persisted income.
+      // Refresh from server to get the authoritative values.
+      if (!isDemoMode()) {
+        await AmplifyFunctionService.refreshKingdomResources(kingdom.id);
+      } else {
+        addGold(generated.gold);
+        useKingdomStore.getState().updateResources({
+          population: (resources.population || 0) + generated.population
+        });
+      }
 
       achievementTriggers.onGoldChanged();
       achievementTriggers.onPopulationChanged();

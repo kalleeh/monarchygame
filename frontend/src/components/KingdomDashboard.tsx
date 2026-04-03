@@ -216,6 +216,12 @@ function KingdomDashboard({
               onTurnGenerated={(newTurns) => {
                 addTurns(newTurns);
 
+                // In auth mode, the resource-manager Lambda already calculated and
+                // persisted income to DynamoDB. refreshKingdomResources() syncs it
+                // back to the store. Adding gold here would DOUBLE-COUNT income.
+                // Only apply local income calculation in demo mode.
+                if (!isDemoMode()) return;
+
                 const BASE_INCOME_PER_TURN = 100;
                 const buildings: BuildingCounts = {
                   quarries: buildingStats.quarries,
