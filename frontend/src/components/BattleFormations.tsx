@@ -256,6 +256,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
       name: t.name,
       race: t.race,
       resources: t.resources,
+      networth: t.networth,
       units: { tier1: 0, tier2: 0, tier3: 0, tier4: 0 },
       difficulty: t.difficulty,
       terrain: undefined,
@@ -533,7 +534,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
             <option value="">-- Select a target kingdom --</option>
             {kingdomTargets.map(kingdom => (
               <option key={kingdom.id} value={kingdom.id}>
-                {kingdom.name} ({kingdom.race}) - NW: {((kingdom.resources.land ?? 0) * 1000 + (kingdom.resources.gold ?? 0)).toLocaleString()}
+                {kingdom.name} ({kingdom.race}) - NW: {(kingdom.networth ?? ((kingdom.resources?.land ?? 0) * 1000 + (kingdom.resources?.gold ?? 0))).toLocaleString()}
               </option>
             ))}
             {preselectedTargetId && !kingdomTargets.some(k => k.id === preselectedTargetId) && (

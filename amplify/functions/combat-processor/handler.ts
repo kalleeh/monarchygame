@@ -1,12 +1,13 @@
 import type { Schema } from '../../data/resource';
 import {
-  calculateCombatResult,
   getCasualtyRates,
   TERRAIN_MODIFIERS,
   FORMATION_MODIFIERS,
   applyTerrainToUnitPower,
   type TerrainModifiers
 } from '../../../shared/combat/combatCache';
+import { calculateCombatResult } from '../../../shared/mechanics/combat-mechanics';
+import type { AttackForce, DefenseForce } from '../../../shared/mechanics/combat-mechanics';
 import type { KingdomResources, CombatResultData } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
@@ -495,11 +496,73 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     // -------------------------------------------------------------------------
     // Step 6: Resolve combat using terrain-and-formation-adjusted unit counts
     // -------------------------------------------------------------------------
-    const combatResult = calculateCombatResult(
-      effectiveAttackerUnits,
-      effectiveDefenderUnits,
-      defenderLand
-    ) as CombatResultData;
+
+    // Unit stat tables for computing aggregate offense/defense totals
+    const UNIT_OFFENSE: Record<string, number> = {
+      peasant: 1, infantry: 3, cavalry: 5, archer: 4, knight: 6, mage: 3, scout: 2,
+      tier1: 1, tier2: 3, tier3: 5, tier4: 7, militia: 2,
+    };
+    const UNIT_DEFENSE: Record<string, number> = {
+      peasant: 1, infantry: 2, cavalry: 3, archer: 2, knight: 4, mage: 1, scout: 1,
+      tier1: 1, tier2: 2, tier3: 3, tier4: 4, militia: 3,
+    };
+
+    const totalAttackerOffense = Object.entries(effectiveAttackerUnits).reduce(
+      (sum, [type, count]) => sum + (UNIT_OFFENSE[type] ?? 2) * count, 0
+    );
+    const totalAttackerDefense = Object.entries(effectiveAttackerUnits).reduce(
+      (sum, [type, count]) => sum + (UNIT_DEFENSE[type] ?? 1) * count, 0
+    );
+    const totalDefenderDefense = Object.entries(effectiveDefenderUnits).reduce(
+      (sum, [type, count]) => sum + (UNIT_DEFENSE[type] ?? 1) * count, 0
+    );
+
+    const attackForce: AttackForce = {
+      units: effectiveAttackerUnits,
+      totalOffense: totalAttackerOffense,
+      totalDefense: totalAttackerDefense,
+    };
+    const defenseForce: DefenseForce = {
+      units: effectiveDefenderUnits,
+      forts: 0,
+      totalDefense: totalDefenderDefense,
+      ambushActive: false,
+    };
+
+    const rawCombatResult = calculateCombatResult(attackForce, defenseForce, defenderLand);
+
+    // Distribute flat losses across unit types proportionally
+    const distributeCasualties = (units: Record<string, number>, totalLosses: number): Record<string, number> => {
+      const totalUnits = Object.values(units).reduce((s, c) => s + c, 0);
+      if (totalUnits === 0) return {};
+      const result: Record<string, number> = {};
+      let remaining = totalLosses;
+      for (const [type, count] of Object.entries(units)) {
+        const share = Math.floor((count / totalUnits) * totalLosses);
+        const capped = Math.min(share, count);
+        result[type] = capped;
+        remaining -= capped;
+      }
+      const sorted = Object.entries(units).sort((a, b) => b[1] - a[1]);
+      for (const [type] of sorted) {
+        if (remaining <= 0) break;
+        const canLose = Math.min(remaining, units[type] - (result[type] ?? 0));
+        if (canLose > 0) { result[type] += canLose; remaining -= canLose; }
+      }
+      return result;
+    };
+
+    const combatResult: CombatResultData = {
+      result: rawCombatResult.resultType,
+      powerRatio: totalDefenderDefense > 0 ? totalAttackerOffense / totalDefenderDefense : 999,
+      casualties: {
+        attacker: distributeCasualties(effectiveAttackerUnits, rawCombatResult.attackerLosses),
+        defender: distributeCasualties(effectiveDefenderUnits, rawCombatResult.defenderLosses),
+      },
+      landGained: rawCombatResult.landGained,
+      goldLooted: rawCombatResult.goldLooted,
+      success: rawCombatResult.success,
+    };
 
     log.info('combat-processor', 'modifiers-applied', {
       terrainId: resolvedTerrainId || 'plains',
