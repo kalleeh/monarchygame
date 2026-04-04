@@ -514,12 +514,12 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     );
 
     const attackForce: AttackForce = {
-      units: effectiveAttackerUnits,
+      units: attackerUnits,
       totalOffense: totalAttackerOffense,
       totalDefense: totalAttackerDefense,
     };
     const defenseForce: DefenseForce = {
-      units: effectiveDefenderUnits,
+      units: defenderUnits,
       forts: 0,
       totalDefense: totalDefenderDefense,
       ambushActive: false,
@@ -552,8 +552,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       result: rawCombatResult.resultType,
       powerRatio: totalDefenderDefense > 0 ? totalAttackerOffense / totalDefenderDefense : 999,
       casualties: {
-        attacker: distributeCasualties(effectiveAttackerUnits, rawCombatResult.attackerLosses),
-        defender: distributeCasualties(effectiveDefenderUnits, rawCombatResult.defenderLosses),
+        attacker: distributeCasualties(attackerUnits, rawCombatResult.attackerLosses),
+        defender: distributeCasualties(defenderUnits, rawCombatResult.defenderLosses),
       },
       landGained: rawCombatResult.landGained,
       goldLooted: rawCombatResult.goldLooted,
@@ -700,7 +700,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     // The shared calculateCombatResult applies a flat rate; we override the defender side here.
     const defenderCasualtyRate = (getCasualtyRates(combatResult.result) as { attacker: number; defender: number }).defender;
     const mitigatedDefenderCasualties: Record<string, number> = {};
-    for (const [unitType, count] of Object.entries(effectiveDefenderUnits)) {
+    for (const [unitType, count] of Object.entries(defenderUnits)) {
       const defStat = getDefense(unitType);
       const defMitigation = Math.max(0.5, 1 - (defStat * 0.05));
       mitigatedDefenderCasualties[unitType] = Math.floor((count as number) * defenderCasualtyRate * defMitigation);
