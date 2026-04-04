@@ -163,7 +163,9 @@ describe('diplomacy-processor handler — sendTreatyProposal', () => {
 
 describe('diplomacy-processor handler — respondToTreaty', () => {
   it('accepts a treaty proposal and updates diplomatic relation', async () => {
-    mockDbGet.mockResolvedValue({ id: 'treaty-1', proposerId: 'king-1', recipientId: 'king-2', status: 'proposed', type: 'non_aggression' });
+    mockDbGet
+      .mockResolvedValueOnce({ id: 'treaty-1', proposerId: 'king-1', recipientId: 'king-2', status: 'proposed', type: 'non_aggression' })
+      .mockResolvedValueOnce({ id: 'king-2', owner: 'test-sub-123' }); // recipient kingdom owned by caller
 
     const result = await callHandler(makeEvent({ treatyId: 'treaty-1', accepted: true }));
 
@@ -180,7 +182,9 @@ describe('diplomacy-processor handler — respondToTreaty', () => {
   });
 
   it('rejects a treaty proposal and marks it as expired', async () => {
-    mockDbGet.mockResolvedValue({ id: 'treaty-1', proposerId: 'king-1', recipientId: 'king-2', status: 'proposed', type: 'ceasefire' });
+    mockDbGet
+      .mockResolvedValueOnce({ id: 'treaty-1', proposerId: 'king-1', recipientId: 'king-2', status: 'proposed', type: 'ceasefire' })
+      .mockResolvedValueOnce({ id: 'king-2', owner: 'test-sub-123' }); // recipient kingdom owned by caller
 
     const result = await callHandler(makeEvent({ treatyId: 'treaty-1', accepted: false }));
 
@@ -201,7 +205,9 @@ describe('diplomacy-processor handler — respondToTreaty', () => {
   });
 
   it('returns VALIDATION_FAILED when treaty is no longer in proposed status', async () => {
-    mockDbGet.mockResolvedValue({ id: 'treaty-1', status: 'active' });
+    mockDbGet
+      .mockResolvedValueOnce({ id: 'treaty-1', recipientId: 'king-2', status: 'active' })
+      .mockResolvedValueOnce({ id: 'king-2', owner: 'test-sub-123' });
 
     const result = await callHandler(makeEvent({ treatyId: 'treaty-1', accepted: true }));
 

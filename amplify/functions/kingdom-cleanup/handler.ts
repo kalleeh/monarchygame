@@ -3,6 +3,7 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { dbGet, dbDelete, dbQuery } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
+import { checkRateLimit } from '../rate-limiter';
 
 type KingdomType = Record<string, unknown>;
 
@@ -24,6 +25,9 @@ export const handler = async (event: Parameters<Schema['cleanupKingdom']['functi
     if (!identity?.sub) {
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
+
+    const rateLimited = checkRateLimit(identity.sub, 'default');
+    if (rateLimited) return rateLimited;
 
     const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
     if (!kingdom) {

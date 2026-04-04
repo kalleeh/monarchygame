@@ -267,7 +267,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       try {
         const targetKingdomForDrain = await dbGet<KingdomType>('Kingdom', targetId);
         if (targetKingdomForDrain) {
-          const targetResourcesForDrain = (typeof targetKingdomForDrain.resources === 'string' ? JSON.parse(targetKingdomForDrain.resources) : (targetKingdomForDrain.resources ?? {})) as KingdomResources;
+          const targetResourcesForDrain = parseJsonField<KingdomResources>(targetKingdomForDrain.resources, {} as KingdomResources);
           const drainAmount = Math.ceil(spellElanCost * 0.1);
           const targetNewElan = Math.max(0, (targetResourcesForDrain.elan ?? 0) - drainAmount);
           await dbUpdate('Kingdom', targetId, {

@@ -61,7 +61,7 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
 
     // Route based on arguments
     if ('treatyId' in args && 'accepted' in args) {
-      return await handleRespondToTreaty(args as { treatyId: string; accepted: boolean });
+      return await handleRespondToTreaty(args as { treatyId: string; accepted: boolean }, callerIdentity);
     }
     if ('kingdomId' in args && 'targetKingdomId' in args && 'seasonId' in args) {
       return await handleDeclareDiplomaticWar(args as { kingdomId: string; targetKingdomId: string; seasonId: string }, callerIdentity);
@@ -140,13 +140,18 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
   }
 };
 
-async function handleRespondToTreaty(args: { treatyId: string; accepted: boolean }): Promise<string> {
+async function handleRespondToTreaty(args: { treatyId: string; accepted: boolean }, callerIdentity: CallerIdentity): Promise<string> {
   const { treatyId, accepted } = args;
 
   const treaty = await dbGet<TreatyType>('Treaty', treatyId);
   if (!treaty) {
     return JSON.stringify({ success: false, error: 'Treaty not found', errorCode: ErrorCode.NOT_FOUND });
   }
+
+  // Verify caller owns the recipient kingdom
+  const recipientKingdom = await dbGet<KingdomType>('Kingdom', treaty.recipientId);
+  const denied = verifyOwnership(callerIdentity, (recipientKingdom as Record<string, unknown>)?.owner as string | null);
+  if (denied) return JSON.stringify(denied);
 
   if (treaty.status !== 'proposed') {
     return JSON.stringify({ success: false, error: 'Treaty is no longer pending', errorCode: ErrorCode.VALIDATION_FAILED });

@@ -112,8 +112,12 @@ async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: st
 
   // Verify caller is the alliance leader (leaderId is a kingdom ID, not a user ID — must fetch the leader kingdom)
   const leaderKingdom = await dbGet<{ id: string; owner?: string | null }>('Kingdom', alliance.leaderId);
-  if (!leaderKingdom || leaderKingdom.owner !== identity?.sub) {
-    return { success: false, error: 'Only the alliance leader can withdraw', errorCode: 'FORBIDDEN' };
+  if (!leaderKingdom) {
+    return { success: false, error: 'Leader kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+  }
+  const leaderDenied = verifyOwnership(identity, leaderKingdom.owner ?? null);
+  if (leaderDenied) {
+    return { success: false, error: 'Only the alliance leader can withdraw', errorCode: ErrorCode.FORBIDDEN };
   }
 
   // Parse treasury and verify sufficient gold

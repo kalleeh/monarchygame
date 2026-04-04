@@ -8,6 +8,7 @@ const mockDbGet = vi.hoisted(() => vi.fn());
 const mockDbUpdate = vi.hoisted(() => vi.fn());
 const mockDbCreate = vi.hoisted(() => vi.fn());
 const mockDbList = vi.hoisted(() => vi.fn());
+const mockDbQuery = vi.hoisted(() => vi.fn());
 const mockDbDelete = vi.hoisted(() => vi.fn());
 const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
 
@@ -16,6 +17,7 @@ vi.mock('../data-client', () => ({
   dbUpdate: mockDbUpdate,
   dbCreate: mockDbCreate,
   dbList: mockDbList,
+  dbQuery: mockDbQuery,
   dbDelete: mockDbDelete,
   dbAtomicAdd: mockDbAtomicAdd,
   parseJsonField: <T>(value: unknown, defaultValue: T): T => {
@@ -90,7 +92,7 @@ beforeEach(() => {
   mockDbUpdate.mockResolvedValue(undefined);
   mockDbCreate.mockResolvedValue({ id: 'new-alliance-1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), __typename: 'Alliance' });
   mockDbDelete.mockResolvedValue(undefined);
-  mockDbList.mockResolvedValue([]);
+  mockDbQuery.mockResolvedValue([]);
 });
 
 // ---------------------------------------------------------------------------
@@ -101,7 +103,7 @@ describe('alliance-manager handler', () => {
   describe('decline', () => {
     it('marks invitation as declined', async () => {
       mockDbGet.mockResolvedValue(mockKingdom());
-      mockDbList.mockResolvedValue([{ id: 'inv-1', status: 'pending', guildId: 'alliance-1', inviteeId: 'kingdom-1' }]);
+      mockDbQuery.mockResolvedValue([{ id: 'inv-1', status: 'pending', guildId: 'alliance-1', inviteeId: 'kingdom-1' }]);
 
       const result = await callHandler(
         makeEvent({ action: 'decline', allianceId: 'alliance-1', kingdomId: 'kingdom-1' })
@@ -117,7 +119,7 @@ describe('alliance-manager handler', () => {
 
     it('succeeds even when no pending invitation exists', async () => {
       mockDbGet.mockResolvedValue(mockKingdom());
-      mockDbList.mockResolvedValue([]);
+      mockDbQuery.mockResolvedValue([]);
 
       const result = await callHandler(
         makeEvent({ action: 'decline', allianceId: 'alliance-1', kingdomId: 'kingdom-1' })
@@ -156,7 +158,7 @@ describe('alliance-manager handler', () => {
         if (model === 'Alliance') return mockAlliance({ isPublic: true, memberIds: JSON.stringify([]) });
         return null;
       });
-      mockDbList.mockResolvedValue([{ id: 'inv-1', status: 'pending', guildId: 'alliance-1', inviteeId: 'kingdom-1' }]);
+      mockDbQuery.mockResolvedValue([{ id: 'inv-1', status: 'pending', guildId: 'alliance-1', inviteeId: 'kingdom-1' }]);
 
       const result = await callHandler(
         makeEvent({ action: 'join', allianceId: 'alliance-1', kingdomId: 'kingdom-1' })
@@ -172,7 +174,7 @@ describe('alliance-manager handler', () => {
         if (model === 'Alliance') return mockAlliance({ isPublic: true, memberIds: JSON.stringify([]) });
         return null;
       });
-      mockDbList.mockResolvedValue([]);
+      mockDbQuery.mockResolvedValue([]);
 
       const result = await callHandler(
         makeEvent({ action: 'join', allianceId: 'alliance-1', kingdomId: 'kingdom-1' })

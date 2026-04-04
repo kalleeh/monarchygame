@@ -238,9 +238,9 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     const denied = verifyOwnership(identity, (kingdom.owner ?? null) as string | null);
     if (denied) return denied;
 
-    const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
-    const buildings = (typeof kingdom.buildings === 'string' ? JSON.parse(kingdom.buildings) : (kingdom.buildings ?? {})) as KingdomBuildings;
-    const stats = (typeof kingdom.stats === 'string' ? JSON.parse(kingdom.stats) : (kingdom.stats ?? {})) as Record<string, unknown>;
+    const resources = parseJsonField<KingdomResources>(kingdom.resources, {} as KingdomResources);
+    const buildings = parseJsonField<KingdomBuildings>(kingdom.buildings, {} as KingdomBuildings);
+    const stats = parseJsonField<Record<string, unknown>>(kingdom.stats, {});
     const currentAge = (kingdom.currentAge as string) ?? 'early';
 
     const currentGold = resources.gold ?? 0;
@@ -291,7 +291,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       if (kingdomGuildId) {
         const alliance = await dbGet<{ stats?: string }>('Alliance', kingdomGuildId);
         if (alliance?.stats) {
-          const allianceStats = typeof alliance.stats === 'string' ? JSON.parse(alliance.stats) : alliance.stats;
+          const allianceStats = parseJsonField<Record<string, unknown>>(alliance.stats, {});
           compositionIncomeBonus = allianceStats?.compositionBonus?.income ?? 1.0;
           const now = new Date().toISOString();
           const activeUpgrades = (allianceStats?.activeUpgrades ?? []) as Array<{ type: string; expiresAt: string; effect: Record<string, number> }>;

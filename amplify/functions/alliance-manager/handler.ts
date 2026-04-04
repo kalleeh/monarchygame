@@ -1,7 +1,7 @@
 import type { Schema } from '../../data/resource';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbCreate, dbUpdate, dbDelete, dbList } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbDelete, dbList, dbQuery } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 
@@ -139,8 +139,8 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         // Verify alliance is public or has a pending invitation
         if (!alliance.isPublic) {
           // Check for pending invitation
-          const allInvitations = await dbList<AllianceInvitationRecord>('AllianceInvitation');
-          const pendingInvite = allInvitations.find(
+          const invitations = await dbQuery<AllianceInvitationRecord>('AllianceInvitation', 'allianceInvitationsByInviteeId', { field: 'inviteeId', value: kingdomId });
+          const pendingInvite = invitations.find(
             inv => inv.guildId === allianceId && inv.status === 'pending'
           );
           if (!pendingInvite) {
@@ -156,9 +156,9 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         await dbUpdate('Alliance', allianceId, { memberIds: JSON.stringify(memberIds) });
 
         // Mark any pending invitation as accepted
-        const allInvitations = await dbList<AllianceInvitationRecord>('AllianceInvitation');
-        const pendingInvitation = allInvitations.find(
-          inv => inv.guildId === allianceId && inv.inviteeId === kingdomId && inv.status === 'pending'
+        const invitationsForAccept = await dbQuery<AllianceInvitationRecord>('AllianceInvitation', 'allianceInvitationsByInviteeId', { field: 'inviteeId', value: kingdomId });
+        const pendingInvitation = invitationsForAccept.find(
+          inv => inv.guildId === allianceId && inv.status === 'pending'
         );
         if (pendingInvitation) {
           await dbUpdate('AllianceInvitation', pendingInvitation.id, { status: 'accepted' });
@@ -382,9 +382,9 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         if (denied) return denied;
 
         // Find and mark the invitation as declined
-        const allInvitations = await dbList<AllianceInvitationRecord>('AllianceInvitation');
-        const pendingInvitation = allInvitations.find(
-          inv => inv.guildId === allianceId && inv.inviteeId === kingdomId && inv.status === 'pending'
+        const invitationsForDecline = await dbQuery<AllianceInvitationRecord>('AllianceInvitation', 'allianceInvitationsByInviteeId', { field: 'inviteeId', value: kingdomId });
+        const pendingInvitation = invitationsForDecline.find(
+          inv => inv.guildId === allianceId && inv.status === 'pending'
         );
         if (pendingInvitation) {
           await dbUpdate('AllianceInvitation', pendingInvitation.id, { status: 'declined' });
@@ -407,6 +407,11 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         if (!alliance || alliance.leaderId !== kingdomId) {
           return { success: false, error: 'Only leader can set inter-alliance relationships', errorCode: ErrorCode.FORBIDDEN };
         }
+
+        // Verify caller owns the leader kingdom
+        const leaderKingdom = await dbGet<{ owner?: string | null }>('Kingdom', kingdomId);
+        const ownerDenied = verifyOwnership(identity, leaderKingdom?.owner ?? null);
+        if (ownerDenied) return ownerDenied;
 
         const stats = typeof alliance.stats === 'string'
           ? JSON.parse(alliance.stats as string)

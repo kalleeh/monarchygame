@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbAtomicAdd, dbQuery } from '../data-client';
+import { dbGet, dbUpdate, dbAtomicAdd, dbQuery, parseJsonField } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 
@@ -70,7 +70,7 @@ async function handleUpgrade(
     }
 
     // Check gold
-    const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
+    const resources = parseJsonField<KingdomResources>(kingdom.resources, {} as KingdomResources);
     const currentGold = resources.gold ?? 0;
     if (currentGold < goldCost) {
       return { success: false, error: `Insufficient gold: need ${goldCost}, have ${currentGold}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
@@ -114,7 +114,7 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
 
     // Validate coordinates if provided
     const parsedCoords = coordinates ?? { x: 0, y: 0 };
-    const coordObj = typeof parsedCoords === 'string' ? JSON.parse(parsedCoords) : parsedCoords;
+    const coordObj = parseJsonField<Record<string, number>>(parsedCoords, {});
     if (
       typeof coordObj.x !== 'number' || typeof coordObj.y !== 'number' ||
       coordObj.x < COORDINATE_LIMITS.min || coordObj.x > COORDINATE_LIMITS.max ||
@@ -162,7 +162,7 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
     }
 
     // Check kingdom has enough gold
-    const resources = (typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources) : (kingdom.resources ?? {})) as KingdomResources;
+    const resources = parseJsonField<KingdomResources>(kingdom.resources, {} as KingdomResources);
     const currentGold = resources.gold ?? 0;
     if (currentGold < 500) {
       return { success: false, error: `Insufficient gold: need 500, have ${currentGold}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };

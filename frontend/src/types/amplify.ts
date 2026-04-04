@@ -19,4 +19,6 @@ export interface KingdomResources {
   population: number;
   land: number;
   turns: number;
+  mana?: number;
+  elan?: number;
 }

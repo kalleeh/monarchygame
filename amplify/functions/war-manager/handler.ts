@@ -191,15 +191,13 @@ async function handleResolveWar(args: { warId: string; resolution: string }, ide
   }
 
   // Verify caller is a party to this war (attacker or defender)
-  const _rids = [identity.sub, identity.username].filter(Boolean) as string[];
   const [attackerKingdom, defenderKingdom] = await Promise.all([
     dbGet<{ owner?: string | null }>('Kingdom', war.attackerId as string),
     dbGet<{ owner?: string | null }>('Kingdom', war.defenderId as string),
   ]);
-  const attackerOwner = (attackerKingdom?.owner ?? '') as string;
-  const defenderOwner = (defenderKingdom?.owner ?? '') as string;
-  const isParty = _rids.some(id => attackerOwner.includes(id) || defenderOwner.includes(id));
-  if (!isParty) {
+  const isAttacker = !verifyOwnership(identity, attackerKingdom?.owner ?? null);
+  const isDefender = !verifyOwnership(identity, defenderKingdom?.owner ?? null);
+  if (!isAttacker && !isDefender) {
     return JSON.stringify({ success: false, error: 'You are not a party to this war', errorCode: ErrorCode.FORBIDDEN });
   }
 

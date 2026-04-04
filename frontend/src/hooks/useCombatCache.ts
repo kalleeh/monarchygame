@@ -7,7 +7,6 @@ import { useMemo, useCallback } from 'react';
 import { 
   calculateCombatResult, 
   calculatePowerRatio, 
-  precomputePowerRatios,
   getCacheStats,
   clearCombatCache
 } from '../utils/combatCache';
@@ -51,11 +50,6 @@ export const useCombatCache = () => {
     return calculatePowerRatio(attackerUnits, defenderUnits);
   }, []);
 
-  // Initialize cache with common scenarios
-  const initializeCache = useCallback(() => {
-    precomputePowerRatios();
-  }, []);
-
   // Get cache performance stats
   const getCachePerformance = useCallback(() => {
     return getCacheStats();
@@ -72,10 +66,9 @@ export const useCombatCache = () => {
   return useMemo(() => ({
     calculatePreview,
     getPowerRatio,
-    initializeCache,
     getCachePerformance,
     clearCache
-  }), [calculatePreview, getPowerRatio, initializeCache, getCachePerformance, clearCache]);
+  }), [calculatePreview, getPowerRatio, getCachePerformance, clearCache]);
 };
 
 /**
