@@ -7,7 +7,7 @@
  *
  * Turn rate: 3/hour (1 per 20 min), matching the game's TURNS_PER_HOUR constant.
  */
-import { dbList, dbAtomicAdd, dbUpdate, dbCreate, dbGet, dbQuery } from '../data-client';
+import { dbList, dbAtomicAdd, dbUpdate, dbCreate, dbGet, dbQuery, parseJsonField } from '../data-client';
 import { log } from '../logger';
 import { FOCUS_MECHANICS } from '../../../shared/mechanics/faith-focus-mechanics';
 import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
@@ -91,9 +91,7 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
     for (const kingdom of aiKingdoms) {
       try {
         const rawResources = kingdom.resources;
-        const resources: Record<string, number> = typeof rawResources === 'string'
-          ? (JSON.parse(rawResources) as Record<string, number>)
-          : ((rawResources ?? {}) as Record<string, number>);
+        const resources = parseJsonField<Record<string, number>>(rawResources, {});
 
         const newGold = Math.min(AI_GOLD_CAP, (resources.gold ?? 0) + AI_GOLD_PER_TICK);
         const newPopulation = Math.min(AI_POPULATION_CAP, (resources.population ?? 0) + AI_POPULATION_PER_TICK);
@@ -101,9 +99,7 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
         const newLand = Math.max(100, (resources.land ?? 800) + landDelta);
 
         const rawTotalUnits = (kingdom as unknown as Record<string, unknown>).totalUnits;
-        const totalUnitsMap = typeof rawTotalUnits === 'string'
-          ? (JSON.parse(rawTotalUnits) as Record<string, number>)
-          : ((rawTotalUnits ?? {}) as Record<string, number>);
+        const totalUnitsMap = parseJsonField<Record<string, number>>(rawTotalUnits, {});
         const totalUnits = Object.values(totalUnitsMap).reduce((sum, n) => sum + (n ?? 0), 0);
         const networth = newLand * 1000 + newGold + totalUnits * 100;
 
@@ -123,7 +119,7 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
     for (const kingdom of realKingdoms) {
       try {
         const rawStats = (kingdom as unknown as Record<string, unknown>).stats;
-        const stats = typeof rawStats === 'string' ? JSON.parse(rawStats as string) : ((rawStats ?? {}) as Record<string, unknown>);
+        const stats = parseJsonField<Record<string, unknown>>(rawStats, {});
         const pending = (stats.pendingSettlements as Array<Record<string, unknown>>) ?? [];
         if (pending.length === 0) continue;
 
@@ -177,9 +173,7 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
     for (const kingdom of realKingdoms) {
       try {
         const rawStats = (kingdom as unknown as Record<string, unknown>).stats;
-        const stats: Record<string, unknown> = typeof rawStats === 'string'
-          ? JSON.parse(rawStats as string)
-          : ((rawStats ?? {}) as Record<string, unknown>);
+        const stats = parseJsonField<Record<string, unknown>>(rawStats, {});
 
         const race = ((kingdom as unknown as Record<string, unknown>).race as string ?? 'human').toLowerCase();
         const modifiers = FOCUS_MECHANICS.BASE_GENERATION.RACIAL_MODIFIERS as Record<string, number>;

@@ -327,7 +327,7 @@ export const useCombatStore = create(
 
           // Apply casualties atomically to avoid race conditions between sequential removeUnits calls
           const updatedUnits = kingdomUnits.map(unit => {
-            const casualties = battleResult.casualties.attacker[unit.id] || 0;
+            const casualties = battleResult.casualties.attacker[unit.type] || 0;
             if (casualties > 0) {
               return { ...unit, count: Math.max(0, unit.count - casualties) };
             }

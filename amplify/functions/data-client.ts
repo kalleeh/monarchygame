@@ -35,8 +35,13 @@ let _tableSuffix: string | undefined;
 /** Discovers the Amplify table suffix (API_ID-NONE) from the existing Kingdom table. */
 export async function getTableSuffix(): Promise<string> {
   if (_tableSuffix) return _tableSuffix;
-  const result = await ddb.send(new ListTablesCommand({}));
-  const tableNames: string[] = result.TableNames ?? [];
+  let tableNames: string[] = [];
+  let lastTable: string | undefined;
+  do {
+    const result = await ddb.send(new ListTablesCommand({ ExclusiveStartTableName: lastTable }));
+    tableNames.push(...(result.TableNames ?? []));
+    lastTable = result.LastEvaluatedTableName;
+  } while (lastTable);
   const match = tableNames.find((t: string) => /^Kingdom-[^-]+-NONE$/.test(t));
   if (!match) throw new Error('[data-client] Cannot locate Kingdom table to determine table suffix');
   const suffix = match.slice('Kingdom-'.length, -'-NONE'.length);
@@ -226,7 +231,15 @@ export async function dbBatchWrite(
   const requestItems = {
     [tableName]: items.map(item => ({ PutRequest: { Item: item } })),
   };
-  await docClient.send(new BatchWriteCommand({ RequestItems: requestItems }));
+  let result = await docClient.send(new BatchWriteCommand({ RequestItems: requestItems }));
+  let unprocessed = result.UnprocessedItems;
+  let retries = 0;
+  while (unprocessed && Object.keys(unprocessed).length > 0 && retries < 5) {
+    await new Promise(r => setTimeout(r, 100 * Math.pow(2, retries)));
+    result = await docClient.send(new BatchWriteCommand({ RequestItems: unprocessed }));
+    unprocessed = result.UnprocessedItems;
+    retries++;
+  }
 }
 
 /** Parses a database field that may be a JSON string, an already-parsed object, or null/undefined. */

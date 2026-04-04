@@ -781,7 +781,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
           },
           totalUnits: updatedAttackerUnits,
           networth: attackerNetworth,
-          ...(sidheBuildings ? { buildings: JSON.stringify(sidheBuildings) } : {})
+          ...(sidheBuildings ? { buildings: sidheBuildings } : {})
         })
       ]);
 

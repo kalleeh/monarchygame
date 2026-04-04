@@ -1,5 +1,5 @@
 import type { Schema } from '../../data/resource';
-import { dbList, dbGet, dbCreate, dbUpdate, dbBatchWrite, getTableSuffix } from '../data-client';
+import { dbList, dbGet, dbCreate, dbUpdate, dbBatchWrite, getTableSuffix, parseJsonField } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 
@@ -56,7 +56,7 @@ async function recordSeasonRankings(seasonNumber: number): Promise<void> {
   const ranked = kingdoms
     .map((k) => {
       const resources = typeof k.resources === 'string'
-        ? (JSON.parse(k.resources) as Record<string, number>)
+        ? parseJsonField<Record<string, number>>(k.resources, {})
         : ((k.resources ?? {}) as Record<string, number>);
       return { id: k.id, networth: calculateNetworth(resources), stats: k.stats };
     })
@@ -68,7 +68,7 @@ async function recordSeasonRankings(seasonNumber: number): Promise<void> {
     let existingStats: Record<string, unknown>;
     if (typeof stats === 'string') {
       try {
-        existingStats = JSON.parse(stats) as Record<string, unknown>;
+        existingStats = parseJsonField<Record<string, unknown>>(stats, {});
       } catch {
         log.warn('season-lifecycle', 'statsParseError', { id });
         existingStats = {};
@@ -82,7 +82,11 @@ async function recordSeasonRankings(seasonNumber: number): Promise<void> {
       previousSeasonNetworth: networth,
       previousSeasonNumber: seasonNumber,
     };
-    await dbUpdate('Kingdom', id, { stats: updatedStats });
+    try {
+      await dbUpdate('Kingdom', id, { stats: updatedStats });
+    } catch (err) {
+      log.error('season-lifecycle', err instanceof Error ? err : new Error(String(err)), { context: 'recordSeasonRankings', kingdomId: id });
+    }
   }
 }
 
@@ -132,7 +136,7 @@ async function computeSeasonVictory(seasonId: string): Promise<{
   for (const kingdom of allKingdoms) {
     const guildId = (kingdom as Record<string, unknown>)?.guildId as string | undefined;
     if (guildId) {
-      const res = typeof kingdom.resources === 'string' ? JSON.parse(kingdom.resources as string) : (kingdom.resources ?? {});
+      const res = parseJsonField<Record<string, number>>(kingdom.resources, {});
       const nw = ((res as Record<string, number>).land ?? 0) * 1000 + ((res as Record<string, number>).gold ?? 0);
       allianceNetworth[guildId] = (allianceNetworth[guildId] ?? 0) + nw;
     }
@@ -406,7 +410,7 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
 
             let existingTransitions: Record<string, unknown> = {};
             try {
-              existingTransitions = JSON.parse(season.ageTransitions || '{}');
+              existingTransitions = parseJsonField<Record<string, unknown>>(season.ageTransitions, {});
             } catch {
               log.warn('season-lifecycle', 'ageTransitionsParseError', { seasonId: season.id });
             }
@@ -421,13 +425,16 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
             const openOffers = allOffers.filter(o => o.seasonId === season.id && o.status === 'open');
             if (openOffers) {
               for (const offer of openOffers) {
-                await dbUpdate('TradeOffer', offer.id, { status: 'expired' });
-                // Refund escrowed resources
-                const seller = await dbGet<KingdomType>('Kingdom', offer.sellerId);
-                if (seller) {
-                  const resources = (typeof seller.resources === 'string' ? JSON.parse(seller.resources) : (seller.resources ?? {})) as Record<string, number>;
-                  resources[offer.resourceType] = (resources[offer.resourceType] ?? 0) + offer.quantity;
-                  await dbUpdate('Kingdom', offer.sellerId, { resources });
+                try {
+                  await dbUpdate('TradeOffer', offer.id, { status: 'expired' });
+                  const seller = await dbGet<KingdomType>('Kingdom', offer.sellerId);
+                  if (seller) {
+                    const resources = parseJsonField<Record<string, number>>(seller.resources, {});
+                    resources[offer.resourceType] = (resources[offer.resourceType] ?? 0) + offer.quantity;
+                    await dbUpdate('Kingdom', offer.sellerId, { resources });
+                  }
+                } catch (err) {
+                  log.error('season-lifecycle', err instanceof Error ? err : new Error(String(err)), { context: 'refundTradeOffer', offerId: offer.id });
                 }
               }
             }
@@ -441,7 +448,7 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
           if (currentAge !== season.currentAge) {
             let transitions: Record<string, unknown> = {};
           try {
-            transitions = JSON.parse((season.ageTransitions as string) || '{}');
+            transitions = parseJsonField<Record<string, unknown>>(season.ageTransitions, {});
           } catch {
             log.warn('season-lifecycle', 'ageTransitionsParseError', { seasonId: season.id });
           }

@@ -26,7 +26,7 @@ export const handler = async (event: Parameters<Schema['cleanupKingdom']['functi
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
 
-    const rateLimited = checkRateLimit(identity.sub, 'default');
+    const rateLimited = await checkRateLimit(identity.sub, 'default');
     if (rateLimited) return rateLimited;
 
     const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);

@@ -7,6 +7,7 @@ export interface KingdomResources {
   gold: number;
   population: number;
   elan: number;
+  mana?: number;
   land: number;
   turns?: number;
 }
@@ -56,4 +57,5 @@ export enum ErrorCode {
   TREATY_CONFLICT = 'TREATY_CONFLICT',
   UNAUTHORIZED = 'UNAUTHORIZED',
   FORBIDDEN = 'FORBIDDEN',
+  RATE_LIMITED = 'RATE_LIMITED',
 }
