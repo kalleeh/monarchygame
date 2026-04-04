@@ -13,15 +13,14 @@ describe('RateLimiter', () => {
 
   describe('tryConsume', () => {
     it('allows actions up to max token capacity', () => {
-      // combat-processor has maxTokens: 2
+      // combat-processor has maxTokens: 5
       expect(rateLimiter.tryConsume('combat-processor')).toBe(true);
       expect(rateLimiter.tryConsume('combat-processor')).toBe(true);
     });
 
     it('blocks actions when tokens are exhausted', () => {
-      // combat-processor has maxTokens: 2
-      rateLimiter.tryConsume('combat-processor');
-      rateLimiter.tryConsume('combat-processor');
+      // combat-processor has maxTokens: 5
+      for (let i = 0; i < 5; i++) rateLimiter.tryConsume('combat-processor');
       expect(rateLimiter.tryConsume('combat-processor')).toBe(false);
     });
 
@@ -41,7 +40,7 @@ describe('RateLimiter', () => {
     });
 
     it('respects different limits per action type', () => {
-      // combat-processor: maxTokens 2
+      // combat-processor: maxTokens 5
       // building-constructor: maxTokens 5
       for (let i = 0; i < 5; i++) {
         rateLimiter.tryConsume('building-constructor');
@@ -58,13 +57,12 @@ describe('RateLimiter', () => {
       const now = Date.now();
       vi.spyOn(Date, 'now').mockReturnValue(now);
 
-      // combat-processor: maxTokens 2, refillInterval 5000ms
-      rateLimiter.tryConsume('combat-processor');
-      rateLimiter.tryConsume('combat-processor');
+      // combat-processor: maxTokens 5, refillInterval 3000ms
+      for (let i = 0; i < 5; i++) rateLimiter.tryConsume('combat-processor');
       expect(rateLimiter.tryConsume('combat-processor')).toBe(false);
 
-      // Advance time by 5 seconds
-      vi.spyOn(Date, 'now').mockReturnValue(now + 5000);
+      // Advance time by 3 seconds
+      vi.spyOn(Date, 'now').mockReturnValue(now + 3000);
 
       expect(rateLimiter.tryConsume('combat-processor')).toBe(true);
     });
@@ -95,14 +93,13 @@ describe('RateLimiter', () => {
       vi.spyOn(Date, 'now').mockReturnValue(now);
       rateLimiter.resetAll(); // Reset with mocked time so lastRefill = now
 
-      rateLimiter.tryConsume('combat-processor');
-      rateLimiter.tryConsume('combat-processor');
+      for (let i = 0; i < 5; i++) rateLimiter.tryConsume('combat-processor');
 
-      // Advance time by 2 seconds (combat-processor refillInterval is 5000ms)
-      vi.spyOn(Date, 'now').mockReturnValue(now + 2000);
+      // Advance time by 1 second (combat-processor refillInterval is 3000ms)
+      vi.spyOn(Date, 'now').mockReturnValue(now + 1000);
 
       const timeUntil = rateLimiter.getTimeUntilAvailable('combat-processor');
-      expect(timeUntil).toBe(3000); // 5000 - 2000 = 3000ms remaining
+      expect(timeUntil).toBe(2000); // 3000 - 1000 = 2000ms remaining
     });
 
     it('returns 0 for unknown action types', () => {
@@ -116,7 +113,7 @@ describe('RateLimiter', () => {
     });
 
     it('returns correct initial tokens per action type', () => {
-      expect(rateLimiter.getRemainingTokens('combat-processor')).toBe(2);
+      expect(rateLimiter.getRemainingTokens('combat-processor')).toBe(5);
       expect(rateLimiter.getRemainingTokens('resource-manager')).toBe(3);
       expect(rateLimiter.getRemainingTokens('building-constructor')).toBe(5);
       expect(rateLimiter.getRemainingTokens('unit-trainer')).toBe(5);
@@ -127,12 +124,11 @@ describe('RateLimiter', () => {
 
   describe('reset', () => {
     it('restores tokens to max for a specific action type', () => {
-      rateLimiter.tryConsume('combat-processor');
-      rateLimiter.tryConsume('combat-processor');
+      for (let i = 0; i < 5; i++) rateLimiter.tryConsume('combat-processor');
       expect(rateLimiter.getRemainingTokens('combat-processor')).toBe(0);
 
       rateLimiter.reset('combat-processor');
-      expect(rateLimiter.getRemainingTokens('combat-processor')).toBe(2);
+      expect(rateLimiter.getRemainingTokens('combat-processor')).toBe(5);
     });
 
     it('does not affect other action types', () => {
@@ -141,7 +137,7 @@ describe('RateLimiter', () => {
 
       rateLimiter.reset('combat-processor');
 
-      expect(rateLimiter.getRemainingTokens('combat-processor')).toBe(2);
+      expect(rateLimiter.getRemainingTokens('combat-processor')).toBe(5);
       expect(rateLimiter.getRemainingTokens('building-constructor')).toBe(4);
     });
 
@@ -160,7 +156,7 @@ describe('RateLimiter', () => {
 
       rateLimiter.resetAll();
 
-      expect(rateLimiter.getRemainingTokens('combat-processor')).toBe(2);
+      expect(rateLimiter.getRemainingTokens('combat-processor')).toBe(5);
       expect(rateLimiter.getRemainingTokens('building-constructor')).toBe(5);
       expect(rateLimiter.getRemainingTokens('unit-trainer')).toBe(5);
     });
