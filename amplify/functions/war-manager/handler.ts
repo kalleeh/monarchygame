@@ -89,7 +89,7 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
 
     // Check for existing active war
     const attackerWars = await dbQuery<WarDeclarationType>(
-      'WarDeclaration', 'attackerId', { field: 'attackerId', value: attackerId }
+      'WarDeclaration', 'warDeclarationsByAttackerIdAndStatus', { field: 'attackerId', value: attackerId }
     );
     const existingWars = attackerWars.filter(w =>
       w.defenderId === defenderId &&

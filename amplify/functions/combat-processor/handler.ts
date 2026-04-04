@@ -186,7 +186,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
     if (attackCount >= 3) {
       const attackerWars = await dbQuery<WarDeclarationType>(
-        'WarDeclaration', 'attackerId', { field: 'attackerId', value: attackerId }
+        'WarDeclaration', 'warDeclarationsByAttackerIdAndStatus', { field: 'attackerId', value: attackerId }
       );
       const activeWar = attackerWars.find(
         (w: WarDeclarationType) => w.defenderId === defenderId && w.status === 'active'
@@ -796,7 +796,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       // Territory degradation on attacker win (non-fatal) — skip for pillage (no land captured)
       if (finalLandGained > 0) try {
         const allTerrs = await dbQuery<{ id: string; kingdomId?: string; type?: string; name?: string; defenseLevel?: number }>(
-          'Territory', 'kingdomId', { field: 'kingdomId', value: defenderId }
+          'Territory', 'territoriesByKingdomIdAndCreatedAt', { field: 'kingdomId', value: defenderId }
         );
         const defenderTerrs = allTerrs.filter(t => (t.defenseLevel ?? 0) > 0);
         // Exclude capital from degradation candidates
