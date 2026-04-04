@@ -97,7 +97,7 @@ export interface RateLimitConfig {
 }
 
 export const RATE_LIMITS: Record<string, RateLimitConfig> = {
-  'combat-processor':     { maxTokens: 2, refillRate: 1, refillInterval: 5000 },
+  'combat-processor':     { maxTokens: 5, refillRate: 1, refillInterval: 3000 },
   'resource-manager':     { maxTokens: 3, refillRate: 1, refillInterval: 3000 },
   'building-constructor': { maxTokens: 5, refillRate: 1, refillInterval: 2000 },
   'unit-trainer':         { maxTokens: 5, refillRate: 1, refillInterval: 2000 },

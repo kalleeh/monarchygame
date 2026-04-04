@@ -170,6 +170,7 @@ export const useCombatStore = create(
             const parsed = typeof result === 'string' ? JSON.parse(result) : result;
 
             if (!parsed || !parsed.success) {
+              console.error('[combatStore] Combat failed:', parsed);
               set({ error: parsed?.error || 'Combat failed', loading: false });
               return null;
             }
