@@ -91,8 +91,9 @@ describe('RateLimiter', () => {
     });
 
     it('returns remaining time when tokens are exhausted', () => {
-      const now = Date.now();
+      const now = 1000000; // Use a fixed epoch to avoid real-clock drift
       vi.spyOn(Date, 'now').mockReturnValue(now);
+      rateLimiter.resetAll(); // Reset with mocked time so lastRefill = now
 
       rateLimiter.tryConsume('combat-processor');
       rateLimiter.tryConsume('combat-processor');

@@ -25,7 +25,7 @@ vi.mock('../data-client', () => ({
   },
 }));
 
-vi.mock('../rate-limiter', () => ({ checkRateLimit: vi.fn().mockReturnValue(null) }));
+vi.mock('../rate-limiter', () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
 
 import { handler } from './handler';
 

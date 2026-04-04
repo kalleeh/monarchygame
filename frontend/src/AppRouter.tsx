@@ -18,11 +18,11 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { useRestorationStore } from './stores/restorationStore';
 import UnitRoster from './components/UnitRoster';
 import { HelpModal } from './components/ui/HelpModal';
-import BattleReportsRoute from './components/BattleReportsRoute';
-import ReplaysListRoute from './components/ReplaysListRoute';
-import ReplayRoute from './components/ReplayRoute';
 
 // Lazy-loaded components for code splitting
+const BattleReportsRoute = lazy(() => import('./components/BattleReportsRoute'));
+const ReplaysListRoute = lazy(() => import('./components/ReplaysListRoute'));
+const ReplayRoute = lazy(() => import('./components/ReplayRoute'));
 const WelcomePage = lazy(() => import('./components/WelcomePage'));
 const KingdomCreation = lazy(() => import('./components/KingdomCreation'));
 const KingdomList = lazy(() => import('./components/KingdomList'));

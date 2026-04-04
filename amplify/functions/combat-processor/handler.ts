@@ -88,7 +88,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     if (denied) return denied;
 
     // Rate limit check
-    const rateLimited = checkRateLimit(identity.sub, 'combat');
+    const rateLimited = await checkRateLimit(identity.sub, 'combat');
     if (rateLimited) return rateLimited;
 
     // Targeted BattleReport queries — reused across alliance bonus, war check, and kill bounty

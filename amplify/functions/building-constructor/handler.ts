@@ -55,7 +55,7 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
     if (denied) return denied;
 
     // Rate limit check
-    const rateLimited = checkRateLimit(identity.sub, 'building');
+    const rateLimited = await checkRateLimit(identity.sub, 'building');
     if (rateLimited) return rateLimited;
 
     // Check restoration status

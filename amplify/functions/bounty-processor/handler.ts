@@ -135,7 +135,7 @@ export const handler = async (event: any) => {
     if (!identity?.sub) {
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
-    const rateLimited = checkRateLimit(identity.sub, 'bounty');
+    const rateLimited = await checkRateLimit(identity.sub, 'bounty');
     if (rateLimited) return rateLimited;
     const callerIdentity: CallerIdentity = { sub: identity.sub, username: identity.username };
 

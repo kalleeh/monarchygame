@@ -71,7 +71,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       if (!identity?.sub) {
         return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
       }
-      const rateLimited = checkRateLimit(identity.sub, 'resource');
+      const rateLimited = await checkRateLimit(identity.sub, 'resource');
       if (rateLimited) return rateLimited;
       const kingdom = await dbGet<{ id: string; owner?: string; stats?: unknown }>('Kingdom', kingdomId);
       if (!kingdom) {
@@ -116,7 +116,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       if (!identity?.sub) {
         return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
       }
-      const rateLimited = checkRateLimit(identity.sub, 'resource');
+      const rateLimited = await checkRateLimit(identity.sub, 'resource');
       if (rateLimited) return rateLimited;
       const kingdom = await dbGet<{ id: string; owner?: string; stats?: unknown; resources?: unknown }>('Kingdom', kingdomId);
       if (!kingdom) {
@@ -169,7 +169,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       if (!identity?.sub) {
         return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
       }
-      const rateLimited = checkRateLimit(identity.sub, 'resource');
+      const rateLimited = await checkRateLimit(identity.sub, 'resource');
       if (rateLimited) return rateLimited;
 
       const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
@@ -225,7 +225,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     if (!identity?.sub) {
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
-    const rateLimited = checkRateLimit(identity.sub, 'resource');
+    const rateLimited = await checkRateLimit(identity.sub, 'resource');
     if (rateLimited) return rateLimited;
 
     const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);

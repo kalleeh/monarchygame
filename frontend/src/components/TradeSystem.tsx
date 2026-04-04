@@ -11,19 +11,8 @@ import { useKingdomStore } from '../stores/kingdomStore';
 import { TopNavigation } from './TopNavigation';
 import { ToastService } from '../services/toastService';
 import './TradeSystem.css';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend
-} from 'recharts';
+import { SimpleLineChart } from './ui/charts/SimpleLineChart';
+import { SimplePieChart } from './ui/charts/SimplePieChart';
 interface TradeSystemProps {
   kingdomId: string;
   onBack?: () => void;
@@ -229,35 +218,12 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ kingdomId, onBack }) => {
         <div className="price-chart-section gm-panel">
           <h3>{resources.find(r => r.id === selectedResource.id)?.name} Price History</h3>
           <div className="chart-container" style={{ height: 300 }}>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={selectedResourceData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-primary)" />
-                <XAxis 
-                  dataKey="time" 
-                  stroke="var(--text-secondary)"
-                  fontSize={12}
-                />
-                <YAxis 
-                  stroke="var(--text-secondary)"
-                  fontSize={12}
-                />
-                <Tooltip 
-                  contentStyle={{
-                    backgroundColor: 'var(--bg-card)',
-                    border: '1px solid var(--border-primary)',
-                    borderRadius: '0.375rem',
-                    color: 'var(--text-primary)'
-                  }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="price" 
-                  stroke="var(--primary)" 
-                  strokeWidth={2}
-                  dot={{ fill: 'var(--primary)', strokeWidth: 2, r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <SimpleLineChart
+              data={selectedResourceData}
+              dataKey="price"
+              xKey="time"
+              height={300}
+            />
           </div>
         </div>
       )}
@@ -271,33 +237,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ kingdomId, onBack }) => {
               No resource data available
             </p>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={resourceDistribution}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  dataKey="value"
-                  label={({ name, percent }: { name: string; percent?: number }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                >
-                  {resourceDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--bg-card)',
-                    border: '1px solid var(--border-primary)',
-                    borderRadius: '0.375rem',
-                    color: 'var(--text-primary)'
-                  }}
-                />
-                <Legend
-                  wrapperStyle={{ color: '#94a3b8', fontSize: '0.8rem', paddingTop: '0.5rem' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            <SimplePieChart data={resourceDistribution} />
           )}
         </div>
       </div>

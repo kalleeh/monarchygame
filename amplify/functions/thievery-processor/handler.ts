@@ -41,7 +41,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     if (denied) return denied;
 
     // Rate limit check
-    const rateLimited = checkRateLimit(identity.sub, 'thievery');
+    const rateLimited = await checkRateLimit(identity.sub, 'thievery');
     if (rateLimited) return rateLimited;
 
     // Check restoration status

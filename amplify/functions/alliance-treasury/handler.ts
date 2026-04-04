@@ -222,7 +222,7 @@ export const handler: Schema["manageAllianceTreasury"]["functionHandler"] = asyn
     if (!identity?.sub) {
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
-    const rateLimited = checkRateLimit(identity.sub, 'alliance');
+    const rateLimited = await checkRateLimit(identity.sub, 'alliance');
     if (rateLimited) return rateLimited;
 
     switch (action) {

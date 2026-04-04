@@ -62,7 +62,7 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
     if (denied) return denied;
 
     // Rate limit check
-    const rateLimited = checkRateLimit(identity.sub, 'training');
+    const rateLimited = await checkRateLimit(identity.sub, 'training');
     if (rateLimited) return rateLimited;
 
     // Check restoration status

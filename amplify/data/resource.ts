@@ -214,6 +214,7 @@ const schema = a.schema({
     })
     .secondaryIndexes((index) => [
       index('inviteeId'),
+      index('inviterId'),
     ])
     .authorization((allow) => [allow.owner()]),
 
@@ -278,6 +279,7 @@ const schema = a.schema({
     })
     .secondaryIndexes((index) => [
       index('sellerId'),
+      index('buyerId'),
     ])
     .authorization((allow) => [
       allow.authenticated().to(['read']),
@@ -314,6 +316,7 @@ const schema = a.schema({
     })
     .secondaryIndexes((index) => [
       index('proposerId'),
+      index('recipientId'),
     ])
     .authorization((allow) => [
       allow.authenticated().to(['read']),
@@ -348,6 +351,14 @@ const schema = a.schema({
     .authorization((allow) => [
       allow.owner()
     ]),
+
+  RateLimit: a
+    .model({
+      count: a.integer().required(),
+      windowStart: a.integer().required(),
+      ttl: a.integer(),
+    })
+    .authorization((allow) => [allow.authenticated()]),
 
   GuildWar: a
     .model({

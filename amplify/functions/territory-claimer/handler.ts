@@ -46,7 +46,7 @@ async function handleUpgrade(
     if (!identity?.sub) {
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
-    const rateLimited = checkRateLimit(identity.sub, 'territory');
+    const rateLimited = await checkRateLimit(identity.sub, 'territory');
     if (rateLimited) return rateLimited;
     if (!kingdomId || !territoryId) {
       return { success: false, error: 'Missing kingdomId or territoryId', errorCode: ErrorCode.MISSING_PARAMS };
@@ -128,7 +128,7 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
     if (!identity?.sub) {
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
-    const rateLimited = checkRateLimit(identity.sub, 'territory');
+    const rateLimited = await checkRateLimit(identity.sub, 'territory');
     if (rateLimited) return rateLimited;
 
     // Verify the kingdom exists

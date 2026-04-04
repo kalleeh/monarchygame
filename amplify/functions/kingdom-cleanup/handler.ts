@@ -75,20 +75,44 @@ export const handler = async (event: Parameters<Schema['cleanupKingdom']['functi
     });
     for (const w of wars) await dbDelete('WarDeclaration', w.id);
 
-    // TODO: Only finds offers where kingdom is seller. Offers where buyerId = kingdomId won't be found (no GSI for buyerId).
-    const tradeOffers = await dbQuery<{ id: string; sellerId?: string }>('TradeOffer', 'tradeOffersBySellerId', { field: 'sellerId', value: kingdomId });
+    const [sellerOffers, buyerOffers] = await Promise.all([
+      dbQuery<{ id: string; sellerId?: string }>('TradeOffer', 'tradeOffersBySellerId', { field: 'sellerId', value: kingdomId }),
+      dbQuery<{ id: string; buyerId?: string }>('TradeOffer', 'tradeOffersByBuyerId', { field: 'buyerId', value: kingdomId }),
+    ]);
+    const tradeOfferIds = new Set<string>();
+    const tradeOffers = [...sellerOffers, ...buyerOffers].filter(o => {
+      if (tradeOfferIds.has(o.id)) return false;
+      tradeOfferIds.add(o.id);
+      return true;
+    });
     for (const o of tradeOffers) await dbDelete('TradeOffer', o.id);
 
-    // TODO: Only finds relations where kingdomId matches. Relations where targetKingdomId = kingdomId won't be found (no GSI for targetKingdomId).
+    // Note: Only finds relations where kingdomId matches. Relations where targetKingdomId = kingdomId require a separate GSI (not yet added).
     const relations = await dbQuery<{ id: string; kingdomId?: string }>('DiplomaticRelation', 'diplomaticRelationsByKingdomId', { field: 'kingdomId', value: kingdomId });
     for (const r of relations) await dbDelete('DiplomaticRelation', r.id);
 
-    // TODO: Only finds treaties where proposerId matches. Treaties where recipientId = kingdomId won't be found (no GSI for recipientId).
-    const treaties = await dbQuery<{ id: string; proposerId?: string }>('Treaty', 'treatiesByProposerId', { field: 'proposerId', value: kingdomId });
+    const [proposerTreaties, recipientTreaties] = await Promise.all([
+      dbQuery<{ id: string; proposerId?: string }>('Treaty', 'treatiesByProposerId', { field: 'proposerId', value: kingdomId }),
+      dbQuery<{ id: string; recipientId?: string }>('Treaty', 'treatiesByRecipientId', { field: 'recipientId', value: kingdomId }),
+    ]);
+    const treatyIds = new Set<string>();
+    const treaties = [...proposerTreaties, ...recipientTreaties].filter(t => {
+      if (treatyIds.has(t.id)) return false;
+      treatyIds.add(t.id);
+      return true;
+    });
     for (const t of treaties) await dbDelete('Treaty', t.id);
 
-    // TODO: Only finds invitations where inviteeId matches. Invitations where inviterId = kingdomId won't be found (no GSI for inviterId).
-    const invitations = await dbQuery<{ id: string; inviteeId?: string }>('AllianceInvitation', 'allianceInvitationsByInviteeId', { field: 'inviteeId', value: kingdomId });
+    const [inviteeInvitations, inviterInvitations] = await Promise.all([
+      dbQuery<{ id: string; inviteeId?: string }>('AllianceInvitation', 'allianceInvitationsByInviteeId', { field: 'inviteeId', value: kingdomId }),
+      dbQuery<{ id: string; inviterId?: string }>('AllianceInvitation', 'allianceInvitationsByInviterId', { field: 'inviterId', value: kingdomId }),
+    ]);
+    const invitationIds = new Set<string>();
+    const invitations = [...inviteeInvitations, ...inviterInvitations].filter(i => {
+      if (invitationIds.has(i.id)) return false;
+      invitationIds.add(i.id);
+      return true;
+    });
     for (const i of invitations) await dbDelete('AllianceInvitation', i.id);
 
     await dbDelete('Kingdom', kingdomId);

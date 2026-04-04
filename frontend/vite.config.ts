@@ -27,14 +27,21 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-router': ['react-router-dom'],
-          'vendor-aws-core': ['aws-amplify'],
-          'vendor-aws-ui': ['@aws-amplify/ui-react'],
-          'vendor-charts': ['recharts'],
-          'vendor-spring': ['@react-spring/web'],
-          'vendor-flow': ['@xyflow/react'],
+        manualChunks(id) {
+          // Split shared game mechanics into a lazy-loaded chunk
+          if (id.includes('/shared/mechanics/') || id.includes('/shared/combat/') || id.includes('/shared/balance')) {
+            return 'shared-mechanics';
+          }
+          // Vendor chunks
+          if (id.includes('node_modules/react-dom')) return 'vendor-react';
+          if (id.includes('node_modules/react/')) return 'vendor-react';
+          if (id.includes('node_modules/react-router-dom')) return 'vendor-router';
+          if (id.includes('node_modules/aws-amplify/')) return 'vendor-aws-core';
+          if (id.includes('node_modules/@aws-amplify/ui-react')) return 'vendor-aws-ui';
+          if (id.includes('node_modules/@react-spring/')) return 'vendor-spring';
+          if (id.includes('node_modules/@xyflow/')) return 'vendor-flow';
+          if (id.includes('node_modules/@dnd-kit/')) return 'vendor-dnd';
+          if (id.includes('node_modules/react-hot-toast') || id.includes('node_modules/goober')) return 'vendor-toast';
         }
       }
     }

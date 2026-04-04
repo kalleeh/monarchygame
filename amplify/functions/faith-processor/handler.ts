@@ -42,7 +42,7 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
     if (!identity?.sub) {
       return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
     }
-    const rateLimited = checkRateLimit(identity.sub, 'faith');
+    const rateLimited = await checkRateLimit(identity.sub, 'faith');
     if (rateLimited) return rateLimited;
 
     if (action === 'selectAlignment') {

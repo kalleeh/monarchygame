@@ -72,7 +72,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     if (denied) return denied;
 
     // Rate limit check
-    const rateLimited = checkRateLimit(identity.sub, 'spell');
+    const rateLimited = await checkRateLimit(identity.sub, 'spell');
     if (rateLimited) return rateLimited;
 
     // Elven-only: remote_fog

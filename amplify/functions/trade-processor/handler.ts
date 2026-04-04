@@ -44,7 +44,7 @@ export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event
     const callerIdentity: CallerIdentity = { sub: identity.sub, username: identity.username };
 
     // Rate limit check
-    const rateLimited = checkRateLimit(identity.sub, 'trade');
+    const rateLimited = await checkRateLimit(identity.sub, 'trade');
     if (rateLimited) return JSON.stringify(rateLimited);
 
     // Route based on arguments

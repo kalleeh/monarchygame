@@ -55,7 +55,7 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
     if (!identity?.sub) {
       return JSON.stringify({ success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED });
     }
-    const rateLimited = checkRateLimit(identity.sub, 'diplomacy');
+    const rateLimited = await checkRateLimit(identity.sub, 'diplomacy');
     if (rateLimited) return JSON.stringify(rateLimited);
     const callerIdentity: CallerIdentity = { sub: identity.sub, username: identity.username };
 

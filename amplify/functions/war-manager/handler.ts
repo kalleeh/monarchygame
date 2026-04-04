@@ -48,7 +48,7 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
     if (!identity?.sub) {
       return JSON.stringify({ success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED });
     }
-    const rateLimited = checkRateLimit(identity.sub, 'diplomacy');
+    const rateLimited = await checkRateLimit(identity.sub, 'diplomacy');
     if (rateLimited) return JSON.stringify(rateLimited);
 
     // Route based on which mutation was called
