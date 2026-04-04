@@ -19,7 +19,7 @@ interface RateLimitRecord {
 }
 
 const LIMITS: Record<string, { maxRequests: number; windowMs: number }> = {
-  combat:    { maxRequests: 5,  windowMs: 60_000 },
+  combat:    { maxRequests: 10, windowMs: 60_000 },
   building:  { maxRequests: 10, windowMs: 60_000 },
   training:  { maxRequests: 10, windowMs: 60_000 },
   spell:     { maxRequests: 8,  windowMs: 60_000 },
