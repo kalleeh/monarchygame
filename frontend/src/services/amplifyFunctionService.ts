@@ -183,7 +183,7 @@ export class AmplifyFunctionService {
             goldCost: typeof payload.goldCost === 'number' ? payload.goldCost : undefined
           }));
         case 'combat-processor': {
-          const rawCombatResponse = await getClient().mutations.processCombat({
+          const { data: combatData, errors: combatErrors } = await getClient().mutations.processCombat({
             attackerId: payload.attackerKingdomId || '',
             defenderId: payload.defenderKingdomId || '',
             attackType: ({ controlled_strike: 'standard', guerilla_raid: 'raid', mob_assault: 'pillage', full_attack: 'siege', ambush: 'standard', raid: 'raid', siege: 'siege', pillage: 'pillage', standard: 'standard' } as Record<string, 'standard' | 'raid' | 'siege' | 'pillage'>)[payload.attackType as string] ?? 'raid',
@@ -191,8 +191,11 @@ export class AmplifyFunctionService {
             formationId: payload.formationId as string | undefined,
             terrainId: payload.terrainId as string | undefined,
           });
-          console.log('[AmplifyFunctionService] processCombat raw response:', JSON.stringify(rawCombatResponse));
-          return parseResult(rawCombatResponse);
+          if (combatErrors && combatErrors.length > 0) {
+            console.error('[AmplifyFunctionService] processCombat GraphQL errors:', combatErrors);
+            throw new Error(`Combat failed: ${combatErrors.map((e: { message: string }) => e.message).join(', ')}`);
+          }
+          return parseResult(combatData);
         }
         case 'season-manager':
           return parseResult(await getClient().queries.getActiveSeason({}));
