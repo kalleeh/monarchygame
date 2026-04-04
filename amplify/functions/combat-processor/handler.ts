@@ -498,23 +498,49 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     // -------------------------------------------------------------------------
 
     // Unit stat tables for computing aggregate offense/defense totals
-    const UNIT_OFFENSE: Record<string, number> = {
-      peasant: 1, infantry: 3, cavalry: 5, archer: 4, knight: 6, mage: 3, scout: 2,
-      tier1: 1, tier2: 3, tier3: 5, tier4: 7, militia: 2,
-    };
-    const UNIT_DEFENSE: Record<string, number> = {
-      peasant: 1, infantry: 2, cavalry: 3, archer: 2, knight: 4, mage: 1, scout: 1,
-      tier1: 1, tier2: 2, tier3: 3, tier4: 4, militia: 3,
+    // Tier-based offense/defense (matches shared/utils/units.ts TIER_TEMPLATES)
+    const TIER_OFFENSE = [1, 3, 6, 10]; // tier 0-3
+    const TIER_DEFENSE = [1, 2, 4, 7];
+
+    // Map every race-specific unit name (lowercase, hyphenated) to its tier
+    const UNIT_TIER: Record<string, number> = {
+      // Generic names
+      peasant: 0, militia: 1, knight: 2, cavalry: 3,
+      infantry: 1, archer: 2, mage: 2, scout: 0,
+      tier1: 0, tier2: 1, tier3: 2, tier4: 3,
+      // Human
+      peasants: 0, knights: 2,
+      // Elven
+      'elven-scouts': 0, 'elven-warriors': 1, 'elven-archers': 2, 'elven-lords': 3,
+      // Goblin
+      goblins: 0, hobgoblins: 1, kobolds: 2, 'goblin-riders': 3,
+      // Droben
+      'droben-warriors': 0, 'droben-berserkers': 1, 'droben-bunar': 2, 'droben-champions': 3,
+      // Vampire
+      thralls: 0, 'vampire-spawn': 1, 'vampire-lords': 2, 'ancient-vampires': 3,
+      // Elemental
+      'earth-elementals': 0, 'fire-elementals': 1, 'water-elementals': 2, 'air-elementals': 3,
+      // Centaur
+      'centaur-scouts': 0, 'centaur-warriors': 1, 'centaur-archers': 2, 'centaur-chiefs': 3,
+      // Sidhe
+      'sidhe-nobles': 0, 'sidhe-elders': 1, 'sidhe-mages': 2, 'sidhe-lords': 3,
+      // Dwarven
+      'dwarven-militia': 0, 'dwarven-guards': 1, 'dwarven-warriors': 2, 'dwarven-lords': 3,
+      // Fae
+      'fae-sprites': 0, 'fae-warriors': 1, 'fae-nobles': 2, 'fae-lords': 3,
     };
 
+    const getOffense = (type: string): number => TIER_OFFENSE[UNIT_TIER[type] ?? 0] ?? 1;
+    const getDefense = (type: string): number => TIER_DEFENSE[UNIT_TIER[type] ?? 0] ?? 1;
+
     const totalAttackerOffense = Object.entries(effectiveAttackerUnits).reduce(
-      (sum, [type, count]) => sum + (UNIT_OFFENSE[type] ?? 2) * count, 0
+      (sum, [type, count]) => sum + getOffense(type) * count, 0
     );
     const totalAttackerDefense = Object.entries(effectiveAttackerUnits).reduce(
-      (sum, [type, count]) => sum + (UNIT_DEFENSE[type] ?? 1) * count, 0
+      (sum, [type, count]) => sum + getDefense(type) * count, 0
     );
     const totalDefenderDefense = Object.entries(effectiveDefenderUnits).reduce(
-      (sum, [type, count]) => sum + (UNIT_DEFENSE[type] ?? 1) * count, 0
+      (sum, [type, count]) => sum + getDefense(type) * count, 0
     );
 
     const attackForce: AttackForce = {
@@ -702,14 +728,10 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
     // Per-unit defense mitigation for defender casualties (higher defense = fewer casualties)
     // The shared calculateCombatResult applies a flat rate; we override the defender side here.
-    const UNIT_DEFENSE_STATS: Record<string, number> = {
-      peasant: 1, militia: 3, tier2: 2, tier3: 3, tier4: 4, knight: 4, cavalry: 3,
-      infantry: 2, archer: 2, scout: 1, mage: 1, tier1: 1
-    };
     const defenderCasualtyRate = (getCasualtyRates(combatResult.result) as { attacker: number; defender: number }).defender;
     const mitigatedDefenderCasualties: Record<string, number> = {};
     for (const [unitType, count] of Object.entries(effectiveDefenderUnits)) {
-      const defStat = UNIT_DEFENSE_STATS[unitType] ?? 1;
+      const defStat = getDefense(unitType);
       const defMitigation = Math.max(0.5, 1 - (defStat * 0.05));
       mitigatedDefenderCasualties[unitType] = Math.floor((count as number) * defenderCasualtyRate * defMitigation);
     }
