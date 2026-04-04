@@ -251,11 +251,15 @@ export const calculateCombatResult = (
   const attackerLossRate = resultType === 'with_ease' ? 0.05 : resultType === 'good_fight' ? 0.15 : 0.25
   const defenderLossRate = resultType === 'with_ease' ? 0.20 : resultType === 'good_fight' ? 0.15 : 0.05
 
+  // Calculate losses based on unit COUNT (not offense power)
+  const totalAttackerUnits = Object.values(attacker.units).reduce((s, c) => s + c, 0)
+  const totalDefenderUnits = Object.values(defender.units).reduce((s, c) => s + c, 0)
+
   return {
     success: resultType !== 'failed',
     landGained,
-    attackerLosses: Math.floor(attacker.totalOffense * attackerLossRate),
-    defenderLosses: Math.floor(defender.totalDefense * defenderLossRate),
+    attackerLosses: Math.floor(totalAttackerUnits * attackerLossRate),
+    defenderLosses: Math.floor(totalDefenderUnits * defenderLossRate),
     resultType,
     goldLooted: landGained * 1000, // Simplified looting calculation
     structuresDestroyed: Math.floor(landGained * 0.1) // 10% of gained land in structures

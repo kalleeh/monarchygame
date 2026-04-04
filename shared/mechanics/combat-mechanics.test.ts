@@ -194,31 +194,31 @@ describe('combat-mechanics', () => {
     });
 
     it('should calculate attacker losses at 5% for with_ease', () => {
-      const attacker = { units: {}, totalOffense: 4000, totalDefense: 0 };
-      const defender = { units: {}, forts: 0, totalDefense: 1000, ambushActive: false };
+      const attacker = { units: { infantry: 400 }, totalOffense: 4000, totalDefense: 0 };
+      const defender = { units: { militia: 100 }, forts: 0, totalDefense: 1000, ambushActive: false };
       const result = calculateCombatResult(attacker, defender, 10000);
-      expect(result.attackerLosses).toBe(Math.floor(4000 * 0.05));
+      expect(result.attackerLosses).toBe(Math.floor(400 * 0.05));
     });
 
     it('should calculate attacker losses at 15% for good_fight', () => {
-      const attacker = { units: {}, totalOffense: 1500, totalDefense: 0 };
-      const defender = { units: {}, forts: 0, totalDefense: 1000, ambushActive: false };
+      const attacker = { units: { infantry: 150 }, totalOffense: 1500, totalDefense: 0 };
+      const defender = { units: { militia: 100 }, forts: 0, totalDefense: 1000, ambushActive: false };
       const result = calculateCombatResult(attacker, defender, 10000);
-      expect(result.attackerLosses).toBe(Math.floor(1500 * 0.15));
+      expect(result.attackerLosses).toBe(Math.floor(150 * 0.15));
     });
 
     it('should calculate attacker losses at 25% for failed', () => {
-      const attacker = { units: {}, totalOffense: 1000, totalDefense: 0 };
-      const defender = { units: {}, forts: 0, totalDefense: 1000, ambushActive: false };
+      const attacker = { units: { infantry: 100 }, totalOffense: 1000, totalDefense: 0 };
+      const defender = { units: { militia: 100 }, forts: 0, totalDefense: 1000, ambushActive: false };
       const result = calculateCombatResult(attacker, defender, 10000);
-      expect(result.attackerLosses).toBe(Math.floor(1000 * 0.25));
+      expect(result.attackerLosses).toBe(Math.floor(100 * 0.25));
     });
 
     it('should calculate defender losses at 20% for with_ease', () => {
-      const attacker = { units: {}, totalOffense: 4000, totalDefense: 0 };
-      const defender = { units: {}, forts: 0, totalDefense: 1000, ambushActive: false };
+      const attacker = { units: { infantry: 400 }, totalOffense: 4000, totalDefense: 0 };
+      const defender = { units: { militia: 100 }, forts: 0, totalDefense: 1000, ambushActive: false };
       const result = calculateCombatResult(attacker, defender, 10000);
-      expect(result.defenderLosses).toBe(Math.floor(1000 * 0.20));
+      expect(result.defenderLosses).toBe(Math.floor(100 * 0.20));
     });
 
     it('should calculate gold looted as landGained * 1000', () => {
