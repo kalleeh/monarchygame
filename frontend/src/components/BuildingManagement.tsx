@@ -197,9 +197,12 @@ export default function BuildingManagement({
           return;
         }
 
-        // Deduct gold and turn optimistically in the store
-        addGold(-totalCost);
-        addTurns(-1);
+        // In demo mode, deduct gold and turns locally (no server to sync from).
+        // In auth mode, refreshKingdomResources() below syncs authoritative state.
+        if (isDemoMode()) {
+          addGold(-totalCost);
+          addTurns(-1);
+        }
 
         // Update displayed building counts from server response
         const buildingsStr = result.buildings;

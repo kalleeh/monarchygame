@@ -226,7 +226,11 @@ export const useThieveryStore = create(
           }
         }
 
-        // Apply casualties and record operation only after server confirms
+        // Apply casualties and record operation locally.
+        // In auth mode the Lambda updates DynamoDB's totalUnits.scouts, but the
+        // thieveryStore tracks green vs elite scum counts separately (local-only
+        // state not persisted to DynamoDB). The Lambda only returns aggregate
+        // casualties, so local tracking is the only way to maintain the split.
         const newScumCount = Math.max(0, state.scumCount - greenCasualties);
         const newEliteScumCount = Math.max(0, state.eliteScumCount - eliteCasualties);
 

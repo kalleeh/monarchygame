@@ -15,6 +15,7 @@ import { useKingdomStore } from '../stores/kingdomStore';
 import { ToastService } from '../services/toastService';
 import { achievementTriggers } from '../utils/achievementTriggers';
 import { claimTerritory as claimTerritoryApi } from '../services/domain/TerritoryService';
+import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 import { isDemoMode } from '../utils/authMode';
 import {
   WORLD_REGIONS,
@@ -432,10 +433,7 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
       return;
     }
 
-    addGold(-cost.gold);
-    addTurns(-cost.turns);
-
-    // In auth mode, call the server-side territory-claimer
+    // In auth mode, call the server-side territory-claimer (no local resource mutations)
     if (!isDemoMode()) {
       try {
         const result = await claimTerritoryApi({
@@ -447,12 +445,10 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
         });
         const parsed = typeof result === 'string' ? JSON.parse(result) : result;
         if (!parsed.success) {
-          // Refund local resources on failure
-          addGold(cost.gold);
-          addTurns(cost.turns);
           ToastService.error(parsed.error || 'Failed to send settlers');
           return;
         }
+        void AmplifyFunctionService.refreshKingdomResources(kingdom.id);
         // Show server-side completesAt if available
         if (parsed.completesAt) {
           const msLeft = new Date(parsed.completesAt).getTime() - Date.now();
@@ -463,13 +459,15 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
           ToastService.success(`Settlers dispatched to ${region.name}!`);
         }
         return;
-      } catch (err) {
-        addGold(cost.gold);
-        addTurns(cost.turns);
+      } catch {
         ToastService.error('Failed to send settlers');
         return;
       }
     }
+
+    // Demo mode: local resource mutations
+    addGold(-cost.gold);
+    addTurns(-cost.turns);
 
     try {
       useTerritoryStore.getState().startSettlement({

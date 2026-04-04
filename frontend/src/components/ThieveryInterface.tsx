@@ -12,6 +12,7 @@ import { isDemoMode } from '../utils/authMode';
 import { useKingdomTargets } from '../hooks/useKingdomTargets';
 import { TopNavigation } from './TopNavigation';
 import { ToastService } from '../services/toastService';
+import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 import { THIEVERY_MECHANICS } from '../../../shared/mechanics/thievery-mechanics';
 import './ThieveryInterface.css';
 
@@ -138,6 +139,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
       const estimatedEnemyScum = Math.floor(selectedKingdom.resources.land * 0.1);
       setOperationLoading(true);
       try {
+        const spendTurnsFn = isDemoMode() ? spendTurns : () => true;
         const result = await executeOperation(
           type,
           selectedKingdom.id,
@@ -145,13 +147,18 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
           estimatedEnemyScum,
           selectedKingdom.race,
           selectedKingdom.resources.gold,
-          spendTurns
+          spendTurnsFn
         );
 
         if (result) {
-          // If gold was stolen, add it to kingdom
-          if (result.result.goldStolen > 0) {
+          // If gold was stolen, add it to kingdom (demo mode only — Lambda handles auth mode)
+          if (isDemoMode() && result.result.goldStolen > 0) {
             addGold(result.result.goldStolen);
+          }
+
+          // In auth mode, sync resources from server after successful operation
+          if (!isDemoMode()) {
+            void AmplifyFunctionService.refreshKingdomResources(kingdomId);
           }
 
           // Build result message
@@ -209,7 +216,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
         setOperationLoading(false);
       }
     },
-    [selectedKingdom, operationLoading, executeOperation, spendTurns, addGold]
+    [selectedKingdom, operationLoading, executeOperation, spendTurns, addGold, kingdomId]
   );
 
   return (

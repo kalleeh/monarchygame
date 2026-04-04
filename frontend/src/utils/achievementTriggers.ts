@@ -1,6 +1,7 @@
 import { useAchievementStore } from '../stores/achievementStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import toast from 'react-hot-toast';
+import { isDemoMode } from './authMode';
 
 // Achievement trigger functions
 export const achievementTriggers = {
@@ -284,14 +285,21 @@ function notifyUnlock(achievementId: string) {
   const rewardParts: string[] = [];
 
   if (reward) {
-    const kingdomStore = useKingdomStore.getState();
-    if (reward.gold) {
-      kingdomStore.addGold(reward.gold);
-      rewardParts.push(`+${reward.gold.toLocaleString()} gold`);
-    }
-    if (reward.turns) {
-      kingdomStore.addTurns(reward.turns);
-      rewardParts.push(`+${reward.turns} turns`);
+    if (isDemoMode()) {
+      const kingdomStore = useKingdomStore.getState();
+      if (reward.gold) {
+        kingdomStore.addGold(reward.gold);
+        rewardParts.push(`+${reward.gold.toLocaleString()} gold`);
+      }
+      if (reward.turns) {
+        kingdomStore.addTurns(reward.turns);
+        rewardParts.push(`+${reward.turns} turns`);
+      }
+    } else {
+      // TODO: Achievement rewards should be applied server-side via Lambda
+      // For now, rewards are display-only in auth mode to prevent client-side cheating
+      if (reward.gold) rewardParts.push(`+${reward.gold.toLocaleString()} gold (pending)`);
+      if (reward.turns) rewardParts.push(`+${reward.turns} turns (pending)`);
     }
   }
 
