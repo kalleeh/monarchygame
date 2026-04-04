@@ -737,7 +737,7 @@ async function simulateBattle(
     const defenseModifier = Math.max(0.5, 1 - (unit.defense * 0.05));
     const casualties = applyCasualtyRate(unit.count, attackerCasualtyRate * defenseModifier);
     if (casualties > 0) {
-      attackerCasualties[unit.id] = casualties;
+      attackerCasualties[unit.type] = (attackerCasualties[unit.type] ?? 0) + casualties;
     }
   });
 
@@ -745,7 +745,7 @@ async function simulateBattle(
     const defenseModifier = Math.max(0.5, 1 - (unit.defense * 0.05));
     const casualties = applyCasualtyRate(unit.count, defenderCasualtyRate * defenseModifier);
     if (casualties > 0) {
-      defenderCasualties[unit.id] = casualties;
+      defenderCasualties[unit.type] = (defenderCasualties[unit.type] ?? 0) + casualties;
     }
   });
 

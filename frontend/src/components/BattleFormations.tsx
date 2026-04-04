@@ -302,7 +302,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     //   tier2 → defense = 3 * defenseScale
     //   tier3 → defense = 4 * defenseScale
     //   tier4 → defense = 2 * defenseScale
-    const targetKingdom = aiKingdoms.find(k => k.id === selectedTarget);
+    const targetKingdom = kingdomTargets.find(k => k.id === selectedTarget);
     let defenderPower: number;
     if (targetKingdom) {
       const defenseScale = RACE_DEFENSE[targetKingdom.race] ?? 3;
@@ -315,8 +315,9 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
           (units.tier3 || 0) * 4 * defenseScale +
           (units.tier4 || 0) * 2 * defenseScale;
       } else {
-        // Server kingdom: estimate from land as proxy for defense
-        defenderPower = Math.max(200, (targetKingdom.resources.land ?? 0) * defenseScale);
+        // Server kingdom: estimate defense from networth (land * 1000 + gold)
+        const nw = targetKingdom.networth ?? ((targetKingdom.resources?.land ?? 0) * 1000 + (targetKingdom.resources?.gold ?? 0));
+        defenderPower = Math.max(200, nw * 0.003 * defenseScale);
       }
     } else {
       defenderPower = 200;
@@ -357,7 +358,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
       defenderCasualtyRate,
       landGainPercent
     };
-  }, [selectedUnits, selectedTarget, aiKingdoms, attackerRace]);
+  }, [selectedUnits, selectedTarget, aiKingdoms, kingdomTargets, attackerRace]);
 
   // Initialize combat data on mount (also initializes formations via formationStore)
   useEffect(() => {
