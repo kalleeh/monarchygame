@@ -26,7 +26,7 @@ export function calculateLandGainRange(
   defense: number,
   targetLand: number,
 ): LandGainResult {
-  const ratio = offense / defense
+  const ratio = offense / Math.max(1, defense)
 
   if (ratio >= 2) {
     const min = Math.floor(targetLand * 0.07)
@@ -112,7 +112,7 @@ export const ECONOMIC_BALANCE = {
  * @param totalLand  - total acres owned
  */
 export function calculateOptimalBuildRate(buildings: number, totalLand: number): number {
-  return Math.round((buildings / totalLand) * 100)
+  return totalLand > 0 ? Math.round((buildings / totalLand) * 100) : 0
 }
 
 /**

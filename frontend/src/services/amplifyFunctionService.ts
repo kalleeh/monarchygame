@@ -251,7 +251,7 @@ export class AmplifyFunctionService {
             recipientId: payload.defenderKingdomId || '',
             seasonId: payload.seasonId || '',
             treatyType: payload.treatyType as string || '',
-            terms: payload.terms || {}
+            terms: JSON.stringify(payload.terms || {})
           }));
         case 'season-lifecycle':
           return parseResult(await getClient().mutations.manageSeason({

@@ -42,8 +42,7 @@ interface BattleFormationsProps {
   onBack?: () => void;
 }
 
-interface SortableUnitProps {
-  id: string;
+interface UnitCardProps {
   unit: {
     id: string;
     type: string;
@@ -51,8 +50,6 @@ interface SortableUnitProps {
     attack: number;
     defense: number;
   };
-  isSelected: boolean;
-  onToggle: () => void;
   tier?: number;
 }
 
@@ -165,7 +162,7 @@ function BattleResultModal({ battle, onClose, defenderName }: { battle: import('
   );
 }
 
-const UnitCard: React.FC<{ unit: SortableUnitProps['unit']; tier?: number }> = ({ unit, tier }) => {
+const UnitCard: React.FC<UnitCardProps> = ({ unit, tier }) => {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: '0.5rem',

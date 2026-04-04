@@ -230,7 +230,7 @@ export class DiplomacyService {
           recipientId: data.toKingdomId,
           seasonId: 'current',
           treatyType: data.treatyType,
-          terms: JSON.parse(data.terms || '{}')
+          terms: data.terms || '{}'
         });
         return true;
       }

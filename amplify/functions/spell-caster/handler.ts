@@ -116,7 +116,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     }
 
     // Check turns (precondition, before deduction)
-    const currentTurns = resources.turns ?? 72;
+    const currentTurns = (casterKingdom.turnsBalance as number | undefined) ?? resources.turns ?? 72;
     const turnCost = 1;
     if (currentTurns < turnCost) {
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
@@ -162,11 +162,11 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     const updatedResources: KingdomResources = {
       ...resources,
       elan: currentElan - spellElanCost,
-      turns: Math.max(0, currentTurns - turnCost)
     };
 
     await dbUpdate('Kingdom', casterId, {
-      resources: updatedResources
+      resources: updatedResources,
+      turnsBalance: Math.max(0, currentTurns - turnCost),
     });
 
     // --- Apply spell effects to target ---
@@ -271,7 +271,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
           const drainAmount = Math.ceil(spellElanCost * 0.1);
           const targetNewElan = Math.max(0, (targetResourcesForDrain.elan ?? 0) - drainAmount);
           await dbUpdate('Kingdom', targetId, {
-            resources: JSON.stringify({ ...targetResourcesForDrain, elan: targetNewElan })
+            resources: { ...targetResourcesForDrain, elan: targetNewElan }
           });
           log.info('spell-caster', 'vampire-elan-drain', { casterId, targetId, drainAmount });
         }

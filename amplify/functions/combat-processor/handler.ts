@@ -323,6 +323,26 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     // terrain table, except the 'defense' key — which only boosts the defender's
     // effective units (home-field defensive advantage).
     // -------------------------------------------------------------------------
+    // Tier-based offense/defense (matches shared/utils/units.ts TIER_TEMPLATES)
+    const TIER_OFFENSE = [1, 3, 6, 10]; // tier 0-3
+    const TIER_DEFENSE = [1, 2, 4, 7];
+    const UNIT_TIER: Record<string, number> = {
+      peasant: 0, peasants: 0, militia: 1, knight: 2, knights: 2, cavalry: 3,
+      infantry: 1, archer: 2, mage: 2, scout: 0,
+      tier1: 0, tier2: 1, tier3: 2, tier4: 3,
+      'elven-scouts': 0, 'elven-warriors': 1, 'elven-archers': 2, 'elven-lords': 3,
+      goblins: 0, hobgoblins: 1, kobolds: 2, 'goblin-riders': 3,
+      'droben-warriors': 0, 'droben-berserkers': 1, 'droben-bunar': 2, 'droben-champions': 3,
+      thralls: 0, 'vampire-spawn': 1, 'vampire-lords': 2, 'ancient-vampires': 3,
+      'earth-elementals': 0, 'fire-elementals': 1, 'water-elementals': 2, 'air-elementals': 3,
+      'centaur-scouts': 0, 'centaur-warriors': 1, 'centaur-archers': 2, 'centaur-chiefs': 3,
+      'sidhe-nobles': 0, 'sidhe-elders': 1, 'sidhe-mages': 2, 'sidhe-lords': 3,
+      'dwarven-militia': 0, 'dwarven-guards': 1, 'dwarven-warriors': 2, 'dwarven-lords': 3,
+      'fae-sprites': 0, 'fae-warriors': 1, 'fae-nobles': 2, 'fae-lords': 3,
+    };
+    const getOffense = (type: string): number => TIER_OFFENSE[UNIT_TIER[type] ?? 0] ?? 1;
+    const getDefense = (type: string): number => TIER_DEFENSE[UNIT_TIER[type] ?? 0] ?? 1;
+
     let resolvedTerrainId: string = (terrainId as string | undefined | null) ?? '';
 
     if (!resolvedTerrainId) {
@@ -365,22 +385,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     // We use applyTerrainToUnitPower to compute the true effective attacker power,
     // then derive a scalar to rescale effectiveAttackerUnits proportionally.
     const rawAttackerPower = Object.entries(effectiveAttackerUnits).reduce((sum, [type, cnt]) => {
-      // Use UNIT_STATS-based power (attack value) — mirrors combatCache logic
-      const UNIT_STATS_LOCAL: Record<string, { attack: number; defense: number }> = {
-        peasant: { attack: 1, defense: 1 },
-        infantry: { attack: 3, defense: 2 },
-        cavalry: { attack: 5, defense: 3 },
-        archer: { attack: 4, defense: 2 },
-        knight: { attack: 6, defense: 4 },
-        mage: { attack: 3, defense: 1 },
-        scout: { attack: 2, defense: 1 },
-        tier1: { attack: 1, defense: 1 },
-        tier2: { attack: 3, defense: 2 },
-        tier3: { attack: 5, defense: 3 },
-        tier4: { attack: 7, defense: 4 },
-        militia: { attack: 2, defense: 3 },
-      };
-      const stats = UNIT_STATS_LOCAL[type] ?? { attack: 2, defense: 2 };
+      const stats = { attack: getOffense(type), defense: getDefense(type) };
       return sum + stats.attack * cnt;
     }, 0);
 
@@ -482,7 +487,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     }
 
     // Elven Remote Fog: if attacker has FOG_ACTIVE, reduce their effective units by 20%
-    const attackerStatsForFog = (typeof attacker.stats === 'string' ? JSON.parse(attacker.stats as string) : (attacker.stats ?? {})) as Record<string, unknown>;
+    const attackerStatsForFog = parseJsonField<Record<string, unknown>>(attacker.stats, {});
     const attackerFogEffects = (attackerStatsForFog.activeFaithEffects as Array<{ effectType: string; expiresAt?: string }>) ?? [];
     const nowForFog = new Date().toISOString();
     const hasFogActive = attackerFogEffects.some(e => e.effectType === 'FOG_ACTIVE' && (e.expiresAt ?? '') > nowForFog);
@@ -498,41 +503,6 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     // -------------------------------------------------------------------------
 
     // Unit stat tables for computing aggregate offense/defense totals
-    // Tier-based offense/defense (matches shared/utils/units.ts TIER_TEMPLATES)
-    const TIER_OFFENSE = [1, 3, 6, 10]; // tier 0-3
-    const TIER_DEFENSE = [1, 2, 4, 7];
-
-    // Map every race-specific unit name (lowercase, hyphenated) to its tier
-    const UNIT_TIER: Record<string, number> = {
-      // Generic names
-      peasant: 0, militia: 1, knight: 2, cavalry: 3,
-      infantry: 1, archer: 2, mage: 2, scout: 0,
-      tier1: 0, tier2: 1, tier3: 2, tier4: 3,
-      // Human
-      peasants: 0, knights: 2,
-      // Elven
-      'elven-scouts': 0, 'elven-warriors': 1, 'elven-archers': 2, 'elven-lords': 3,
-      // Goblin
-      goblins: 0, hobgoblins: 1, kobolds: 2, 'goblin-riders': 3,
-      // Droben
-      'droben-warriors': 0, 'droben-berserkers': 1, 'droben-bunar': 2, 'droben-champions': 3,
-      // Vampire
-      thralls: 0, 'vampire-spawn': 1, 'vampire-lords': 2, 'ancient-vampires': 3,
-      // Elemental
-      'earth-elementals': 0, 'fire-elementals': 1, 'water-elementals': 2, 'air-elementals': 3,
-      // Centaur
-      'centaur-scouts': 0, 'centaur-warriors': 1, 'centaur-archers': 2, 'centaur-chiefs': 3,
-      // Sidhe
-      'sidhe-nobles': 0, 'sidhe-elders': 1, 'sidhe-mages': 2, 'sidhe-lords': 3,
-      // Dwarven
-      'dwarven-militia': 0, 'dwarven-guards': 1, 'dwarven-warriors': 2, 'dwarven-lords': 3,
-      // Fae
-      'fae-sprites': 0, 'fae-warriors': 1, 'fae-nobles': 2, 'fae-lords': 3,
-    };
-
-    const getOffense = (type: string): number => TIER_OFFENSE[UNIT_TIER[type] ?? 0] ?? 1;
-    const getDefense = (type: string): number => TIER_DEFENSE[UNIT_TIER[type] ?? 0] ?? 1;
-
     const totalAttackerOffense = Object.entries(effectiveAttackerUnits).reduce(
       (sum, [type, count]) => sum + getOffense(type) * count, 0
     );
