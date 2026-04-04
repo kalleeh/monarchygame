@@ -140,11 +140,10 @@ export const useCombatStore = create(
         set({ loading: true, error: null });
 
         try {
-          // Auth mode: call Lambda only for real kingdom targets (not AI kingdoms).
-          // AI kingdoms are client-side only and don't exist in the DB, so the Lambda
-          // can't look them up — fall through to demo-mode combat for those targets.
-          const isAITarget = useAIKingdomStore.getState().aiKingdoms.some(k => k.id === targetId);
-          if (!isDemoMode() && !isAITarget) {
+          // Auth mode: ALL combat goes through the Lambda (server-side authority).
+          // AI kingdoms exist in DynamoDB (seeded by season-lifecycle) so the Lambda
+          // can look them up. Only demo mode uses client-side simulateBattle.
+          if (!isDemoMode()) {
             const kingdomId = useKingdomStore.getState().kingdomId;
             if (!kingdomId) {
               set({ error: 'No kingdom selected', loading: false });
@@ -157,15 +156,7 @@ export const useCombatStore = create(
               unitPayload[unit.type] = (unitPayload[unit.type] || 0) + unit.count;
             });
 
-            // Resolve the active formation ID and terrain from the selected AI kingdom
             const activeFormationId = activeFormation ?? undefined;
-            // Defender terrain: look up the target kingdom's terrain if available
-            const aiKingdomsForTerrain = useAIKingdomStore.getState().aiKingdoms;
-            const targetKingdomForTerrain = aiKingdomsForTerrain.find(k => k.id === targetId);
-            const terrainId: string | undefined =
-              targetKingdomForTerrain?.terrain ??
-              targetKingdomForTerrain?.terrainType ??
-              undefined;
 
             const result = await processCombat({
               kingdomId,
@@ -174,20 +165,12 @@ export const useCombatStore = create(
               attackType,
               units: unitPayload,
               formationId: activeFormationId,
-              terrainId,
             }) as any;
 
             const parsed = typeof result === 'string' ? JSON.parse(result) : result;
 
-            if (!parsed) {
-              // Lambda couldn't find the defender — target is likely a client-side AI
-              // kingdom. Fall through to client-side simulateBattle below.
-              console.log('[combatStore] Lambda returned null for defender, falling back to client-side combat');
-              // Don't return — let execution fall through to the demo-mode path
-            } else {
-
-            if (!parsed.success) {
-              set({ error: parsed.error || 'Combat failed', loading: false });
+            if (!parsed || !parsed.success) {
+              set({ error: parsed?.error || 'Combat failed', loading: false });
               return null;
             }
 
@@ -259,7 +242,7 @@ export const useCombatStore = create(
               attackerName: kingdomId,
               defenderId: targetId,
               defenderName: targetId,
-              terrain: (terrainId as import('../types/combat').TerrainType) || TerrainType.PLAINS,
+              terrain: TerrainType.PLAINS,
               attackerFormation: (activeFormationId as import('../types/combat').FormationType) || FormationType.BALANCED,
               defenderFormation: FormationType.BALANCED,
               rounds: [
@@ -277,10 +260,9 @@ export const useCombatStore = create(
             });
 
             return battleReport;
-            } // end else (parsed !== null)
           }
 
-          // Demo mode / AI target: existing client-side battle logic below
+          // Demo mode: existing client-side battle logic below
           // Get defender kingdom data from AI store
           const aiKingdoms = useAIKingdomStore.getState().aiKingdoms;
           const defenderKingdom = aiKingdoms.find(k => k.id === targetId);
