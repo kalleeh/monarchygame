@@ -207,6 +207,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     getBattleStats,
     clearError,
     initializeCombatData,
+    declareWar,
   } = useCombatStore();
 
   // Get available units from kingdom store (single source of truth)
@@ -626,15 +627,18 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
               Ambush
             </label>
           </div>
-          {error && error.toLowerCase().includes('war') && (
+          {error && error.toLowerCase().includes('war') && selectedTarget && (
             <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 8, padding: '1rem', marginBottom: '1rem', textAlign: 'center' }}>
               <p style={{ color: '#f87171', marginBottom: '0.5rem', fontWeight: 600 }}>⚔️ War Declaration Required</p>
-              <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: '0.75rem' }}>You've attacked this kingdom 3 times. You must declare war to continue.</p>
+              <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: '0.75rem' }}>You've attacked this kingdom 3+ times. Declare war to continue.</p>
               <button
-                onClick={() => navigate(`/kingdom/${kingdomId}/diplomacy`)}
-                style={{ background: 'rgba(239,68,68,0.3)', border: '1px solid rgba(239,68,68,0.5)', borderRadius: 6, padding: '0.5rem 1rem', color: '#fca5a5', cursor: 'pointer' }}
+                onClick={() => {
+                  declareWar(kingdomId, selectedTarget);
+                  clearError();
+                }}
+                style={{ background: 'rgba(239,68,68,0.4)', border: '1px solid rgba(239,68,68,0.6)', borderRadius: 6, padding: '0.5rem 1.5rem', color: '#fca5a5', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}
               >
-                Go to Diplomacy → Declare War
+                ⚔️ Declare War &amp; Continue Attacking
               </button>
             </div>
           )}

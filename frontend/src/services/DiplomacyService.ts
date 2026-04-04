@@ -145,22 +145,20 @@ export class DiplomacyService {
       return DEMO_KINGDOMS;
     }
     try {
-      const queries = getClient().queries as Record<string, (args: unknown) => Promise<unknown>>;
-      const rawResponse = await queries.getAvailableKingdoms({ kingdomId: _kingdomId });
-      const response = rawResponse as Record<string, unknown>;
-
-      if (!response.data) {
-        return [];
-      }
-
-      return (response.data as unknown as Record<string, unknown>[]).map((kingdom: Record<string, unknown>) => ({
-        id: kingdom.id as string,
-        name: kingdom.name as string,
-        race: kingdom.race as string,
-        power: kingdom.power as number,
-        reputation: kingdom.reputation as number,
-        relationship: kingdom.relationship as string
-      }));
+      const { data } = await getClient().models.Kingdom.list({
+        filter: { isActive: { eq: true } } as Parameters<ReturnType<typeof generateClient<Schema>>['models']['Kingdom']['list']>[0]['filter'],
+        limit: 50,
+      });
+      return (data ?? [])
+        .filter(k => k.id !== _kingdomId)
+        .map(k => ({
+          id: k.id,
+          name: k.name ?? 'Unknown',
+          race: k.race ?? 'Human',
+          power: k.networth ?? 0,
+          reputation: 50,
+          relationship: 'neutral',
+        }));
     } catch (error) {
       console.error('Failed to fetch available kingdoms:', error);
       return [];
