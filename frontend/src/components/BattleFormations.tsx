@@ -5,10 +5,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { useSpring, animated, config } from '@react-spring/web';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
@@ -169,51 +165,25 @@ function BattleResultModal({ battle, onClose, defenderName }: { battle: import('
   );
 }
 
-const SortableUnit: React.FC<SortableUnitProps> = ({ id, unit, isSelected, onToggle, tier }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
+const UnitCard: React.FC<{ unit: SortableUnitProps['unit']; tier?: number }> = ({ unit, tier }) => {
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      className={`unit-card ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''}`}
-    >
-      <div className="unit-icon" {...listeners} style={{ cursor: 'grab', position: 'relative', width: 48, height: 48, flexShrink: 0 }}>
-        <img src={`/units/output/${unit.type.replace(/_/g, '-')}-icon.png`} alt={unit.type}
-          style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 6, display: 'block' }}
-          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-        />
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '0.5rem',
+      padding: '0.4rem 0.6rem', background: 'rgba(255,255,255,0.04)',
+      borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)',
+    }}>
+      <img src={`/units/output/${unit.type.replace(/_/g, '-')}-icon.png`} alt={unit.type}
+        style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 4 }}
+        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+      />
+      <span style={{ flex: 1, fontSize: '0.85rem', color: '#e2e8f0', textTransform: 'capitalize' }}>
+        {unit.type.replace(/-/g, ' ')}
         {tier !== undefined && tier > 0 && (
-          <span style={{
-            position: 'absolute', bottom: 0, right: 0,
-            background: TIER_COLORS[tier] ?? '#6b7280',
-            color: '#fff', fontSize: '0.6rem', fontWeight: 700,
-            padding: '1px 3px', borderRadius: 3, lineHeight: 1,
-          }}>{TIER_LABELS[tier] ?? `T${tier}`}</span>
+          <span style={{ marginLeft: 4, fontSize: '0.65rem', color: TIER_COLORS[tier], fontWeight: 700 }}>{TIER_LABELS[tier]}</span>
         )}
-      </div>
-      <div className="unit-info" onClick={onToggle} style={{ cursor: 'pointer', flex: 1 }}>
-        <h4 style={{ textTransform: 'capitalize' }}>{unit.type.replace(/-/g, ' ')}</h4>
-        <span className="unit-count">×{unit.count}</span>
-      </div>
-      <div className="unit-stats" onClick={onToggle} style={{ cursor: 'pointer' }}>
-        <span>⚔️{unit.attack}</span>
-        <span>🛡️{unit.defense}</span>
-      </div>
+      </span>
+      <span style={{ fontSize: '0.85rem', color: '#fbbf24', fontWeight: 600 }}>×{unit.count}</span>
+      <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>⚔️{unit.attack} 🛡️{unit.defense}</span>
     </div>
   );
 };
@@ -264,11 +234,11 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     })), ...aiOnly];
   }, [aiKingdoms, serverTargets]);
 
-  const [unitOrder, setUnitOrder] = useState<string[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<string>('');
   const [showBattleResult, setShowBattleResult] = useState(false);
   const [selectedAttackType, setSelectedAttackType] = useState<'standard' | 'raid' | 'pillage' | 'siege'>('standard');
   const [ambushActive, setAmbushActive] = useState(false);
+  const [showDefensiveStance, setShowDefensiveStance] = useState(false);
   const [defensiveFormation, setDefensiveFormation] = useState<string>(() => {
     try {
       const stored = localStorage.getItem(`defensive-formation-${kingdomId}`);
@@ -381,17 +351,6 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     }
   }, [preselectedTargetId]);
 
-  // Update unit order when available units change — sort by tier (highest first)
-  useEffect(() => {
-    const raceDefs = getUnitsForRace(race);
-    const withTier = availableUnits.map(unit => ({
-      id: unit.id,
-      tier: raceDefs.find(u => u.id === unit.type)?.tier ?? 0,
-    }));
-    withTier.sort((a, b) => b.tier - a.tier);
-    setUnitOrder(withTier.map(u => u.id));
-  }, [availableUnits, race]);
-
   // Battle stats animation
   const battleStats = getBattleStats();
   const statsSpring = useSpring({
@@ -399,21 +358,6 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     totalBattles: battleStats.totalBattles,
     config: config.gentle
   });
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (active.id !== over?.id) {
-      setUnitOrder((items) => {
-        const oldIndex = items.indexOf(active.id as string);
-        const newIndex = over ? items.indexOf(over.id as string) : -1;
-        if (newIndex !== -1) {
-          return arrayMove(items, oldIndex, newIndex);
-        }
-        return items;
-      });
-    }
-  };
 
   const handleExecuteBattle = async () => {
     if (selectedTarget) {
@@ -459,12 +403,6 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
 
   // Get ordered units for display with tier info
   const raceDefs = useMemo(() => getUnitsForRace(race), [race]);
-  const orderedUnits = useMemo(() => {
-    return unitOrder
-      .map(id => availableUnits.find(unit => unit.id === id))
-      .filter((unit): unit is NonNullable<typeof unit> => Boolean(unit));
-  }, [unitOrder, availableUnits]);
-
   return (
     <div className="battle-formations">
       <TopNavigation
@@ -484,27 +422,16 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
         </div>
       )}
 
-      {/* Battle Statistics */}
-      <div className="battle-stats">
-        <h2>Battle Statistics</h2>
-        <div className="stats-grid">
-          <animated.div className="stat-card">
-            <animated.span className="stat-value">
-              {statsSpring.totalBattles.to(val => Math.floor(val))}
-            </animated.span>
-            <span className="stat-label">Total Battles</span>
-          </animated.div>
-          <animated.div className="stat-card">
-            <animated.span className="stat-value">
-              {statsSpring.winRate.to(val => `${Math.floor(val)}%`)}
-            </animated.span>
-            <span className="stat-label">Win Rate</span>
-          </animated.div>
-          <div className="stat-card">
-            <span className="stat-value">{battleStats.totalLandGained}</span>
-            <span className="stat-label">Land Gained</span>
-          </div>
-        </div>
+      {/* Battle Stats — compact row */}
+      <div style={{
+        display: 'flex', gap: '1rem', justifyContent: 'center',
+        padding: '0.5rem 1rem', marginBottom: '1rem',
+        background: 'rgba(255,255,255,0.03)', borderRadius: 8,
+        fontSize: '0.85rem', color: '#9ca3af',
+      }}>
+        <span>⚔️ <animated.span style={{ color: '#fff', fontWeight: 600 }}>{statsSpring.totalBattles.to(v => Math.floor(v))}</animated.span> battles</span>
+        <span>🏆 <animated.span style={{ color: '#fff', fontWeight: 600 }}>{statsSpring.winRate.to(v => `${Math.floor(v)}%`)}</animated.span> wins</span>
+        <span>🏰 <span style={{ color: '#fff', fontWeight: 600 }}>{battleStats.totalLandGained}</span> land</span>
       </div>
 
       {/* Target Selection */}
@@ -547,39 +474,20 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
         )}
       </div>
 
-      {/* Army Overview — read-only display */}
+      {/* Army — compact grid */}
       <div className="unit-selection">
-        <h3>Available Units (Drag to Reorder)</h3>
+        <h3>Your Army ({availableUnits.reduce((s, u) => s + u.count, 0)} units)</h3>
         {availableUnits.length === 0 ? (
           <div className="combat-empty-state">
-            <p>🗡️ You have no units trained yet.</p>
-            <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>You need units to attack. Train some first.</p>
-            <button onClick={() => navigate(`/kingdom/${kingdomId}/summon`)}>
-              ⚔️ Train Units First
-            </button>
+            <p>🗡️ No units trained yet.</p>
+            <button onClick={() => navigate(`/kingdom/${kingdomId}/summon`)}>⚔️ Train Units</button>
           </div>
         ) : (
-          <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={unitOrder} strategy={verticalListSortingStrategy}>
-              <div className="unit-grid">
-                {orderedUnits.map(unit => (
-                  <SortableUnit
-                    key={unit.id}
-                    id={unit.id}
-                    unit={unit}
-                    isSelected={false}
-                    onToggle={() => {}}
-                    tier={raceDefs.find(u => u.id === unit.type)?.tier}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-        )}
-        {availableUnits.length > 0 && (
-          <p style={{ fontSize: '0.78rem', color: '#6b7280', margin: '0.5rem 0 0', textAlign: 'center' }}>
-            All units commit to the attack automatically. Drag to reorder for display.
-          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            {availableUnits.map(unit => (
+              <UnitCard key={unit.id} unit={unit} tier={raceDefs.find(u => u.id === unit.type)?.tier} />
+            ))}
+          </div>
         )}
       </div>
 
@@ -650,28 +558,6 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
         </div>
       )}
 
-      {/* Formation Modifier — optional bonus applied to this attack */}
-      <div className="saved-formations">
-        <h3>Formation Modifier <span style={{ fontSize: '0.8rem', fontWeight: 400, color: '#6b7280' }}>(optional)</span></h3>
-        <div className="formations-list">
-          {formations.map(formation => (
-            <div
-              key={formation.id}
-              className={`formation-card ${activeFormation === formation.id ? 'active' : ''}`}
-              onClick={() => setActiveFormation(activeFormation === formation.id ? null : formation.id)}
-              title={activeFormation === formation.id ? 'Click to deselect' : 'Click to apply this bonus to your attack'}
-            >
-              <h4>{formation.name}</h4>
-              <p className="formation-desc">{FORMATION_DESCRIPTIONS[formation.name] || ''}</p>
-              <div className="formation-bonuses">
-                <span>⚔️+{formation.bonuses.attack}</span>
-                <span>🛡️+{formation.bonuses.defense}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Battle Controls */}
       <div className="battle-controls">
         <h3>Battle Execution</h3>
@@ -711,27 +597,35 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
             {selectedAttackType === 'pillage' && 'Steals 10% of defender\'s gold and destroys a random building. No land captured.'}
             {selectedAttackType === 'siege' && 'Heavy assault: +50% land gained, costs 3 turns total, +30% attacker casualties.'}
           </div>
-          <label className="ambush-toggle" style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.75rem 1rem',
-            background: ambushActive ? 'rgba(139, 92, 246, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-            border: `1px solid ${ambushActive ? 'rgba(139, 92, 246, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
-            borderRadius: '8px',
-            marginBottom: '1rem',
-            cursor: 'pointer',
-            color: '#fff',
-            fontSize: '0.9rem',
-            transition: 'all 0.2s ease'
-          }}>
-            <input
-              type="checkbox"
-              checked={ambushActive}
-              onChange={(e) => setAmbushActive(e.target.checked)}
-            />
-            Set Ambush (95% defense bonus if attacked)
-          </label>
+          {/* Formation & Ambush — inline row */}
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
+            <select
+              value={activeFormation ?? ''}
+              onChange={(e) => setActiveFormation(e.target.value || null)}
+              style={{
+                flex: 1, padding: '0.5rem', background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6,
+                color: '#fff', fontSize: '0.85rem',
+              }}
+            >
+              <option value="">No formation bonus</option>
+              {formations.map(f => (
+                <option key={f.id} value={f.id}>
+                  {f.name} (⚔️+{f.bonuses.attack} 🛡️+{f.bonuses.defense})
+                </option>
+              ))}
+            </select>
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: '0.4rem',
+              padding: '0.5rem 0.75rem',
+              background: ambushActive ? 'rgba(139, 92, 246, 0.15)' : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${ambushActive ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: 6, cursor: 'pointer', color: '#fff', fontSize: '0.85rem', whiteSpace: 'nowrap',
+            }}>
+              <input type="checkbox" checked={ambushActive} onChange={(e) => setAmbushActive(e.target.checked)} />
+              Ambush
+            </label>
+          </div>
           {error && error.toLowerCase().includes('war') && (
             <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 8, padding: '1rem', marginBottom: '1rem', textAlign: 'center' }}>
               <p style={{ color: '#f87171', marginBottom: '0.5rem', fontWeight: 600 }}>⚔️ War Declaration Required</p>
@@ -773,30 +667,25 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
         </div>
       </div>
 
-      {/* Battle Tips */}
-      <div className="battle-tips">
-        <p className="battle-tips-label">Battle Tips</p>
-        <ul>
-          <li>Ambush gives 95% defense bonus when attacked</li>
-          <li>Cavalry Charge formation maximizes offense</li>
-          <li>Train units before attacking for best results</li>
-        </ul>
-      </div>
-
-      {/* Defensive Stance */}
-      <div className="defensive-stance">
-        <p className="defensive-stance-label">Defensive Stance</p>
-        <p className="defensive-stance-desc">
-          Choose a formation your kingdom automatically uses when defending against attacks.
-          {defensiveFormationSaved && (
-            <span className="defensive-stance-saved">Saved!</span>
-          )}
-        </p>
-        <div className="defensive-stance-options">
+      {/* Defensive Stance — collapsible */}
+      <div style={{ marginBottom: '1rem' }}>
+        <button
+          onClick={() => setShowDefensiveStance(!showDefensiveStance)}
+          style={{
+            width: '100%', padding: '0.6rem 1rem', background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8,
+            color: '#9ca3af', cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left',
+          }}
+        >
+          🛡️ Defensive Stance {defensiveFormationSaved && <span style={{ color: '#22c55e', marginLeft: 8 }}>✓ Saved</span>}
+          <span style={{ float: 'right' }}>{showDefensiveStance ? '▾' : '▸'}</span>
+        </button>
+        {showDefensiveStance && (
+          <div className="defensive-stance-options" style={{ marginTop: '0.5rem' }}>
           {[
-            { id: 'defensive-wall', label: 'Defensive Wall', desc: 'Maximizes defense, minimizes offense' },
-            { id: 'balanced', label: 'Balanced Formation', desc: 'Equal offense and defense' },
-            { id: 'cavalry-charge', label: 'Cavalry Charge', desc: 'Offense-focused, lower defense' },
+            { id: 'defensive-wall', label: 'Defensive Wall', desc: 'Max defense' },
+            { id: 'balanced', label: 'Balanced', desc: 'Equal offense/defense' },
+            { id: 'cavalry-charge', label: 'Cavalry Charge', desc: 'Max offense' },
           ].map(opt => (
             <div
               key={opt.id}
@@ -811,11 +700,12 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
                 disabled={defensiveFormation === opt.id}
                 className={`defensive-stance-btn ${defensiveFormation === opt.id ? 'defensive-stance-btn--active' : 'defensive-stance-btn--inactive'}`}
               >
-                {defensiveFormation === opt.id ? 'Active' : 'Set Stance'}
+                {defensiveFormation === opt.id ? 'Active' : 'Set'}
               </button>
             </div>
           ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Battle Result Modal */}
