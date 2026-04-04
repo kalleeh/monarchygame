@@ -182,15 +182,18 @@ export class AmplifyFunctionService {
             quantity: payload.quantity || 1,
             goldCost: typeof payload.goldCost === 'number' ? payload.goldCost : undefined
           }));
-        case 'combat-processor':
-          return parseResult(await getClient().mutations.processCombat({
+        case 'combat-processor': {
+          const rawCombatResponse = await getClient().mutations.processCombat({
             attackerId: payload.attackerKingdomId || '',
             defenderId: payload.defenderKingdomId || '',
             attackType: ({ controlled_strike: 'standard', guerilla_raid: 'raid', mob_assault: 'pillage', full_attack: 'siege', ambush: 'standard', raid: 'raid', siege: 'siege', pillage: 'pillage', standard: 'standard' } as Record<string, 'standard' | 'raid' | 'siege' | 'pillage'>)[payload.attackType as string] ?? 'raid',
             units: payload.units || {},
             formationId: payload.formationId as string | undefined,
             terrainId: payload.terrainId as string | undefined,
-          }));
+          });
+          console.log('[AmplifyFunctionService] processCombat raw response:', JSON.stringify(rawCombatResponse));
+          return parseResult(rawCombatResponse);
+        }
         case 'season-manager':
           return parseResult(await getClient().queries.getActiveSeason({}));
         case 'war-manager':
