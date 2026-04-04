@@ -154,7 +154,7 @@ export const useAIKingdomStore = create<AIKingdomState>((set) => ({
             tier4: units.cavalry ?? units.tier4 ?? 20,
           },
           difficulty: 'medium' as const,
-          networth: (res.land ?? 800) * 1000 + (res.gold ?? 50000),
+          networth: k.networth ?? ((res.land ?? 800) * 1000 + (res.gold ?? 50000)),
           isOnline: true,
           lastActive: new Date(),
         } as AIKingdom;
