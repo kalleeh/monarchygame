@@ -2,6 +2,29 @@ import { useAchievementStore } from '../stores/achievementStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import toast from 'react-hot-toast';
 import { isDemoMode } from './authMode';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../../amplify/data/resource';
+import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+
+let _rewardClient: ReturnType<typeof generateClient<Schema>> | null = null;
+const getRewardClient = () => { if (!_rewardClient) _rewardClient = generateClient<Schema>(); return _rewardClient; };
+
+/** Apply achievement reward server-side via Lambda (fire-and-forget) */
+async function applyRewardServerSide(achievementId: string, gold: number, turns: number): Promise<void> {
+  try {
+    const kingdomId = useKingdomStore.getState().kingdomId;
+    if (!kingdomId) return;
+    await getRewardClient().mutations.saveAchievements({
+      kingdomId,
+      achievementIds: JSON.stringify([achievementId]),
+      rewardGold: gold,
+      rewardTurns: turns,
+    });
+    void AmplifyFunctionService.refreshKingdomResources(kingdomId);
+  } catch (err) {
+    console.error('[achievementTriggers] Failed to apply reward server-side:', err);
+  }
+}
 
 // Achievement trigger functions
 export const achievementTriggers = {
@@ -296,10 +319,10 @@ function notifyUnlock(achievementId: string) {
         rewardParts.push(`+${reward.turns} turns`);
       }
     } else {
-      // TODO: Achievement rewards should be applied server-side via Lambda
-      // For now, rewards are display-only in auth mode to prevent client-side cheating
-      if (reward.gold) rewardParts.push(`+${reward.gold.toLocaleString()} gold (pending)`);
-      if (reward.turns) rewardParts.push(`+${reward.turns} turns (pending)`);
+      // Apply rewards server-side via saveAchievements mutation
+      if (reward.gold) rewardParts.push(`+${reward.gold.toLocaleString()} gold`);
+      if (reward.turns) rewardParts.push(`+${reward.turns} turns`);
+      void applyRewardServerSide(achievementId, reward.gold ?? 0, reward.turns ?? 0);
     }
   }
 

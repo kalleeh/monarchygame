@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources, KingdomBuildings } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbQuery } from '../data-client';
+import { dbGet, dbUpdate, dbQuery, parseJsonField } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
@@ -44,6 +44,8 @@ type ResourceManagerEvent = {
     duration?: number | null;
     formationId?: string | null;
     achievementIds?: string | null;
+    rewardGold?: number | null;
+    rewardTurns?: number | null;
   };
   identity?: { sub?: string; username?: string; } | null;
 };
@@ -116,7 +118,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       }
       const rateLimited = checkRateLimit(identity.sub, 'resource');
       if (rateLimited) return rateLimited;
-      const kingdom = await dbGet<{ id: string; owner?: string; stats?: unknown }>('Kingdom', kingdomId);
+      const kingdom = await dbGet<{ id: string; owner?: string; stats?: unknown; resources?: unknown }>('Kingdom', kingdomId);
       if (!kingdom) {
         return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
       }
@@ -125,10 +127,23 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       const currentStats: Record<string, unknown> = typeof kingdom.stats === 'string'
         ? (JSON.parse(kingdom.stats as string) as Record<string, unknown>)
         : ((kingdom.stats ?? {}) as Record<string, unknown>);
-      await dbUpdate('Kingdom', kingdomId, {
+
+      // Apply achievement rewards (gold/turns) to kingdom resources atomically
+      const rewardGold = rawEvent.arguments.rewardGold as number | null | undefined;
+      const rewardTurns = rawEvent.arguments.rewardTurns as number | null | undefined;
+      const updateFields: Record<string, unknown> = {
         stats: JSON.stringify({ ...currentStats, unlockedAchievements: parsedIds }),
-      });
-      log.info('resource-manager', 'achievements-saved', { kingdomId, count: (parsedIds as string[]).length });
+      };
+      if (rewardGold || rewardTurns) {
+        const currentResources = parseJsonField<Record<string, number>>(kingdom.resources, {});
+        updateFields.resources = JSON.stringify({
+          ...currentResources,
+          gold: (currentResources.gold ?? 0) + (rewardGold ?? 0),
+          turns: Math.min(100, (currentResources.turns ?? 0) + (rewardTurns ?? 0)),
+        });
+      }
+      await dbUpdate('Kingdom', kingdomId, updateFields);
+      log.info('resource-manager', 'achievements-saved', { kingdomId, count: (parsedIds as string[]).length, rewardGold, rewardTurns });
       return { success: true };
     } catch (err) {
       log.error('resource-manager', err, { kingdomId, context: 'saveAchievements' });

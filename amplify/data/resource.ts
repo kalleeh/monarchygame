@@ -693,6 +693,8 @@ const schema = a.schema({
     .arguments({
       kingdomId: a.string().required(),
       achievementIds: a.string().required(),
+      rewardGold: a.integer(),
+      rewardTurns: a.integer(),
     })
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])
