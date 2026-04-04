@@ -78,26 +78,16 @@ export class DiplomacyService {
       return DEMO_RELATIONSHIPS;
     }
     try {
-      const queries = getClient().queries as Record<string, (args: unknown) => Promise<unknown>>;
-      const rawResponse = await queries.getDiplomaticRelationships({
-        kingdomId: _kingdomId
+      const { data } = await getClient().models.DiplomaticRelation.list({
+        filter: { kingdomId: { eq: _kingdomId } } as Parameters<ReturnType<typeof generateClient<Schema>>['models']['DiplomaticRelation']['list']>[0]['filter'],
+        limit: 50,
       });
-      const response = rawResponse as Record<string, unknown>;
-
-      if (!response.data) {
-        return [];
-      }
-
-      return (response.data as unknown as Record<string, unknown>[]).map((rel: Record<string, unknown>) => ({
-        id: rel.id as string,
-        kingdomId: rel.kingdomId as string,
-        targetKingdomId: rel.targetKingdomId as string,
-        targetKingdomName: rel.targetKingdomName as string,
-        relationship: rel.relationship as string,
-        reputation: rel.reputation as number,
-        lastAction: rel.lastAction as string,
-        createdAt: rel.createdAt as string,
-        updatedAt: rel.updatedAt as string
+      return (data ?? []).map(rel => ({
+        id: rel.id,
+        fromKingdom: { id: _kingdomId, name: 'You', race: '', reputation: rel.reputation ?? 0 },
+        toKingdom: { id: rel.targetKingdomId, name: rel.targetKingdomId, race: '', reputation: 0 },
+        status: (rel.status ?? 'NEUTRAL').toUpperCase(),
+        treaties: [],
       } as unknown as DiplomaticRelationship));
     } catch (error) {
       console.error('Failed to fetch diplomatic relationships:', error);
@@ -113,23 +103,19 @@ export class DiplomacyService {
       return DEMO_PROPOSALS;
     }
     try {
-      const queries = getClient().queries as Record<string, (args: unknown) => Promise<unknown>>;
-      const rawResponse = await queries.getActiveProposals({ kingdomId: _kingdomId });
-      const response = rawResponse as Record<string, unknown>;
-
-      if (!response.data) {
-        return [];
-      }
-
-      return (response.data as unknown as Record<string, unknown>[]).map((proposal: Record<string, unknown>) => ({
-        id: proposal.id as string,
-        fromKingdomId: proposal.fromKingdomId as string,
-        toKingdomId: proposal.toKingdomId as string,
-        treatyType: proposal.treatyType as string,
-        terms: proposal.terms as Record<string, unknown>,
-        status: proposal.status as string,
-        expiresAt: proposal.expiresAt as string,
-        createdAt: proposal.createdAt as string
+      const { data } = await getClient().models.Treaty.list({
+        filter: { recipientId: { eq: _kingdomId }, status: { eq: 'proposed' } } as Parameters<ReturnType<typeof generateClient<Schema>>['models']['Treaty']['list']>[0]['filter'],
+        limit: 50,
+      });
+      return (data ?? []).map(t => ({
+        id: t.id,
+        fromKingdom: { id: t.proposerId, name: t.proposerId, race: '', reputation: 0 },
+        toKingdom: { id: t.recipientId, name: _kingdomId, race: '', reputation: 0 },
+        treatyType: (t.type ?? 'NON_AGGRESSION').toUpperCase(),
+        terms: typeof t.terms === 'string' ? JSON.parse(t.terms) : (t.terms ?? {}),
+        status: t.status ?? 'proposed',
+        createdAt: t.proposedAt ?? new Date().toISOString(),
+        expiresAt: t.expiresAt ?? new Date().toISOString(),
       } as unknown as TreatyProposal));
     } catch (error) {
       console.error('Failed to fetch active proposals:', error);
@@ -173,11 +159,8 @@ export class DiplomacyService {
       return 100;
     }
     try {
-      const queries = getClient().queries as Record<string, (args: unknown) => Promise<unknown>>;
-      const rawResponse = await queries.getKingdomReputation({ kingdomId: _kingdomId });
-      const response = rawResponse as Record<string, unknown>;
-      const data = response.data as Record<string, unknown>;
-      return Number(data?.reputation) || 0;
+      const { data } = await getClient().models.Kingdom.get({ id: _kingdomId });
+      return (data?.networth as number) ?? 0;
     } catch (error) {
       console.error('Failed to fetch kingdom reputation:', error);
       return 0;
@@ -192,22 +175,21 @@ export class DiplomacyService {
       return DEMO_HISTORY;
     }
     try {
-      const queries = getClient().queries as Record<string, (args: unknown) => Promise<unknown>>;
-      const rawResponse = await queries.getDiplomaticHistory({ kingdomId: _kingdomId });
-      const response = rawResponse as Record<string, unknown>;
-
-      if (!response.data) {
-        return [];
-      }
-
-      return (response.data as unknown as Record<string, unknown>[]).map((action: Record<string, unknown>) => ({
-        id: action.id as string,
-        kingdomId: action.kingdomId as string,
-        targetKingdomId: action.targetKingdomId as string,
-        actionType: action.actionType as string,
-        description: action.description as string,
-        timestamp: action.timestamp as string
-      } as unknown as DiplomaticAction));
+      // No dedicated history model — derive from relations
+      const { data } = await getClient().models.DiplomaticRelation.list({
+        filter: { kingdomId: { eq: _kingdomId } } as Parameters<ReturnType<typeof generateClient<Schema>>['models']['DiplomaticRelation']['list']>[0]['filter'],
+        limit: 20,
+      });
+      return (data ?? [])
+        .filter(r => r.lastActionAt)
+        .map(r => ({
+          id: r.id,
+          type: r.status ?? 'neutral',
+          description: `Relation with ${r.targetKingdomId}: ${r.status}`,
+          timestamp: r.lastActionAt ?? new Date().toISOString(),
+          fromKingdom: { id: _kingdomId, name: 'You' },
+          toKingdom: { id: r.targetKingdomId, name: r.targetKingdomId },
+        } as unknown as DiplomaticAction));
     } catch (error) {
       console.error('Failed to fetch diplomatic history:', error);
       return [];
@@ -332,21 +314,20 @@ export class DiplomacyService {
       return { unsubscribe: () => {} };
     }
     try {
-      const queries = getClient().queries as Record<string, (args: unknown) => unknown>;
-      const subscriptionResult = queries.onTreatyProposal({ kingdomId });
-      const subscription = (subscriptionResult as unknown as { subscribe: (handlers: { next: (data: unknown) => void; error: (error: Error) => void }) => { unsubscribe: () => void } }).subscribe({
-        next: (data: unknown) => callback(data as Record<string, unknown>),
-        error: (error: Error) => console.error('Subscription error:', error)
+      const sub = getClient().models.Treaty.observeQuery({
+        filter: { recipientId: { eq: kingdomId }, status: { eq: 'proposed' } } as Parameters<ReturnType<typeof generateClient<Schema>>['models']['Treaty']['observeQuery']>[0]['filter'],
+      }).subscribe({
+        next: ({ items }) => {
+          for (const item of items) {
+            callback(item as unknown as Record<string, unknown>);
+          }
+        },
+        error: (error: Error) => console.error('Treaty subscription error:', error),
       });
-
-      return {
-        unsubscribe: () => subscription.unsubscribe()
-      };
+      return { unsubscribe: () => sub.unsubscribe() };
     } catch (error) {
       console.error('Error setting up subscription:', error);
-      return {
-        unsubscribe: () => {}
-      };
+      return { unsubscribe: () => {} };
     }
   }
 }
