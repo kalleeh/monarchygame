@@ -54,7 +54,7 @@ const initialResources: KingdomResources = {
   turns: 0
 };
 
-const MAX_TURNS = 100;
+const MAX_TURNS = 250;
 
 const getKingdomData = (kingdomId: string): KingdomData => {
   const stored = localStorage.getItem(`kingdom-${kingdomId}`);

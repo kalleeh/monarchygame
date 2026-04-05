@@ -33,7 +33,7 @@ export const TURN_MECHANICS = {
   BASE_GENERATION: {
     TURNS_PER_HOUR: 3,           // 3 turns per hour base rate
     MINUTES_PER_TURN: 20,        // 20 minutes per turn
-    MAX_STORED_TURNS: 72,        // 72 turns maximum storage
+    MAX_STORED_TURNS: 250,       // 250 turns maximum storage (~3.5 days)
     TURN_OVERFLOW_LOSS: true     // Turns beyond max are lost
   },
 
@@ -42,7 +42,7 @@ export const TURN_MECHANICS = {
     ENCAMP_24_HOURS: {
       duration: 24,              // 24 hours
       bonusTurns: 10,           // +10 bonus turns
-      totalTurns: 82            // 72 base + 10 bonus
+      totalTurns: 260            // 250 base + 10 bonus
     },
     ENCAMP_16_HOURS: {
       duration: 16,              // 16 hours  
