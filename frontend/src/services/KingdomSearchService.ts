@@ -105,9 +105,7 @@ export class KingdomSearchService {
             networth: k.networth ?? 0,
           };
         }).sort((a, b) => {
-          const nwA = a.resources.land * 1000 + a.resources.gold;
-          const nwB = b.resources.land * 1000 + b.resources.gold;
-          return nwB - nwA;
+          return (b.networth ?? 0) - (a.networth ?? 0);
         }),
         nextToken: nt ?? null,
       };

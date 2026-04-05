@@ -65,6 +65,7 @@ function pageKingdomToKingdom(k: KingdomPage['kingdoms'][number]): Kingdom {
       previousSeasonNumber: k.stats.previousSeasonNumber != null ? k.stats.previousSeasonNumber : undefined,
     },
     totalUnits: k.totalUnits,
+    networth: k.networth,
     isOnline: k.isOnline,
     lastActive: k.lastActive,
     guildId: k.guildId,
@@ -178,13 +179,14 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
 
       const converted = result.kingdoms.map(pageKingdomToKingdom);
 
-      // Detect season-end on incoming data
+      // Detect season-end on incoming data (skip first load — ref is empty)
       let seasonEndDetected = false;
       let detectedSeasonNumber: number | undefined;
+      const isFirstLoad = Object.keys(prevSeasonNumbersRef.current).length === 0;
       for (const k of converted) {
         const newVal = k.stats.previousSeasonNumber;
         const oldVal = prevSeasonNumbersRef.current[k.id];
-        if (newVal != null && newVal !== oldVal) {
+        if (!isFirstLoad && newVal != null && newVal !== oldVal) {
           seasonEndDetected = true;
           detectedSeasonNumber = newVal;
         }
