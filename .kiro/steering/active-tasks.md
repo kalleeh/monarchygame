@@ -93,11 +93,11 @@ All planned features, code quality improvements, and backlog items are complete.
 ## Remaining Backlog
 
 ### Production Deployment
-- Deploy to AWS Amplify production (monarchy.gurum.se)
+- ✅ Deployed to AWS Amplify production (monarchy.gurum.se) via CodeCommit CI/CD pipeline
 - Subscribe to SNS alert topic for monitoring notifications
 - Validate CloudWatch dashboard and alarms
 
 ---
 
 **Last Updated:** 2026-04-05  
-**Status:** Production ready, deployment pending
+**Status:** Deployed to production
