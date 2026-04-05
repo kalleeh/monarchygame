@@ -53,6 +53,9 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     if (!validSpells.includes(spellId)) {
       return { success: false, error: `Invalid spell. Must be one of: ${validSpells.join(', ')}`, errorCode: ErrorCode.INVALID_PARAM };
     }
+    if (targetId && casterId === targetId) {
+      return { success: false, error: 'Cannot target your own kingdom', errorCode: ErrorCode.INVALID_PARAM };
+    }
 
     // Verify caller identity
     const identity = event.identity as { sub?: string; username?: string } | null;

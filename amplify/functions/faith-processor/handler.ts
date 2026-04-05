@@ -99,10 +99,8 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
       const restorations = await dbQuery<{ kingdomId: string; endTime: string; prohibitedActions?: string }>('RestorationStatus', 'restorationStatusesByKingdomIdAndEndTime', { field: 'kingdomId', value: kingdomId });
       const activeRestoration = restorations.find(r => new Date(r.endTime) > new Date());
       if (activeRestoration) {
-        const prohibited: string[] = typeof activeRestoration.prohibitedActions === 'string'
-          ? JSON.parse(activeRestoration.prohibitedActions)
-          : (activeRestoration.prohibitedActions ?? []);
-        if (prohibited.some(a => ['build', 'train', 'espionage', 'attack', 'trade'].includes(a))) {
+        const prohibited = parseJsonField<string[]>(activeRestoration.prohibitedActions, []);
+        if (prohibited.some(a => ['build', 'train', 'espionage', 'attack', 'trade', 'faith'].includes(a))) {
           return { success: false, error: 'Kingdom is in restoration and cannot perform this action', errorCode: ErrorCode.RESTORATION_BLOCKED };
         }
       }

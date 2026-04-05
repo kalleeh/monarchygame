@@ -51,6 +51,12 @@ async function handleUpgrade(
     if (!kingdomId || !territoryId) {
       return { success: false, error: 'Missing kingdomId or territoryId', errorCode: ErrorCode.MISSING_PARAMS };
     }
+    if (typeof newDefenseLevel !== 'number' || !Number.isInteger(newDefenseLevel) || newDefenseLevel < 1 || newDefenseLevel > 10) {
+      return { success: false, error: 'newDefenseLevel must be an integer 1-10', errorCode: ErrorCode.INVALID_PARAM };
+    }
+
+    // Server-side gold cost: 500 gold per defense level
+    const serverGoldCost = newDefenseLevel * 500;
 
     // Verify kingdom ownership
     const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
@@ -72,13 +78,13 @@ async function handleUpgrade(
     // Check gold
     const resources = parseJsonField<KingdomResources>(kingdom.resources, {} as KingdomResources);
     const currentGold = resources.gold ?? 0;
-    if (currentGold < goldCost) {
-      return { success: false, error: `Insufficient gold: need ${goldCost}, have ${currentGold}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
+    if (currentGold < serverGoldCost) {
+      return { success: false, error: `Insufficient gold: need ${serverGoldCost}, have ${currentGold}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
     // Deduct gold from kingdom
     await dbUpdate('Kingdom', kingdomId, {
-      resources: { ...resources, gold: currentGold - goldCost }
+      resources: { ...resources, gold: currentGold - serverGoldCost }
     });
 
     // Update territory defense level directly via DynamoDB (bypasses AppSync owner check)

@@ -1,7 +1,8 @@
 import type { Schema } from '../../data/resource';
-import { dbList, dbUpdate } from '../data-client';
+import { dbList, dbUpdate, dbGet } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
+import { verifyOwnership } from '../verify-ownership';
 
 // Season duration: 6 weeks total, 2 weeks per age
 const SEASON_DURATION_WEEKS = 6;
@@ -106,6 +107,14 @@ async function handleFetchWorldState(event: { identity?: unknown; arguments?: un
     if (!kingdomId || !seasonId) {
       return JSON.stringify({ success: false, error: 'Missing kingdomId or seasonId', errorCode: ErrorCode.MISSING_PARAMS });
     }
+
+    // Verify caller owns the requested kingdom
+    const kingdom = await dbGet<{ owner?: string | null }>('Kingdom', kingdomId);
+    if (!kingdom) {
+      return JSON.stringify({ success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND });
+    }
+    const denied = verifyOwnership(identity as { sub: string; username?: string }, kingdom.owner ?? null);
+    if (denied) return JSON.stringify(denied);
 
     const allStates = await dbList<{ id: string; kingdomId: string; seasonId: string; visibleKingdoms: unknown; fogOfWar: unknown }>('WorldState');
     const state = allStates.find(s => s.kingdomId === kingdomId && s.seasonId === seasonId);

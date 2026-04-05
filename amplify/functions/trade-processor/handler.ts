@@ -68,8 +68,8 @@ export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event
       return JSON.stringify({ success: false, error: 'Missing required parameters', errorCode: ErrorCode.MISSING_PARAMS });
     }
 
-    if (quantity <= 0 || pricePerUnit <= 0) {
-      return JSON.stringify({ success: false, error: 'Quantity and price must be positive', errorCode: ErrorCode.INVALID_PARAM });
+    if (!Number.isInteger(quantity) || quantity <= 0 || !Number.isInteger(pricePerUnit) || pricePerUnit <= 0) {
+      return JSON.stringify({ success: false, error: 'Quantity and price must be positive integers', errorCode: ErrorCode.INVALID_PARAM });
     }
 
     // Verify seller has the resources

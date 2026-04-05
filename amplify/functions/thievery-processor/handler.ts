@@ -19,6 +19,9 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     if (!kingdomId || !targetKingdomId) {
       return { success: false, error: 'Missing required parameters: kingdomId, targetKingdomId', errorCode: ErrorCode.MISSING_PARAMS };
     }
+    if (kingdomId === targetKingdomId) {
+      return { success: false, error: 'Cannot target your own kingdom', errorCode: ErrorCode.INVALID_PARAM };
+    }
 
     if (!operation || !(VALID_OPERATIONS as readonly string[]).includes(operation)) {
       return { success: false, error: `Invalid operation. Must be one of: ${VALID_OPERATIONS.join(', ')}`, errorCode: ErrorCode.INVALID_PARAM };
@@ -203,8 +206,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
         (intelligence as Record<string, unknown>).goldIntercepted = goldIntercepted;
       } else if (operation === 'scum_kill') {
         // Centaur-exclusive: directly execute enemy scouts at 7% kill rate.
-        const attackerKingdom = await dbGet<{ race?: string }>('Kingdom', kingdomId);
-        if (!attackerKingdom || (attackerKingdom.race ?? '').toLowerCase() !== 'centaur') {
+        if (attackerRace.toLowerCase() !== 'centaur') {
           return { success: false, error: 'Scum Kill is a Centaur-exclusive ability', errorCode: ErrorCode.FORBIDDEN };
         }
         const scoutsKilled = Math.floor((targetUnits.scouts ?? 0) * 0.07);
