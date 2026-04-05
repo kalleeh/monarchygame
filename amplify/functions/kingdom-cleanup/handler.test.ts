@@ -19,6 +19,7 @@ vi.mock('../data-client', () => ({
     if (typeof value === 'string') { try { return JSON.parse(value) as T; } catch { return defaultValue; } }
     return value as T;
   },
+  ensureTurnsBalance: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../rate-limiter', () => ({ checkRateLimit: vi.fn().mockReturnValue(null) }));
