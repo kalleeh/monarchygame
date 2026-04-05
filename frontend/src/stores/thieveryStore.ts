@@ -66,7 +66,7 @@ export const useThieveryStore = create(
           if (unitType === 'scum' || unitType === 'green_scum' || unitType === 'scouts') {
             scumCount += unit.count || 0;
           }
-          if (unitType === 'elite_scum' || unitType === 'assassins') {
+          if (unitType === 'elite_scum' || unitType === 'assassins' || unitType === 'elite_scouts') {
             eliteScumCount += unit.count || 0;
           }
         }
@@ -219,9 +219,17 @@ export const useThieveryStore = create(
                 populationKilled: serverData.intelligence?.populationKilled ?? 0,
                 goldIntercepted: serverData.intelligence?.goldIntercepted ?? 0,
                 scoutsKilled: serverData.intelligence?.scoutsKilled ?? 0,
+                promoted: serverData.promoted ?? 0,
               };
               greenCasualties = serverData.casualties ?? 0;
               eliteCasualties = 0;
+              // Server handles green/elite split — refresh from server to get accurate counts
+              const { kingdomId: kid } = get();
+              if (kid) {
+                void import('../services/amplifyFunctionService').then(m =>
+                  m.AmplifyFunctionService.refreshKingdomResources(kid)
+                );
+              }
             } else if (!serverResponse.success) {
               set({ loading: false, error: serverResponse.error || 'Operation failed' });
               return null;

@@ -29,6 +29,7 @@ export interface ThieveryResult {
   populationKilled?: number
   goldIntercepted?: number
   scoutsKilled?: number
+  promoted?: number
 }
 
 // Core thievery mechanics that create natural strategic balance

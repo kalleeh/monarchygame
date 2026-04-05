@@ -29,6 +29,7 @@ export interface KingdomUnits {
   siege?: number;
   mages?: number;
   scouts?: number;
+  elite_scouts?: number;
 }
 
 export interface CombatResultData {

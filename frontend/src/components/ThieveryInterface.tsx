@@ -208,6 +208,11 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
             message = `${OPERATION_CONFIG[type].label} operation against ${selectedKingdom.name} failed. Lost ${result.result.casualtiesSuffered} scum.`;
           }
 
+          // Append promotion info
+          if ((result.result.promoted ?? 0) > 0) {
+            message += ` ⭐ ${result.result.promoted} scouts promoted to elite!`;
+          }
+
           setLastResult(message);
         }
       } catch (err) {
@@ -412,6 +417,9 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
                     )}
                     {op.result.casualtiesInflicted > 0 && (
                       <span>Destroyed: {op.result.casualtiesInflicted} enemy scum</span>
+                    )}
+                    {(op.result.promoted ?? 0) > 0 && (
+                      <span style={{color: '#fbbf24'}}>⭐ {op.result.promoted} promoted to elite</span>
                     )}
                     <span className="history-time">
                       {new Date(op.timestamp).toLocaleTimeString()}

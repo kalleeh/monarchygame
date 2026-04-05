@@ -219,10 +219,37 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
       }
     }
 
-    // Update attacker scout count and apply any gold gain; deduct turns atomically
+    // Update attacker scout count: apply casualties and promotions
+    // In the original Monarchy, scum gain experience through operations and
+    // promote from Green → Elite. Elite scum have 2.5x better survival rates.
+    // Promotion rate: ~3% of surviving green scouts promote on a successful op.
+    const currentEliteScouts = attackerUnits.elite_scouts ?? 0;
+    let greenAfterCasualties = Math.max(0, attackerScouts - casualties);
+    let eliteAfterCasualties = currentEliteScouts;
+
+    // Elite scouts take fewer casualties (2.5x survival advantage)
+    // Split casualties: elite absorb proportionally fewer
+    if (currentEliteScouts > 0 && casualties > 0) {
+      const totalScum = attackerScouts + currentEliteScouts;
+      const eliteFraction = currentEliteScouts / totalScum;
+      const eliteCasualties = Math.floor(casualties * eliteFraction * 0.4); // 2.5x survival
+      const greenCasualties = casualties - eliteCasualties;
+      greenAfterCasualties = Math.max(0, attackerScouts - greenCasualties);
+      eliteAfterCasualties = Math.max(0, currentEliteScouts - eliteCasualties);
+    }
+
+    // Promote green → elite on successful operations (3% promotion rate)
+    let promoted = 0;
+    if (succeeded && greenAfterCasualties > 0) {
+      promoted = Math.floor(greenAfterCasualties * 0.03);
+      greenAfterCasualties -= promoted;
+      eliteAfterCasualties += promoted;
+    }
+
     const updatedAttackerUnits: KingdomUnits = {
       ...(attackerUnits as KingdomUnits),
-      scouts: Math.max(0, attackerScouts - casualties),
+      scouts: greenAfterCasualties,
+      elite_scouts: eliteAfterCasualties,
     };
     const updatedAttackerResources: KingdomResources = {
       ...attackerResources,
@@ -248,7 +275,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     log.info('thievery-processor', 'executeThievery', { kingdomId, operation, targetKingdomId });
     return {
       success: true,
-      result: JSON.stringify({ operation, succeeded, casualties, goldStolen, intelligence }),
+      result: JSON.stringify({ operation, succeeded, casualties, goldStolen, intelligence, promoted }),
     };
   } catch (error) {
     log.error('thievery-processor', error, { kingdomId, operation, targetKingdomId });
