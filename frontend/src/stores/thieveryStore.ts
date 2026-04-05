@@ -125,10 +125,10 @@ export const useThieveryStore = create(
 
         // Calculate casualties for green and elite scum
         const operationKey = type.toUpperCase() as keyof typeof THIEVERY_MECHANICS.OPERATION_COSTS;
-        const greenCasualties = calculateScumCasualties(
+        let greenCasualties = calculateScumCasualties(
           state.scumCount, 'green', operationKey, state.race
         );
-        const eliteCasualties = calculateScumCasualties(
+        let eliteCasualties = calculateScumCasualties(
           state.eliteScumCount, 'elite', operationKey, state.race
         );
 
@@ -194,6 +194,50 @@ export const useThieveryStore = create(
           result.casualtiesInflicted = Math.floor(result.casualtiesInflicted * 1.5);
         }
 
+        // In auth mode, await Lambda confirmation before applying casualties —
+        // prevents permanent scum loss if the server rejects the operation.
+        if (!isDemoMode()) {
+          const { kingdomId } = get();
+          try {
+            const serverResponse = await executeThievery({ kingdomId, action: type, targetId });
+            // Parse the server result and override the locally-computed result
+            if (serverResponse.success && serverResponse.result) {
+              const serverData = typeof serverResponse.result === 'string'
+                ? JSON.parse(serverResponse.result) : serverResponse.result;
+              result = {
+                success: serverData.succeeded ?? false,
+                goldStolen: serverData.goldStolen ?? 0,
+                informationGained: serverData.intelligence?.targetGold != null ? {
+                  estimatedGold: serverData.intelligence.targetGold,
+                  estimatedScum: serverData.intelligence.targetScouts,
+                  defenseRating: serverData.intelligence.defenseRating,
+                } : null,
+                casualtiesInflicted: serverData.intelligence?.scoutsKilled ?? 0,
+                casualtiesSuffered: serverData.casualties ?? 0,
+                detectionLevel: 0,
+                templesDestroyed: serverData.intelligence?.templesDestroyed ?? 0,
+                populationKilled: serverData.intelligence?.populationKilled ?? 0,
+                goldIntercepted: serverData.intelligence?.goldIntercepted ?? 0,
+                scoutsKilled: serverData.intelligence?.scoutsKilled ?? 0,
+              };
+              greenCasualties = serverData.casualties ?? 0;
+              eliteCasualties = 0;
+            } else if (!serverResponse.success) {
+              set({ loading: false, error: serverResponse.error || 'Operation failed' });
+              return null;
+            }
+          } catch (error) {
+            console.error('[thieveryStore] Lambda call failed, aborting operation:', error);
+            set({ loading: false, error: 'Operation failed — server unavailable' });
+            return null;
+          }
+        }
+
+        // Apply casualties and record operation locally.
+        // In auth mode the Lambda updates DynamoDB's totalUnits.scouts, but the
+        // thieveryStore tracks green vs elite scum counts separately (local-only
+        // state not persisted to DynamoDB). The Lambda only returns aggregate
+        // casualties, so local tracking is the only way to maintain the split.
         const operation: ThieveryOperation = {
           id: `op-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           type,
@@ -205,24 +249,6 @@ export const useThieveryStore = create(
           result,
         };
 
-        // In auth mode, await Lambda confirmation before applying casualties —
-        // prevents permanent scum loss if the server rejects the operation.
-        if (!isDemoMode()) {
-          const { kingdomId } = get();
-          try {
-            await executeThievery({ kingdomId, action: type, targetId });
-          } catch (error) {
-            console.error('[thieveryStore] Lambda call failed, aborting operation:', error);
-            set({ loading: false, error: 'Operation failed — server unavailable' });
-            return operation;
-          }
-        }
-
-        // Apply casualties and record operation locally.
-        // In auth mode the Lambda updates DynamoDB's totalUnits.scouts, but the
-        // thieveryStore tracks green vs elite scum counts separately (local-only
-        // state not persisted to DynamoDB). The Lambda only returns aggregate
-        // casualties, so local tracking is the only way to maintain the split.
         const newScumCount = Math.max(0, state.scumCount - greenCasualties);
         const newEliteScumCount = Math.max(0, state.eliteScumCount - eliteCasualties);
 
