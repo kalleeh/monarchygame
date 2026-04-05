@@ -498,6 +498,10 @@ export class AmplifyFunctionService {
         const resources = typeof data.resources === 'string'
           ? JSON.parse(data.resources)
           : data.resources;
+        // turnsBalance is the authoritative server-side turn count (atomically updated by Lambdas)
+        if ((data as Record<string, unknown>).turnsBalance != null) {
+          resources.turns = (data as Record<string, unknown>).turnsBalance;
+        }
         // Lazy imports to avoid circular dependency
         const { useKingdomStore } = await import('../stores/kingdomStore');
         const { getUnitsForRace } = await import('../utils/units');

@@ -85,6 +85,8 @@ const schema = a.schema({
         .authorization((allow) => [allow.owner()]),
       totalUnits: a.json()
         .authorization((allow) => [allow.owner()]),
+      turnsBalance: a.integer()
+        .authorization((allow) => [allow.owner()]),
       lastResourceTick: a.datetime()
         .authorization((allow) => [allow.owner()]),
       encampEndTime: a.string()

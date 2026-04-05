@@ -100,6 +100,9 @@ export const useKingdomStore = create<KingdomState>((set, get) => {
             const serverResources = typeof result.data.resources === 'string'
               ? JSON.parse(result.data.resources)
               : (result.data.resources ?? localData.resources);
+            if ((result.data as Record<string, unknown>).turnsBalance != null) {
+              serverResources.turns = (result.data as Record<string, unknown>).turnsBalance;
+            }
             const raceKey = result.data.race || 'Human';
             const raceUnits = getUnitsForRace(raceKey);
             const serverUnits = typeof result.data.totalUnits === 'string'
@@ -140,6 +143,9 @@ export const useKingdomStore = create<KingdomState>((set, get) => {
               ? JSON.parse(result.data.resources)
               : (result.data.resources ?? localData.resources);
             const raceKey = result.data.race || 'Human';
+            if ((result.data as Record<string, unknown>).turnsBalance != null) {
+              serverResources.turns = (result.data as Record<string, unknown>).turnsBalance;
+            }
             const raceUnits = getUnitsForRace(raceKey);
             const serverUnits = typeof result.data.totalUnits === 'string'
               ? Object.entries(JSON.parse(result.data.totalUnits) as Record<string, number>)

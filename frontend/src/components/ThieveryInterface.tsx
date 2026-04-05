@@ -139,7 +139,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
       const estimatedEnemyScum = Math.floor((selectedKingdom.resources.land || selectedKingdom.networth / 1000) * 0.1);
       setOperationLoading(true);
       try {
-        const spendTurnsFn = isDemoMode() ? spendTurns : () => true;
+        const spendTurnsFn = spendTurns; // Deduct locally for immediate UI; server deducts authoritatively
         const result = await executeOperation(
           type,
           selectedKingdom.id,
