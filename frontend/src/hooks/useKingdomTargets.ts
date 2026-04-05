@@ -46,7 +46,8 @@ export function useKingdomTargets(opts: UseKingdomTargetsOptions = {}) {
           const nw = (k.resources.land ?? 0) * 1000 + (k.resources.gold ?? 0);
           const nameMatch = !nameSearch || k.name.toLowerCase().includes(nameSearch.toLowerCase());
           const raceMatch = !race || k.race === race;
-          return nw >= min && nw <= max && nameMatch && raceMatch;
+          const networthMatch = nameSearch ? true : (nw >= min && nw <= max);
+          return networthMatch && nameMatch && raceMatch;
         })
         .slice(0, limit);
       setTargets(filtered.map(k => ({
@@ -64,8 +65,8 @@ export function useKingdomTargets(opts: UseKingdomTargetsOptions = {}) {
     setLoading(true);
     try {
       const result = await KingdomSearchService.listByNetworth({
-        minNetworth: playerNetworth > 0 ? playerNetworth * range[0] : undefined,
-        maxNetworth: playerNetworth > 0 ? playerNetworth * range[1] : undefined,
+        minNetworth: !nameSearch && playerNetworth > 0 ? playerNetworth * range[0] : undefined,
+        maxNetworth: !nameSearch && playerNetworth > 0 ? playerNetworth * range[1] : undefined,
         limit,
         nextToken: append ? token : null,
         nameSearch,

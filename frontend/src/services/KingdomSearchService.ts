@@ -43,8 +43,8 @@ export class KingdomSearchService {
     const { limit = 50, nextToken, nameSearch, race, minNetworth, maxNetworth } = opts;
 
     // Build AppSync filter — active kingdoms only; AI kingdoms are valid leaderboard competition
+    // Note: name search is done client-side for case-insensitive matching
     const filter: Record<string, unknown> = { isActive: { eq: true } };
-    if (nameSearch?.trim()) filter.name = { contains: nameSearch.trim() };
     if (race) filter.race = { eq: race };
     if (minNetworth != null || maxNetworth != null) {
       const nwFilter: Record<string, number> = {};
@@ -104,6 +104,9 @@ export class KingdomSearchService {
             guildId: k.guildId ?? undefined,
             networth: k.networth ?? 0,
           };
+        }).filter(k => {
+          if (!nameSearch?.trim()) return true;
+          return k.name.toLowerCase().includes(nameSearch.trim().toLowerCase());
         }).sort((a, b) => {
           return (b.networth ?? 0) - (a.networth ?? 0);
         }),
