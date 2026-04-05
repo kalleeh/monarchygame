@@ -6,6 +6,7 @@
 
 import { create } from 'zustand';
 import { combine } from 'zustand/middleware';
+import { useKingdomStore } from './kingdomStore';
 import {
   calculateDetectionRate,
   calculateTheftAmount,
@@ -55,27 +56,18 @@ export const useThieveryStore = create(
        * Initialize thievery state from kingdom units and race
        */
       initializeThievery: (kingdomId: string, race: string) => {
-        // Load scum counts from localStorage (consistent with kingdomStore pattern)
-        const stored = localStorage.getItem(`kingdom-${kingdomId}`);
+        // Read scum counts from kingdomStore (authoritative, synced from server)
+        const units = useKingdomStore.getState().units || [];
         let scumCount = 0;
         let eliteScumCount = 0;
 
-        if (stored) {
-          try {
-            const data = JSON.parse(stored);
-            const units = data.units || [];
-            // Look for scum-type units in the kingdom's unit roster
-            for (const unit of units) {
-              const unitType = (unit.type || '').toLowerCase();
-              if (unitType === 'scum' || unitType === 'green_scum' || unitType === 'scouts') {
-                scumCount += unit.count || 0;
-              }
-              if (unitType === 'elite_scum' || unitType === 'assassins') {
-                eliteScumCount += unit.count || 0;
-              }
-            }
-          } catch {
-            // Fallback defaults if parse fails
+        for (const unit of units) {
+          const unitType = (unit.type || '').toLowerCase();
+          if (unitType === 'scum' || unitType === 'green_scum' || unitType === 'scouts') {
+            scumCount += unit.count || 0;
+          }
+          if (unitType === 'elite_scum' || unitType === 'assassins') {
+            eliteScumCount += unit.count || 0;
           }
         }
 
