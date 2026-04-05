@@ -292,7 +292,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
         const alliance = await dbGet<{ stats?: string }>('Alliance', kingdomGuildId);
         if (alliance?.stats) {
           const allianceStats = parseJsonField<Record<string, unknown>>(alliance.stats, {});
-          compositionIncomeBonus = allianceStats?.compositionBonus?.income ?? 1.0;
+          compositionIncomeBonus = (allianceStats?.compositionBonus as Record<string, number> | undefined)?.income ?? 1.0;
           const now = new Date().toISOString();
           const activeUpgrades = (allianceStats?.activeUpgrades ?? []) as Array<{ type: string; expiresAt: string; effect: Record<string, number> }>;
           const liveUpgrades = activeUpgrades.filter(u => u.expiresAt > now);
