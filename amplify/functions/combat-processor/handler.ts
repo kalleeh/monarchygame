@@ -11,7 +11,7 @@ import type { AttackForce, DefenseForce } from '../../../shared/mechanics/combat
 import type { KingdomResources, CombatResultData } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbCreate, dbUpdate, dbAtomicAdd, dbQuery, parseJsonField } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbAtomicAdd, dbQuery, parseJsonField, ensureTurnsBalance } from '../data-client';
 import { isRacialAbilityActive } from '../../../shared/mechanics/age-mechanics';
 import { checkRateLimit } from '../rate-limiter';
 import { verifyOwnership } from '../verify-ownership';
@@ -170,6 +170,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
     // Check and deduct turns
     const attackerResources = parseJsonField<KingdomResources>(attacker.resources, {} as KingdomResources);
+    await ensureTurnsBalance(attacker as Record<string, unknown>);
     const currentTurns = (attacker.turnsBalance ?? attackerResources.turns ?? 72) as number;
     const turnCost = 4;
     if (currentTurns < turnCost) {

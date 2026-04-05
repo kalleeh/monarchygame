@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomBuildings, KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbQuery, parseJsonField } from '../data-client';
+import { dbGet, dbUpdate, dbQuery, parseJsonField, ensureTurnsBalance } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 
@@ -77,6 +77,7 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
     }
 
     // Check and deduct turns from turnsBalance (server-side pool), falling back to resources.turns
+    await ensureTurnsBalance(kingdom as Record<string, unknown>);
     const currentTurns = kingdom.turnsBalance ?? resources.turns ?? 72;
     const turnCost = 1;
     if (currentTurns < turnCost) {

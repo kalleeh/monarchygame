@@ -271,3 +271,26 @@ export async function dbAtomicAdd(
     ExpressionAttributeValues: { ':delta': delta },
   }));
 }
+
+/**
+ * Ensure turnsBalance is initialized from resources.turns for kingdoms that
+ * predate the turnsBalance field. Call before any dbAtomicAdd on turnsBalance.
+ */
+export async function ensureTurnsBalance(
+  kingdom: Record<string, unknown>
+): Promise<void> {
+  if (kingdom.turnsBalance == null) {
+    const resources = parseJsonField(kingdom.resources as string, {} as Record<string, number>);
+    const initialTurns = resources.turns ?? 72;
+    const TableName = await getTableName('Kingdom');
+    await docClient.send(new UpdateCommand({
+      TableName,
+      Key: { id: kingdom.id },
+      UpdateExpression: 'SET #tb = :val',
+      ConditionExpression: 'attribute_not_exists(#tb)',
+      ExpressionAttributeNames: { '#tb': 'turnsBalance' },
+      ExpressionAttributeValues: { ':val': initialTurns },
+    })).catch(() => { /* another request already initialized it — safe to ignore */ });
+    kingdom.turnsBalance = initialTurns;
+  }
+}

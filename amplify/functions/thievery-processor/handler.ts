@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources, KingdomUnits } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbQuery, dbAtomicAdd, parseJsonField } from '../data-client';
+import { dbGet, dbUpdate, dbQuery, dbAtomicAdd, parseJsonField, ensureTurnsBalance } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { THIEVERY_MECHANICS } from '../../../shared/mechanics/thievery-mechanics';
 import { checkRateLimit } from '../rate-limiter';
@@ -84,6 +84,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
 
     // Check turns from turnsBalance (server-side pool), falling back to resources.turns
     const attackerResources = parseJsonField<KingdomResources>(attackerKingdom.resources, {} as KingdomResources);
+    await ensureTurnsBalance(attackerKingdom as Record<string, unknown>);
     const currentTurns = attackerKingdom.turnsBalance ?? attackerResources.turns ?? 72;
     const OPERATION_TURN_COSTS: Record<string, number> = {
       scout:              THIEVERY_MECHANICS.OPERATION_COSTS.SCOUT,

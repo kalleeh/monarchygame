@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbQuery, parseJsonField } from '../data-client';
+import { dbGet, dbUpdate, dbQuery, parseJsonField, ensureTurnsBalance } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 
@@ -119,6 +119,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     }
 
     // Check turns (precondition, before deduction)
+    await ensureTurnsBalance(casterKingdom as Record<string, unknown>);
     const currentTurns = (casterKingdom.turnsBalance as number | undefined) ?? resources.turns ?? 72;
     const turnCost = 1;
     if (currentTurns < turnCost) {

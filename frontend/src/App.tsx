@@ -414,6 +414,7 @@ function AppContent() {
           stats: JSON.stringify({}),
           buildings: JSON.stringify({}),
           totalUnits: JSON.stringify({}),
+          turnsBalance: startingResources.turns ?? 72,
           currentAge: 'early',
           isActive: true,
           isOnline: true,
