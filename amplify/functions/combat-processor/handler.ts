@@ -328,7 +328,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     const TIER_DEFENSE = [1, 2, 4, 7];
     const UNIT_TIER: Record<string, number> = {
       peasant: 0, peasants: 0, militia: 1, knight: 2, knights: 2, cavalry: 3,
-      infantry: 1, archer: 2, mage: 2, scout: 0,
+      infantry: 1, archer: 2, mage: 2, scout: 0, scouts: 0,
       tier1: 0, tier2: 1, tier3: 2, tier4: 3,
       'elven-scouts': 0, 'elven-warriors': 1, 'elven-archers': 2, 'elven-lords': 3,
       goblins: 0, hobgoblins: 1, kobolds: 2, 'goblin-riders': 3,

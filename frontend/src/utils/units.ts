@@ -104,7 +104,7 @@ export const getUnitsForRace = (race: string): UnitType[] => {
   const { warOffense, warDefense } = raceData.stats;
   const econMultiplier = raceData.economicMultiplier;
 
-  return raceData.unitTypes.map((unitName, index) => {
+  const militaryUnits = raceData.unitTypes.map((unitName, index) => {
     const t = TIER_TEMPLATES[index];
 
     return {
@@ -124,4 +124,25 @@ export const getUnitsForRace = (race: string): UnitType[] => {
       },
     };
   });
+
+  // Scouts (scum/thieves) — universal espionage unit, scaled by race's scum rating
+  const { scum: scumRating } = raceData.stats;
+  const scoutUnit: UnitType = {
+    id: 'scouts',
+    name: 'Scouts',
+    description: `${raceData.name} espionage operatives — required for thievery operations`,
+    tier: 1,
+    stats: {
+      cost: {
+        gold: Math.round(200 * econMultiplier),
+        population: 1,
+      },
+      offense: scale(1, scumRating),
+      defense: scale(1, scumRating),
+      hitPoints: scale(8, scumRating),
+      upkeep: Math.round(1 * econMultiplier),
+    },
+  };
+
+  return [...militaryUnits, scoutUnit];
 };
