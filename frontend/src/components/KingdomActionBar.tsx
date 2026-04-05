@@ -71,7 +71,6 @@ export const KingdomActionBar: React.FC<KingdomActionBarProps> = ({
         { icon: '/world-map-icon.png', label: 'World Map', onClick: () => onViewWorldMap?.() },
         { emoji: '🎯', label: 'Bounty Board', onClick: () => navigate(`/kingdom/${kingdom.id}/bounties`) },
         { emoji: '🙏', label: 'Faith & Focus', onClick: () => navigate(`/kingdom/${kingdom.id}/faith`) },
-        { icon: '/achievements-icon.png', label: 'Achievements', onClick: () => navigate(`/kingdom/${kingdom.id}/achievements`) },
       ],
     },
     {
@@ -95,6 +94,7 @@ export const KingdomActionBar: React.FC<KingdomActionBarProps> = ({
         { icon: '/trade-economy-icon.png', label: 'Trade', onClick: () => onManageTrade?.(), prohibitedAction: 'diplomatic_actions' },
         { icon: '/diplomacy-icon.png', label: 'Diplomacy', onClick: () => onDiplomacy?.(), prohibitedAction: 'diplomatic_actions' },
         { emoji: '🏆', label: 'Kingdom Scrolls', onClick: () => onViewLeaderboard?.() },
+        { icon: '/achievements-icon.png', label: 'Achievements', onClick: () => navigate(`/kingdom/${kingdom.id}/achievements`) },
       ],
     },
   ];
