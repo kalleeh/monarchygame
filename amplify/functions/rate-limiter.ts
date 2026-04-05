@@ -24,7 +24,7 @@ const LIMITS: Record<string, { maxRequests: number; windowMs: number }> = {
   training:  { maxRequests: 10, windowMs: 60_000 },
   spell:     { maxRequests: 8,  windowMs: 60_000 },
   trade:     { maxRequests: 5,  windowMs: 60_000 },
-  thievery:  { maxRequests: 5,  windowMs: 60_000 },
+  thievery:  { maxRequests: 20, windowMs: 60_000 },
   territory: { maxRequests: 5,  windowMs: 60_000 },
   diplomacy: { maxRequests: 10, windowMs: 60_000 },
   faith:     { maxRequests: 5,  windowMs: 60_000 },
