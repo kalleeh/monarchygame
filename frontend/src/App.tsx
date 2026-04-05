@@ -282,7 +282,7 @@ function AppContent() {
   useEffect(() => {
     if (!showAuth && !demoMode && !loading) {
       const currentPath = window.location.pathname;
-      const protectedRoutes = ['/creation', '/kingdoms', '/kingdom'];
+      const protectedRoutes = ['/creation', '/kingdoms', '/kingdom', '/admin'];
       const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
       if (isProtectedRoute) {
         setShowAuth(true);
@@ -468,6 +468,27 @@ function AppContent() {
   if (demoMode) {
     return (
       <main className="app">
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: '#1a1a2e',
+              color: '#e8d5a3',
+              border: '1px solid rgba(212, 175, 55, 0.3)',
+              borderRadius: '8px',
+              fontSize: '0.875rem',
+              padding: '10px 14px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+            },
+            success: {
+              iconTheme: { primary: '#22c55e', secondary: '#1a1a2e' },
+            },
+            error: {
+              iconTheme: { primary: '#ef4444', secondary: '#1a1a2e' },
+            },
+            duration: 4000,
+          }}
+        />
         <TutorialOverlay />
         <div className="app-utility-bar">
           <span className="utility-bar-label">Demo Mode</span>

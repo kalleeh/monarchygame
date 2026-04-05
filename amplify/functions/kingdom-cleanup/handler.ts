@@ -91,8 +91,17 @@ export const handler = async (event: Parameters<Schema['cleanupKingdom']['functi
     });
     for (const o of tradeOffers) await dbDelete('TradeOffer', o.id);
 
-    // Note: Only finds relations where kingdomId matches. Relations where targetKingdomId = kingdomId require a separate GSI (not yet added).
-    const relations = await dbQuery<{ id: string; kingdomId?: string }>('DiplomaticRelation', 'diplomaticRelationsByKingdomId', { field: 'kingdomId', value: kingdomId });
+    // Clean up relations where this kingdom is either the initiator or the target
+    const [initiatorRelations, targetRelations] = await Promise.all([
+      dbQuery<{ id: string; kingdomId?: string }>('DiplomaticRelation', 'diplomaticRelationsByKingdomId', { field: 'kingdomId', value: kingdomId }),
+      dbQuery<{ id: string; targetKingdomId?: string }>('DiplomaticRelation', 'diplomaticRelationsByTargetKingdomId', { field: 'targetKingdomId', value: kingdomId }),
+    ]);
+    const relationIds = new Set<string>();
+    const relations = [...initiatorRelations, ...targetRelations].filter(r => {
+      if (relationIds.has(r.id)) return false;
+      relationIds.add(r.id);
+      return true;
+    });
     for (const r of relations) await dbDelete('DiplomaticRelation', r.id);
 
     const [proposerTreaties, recipientTreaties] = await Promise.all([

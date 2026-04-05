@@ -296,6 +296,7 @@ const schema = a.schema({
     })
     .secondaryIndexes((index) => [
       index('kingdomId'),
+      index('targetKingdomId'),
     ])
     .authorization((allow) => [
       allow.authenticated().to(['read']),

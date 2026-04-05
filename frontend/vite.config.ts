@@ -38,8 +38,6 @@ export default defineConfig({
           if (id.includes('node_modules/react-router-dom')) return 'vendor-router';
           if (id.includes('node_modules/aws-amplify/')) return 'vendor-aws-core';
           if (id.includes('node_modules/@aws-amplify/ui-react')) return 'vendor-aws-ui';
-          if (id.includes('node_modules/@react-spring/')) return 'vendor-spring';
-          if (id.includes('node_modules/@xyflow/')) return 'vendor-flow';
           if (id.includes('node_modules/@dnd-kit/')) return 'vendor-dnd';
           if (id.includes('node_modules/react-hot-toast') || id.includes('node_modules/goober')) return 'vendor-toast';
         }
