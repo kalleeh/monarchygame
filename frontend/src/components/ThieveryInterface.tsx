@@ -126,7 +126,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
   // Calculate detection rate for selected target
   const currentDetection = selectedKingdom
     ? getDetectionRate(
-        Math.floor(selectedKingdom.resources.land * 0.1), // estimated enemy scum
+        Math.floor((selectedKingdom.resources.land || selectedKingdom.networth / 1000) * 0.1), // estimated enemy scum
         selectedKingdom.race
       )
     : 0;
@@ -136,7 +136,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
       if (!selectedKingdom) return;
       if (operationLoading) return;
 
-      const estimatedEnemyScum = Math.floor(selectedKingdom.resources.land * 0.1);
+      const estimatedEnemyScum = Math.floor((selectedKingdom.resources.land || selectedKingdom.networth / 1000) * 0.1);
       setOperationLoading(true);
       try {
         const spendTurnsFn = isDemoMode() ? spendTurns : () => true;
@@ -317,7 +317,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
                   <h4>{kingdom.name}</h4>
                   <p className="target-race">{kingdom.race}</p>
                   {kingdom.difficulty && <p className="target-difficulty">{kingdom.difficulty}</p>}
-                  <p className="target-land">{kingdom.resources.land.toLocaleString()} acres</p>
+                  <p className="target-land">{kingdom.networth > 0 ? `${(kingdom.networth / 1000).toFixed(0)}k NW` : `${kingdom.resources.land.toLocaleString()} acres`}</p>
                 </button>
               ))}
             </div>
