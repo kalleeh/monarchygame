@@ -64,7 +64,9 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
           if (encampEnd <= Date.now() && kingdom.encampBonusTurns) {
             const bonus = kingdom.encampBonusTurns;
             try {
-              const currentTurns = (kingdom as any).turnsBalance ?? 0;
+              // turnsBalance was already incremented by +1 (the normal tick above),
+              // so the effective current balance is snapshot + 1.
+              const currentTurns = (kingdom.turnsBalance ?? 0) + 1;
               const cappedBonus = Math.min(bonus, Math.max(0, MAX_STORED_TURNS - currentTurns));
               if (cappedBonus > 0) {
                 await dbAtomicAdd('Kingdom', kingdom.id, 'turnsBalance', cappedBonus);

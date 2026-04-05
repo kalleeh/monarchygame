@@ -131,7 +131,8 @@ describe('turn-ticker handler — encamp bonus capping', () => {
 
     expect(result.success).toBe(true);
 
-    // The capped bonus should be Math.min(10, 72 - 70) = 2
+    // The capped bonus should be Math.min(10, 72 - (70 + 1)) = 1
+    // (turnsBalance was already incremented by +1 from the normal tick)
     // dbAtomicAdd is called first with +1 (the normal tick), then with cappedBonus
     const encampAddCalls = mockDbAtomicAdd.mock.calls.filter(
       (call: unknown[]) =>
@@ -140,8 +141,8 @@ describe('turn-ticker handler — encamp bonus capping', () => {
         call[2] === 'turnsBalance' &&
         (call[3] as number) > 0
     );
-    // One of those calls should have the value 2 (capped bonus)
-    const cappedBonusCall = encampAddCalls.find((call: unknown[]) => call[3] === 2);
+    // One of those calls should have the value 1 (capped bonus)
+    const cappedBonusCall = encampAddCalls.find((call: unknown[]) => call[3] === 1);
     expect(cappedBonusCall).toBeDefined();
   });
 });

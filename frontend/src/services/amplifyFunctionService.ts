@@ -116,7 +116,7 @@ export class AmplifyFunctionService {
             }
             return { success: true, newTurns: payload.amount ?? 1 };
           case 'combat-processor':
-            return { success: true, result: 'victory', casualties: '{}' };
+            return { success: true, result: JSON.stringify({ result: 'with_ease', powerRatio: 2.1, casualties: { attacker: {}, defender: {} }, landGained: 500, goldLooted: 5000, success: true }) };
           case 'spell-processor':
             return { success: true, spellResult: 'cast' };
           case 'season-manager':

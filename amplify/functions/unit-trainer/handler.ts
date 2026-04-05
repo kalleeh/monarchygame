@@ -8,8 +8,11 @@ import { checkRateLimit } from '../rate-limiter';
 
 const UNIT_QUANTITY = { min: 1, max: 1000 } as const;
 
-// Minimum gold cost per unit (sanity check to prevent zero-cost exploits)
-const MIN_GOLD_COST_PER_UNIT = 1;
+// Gold cost bounds per unit — must match frontend TIER_TEMPLATES base costs.
+// Tier 0 = 50g, Tier 1 = 350g, Tier 2 = 900g, Tier 3 = 2000g.
+// economicMultiplier can raise costs up to 2× (Vampire), so max = 2000 * 2 = 4000.
+const MIN_GOLD_COST_PER_UNIT = 50;
+const MAX_GOLD_COST_PER_UNIT = 4000;
 const MAX_TOTAL_UNITS = 100000;
 
 type KingdomType = {
@@ -41,8 +44,8 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
     // goldCostPerUnit is the per-unit gold cost provided by the frontend.
     // Validate it is a positive integer to prevent exploits.
     const resolvedGoldCostPerUnit = goldCostPerUnit ?? MIN_GOLD_COST_PER_UNIT;
-    if (!Number.isInteger(resolvedGoldCostPerUnit) || resolvedGoldCostPerUnit < MIN_GOLD_COST_PER_UNIT) {
-      return { success: false, error: 'Invalid goldCost: must be a positive integer', errorCode: ErrorCode.INVALID_PARAM };
+    if (!Number.isInteger(resolvedGoldCostPerUnit) || resolvedGoldCostPerUnit < MIN_GOLD_COST_PER_UNIT || resolvedGoldCostPerUnit > MAX_GOLD_COST_PER_UNIT) {
+      return { success: false, error: `Invalid goldCost: must be an integer between ${MIN_GOLD_COST_PER_UNIT} and ${MAX_GOLD_COST_PER_UNIT}`, errorCode: ErrorCode.INVALID_PARAM };
     }
 
     // Verify caller identity

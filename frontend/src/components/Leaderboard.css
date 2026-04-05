@@ -346,3 +346,14 @@
     font-size: 1rem;
   }
 }
+
+/* Bounty tab accent */
+.lb-tab--bounty { color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }
+.lb-tab--bounty:hover:not(.lb-tab--active) { background: rgba(251, 191, 36, 0.08) !important; border-color: rgba(251, 191, 36, 0.5); color: #e2e8f0; }
+.lb-tab--bounty.lb-tab--active { background: rgba(251, 191, 36, 0.18) !important; border-color: #fbbf24; color: #fbbf24; box-shadow: 0 0 6px rgba(251, 191, 36, 0.3); }
+
+/* Bounty rankings table */
+.lb-bounty-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.lb-bounty-table th { padding: 0.6rem 1rem; text-align: left; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-secondary, #94a3b8); border-bottom: 2px solid rgba(251, 191, 36, 0.25); }
+.lb-bounty-table td { padding: 0.7rem 1rem; color: var(--text-primary, #e2e8f0); border-bottom: 1px solid var(--gm-bg-subtle, rgba(255,255,255,0.05)); }
+.lb-bounty-table tr:hover { background: rgba(251, 191, 36, 0.07); }

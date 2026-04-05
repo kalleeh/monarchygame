@@ -29,7 +29,9 @@ export function verifyOwnership(
     identity.claims?.['cognito:username'],
   ].filter(Boolean) as string[];
 
-  if (!ids.some(id => ownerField.includes(id))) {
+  // Amplify Gen 2 owner format can be "sub::username" — split and check each part
+  const ownerParts = ownerField.split('::');
+  if (!ids.some(id => ownerParts.includes(id) || ownerField === id)) {
     return { success: false, error: 'You do not own this resource', errorCode: ErrorCode.FORBIDDEN };
   }
   return null;

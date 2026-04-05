@@ -615,7 +615,10 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
         // Casualty penalty: +30% attacker casualties (siege is costly)
         const casualties = combatResult.casualties as { attacker: Record<string, number>; defender: Record<string, number> };
         for (const unitType of Object.keys(casualties.attacker)) {
-          casualties.attacker[unitType] = Math.ceil((casualties.attacker[unitType] ?? 0) * 1.3);
+          casualties.attacker[unitType] = Math.min(
+            Math.ceil((casualties.attacker[unitType] ?? 0) * 1.3),
+            attackerUnits[unitType] ?? 0
+          );
         }
         log.info('combat-processor', 'siege-applied', { attackerId, finalLandGained });
       }

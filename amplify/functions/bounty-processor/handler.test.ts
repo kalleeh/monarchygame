@@ -149,12 +149,17 @@ describe('bounty-processor handler — claimBounty', () => {
 describe('bounty-processor handler — completeBounty', () => {
   describe('happy path', () => {
     it('calculates gold and population rewards, clears bounty from stats', async () => {
+      const claimedAt = new Date(Date.now() - 1000).toISOString();
       mockDbGet.mockResolvedValue(
         mockKingdom({
-          stats: { activeBountyTargetId: 'target-kingdom', activeBountyClaimedAt: Date.now() - 1000 },
+          stats: { activeBountyTargetId: 'target-kingdom', activeBountyClaimedAt: claimedAt },
           resources: { gold: 5000, population: 2000, mana: 500, land: 1000 },
         })
       );
+      // Mock BattleReport query to verify landGained
+      mockDbQuery.mockResolvedValue([
+        { attackerId: 'kingdom-1', defenderId: 'target-kingdom', landGained: 2000, timestamp: new Date().toISOString() },
+      ]);
 
       const result = await callHandler(
         makeEvent('completeBounty', { kingdomId: 'kingdom-1', targetId: 'target-kingdom', landGained: 2000 })
@@ -182,12 +187,17 @@ describe('bounty-processor handler — completeBounty', () => {
     });
 
     it('increments bountyCompletions from existing value', async () => {
+      const claimedAt = new Date(Date.now() - 1000).toISOString();
       mockDbGet.mockResolvedValue(
         mockKingdom({
-          stats: { activeBountyTargetId: 'target-kingdom', activeBountyClaimedAt: Date.now() - 1000, bountyCompletions: 5 },
+          stats: { activeBountyTargetId: 'target-kingdom', activeBountyClaimedAt: claimedAt, bountyCompletions: 5 },
           resources: { gold: 5000, population: 2000, mana: 500, land: 1000 },
         })
       );
+      // Mock BattleReport query to verify landGained
+      mockDbQuery.mockResolvedValue([
+        { attackerId: 'kingdom-1', defenderId: 'target-kingdom', landGained: 2000, timestamp: new Date().toISOString() },
+      ]);
 
       const result = await callHandler(
         makeEvent('completeBounty', { kingdomId: 'kingdom-1', targetId: 'target-kingdom', landGained: 2000 })

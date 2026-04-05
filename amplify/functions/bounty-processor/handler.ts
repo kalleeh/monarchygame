@@ -95,6 +95,19 @@ async function handleComplete(args: { kingdomId?: string | null; targetId?: stri
     return { success: false, error: 'No active bounty matches the provided targetId', errorCode: ErrorCode.VALIDATION_FAILED };
   }
 
+  // Verify landGained against actual BattleReport records since bounty was claimed
+  const claimedAt = (stats.activeBountyClaimedAt as string) ?? new Date(0).toISOString();
+  const reports = await dbQuery<{ attackerId: string; defenderId: string; landGained?: number; timestamp?: string }>(
+    'BattleReport', 'battleReportsByDefenderIdAndTimestamp', { field: 'defenderId', value: targetId }
+  );
+  const actualLandGained = reports
+    .filter(r => r.attackerId === kingdomId && (r.timestamp ?? '') >= claimedAt)
+    .reduce((sum, r) => sum + (r.landGained ?? 0), 0);
+
+  if (landGained > actualLandGained) {
+    return { success: false, error: `Claimed landGained (${landGained}) exceeds verified total (${actualLandGained})`, errorCode: ErrorCode.VALIDATION_FAILED };
+  }
+
   // Calculate rewards
   const structuresGained = Math.floor(landGained * 0.36);
   const goldReward = Math.floor(landGained * 500);
