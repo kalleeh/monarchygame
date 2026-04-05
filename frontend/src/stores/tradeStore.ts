@@ -41,7 +41,8 @@ function saveOffers(offers: TradeOffer[]): void {
 /** Load offers from localStorage */
 function loadOffers(): TradeOffer[] {
   const raw = localStorage.getItem(STORAGE_KEY_OFFERS);
-  return raw ? JSON.parse(raw) : [];
+  if (!raw) return [];
+  try { return JSON.parse(raw); } catch { return []; }
 }
 
 /** Persist price history to localStorage */
@@ -52,7 +53,8 @@ function savePriceHistory(history: Record<string, PriceHistoryEntry[]>): void {
 /** Load price history from localStorage */
 function loadPriceHistory(): Record<string, PriceHistoryEntry[]> {
   const raw = localStorage.getItem(STORAGE_KEY_HISTORY);
-  return raw ? JSON.parse(raw) : {};
+  if (!raw) return {};
+  try { return JSON.parse(raw); } catch { return {}; }
 }
 
 /** Generate a random variation factor between min and max (e.g. 0.85 - 1.15) */

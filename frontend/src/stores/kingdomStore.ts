@@ -58,7 +58,12 @@ const MAX_TURNS = 100;
 
 const getKingdomData = (kingdomId: string): KingdomData => {
   const stored = localStorage.getItem(`kingdom-${kingdomId}`);
-  const data: KingdomData = stored ? JSON.parse(stored) : { resources: initialResources, units: [] };
+  let data: KingdomData;
+  try {
+    data = stored ? JSON.parse(stored) : { resources: initialResources, units: [] };
+  } catch {
+    data = { resources: initialResources, units: [] };
+  }
   // Clamp stored turns to the game cap (prevents pre-existing values exceeding the limit)
   if (data.resources?.turns !== undefined) {
     data.resources.turns = Math.min(MAX_TURNS, data.resources.turns);

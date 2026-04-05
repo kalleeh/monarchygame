@@ -18,6 +18,22 @@ export const CombatReplayViewer = ({ replay, onClose }: CombatReplayViewerProps)
 
   const round = replay.rounds[currentRound];
 
+  if (!round) {
+    return (
+      <div className="replay-viewer-overlay">
+        <div className="replay-viewer">
+          <div className="replay-header">
+            <h2>⚔️ Battle Replay</h2>
+            <button className="close-btn" onClick={onClose}>✕</button>
+          </div>
+          <p style={{ padding: '2rem', color: '#9ca3af', textAlign: 'center' }}>
+            No round-by-round data available for this battle.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="replay-viewer-overlay">
       <div className="replay-viewer">

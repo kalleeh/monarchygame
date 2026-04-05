@@ -253,7 +253,8 @@ export const achievementTriggers = {
 
     // Cartographer: track unique regions visited via localStorage
     const VISITED_KEY = 'achievement-visited-regions';
-    const visited: string[] = JSON.parse(localStorage.getItem(VISITED_KEY) || '[]');
+    let visited: string[] = [];
+    try { visited = JSON.parse(localStorage.getItem(VISITED_KEY) || '[]'); } catch { /* use empty */ }
     if (!visited.includes(regionId)) {
       visited.push(regionId);
       localStorage.setItem(VISITED_KEY, JSON.stringify(visited));
@@ -285,7 +286,8 @@ function notifyUnlock(achievementId: string) {
 
   // Guard against double-granting rewards
   const REWARDS_KEY = 'achievement-rewards-granted';
-  const granted: string[] = JSON.parse(localStorage.getItem(REWARDS_KEY) || '[]');
+  let granted: string[] = [];
+  try { granted = JSON.parse(localStorage.getItem(REWARDS_KEY) || '[]'); } catch { /* use empty */ }
   if (granted.includes(achievementId)) {
     // Reward already granted — just show the toast without re-granting
     toast.success(

@@ -161,10 +161,13 @@ const GuildOverview: React.FC<GuildOverviewProps> = ({
               <span>Power: {(currentGuild.totalPower ?? 0).toLocaleString()}</span>
               <span>Leader: {currentGuild.leaderName}</span>
               {(() => {
-                const rawStats = currentGuild.stats as unknown;
-                const stats = rawStats
-                  ? (typeof rawStats === 'string' ? JSON.parse(rawStats as string) : (rawStats as Record<string, unknown>))
-                  : {};
+                let stats: Record<string, unknown> = {};
+                try {
+                  const rawStats = currentGuild.stats as unknown;
+                  stats = rawStats
+                    ? (typeof rawStats === 'string' ? JSON.parse(rawStats as string) : (rawStats as Record<string, unknown>))
+                    : {};
+                } catch { /* malformed stats */ }
                 const bonus = stats.compositionBonus as { combat: number } | undefined;
                 const isFullComp = bonus && bonus.combat >= 1.05;
                 return (

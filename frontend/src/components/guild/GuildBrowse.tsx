@@ -30,10 +30,13 @@ const GuildBrowse: React.FC<GuildBrowseProps> = ({ guilds, loading, onJoinGuild 
                 <span>Power: {(guild.totalPower ?? 0).toLocaleString()}</span>
                 <span>Leader: {guild.leaderName}</span>
                 {(() => {
-                  const rawStats = guild.stats as unknown;
-                  const stats = rawStats
-                    ? (typeof rawStats === 'string' ? JSON.parse(rawStats as string) : (rawStats as Record<string, unknown>))
-                    : {};
+                  let stats: Record<string, unknown> = {};
+                  try {
+                    const rawStats = guild.stats as unknown;
+                    stats = rawStats
+                      ? (typeof rawStats === 'string' ? JSON.parse(rawStats as string) : (rawStats as Record<string, unknown>))
+                      : {};
+                  } catch { /* malformed stats */ }
                   const bonus = stats.compositionBonus as { combat: number } | undefined;
                   const isFullComp = bonus && bonus.combat >= 1.05;
                   return (
