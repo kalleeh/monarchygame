@@ -84,7 +84,7 @@ async function handleUpgrade(
 
     // Deduct gold from kingdom
     await dbUpdate('Kingdom', kingdomId, {
-      resources: { ...resources, gold: currentGold - serverGoldCost }
+      resources: { ...resources, gold: Math.max(0, currentGold - serverGoldCost) }
     });
 
     // Update territory defense level directly via DynamoDB (bypasses AppSync owner check)
@@ -201,7 +201,7 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
     await dbUpdate('Kingdom', kingdomId, {
       resources: {
         ...resources,
-        gold: currentGold - 500,
+        gold: Math.max(0, currentGold - 500),
       }
     });
     await dbAtomicAdd('Kingdom', kingdomId, 'turnsBalance', -turnCost);

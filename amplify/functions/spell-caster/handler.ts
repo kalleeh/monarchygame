@@ -165,7 +165,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     // BL-1: All preconditions passed — now deduct elan and turns
     const updatedResources: KingdomResources = {
       ...resources,
-      elan: currentElan - spellElanCost,
+      elan: Math.max(0, currentElan - spellElanCost),
     };
 
     await dbUpdate('Kingdom', casterId, {
@@ -236,7 +236,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
           const killed = Math.floor(currentPop * spellEffect.damage * spellPowerMult);
           const updatedTargetResources: KingdomResources = {
             ...targetResources,
-            population: currentPop - killed
+            population: Math.max(0, currentPop - killed)
           };
 
           await dbUpdate('Kingdom', targetId, {

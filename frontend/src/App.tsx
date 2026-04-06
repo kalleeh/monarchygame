@@ -523,12 +523,14 @@ function AppContent() {
         </div>
 
         <div className="game-content">
-          <AppRouter
-            kingdoms={kingdoms}
-            kingdomsLoading={loading}
-            onGetStarted={handleGetStarted}
-            onKingdomCreated={handleKingdomCreated}
-          />
+          <ErrorBoundary>
+            <AppRouter
+              kingdoms={kingdoms}
+              kingdomsLoading={loading}
+              onGetStarted={handleGetStarted}
+              onKingdomCreated={handleKingdomCreated}
+            />
+          </ErrorBoundary>
         </div>
       </main>
     );
@@ -537,12 +539,14 @@ function AppContent() {
   // Show welcome or auth
   if (!showAuth && !demoMode) {
     return (
-      <AppRouter
-        kingdoms={kingdoms}
-        kingdomsLoading={loading}
-        onGetStarted={handleGetStarted}
-        onKingdomCreated={handleKingdomCreated}
-      />
+      <ErrorBoundary>
+        <AppRouter
+          kingdoms={kingdoms}
+          kingdomsLoading={loading}
+          onGetStarted={handleGetStarted}
+          onKingdomCreated={handleKingdomCreated}
+        />
+      </ErrorBoundary>
     );
   }
 

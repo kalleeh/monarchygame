@@ -79,6 +79,14 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
           return { success: false, error: 'Missing required parameter: name', errorCode: ErrorCode.MISSING_PARAMS };
         }
 
+        if (typeof name !== 'string' || name.length < 2 || name.length > 50) {
+          return { success: false, error: 'Alliance name must be 2-50 characters', errorCode: ErrorCode.INVALID_PARAM };
+        }
+
+        if (description && (typeof description !== 'string' || description.length > 500)) {
+          return { success: false, error: 'Description must be at most 500 characters', errorCode: ErrorCode.INVALID_PARAM };
+        }
+
         // Verify kingdom ownership
         const kingdom = await dbGet<KingdomRecord>('Kingdom', kingdomId);
         if (!kingdom) return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };

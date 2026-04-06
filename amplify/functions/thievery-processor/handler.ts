@@ -149,7 +149,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
 
         const updatedTargetResources: KingdomResources = {
           ...targetResources,
-          gold: (targetResources.gold ?? 0) - goldStolen,
+          gold: Math.max(0, (targetResources.gold ?? 0) - goldStolen),
         };
         await dbUpdate('Kingdom', targetKingdomId, {
           resources: updatedTargetResources,
@@ -201,7 +201,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
         if (goldIntercepted > 0) {
           attackerGoldDelta = goldIntercepted;
           await dbUpdate('Kingdom', targetKingdomId, {
-            resources: { ...targetResources, gold: (targetResources.gold ?? 0) - goldIntercepted },
+            resources: { ...targetResources, gold: Math.max(0, (targetResources.gold ?? 0) - goldIntercepted) },
           });
         }
         (intelligence as Record<string, unknown>).goldIntercepted = goldIntercepted;

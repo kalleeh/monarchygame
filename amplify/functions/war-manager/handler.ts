@@ -124,7 +124,7 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
       status: 'active',
       attackCount: 0,
       declaredAt: new Date().toISOString(),
-      reason: reason || 'Formal war declaration'
+      reason: (reason || 'Formal war declaration').slice(0, 500)
     });
 
     // Notify the defender that war has been declared against them

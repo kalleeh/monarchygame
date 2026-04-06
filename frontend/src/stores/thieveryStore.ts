@@ -114,11 +114,21 @@ export const useThieveryStore = create(
         };
         const turnCost = turnCosts[type];
 
-        // Spend turns via kingdomStore
-        const turnsSpent = spendTurnsFn(turnCost);
-        if (!turnsSpent) {
-          set({ error: `Not enough turns. Need ${turnCost} turns for ${type} operation.` });
-          return null;
+        // In demo mode, deduct turns locally (no server).
+        // In auth mode, the Lambda deducts turnsBalance server-side; refreshKingdomResources syncs back.
+        if (isDemoMode()) {
+          const turnsSpent = spendTurnsFn(turnCost);
+          if (!turnsSpent) {
+            set({ error: `Not enough turns. Need ${turnCost} turns for ${type} operation.` });
+            return null;
+          }
+        } else {
+          // Pre-check locally to avoid unnecessary Lambda calls
+          const currentTurns = useKingdomStore.getState().resources.turns || 0;
+          if (currentTurns < turnCost) {
+            set({ error: `Not enough turns. Need ${turnCost} turns for ${type} operation.` });
+            return null;
+          }
         }
 
         set({ loading: true, error: null });

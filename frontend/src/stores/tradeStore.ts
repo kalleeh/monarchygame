@@ -195,6 +195,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
   // createOffer — create a trade offer and deduct the offered resource
   // -----------------------------------------------------------------------
   createOffer: async (offer: Partial<TradeOffer>) => {
+    if (get().loading) return;
     const { resources, lastOfferTime } = get();
 
     // Cooldown check: 12h for Human, 24h for others
@@ -304,6 +305,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
   // acceptOffer — accept an offer and transfer resources between kingdoms
   // -----------------------------------------------------------------------
   acceptOffer: async (offerId: string) => {
+    if (get().loading) return;
     const { activeOffers } = get();
     const offer = activeOffers.find(o => o.id === offerId);
 
@@ -382,6 +384,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
   // cancelOffer — cancel own offer and refund the escrowed resource
   // -----------------------------------------------------------------------
   cancelOffer: async (offerId: string) => {
+    if (get().loading) return;
     const { activeOffers } = get();
     const offer = activeOffers.find(o => o.id === offerId);
 

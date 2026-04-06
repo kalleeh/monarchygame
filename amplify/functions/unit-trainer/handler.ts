@@ -111,7 +111,7 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
 
     const updatedResources: KingdomResources = {
       ...resources,
-      gold: currentGold - goldCost,
+      gold: Math.max(0, currentGold - goldCost),
     };
 
     const newTurns = Math.max(0, currentTurns - turnCost);

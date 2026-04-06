@@ -77,7 +77,7 @@ async function handleContribute(args: { allianceId?: string | null; kingdomId?: 
   // Deduct gold from kingdom
   const updatedResources: KingdomResources = {
     ...resources,
-    gold: currentGold - amount
+    gold: Math.max(0, currentGold - amount)
   };
 
   // Update alliance treasury
@@ -151,7 +151,7 @@ async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: st
   };
 
   // Deduct from treasury
-  treasury.gold = treasuryGold - amount;
+  treasury.gold = Math.max(0, treasuryGold - amount);
 
   // Append withdrawal audit log entry (capped to last 50 entries)
   const existingStats = parseJsonField<Record<string, unknown>>(alliance.stats, {});
@@ -199,7 +199,7 @@ async function handleUpgrade(args: { allianceId?: string | null; kingdomId?: str
     return { success: false, error: `Insufficient treasury gold: need ${upgrade.cost}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
   }
 
-  treasury.gold = (treasury.gold ?? 0) - upgrade.cost;
+  treasury.gold = Math.max(0, (treasury.gold ?? 0) - upgrade.cost);
 
   const existingStats = parseJsonField<Record<string, unknown>>(alliance.stats, {});
 

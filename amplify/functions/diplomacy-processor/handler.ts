@@ -116,7 +116,7 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
       seasonId,
       type: treatyType as 'non_aggression' | 'trade_agreement' | 'military_alliance' | 'ceasefire',
       status: 'proposed',
-      terms: terms ? JSON.stringify(terms) : '{}',
+      terms: terms ? JSON.stringify(terms).slice(0, 2000) : '{}',
       proposedAt: new Date().toISOString(),
       expiresAt,
       owner: callerIdentity.sub

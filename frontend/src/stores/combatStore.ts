@@ -126,6 +126,7 @@ export const useCombatStore = create(
     (set, get) => ({
       // Battle execution
       executeBattle: async (targetId: string, attackType: 'standard' | 'raid' | 'pillage' | 'siege' = 'standard') => {
+        if (get().loading) return null;
         // Use all kingdom units automatically (original Monarchy: no unit selection, just total power)
         // Formation choice is an optional modifier applied via formationId
         const formationState = useFormationStore.getState();

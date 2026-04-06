@@ -28,6 +28,7 @@ interface DiplomacyStore {
 
   // Actions
   loadDiplomacyData: (kingdomId: string) => Promise<void>;
+  cleanupSubscription: () => void;
   sendTreatyProposal: (proposal: TreatyProposal) => Promise<void>;
   acceptTreatyProposal: (proposalId: string) => Promise<void>;
   rejectTreatyProposal: (proposalId: string) => Promise<void>;
@@ -36,6 +37,8 @@ interface DiplomacyStore {
   updateReputation: (change: number) => void;
   applyIncomingWarDeclaration: (attackerId: string) => void;
 }
+
+let _treatySub: { unsubscribe: () => void } | null = null;
 
 export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
   // Initial state
@@ -69,8 +72,9 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
         loading: false
       });
 
-      // Set up real-time subscriptions
-      DiplomacyService.subscribeToTreatyProposals(kingdomId, (data: Record<string, unknown>) => {
+      // Set up real-time subscriptions (clean up previous first)
+      if (_treatySub) { _treatySub.unsubscribe(); _treatySub = null; }
+      _treatySub = DiplomacyService.subscribeToTreatyProposals(kingdomId, (data: Record<string, unknown>) => {
         const proposal = data as unknown as TreatyProposal;
         set(state => ({
           activeProposals: [...state.activeProposals, proposal]
@@ -83,6 +87,10 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
         loading: false 
       });
     }
+  },
+
+  cleanupSubscription: () => {
+    if (_treatySub) { _treatySub.unsubscribe(); _treatySub = null; }
   },
 
   // Send treaty proposal

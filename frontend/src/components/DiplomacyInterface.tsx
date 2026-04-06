@@ -40,14 +40,16 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
     acceptTreatyProposal,
     rejectTreatyProposal,
     declareWar,
-    loadDiplomacyData
+    loadDiplomacyData,
+    cleanupSubscription
   } = useDiplomacyStore();
 
 
   // Load initial diplomacy data
   useEffect(() => {
     loadDiplomacyData(kingdomId);
-  }, [kingdomId, loadDiplomacyData]);
+    return () => { cleanupSubscription(); };
+  }, [kingdomId, loadDiplomacyData, cleanupSubscription]);
 
   const handleSendProposal = useCallback(async (proposal: Omit<TreatyProposal, 'id' | 'createdAt'>) => {
     try {
