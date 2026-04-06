@@ -21,14 +21,7 @@ interface UnitSummonInterfaceProps {
 type SummonView = 'dashboard' | 'summon';
 
 // Helper to get race-specific image for universal units
-const getUnitImagePath = (unitId: string, race: string): string => {
-  // Race-specific images for scouts and elite scouts
-  if (unitId === 'scouts' || unitId === 'elite_scouts') {
-    const racePrefix = race.toLowerCase().replace(/\s+/g, '-');
-    return `/units/output/${racePrefix}-${unitId.replace(/_/g, '-')}-icon.png`;
-  }
-  return `/units/output/${unitId.replace(/_/g, '-')}-icon.png`;
-};
+import { getUnitImagePath } from '../utils/unitImages';
 
 const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({ 
   kingdomId,

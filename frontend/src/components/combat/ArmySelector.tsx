@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { getUnitImagePath } from '../../utils/unitImages';
 import type { Army } from '../../types/combat';
 
 interface ArmySelectorProps {
@@ -12,6 +13,7 @@ interface ArmySelectorProps {
   onArmyChange: (army: Army) => void;
   maxUnits?: number;
   className?: string;
+  race?: string;
 }
 
 interface UnitTypeInfo {
@@ -30,7 +32,8 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
   selectedArmy,
   onArmyChange,
   maxUnits = Infinity,
-  className = ''
+  className = '',
+  race = 'Human'
 }) => {
   const [presetPercentage, setPresetPercentage] = useState<number>(0);
 
@@ -237,7 +240,10 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
             <div key={unitType} className="unit-selector">
               <div className="unit-header">
                 <div className="unit-info">
-                  <span className="unit-icon">{unitInfo.icon}</span>
+                  <img className="unit-icon" src={getUnitImagePath(unitType, race)} alt={unitInfo.name}
+                    style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 4 }}
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).textContent = unitInfo.icon; (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
                   <div className="unit-details">
                     <span className="unit-name">{unitInfo.name}</span>
                     <span className="unit-description">{unitInfo.description}</span>

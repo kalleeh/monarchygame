@@ -13,6 +13,7 @@ import { useFormationStore } from '../stores/formationStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { getUnitsForRace } from '../utils/units';
+import { getUnitImagePath } from '../utils/unitImages';
 // Inline race offense/defense scales to avoid circular import via __mocks__
 const RACE_OFFENSE: Record<string, number> = {
   Human: 3, Elven: 2, Goblin: 4, Droben: 5, Vampire: 3,
@@ -71,8 +72,8 @@ function formatUnitName(type: string): string {
     .replace(/\b\w/g, c => c.toUpperCase());
 }
 
-function CasualtyRow({ unitType, count }: { unitType: string; count: number }) {
-  const imgSrc = `/units/output/${unitType.replace(/_/g, '-')}-icon.png`;
+function CasualtyRow({ unitType, count, race }: { unitType: string; count: number; race: string }) {
+  const imgSrc = getUnitImagePath(unitType, race);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.3rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
       <img
@@ -138,14 +139,17 @@ function BattleResultModal({ battle, onClose, defenderName }: { battle: import('
           <div>
             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>Your Losses</div>
             {attackerEntries.length > 0
-              ? attackerEntries.map(([t, c]) => <CasualtyRow key={t} unitType={t} count={c as number} />)
+              ? attackerEntries.map(([t, c]) => <CasualtyRow key={t} unitType={t} count={c as number} race={attackerRace} />)
               : <p style={{ color: '#22c55e', fontSize: '0.85rem' }}>✓ No losses</p>
             }
           </div>
           <div>
             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>Enemy Losses</div>
             {defenderEntries.length > 0
-              ? defenderEntries.map(([t, c]) => <CasualtyRow key={t} unitType={t} count={c as number} />)
+              ? defenderEntries.map(([t, c]) => {
+                const defRace = kingdomTargets.find(k => k.id === selectedTarget)?.race || 'Human';
+                return <CasualtyRow key={t} unitType={t} count={c as number} race={defRace} />;
+              })
               : <p style={{ color: '#6b7280', fontSize: '0.85rem' }}>No data</p>
             }
           </div>
@@ -169,7 +173,7 @@ const UnitCard: React.FC<UnitCardProps> = ({ unit, tier }) => {
       padding: '0.4rem 0.6rem', background: 'rgba(255,255,255,0.04)',
       borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)',
     }}>
-      <img src={`/units/output/${unit.type.replace(/_/g, '-')}-icon.png`} alt={unit.type}
+      <img src={getUnitImagePath(unit.type, attackerRace)} alt={unit.type}
         style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 4 }}
         onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
       />

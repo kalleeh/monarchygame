@@ -238,6 +238,7 @@ export function AttackPlanner({
             availableArmy={availableArmy}
             selectedArmy={selectedArmy}
             onArmyChange={handleArmyChange}
+            race={currentKingdom.race}
             maxUnits={Math.floor(Object.values(availableArmy).reduce((sum, count) => (sum ?? 0) + (count ?? 0), 0) * 0.8)}
           />
           <div className="army-summary">
