@@ -104,7 +104,7 @@ describe('trade-processor handler — createTradeOffer', () => {
       expect(parsed.offer.status).toBe('open');
 
       // Gold escrowed: 50000 - 1000 = 49000
-      const updateCall = mockDbUpdate.mock.calls[0];
+      const updateCall = mockDbConditionalUpdate.mock.calls[0];
       expect(updateCall[2].resources.gold).toBe(49000);
       expect(mockDbCreate).toHaveBeenCalledOnce();
     });

@@ -5,6 +5,7 @@ import { log } from '../logger';
 import { dbGet, dbCreate, dbUpdate, dbConditionalUpdate, dbQuery, parseJsonField } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
+import { isConditionalCheckFailed } from '../conditional-helpers';
 
 const TRADE_OFFER_EXPIRY_HOURS = 48;
 
@@ -103,7 +104,19 @@ export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event
 
     // Escrow: deduct resources from seller
     const updatedResources = { ...sellerResources, [resourceType]: available - quantity };
-    await dbUpdate('Kingdom', sellerId, { resources: updatedResources });
+    try {
+      await dbConditionalUpdate('Kingdom', sellerId,
+        { resources: updatedResources },
+        '#res = :expectedRes',
+        { ':expectedRes': seller.resources },
+        { '#res': 'resources' }
+      );
+    } catch (err: unknown) {
+      if (isConditionalCheckFailed(err)) {
+        return JSON.stringify({ success: false, error: 'Kingdom state changed, please retry', errorCode: ErrorCode.CONFLICT });
+      }
+      throw err;
+    }
 
     const totalPrice = quantity * pricePerUnit;
     const expiresAt = new Date(Date.now() + TRADE_OFFER_EXPIRY_HOURS * 60 * 60 * 1000).toISOString();
@@ -226,10 +239,22 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }, cal
   };
 
   // Transfer resources now that the offer is claimed
-  await Promise.all([
-    dbUpdate('Kingdom', buyerId, { resources: updatedBuyerResources }),
-    dbUpdate('Kingdom', offer.sellerId, { resources: updatedSellerResources }),
-  ]);
+  try {
+    await dbConditionalUpdate('Kingdom', buyerId,
+      { resources: updatedBuyerResources },
+      '#res = :expectedRes',
+      { ':expectedRes': buyer.resources },
+      { '#res': 'resources' }
+    );
+  } catch (err: unknown) {
+    if (isConditionalCheckFailed(err)) {
+      // Roll back offer status so another buyer can claim it
+      await dbUpdate('TradeOffer', offerId, { status: 'open', buyerId: null, acceptedAt: null });
+      return JSON.stringify({ success: false, error: 'Kingdom state changed, please retry', errorCode: ErrorCode.CONFLICT });
+    }
+    throw err;
+  }
+  await dbUpdate('Kingdom', offer.sellerId, { resources: updatedSellerResources });
 
   return JSON.stringify({
     success: true,
@@ -273,7 +298,19 @@ async function handleCancelOffer(args: { offerId: string; sellerId: string }, ca
 
     const sellerResources = parseJsonField<Record<string, number>>(seller.resources, {});
     sellerResources[offer.resourceType] = (sellerResources[offer.resourceType] ?? 0) + offer.quantity;
-    await dbUpdate('Kingdom', sellerId, { resources: sellerResources });
+    try {
+      await dbConditionalUpdate('Kingdom', sellerId,
+        { resources: sellerResources },
+        '#res = :expectedRes',
+        { ':expectedRes': seller.resources },
+        { '#res': 'resources' }
+      );
+    } catch (err: unknown) {
+      if (isConditionalCheckFailed(err)) {
+        return JSON.stringify({ success: false, error: 'Kingdom state changed, please retry', errorCode: ErrorCode.CONFLICT });
+      }
+      throw err;
+    }
   }
 
   await dbUpdate('TradeOffer', offerId, { status: 'cancelled' });

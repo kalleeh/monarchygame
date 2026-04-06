@@ -6,6 +6,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 const mockDbGet = vi.hoisted(() => vi.fn());
 const mockDbUpdate = vi.hoisted(() => vi.fn());
+const mockDbConditionalUpdate = vi.hoisted(() => vi.fn());
 const mockDbCreate = vi.hoisted(() => vi.fn());
 const mockDbList = vi.hoisted(() => vi.fn());
 const mockDbDelete = vi.hoisted(() => vi.fn());
@@ -15,6 +16,7 @@ const mockDbQuery = vi.hoisted(() => vi.fn());
 vi.mock('../data-client', () => ({
   dbGet: mockDbGet,
   dbUpdate: mockDbUpdate,
+  dbConditionalUpdate: mockDbConditionalUpdate,
   dbCreate: mockDbCreate,
   dbList: mockDbList,
   dbDelete: mockDbDelete,
@@ -77,6 +79,7 @@ function mockKingdom(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockDbUpdate.mockResolvedValue(undefined);
+  mockDbConditionalUpdate.mockResolvedValue(undefined);
   mockDbList.mockResolvedValue([]);
   mockDbQuery.mockResolvedValue([]);
 });
@@ -93,7 +96,7 @@ describe('building-constructor handler', () => {
       expect(buildings.mine).toBe(2);
 
       // Verify update called with correct resource deduction (2 * 250 = 500)
-      const updateCall = mockDbUpdate.mock.calls[0];
+      const updateCall = mockDbConditionalUpdate.mock.calls[0];
       expect(updateCall[2].resources.gold).toBe(10000 - 500);
     });
 
@@ -200,6 +203,7 @@ describe('building-constructor handler', () => {
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INSUFFICIENT_RESOURCES');
       expect(mockDbUpdate).not.toHaveBeenCalled();
+      expect(mockDbConditionalUpdate).not.toHaveBeenCalled();
     });
 
     it('succeeds when gold is exactly equal to cost', async () => {
@@ -211,7 +215,7 @@ describe('building-constructor handler', () => {
       const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 1 }));
 
       expect(result.success).toBe(true);
-      const updateCall = mockDbUpdate.mock.calls[0];
+      const updateCall = mockDbConditionalUpdate.mock.calls[0];
       expect(updateCall[2].resources.gold).toBe(0);
     });
   });

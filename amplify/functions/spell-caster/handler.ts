@@ -2,9 +2,10 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbQuery, parseJsonField, ensureTurnsBalance } from '../data-client';
+import { dbGet, dbUpdate, dbConditionalUpdate, dbQuery, parseJsonField, ensureTurnsBalance } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
+import { isConditionalCheckFailed } from '../conditional-helpers';
 
 const SPELL_ELAN_COSTS: Record<string, number> = {
   calming_chant: 5,        // No damage, cheapest
@@ -168,10 +169,21 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
       elan: Math.max(0, currentElan - spellElanCost),
     };
 
-    await dbUpdate('Kingdom', casterId, {
-      resources: updatedResources,
-      turnsBalance: Math.max(0, currentTurns - turnCost),
-    });
+    try {
+      await dbConditionalUpdate('Kingdom', casterId, {
+        resources: updatedResources,
+        turnsBalance: Math.max(0, currentTurns - turnCost),
+      },
+        '#res = :expectedRes',
+        { ':expectedRes': casterKingdom.resources },
+        { '#res': 'resources' }
+      );
+    } catch (err: unknown) {
+      if (isConditionalCheckFailed(err)) {
+        return { success: false, error: 'Kingdom state changed, please retry', errorCode: ErrorCode.CONFLICT };
+      }
+      throw err;
+    }
 
     // --- Apply spell effects to target ---
     let damageReport: Record<string, unknown> = {};

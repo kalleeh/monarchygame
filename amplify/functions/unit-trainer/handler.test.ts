@@ -6,6 +6,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 const mockDbGet = vi.hoisted(() => vi.fn());
 const mockDbUpdate = vi.hoisted(() => vi.fn());
+const mockDbConditionalUpdate = vi.hoisted(() => vi.fn());
 const mockDbCreate = vi.hoisted(() => vi.fn());
 const mockDbList = vi.hoisted(() => vi.fn());
 const mockDbDelete = vi.hoisted(() => vi.fn());
@@ -15,6 +16,7 @@ const mockDbQuery = vi.hoisted(() => vi.fn());
 vi.mock('../data-client', () => ({
   dbGet: mockDbGet,
   dbUpdate: mockDbUpdate,
+  dbConditionalUpdate: mockDbConditionalUpdate,
   dbCreate: mockDbCreate,
   dbList: mockDbList,
   dbDelete: mockDbDelete,
@@ -29,6 +31,18 @@ vi.mock('../data-client', () => ({
 }));
 
 vi.mock('../rate-limiter', () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
+
+// Mock unit-costs to avoid pulling in the full shared-races dependency tree.
+// Returns deterministic costs that tests can rely on.
+vi.mock('../../../shared/mechanics/unit-costs', () => ({
+  getUnitGoldCost: (race: string, unitType: string): number | null => {
+    if (race !== 'Human') return null;
+    const costs: Record<string, number> = {
+      peasants: 50, militia: 350, knights: 900, cavalry: 2000, scouts: 200,
+    };
+    return costs[unitType] ?? null;
+  },
+}));
 
 import { handler } from './handler';
 
@@ -77,32 +91,33 @@ function mockKingdom(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockDbUpdate.mockResolvedValue(undefined);
+  mockDbConditionalUpdate.mockResolvedValue(undefined);
   mockDbList.mockResolvedValue([]);
   mockDbQuery.mockResolvedValue([]);
 });
 
 describe('unit-trainer handler', () => {
   describe('happy path', () => {
-    it('deducts 100 gold per unit and increments unit count', async () => {
+    it('deducts server-computed gold per unit and increments unit count', async () => {
       mockDbGet.mockResolvedValue(mockKingdom());
 
-      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry', quantity: 5, goldCost: 100 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'militia', quantity: 5 }));
 
       expect(result.success).toBe(true);
       const units = JSON.parse(result.units as string);
-      expect(units.infantry).toBe(5);
+      expect(units.militia).toBe(5);
 
-      // 5 * 100 = 500 gold deducted
-      const updateCall = mockDbUpdate.mock.calls[0];
-      expect(updateCall[2].resources.gold).toBe(10000 - 500);
+      // 5 * 350 (server-computed Human militia cost) = 1750 gold deducted
+      const updateCall = mockDbConditionalUpdate.mock.calls[0];
+      expect(updateCall[2].resources.gold).toBe(10000 - 1750);
     });
 
     it('works for every valid unit type', async () => {
-      const types = ['infantry', 'archers', 'cavalry', 'siege', 'mages', 'scouts'];
+      const types = ['peasants', 'militia', 'knights', 'cavalry', 'scouts'];
       for (const unitType of types) {
         vi.clearAllMocks();
         mockDbGet.mockResolvedValue(mockKingdom());
-        mockDbUpdate.mockResolvedValue(undefined);
+        mockDbConditionalUpdate.mockResolvedValue(undefined);
 
         const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType, quantity: 1 }));
 
@@ -115,14 +130,14 @@ describe('unit-trainer handler', () => {
 
     it('adds to existing unit count', async () => {
       mockDbGet.mockResolvedValue(
-        mockKingdom({ totalUnits: { infantry: 50, archers: 0, cavalry: 0, siege: 0, mages: 0, scouts: 200 } })
+        mockKingdom({ totalUnits: { militia: 50, archers: 0, cavalry: 0, siege: 0, mages: 0, scouts: 200 } })
       );
 
-      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry', quantity: 10 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'militia', quantity: 10 }));
 
       expect(result.success).toBe(true);
       const units = JSON.parse(result.units as string);
-      expect(units.infantry).toBe(60);
+      expect(units.militia).toBe(60);
     });
   });
 
@@ -148,13 +163,13 @@ describe('unit-trainer handler', () => {
       expect(result.errorCode).toBe('MISSING_PARAMS');
     });
 
-    it('accepts custom unit types (race-specific units allowed by design)', async () => {
-      // The handler accepts any non-empty unitType string — the frontend
-      // is responsible for validating race-specific unit lists.
+    it('rejects unknown unit types for the kingdom race', async () => {
+      // Server-side cost lookup rejects unit types that don't exist for the race
       mockDbGet.mockResolvedValue(mockKingdom());
       const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'dragon', quantity: 1 }));
 
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('INVALID_PARAM');
     });
 
     it('returns INVALID_PARAM when quantity is 0', async () => {
@@ -185,16 +200,16 @@ describe('unit-trainer handler', () => {
 
   describe('INSUFFICIENT_RESOURCES', () => {
     it('returns INSUFFICIENT_RESOURCES when gold is below cost', async () => {
-      // 20 infantry at 100 gold each = 2000 gold, but kingdom has only 1500
+      // 20 militia at 350 gold each (server-computed) = 7000 gold, but kingdom has only 1500
       mockDbGet.mockResolvedValue(
         mockKingdom({ resources: { gold: 1500, population: 1000, mana: 500, land: 1000 } })
       );
 
-      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry', quantity: 20, goldCost: 100 }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'militia', quantity: 20 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INSUFFICIENT_RESOURCES');
-      expect(mockDbUpdate).not.toHaveBeenCalled();
+      expect(mockDbConditionalUpdate).not.toHaveBeenCalled();
     });
   });
 });

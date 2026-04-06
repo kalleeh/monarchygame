@@ -6,6 +6,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 const mockDbGet = vi.hoisted(() => vi.fn());
 const mockDbUpdate = vi.hoisted(() => vi.fn());
+const mockDbConditionalUpdate = vi.hoisted(() => vi.fn());
 const mockDbCreate = vi.hoisted(() => vi.fn());
 const mockDbQuery = vi.hoisted(() => vi.fn());
 const mockDbList = vi.hoisted(() => vi.fn());
@@ -15,6 +16,7 @@ const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
 vi.mock('../data-client', () => ({
   dbGet: mockDbGet,
   dbUpdate: mockDbUpdate,
+  dbConditionalUpdate: mockDbConditionalUpdate,
   dbCreate: mockDbCreate,
   dbQuery: mockDbQuery,
   dbList: mockDbList,
@@ -77,6 +79,7 @@ function mockKingdom(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockDbUpdate.mockResolvedValue(undefined);
+  mockDbConditionalUpdate.mockResolvedValue(undefined);
   mockDbQuery.mockResolvedValue([]);
   mockDbList.mockResolvedValue([]);
 });
@@ -94,7 +97,7 @@ describe('spell-caster handler', () => {
       expect(parsed.remainingElan).toBe(495);
 
       // Only one update — caster's elan
-      expect(mockDbUpdate).toHaveBeenCalledOnce();
+      expect(mockDbConditionalUpdate).toHaveBeenCalledOnce();
     });
 
     it('deducts elan when casting at a target (structure_damage spell)', async () => {

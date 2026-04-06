@@ -182,7 +182,6 @@ export class AmplifyFunctionService {
             kingdomId: payload.kingdomId,
             unitType: payload.unitType || '',
             quantity: payload.quantity || 1,
-            goldCost: typeof payload.goldCost === 'number' ? payload.goldCost : undefined
           }));
         case 'combat-processor': {
           const { data: combatData, errors: combatErrors } = await getClient().mutations.processCombat({

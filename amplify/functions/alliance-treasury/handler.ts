@@ -2,9 +2,10 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, parseJsonField } from '../data-client';
+import { dbGet, dbUpdate, dbConditionalUpdate, parseJsonField } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
+import { isConditionalCheckFailed } from '../conditional-helpers';
 
 type AllianceRecord = {
   id: string;
@@ -85,8 +86,32 @@ async function handleContribute(args: { allianceId?: string | null; kingdomId?: 
   const treasury: Record<string, number> = parseJsonField<Record<string, number>>(rawTreasury, {});
   treasury.gold = (treasury.gold ?? 0) + amount;
 
-  await dbUpdate('Kingdom', kingdomId, { resources: updatedResources });
-  await dbUpdate('Alliance', allianceId, { treasury });
+  try {
+    await dbConditionalUpdate('Kingdom', kingdomId,
+      { resources: updatedResources },
+      '#res = :expectedRes',
+      { ':expectedRes': kingdom.resources },
+      { '#res': 'resources' }
+    );
+  } catch (err: unknown) {
+    if (isConditionalCheckFailed(err)) {
+      return { success: false, error: 'Kingdom state changed, please retry', errorCode: ErrorCode.CONFLICT };
+    }
+    throw err;
+  }
+  try {
+    await dbConditionalUpdate('Alliance', allianceId,
+      { treasury },
+      '#tr = :expectedTr',
+      { ':expectedTr': rawTreasury ?? null },
+      { '#tr': 'treasury' }
+    );
+  } catch (err: unknown) {
+    if (isConditionalCheckFailed(err)) {
+      return { success: false, error: 'Alliance state changed, please retry', errorCode: ErrorCode.CONFLICT };
+    }
+    throw err;
+  }
 
   log.info('alliance-treasury', 'contribute', { allianceId, kingdomId, amount });
   return { success: true, result: JSON.stringify({ contributed: amount, newTreasuryBalance: treasury.gold }) };
@@ -160,11 +185,22 @@ async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: st
   withdrawalLog.push({ type: 'withdrawal', amount, performedBy: identity?.sub ?? '', timestamp: new Date().toISOString() });
   const trimmedLog = withdrawalLog.slice(-50);
 
+  try {
+    await dbConditionalUpdate('Alliance', allianceId, {
+      treasury,
+      stats: JSON.stringify({ ...existingStats, withdrawalLog: trimmedLog }),
+    },
+      '#tr = :expectedTr',
+      { ':expectedTr': rawTreasury ?? null },
+      { '#tr': 'treasury' }
+    );
+  } catch (err: unknown) {
+    if (isConditionalCheckFailed(err)) {
+      return { success: false, error: 'Alliance state changed, please retry', errorCode: ErrorCode.CONFLICT };
+    }
+    throw err;
+  }
   await dbUpdate('Kingdom', kingdomId, { resources: updatedResources });
-  await dbUpdate('Alliance', allianceId, {
-    treasury,
-    stats: JSON.stringify({ ...existingStats, withdrawalLog: trimmedLog }),
-  });
 
   log.info('alliance-treasury', 'withdraw', { allianceId, kingdomId, amount });
   return { success: true, result: JSON.stringify({ withdrawn: amount, newTreasuryBalance: treasury.gold }) };
@@ -212,10 +248,21 @@ async function handleUpgrade(args: { allianceId?: string | null; kingdomId?: str
   const expiresAt = new Date(now + upgrade.duration * 60 * 60 * 1000).toISOString();
   liveUpgrades.push({ type: upgradeType, expiresAt, effect: upgrade.effect });
 
-  await dbUpdate('Alliance', allianceId, {
-    treasury,
-    stats: JSON.stringify({ ...existingStats, activeUpgrades: liveUpgrades }),
-  });
+  try {
+    await dbConditionalUpdate('Alliance', allianceId, {
+      treasury,
+      stats: JSON.stringify({ ...existingStats, activeUpgrades: liveUpgrades }),
+    },
+      '#tr = :expectedTr',
+      { ':expectedTr': alliance.treasury ?? null },
+      { '#tr': 'treasury' }
+    );
+  } catch (err: unknown) {
+    if (isConditionalCheckFailed(err)) {
+      return { success: false, error: 'Alliance state changed, please retry', errorCode: ErrorCode.CONFLICT };
+    }
+    throw err;
+  }
 
   log.info('alliance-treasury', 'upgrade', { allianceId, kingdomId, upgradeType, expiresAt });
   return { success: true, result: JSON.stringify({ upgradeType, expiresAt }) };

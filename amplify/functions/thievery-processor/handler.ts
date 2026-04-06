@@ -2,10 +2,11 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources, KingdomUnits } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbQuery, dbAtomicAdd, parseJsonField, ensureTurnsBalance } from '../data-client';
+import { dbGet, dbUpdate, dbConditionalUpdate, dbQuery, dbAtomicAdd, parseJsonField, ensureTurnsBalance } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { THIEVERY_MECHANICS } from '../../../shared/mechanics/thievery-mechanics';
 import { checkRateLimit } from '../rate-limiter';
+import { isConditionalCheckFailed } from '../conditional-helpers';
 
 const VALID_OPERATIONS = ['scout', 'steal', 'sabotage', 'burn', 'desecrate', 'spread_dissention', 'intercept_caravans', 'scum_kill'] as const;
 const MIN_SCOUTS = 100;
@@ -151,9 +152,20 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
           ...targetResources,
           gold: Math.max(0, (targetResources.gold ?? 0) - goldStolen),
         };
-        await dbUpdate('Kingdom', targetKingdomId, {
-          resources: updatedTargetResources,
-        });
+        try {
+          await dbConditionalUpdate('Kingdom', targetKingdomId, {
+            resources: updatedTargetResources,
+          },
+            '#res = :expectedRes',
+            { ':expectedRes': targetKingdom.resources },
+            { '#res': 'resources' }
+          );
+        } catch (err: unknown) {
+          if (isConditionalCheckFailed(err)) {
+            return { success: false, error: 'Target kingdom state changed, please retry', errorCode: ErrorCode.CONFLICT };
+          }
+          throw err;
+        }
       } else if (operation === 'sabotage') {
         const scoutsDestroyed = Math.floor((targetUnits.scouts ?? 0) * 0.03);
         const updatedTargetUnits: KingdomUnits = {
@@ -200,9 +212,20 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
         const goldIntercepted = Math.min(200000, Math.floor((targetResources.gold ?? 0) * 0.02));
         if (goldIntercepted > 0) {
           attackerGoldDelta = goldIntercepted;
-          await dbUpdate('Kingdom', targetKingdomId, {
-            resources: { ...targetResources, gold: Math.max(0, (targetResources.gold ?? 0) - goldIntercepted) },
-          });
+          try {
+            await dbConditionalUpdate('Kingdom', targetKingdomId, {
+              resources: { ...targetResources, gold: Math.max(0, (targetResources.gold ?? 0) - goldIntercepted) },
+            },
+              '#res = :expectedRes',
+              { ':expectedRes': targetKingdom.resources },
+              { '#res': 'resources' }
+            );
+          } catch (err: unknown) {
+            if (isConditionalCheckFailed(err)) {
+              return { success: false, error: 'Target kingdom state changed, please retry', errorCode: ErrorCode.CONFLICT };
+            }
+            throw err;
+          }
         }
         (intelligence as Record<string, unknown>).goldIntercepted = goldIntercepted;
       } else if (operation === 'scum_kill') {
@@ -256,10 +279,21 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
       ...attackerResources,
       gold: (attackerResources.gold ?? 0) + attackerGoldDelta,
     };
-    await dbUpdate('Kingdom', kingdomId, {
-      totalUnits: updatedAttackerUnits,
-      resources: updatedAttackerResources,
-    });
+    try {
+      await dbConditionalUpdate('Kingdom', kingdomId, {
+        totalUnits: updatedAttackerUnits,
+        resources: updatedAttackerResources,
+      },
+        '#res = :expectedRes',
+        { ':expectedRes': attackerKingdom.resources },
+        { '#res': 'resources' }
+      );
+    } catch (err: unknown) {
+      if (isConditionalCheckFailed(err)) {
+        return { success: false, error: 'Kingdom state changed, please retry', errorCode: ErrorCode.CONFLICT };
+      }
+      throw err;
+    }
     await dbAtomicAdd('Kingdom', kingdomId, 'turnsBalance', -turnCost);
 
     // BL-6: If operation was detected (spy caught), record detection on the target kingdom

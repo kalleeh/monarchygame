@@ -2,29 +2,28 @@ import type { Schema } from '../../data/resource';
 import type { KingdomUnits, KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbQuery, parseJsonField, ensureTurnsBalance } from '../data-client';
+import { dbGet, dbConditionalUpdate, dbQuery, parseJsonField, ensureTurnsBalance } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
+import { isConditionalCheckFailed } from '../conditional-helpers';
+import { getUnitGoldCost } from '../../../shared/mechanics/unit-costs';
 
 const UNIT_QUANTITY = { min: 1, max: 1000 } as const;
-
-// Gold cost bounds per unit — must match frontend TIER_TEMPLATES base costs.
-// Tier 0 = 50g, Tier 1 = 350g, Tier 2 = 900g, Tier 3 = 2000g.
-// economicMultiplier can raise costs up to 2× (Vampire), so max = 2000 * 2 = 4000.
-const MIN_GOLD_COST_PER_UNIT = 50;
-const MAX_GOLD_COST_PER_UNIT = 4000;
 const MAX_TOTAL_UNITS = 100000;
 
 type KingdomType = {
   id: string;
   owner?: string | null;
+  race?: string | null;
   resources?: KingdomResources | null;
   totalUnits?: KingdomUnits | null;
   turnsBalance?: number | null;
 };
 
 export const handler: Schema["trainUnits"]["functionHandler"] = async (event) => {
-  const { kingdomId, unitType, quantity, goldCost: goldCostPerUnit } = event.arguments;
+  const { kingdomId, unitType, quantity } = event.arguments;
+  // goldCost from client is intentionally ignored — computed server-side via getUnitGoldCost
+  const clientGoldCost = (event.arguments as Record<string, unknown>).goldCost as number | undefined;
 
   try {
     if (!kingdomId || !unitType || quantity === undefined || quantity === null) {
@@ -39,13 +38,6 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
 
     if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < UNIT_QUANTITY.min || quantity > UNIT_QUANTITY.max) {
       return { success: false, error: `Quantity must be an integer between ${UNIT_QUANTITY.min} and ${UNIT_QUANTITY.max}`, errorCode: ErrorCode.INVALID_PARAM };
-    }
-
-    // goldCostPerUnit is the per-unit gold cost provided by the frontend.
-    // Validate it is a positive integer to prevent exploits.
-    const resolvedGoldCostPerUnit = goldCostPerUnit ?? MIN_GOLD_COST_PER_UNIT;
-    if (!Number.isInteger(resolvedGoldCostPerUnit) || resolvedGoldCostPerUnit < MIN_GOLD_COST_PER_UNIT || resolvedGoldCostPerUnit > MAX_GOLD_COST_PER_UNIT) {
-      return { success: false, error: `Invalid goldCost: must be an integer between ${MIN_GOLD_COST_PER_UNIT} and ${MAX_GOLD_COST_PER_UNIT}`, errorCode: ErrorCode.INVALID_PARAM };
     }
 
     // Verify caller identity
@@ -79,7 +71,19 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
     }
 
     const resources = parseJsonField(kingdom.resources, {} as KingdomResources);
-    const goldCost = quantity * resolvedGoldCostPerUnit;
+
+    // Server-side cost computation — never trust client-sent goldCost
+    const serverGoldCostPerUnit = getUnitGoldCost(kingdom.race ?? '', unitType);
+    if (serverGoldCostPerUnit === null) {
+      return { success: false, error: `Unknown unit type '${unitType}' for race '${kingdom.race}'`, errorCode: ErrorCode.INVALID_PARAM };
+    }
+
+    // Log warning if client sent a different cost (potential exploit attempt)
+    if (clientGoldCost !== undefined && clientGoldCost !== serverGoldCostPerUnit) {
+      log.info('unit-trainer', 'cost-mismatch', { kingdomId, unitType, clientGoldCost, serverGoldCostPerUnit, race: kingdom.race });
+    }
+
+    const goldCost = quantity * serverGoldCostPerUnit;
     const currentGold = resources.gold ?? 0;
 
     if (currentGold < goldCost) {
@@ -122,12 +126,23 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
     const updatedTotalCount = Object.values(updatedUnits as Record<string, number>).reduce((s, n) => s + (n ?? 0), 0);
     const updatedNetworth = updatedLand * 1000 + updatedGold + updatedTotalCount * 100;
 
-    await dbUpdate('Kingdom', kingdomId, {
-      totalUnits: updatedUnits,
-      resources: updatedResources,
-      turnsBalance: newTurns,
-      networth: updatedNetworth,
-    });
+    try {
+      await dbConditionalUpdate('Kingdom', kingdomId, {
+        totalUnits: updatedUnits,
+        resources: updatedResources,
+        turnsBalance: newTurns,
+        networth: updatedNetworth,
+      },
+        '#res = :expectedRes',
+        { ':expectedRes': kingdom.resources },
+        { '#res': 'resources' }
+      );
+    } catch (err: unknown) {
+      if (isConditionalCheckFailed(err)) {
+        return { success: false, error: 'Kingdom state changed, please retry', errorCode: ErrorCode.CONFLICT };
+      }
+      throw err;
+    }
 
     log.info('unit-trainer', 'trainUnits', { kingdomId, unitType, quantity });
     return { success: true, units: JSON.stringify(updatedUnits) };

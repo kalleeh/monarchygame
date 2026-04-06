@@ -2,9 +2,10 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbAtomicAdd, dbQuery, parseJsonField, ensureTurnsBalance } from '../data-client';
+import { dbGet, dbUpdate, dbConditionalUpdate, dbAtomicAdd, dbQuery, parseJsonField, ensureTurnsBalance } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
+import { isConditionalCheckFailed } from '../conditional-helpers';
 
 const TERRITORY_NAME_LIMITS = { min: 2, max: 50 } as const;
 const COORDINATE_LIMITS = { min: -10000, max: 10000 } as const;
@@ -83,9 +84,20 @@ async function handleUpgrade(
     }
 
     // Deduct gold from kingdom
-    await dbUpdate('Kingdom', kingdomId, {
-      resources: { ...resources, gold: Math.max(0, currentGold - serverGoldCost) }
-    });
+    try {
+      await dbConditionalUpdate('Kingdom', kingdomId, {
+        resources: { ...resources, gold: Math.max(0, currentGold - serverGoldCost) }
+      },
+        '#res = :expectedRes',
+        { ':expectedRes': kingdom.resources },
+        { '#res': 'resources' }
+      );
+    } catch (err: unknown) {
+      if (isConditionalCheckFailed(err)) {
+        return { success: false, error: 'Kingdom state changed, please retry', errorCode: ErrorCode.CONFLICT };
+      }
+      throw err;
+    }
 
     // Update territory defense level directly via DynamoDB (bypasses AppSync owner check)
     await dbUpdate('Territory', territoryId, { defenseLevel: newDefenseLevel });
@@ -198,12 +210,23 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
     }
 
     // Deduct gold cost and turns
-    await dbUpdate('Kingdom', kingdomId, {
-      resources: {
-        ...resources,
-        gold: Math.max(0, currentGold - 500),
+    try {
+      await dbConditionalUpdate('Kingdom', kingdomId, {
+        resources: {
+          ...resources,
+          gold: Math.max(0, currentGold - 500),
+        }
+      },
+        '#res = :expectedRes',
+        { ':expectedRes': kingdom.resources },
+        { '#res': 'resources' }
+      );
+    } catch (err: unknown) {
+      if (isConditionalCheckFailed(err)) {
+        return { success: false, error: 'Kingdom state changed, please retry', errorCode: ErrorCode.CONFLICT };
       }
-    });
+      throw err;
+    }
     await dbAtomicAdd('Kingdom', kingdomId, 'turnsBalance', -turnCost);
 
     // Store a pending settlement in Kingdom.stats instead of immediately creating Territory

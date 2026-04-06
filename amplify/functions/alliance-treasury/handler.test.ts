@@ -6,6 +6,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 const mockDbGet = vi.hoisted(() => vi.fn());
 const mockDbUpdate = vi.hoisted(() => vi.fn());
+const mockDbConditionalUpdate = vi.hoisted(() => vi.fn());
 const mockDbCreate = vi.hoisted(() => vi.fn());
 const mockDbList = vi.hoisted(() => vi.fn());
 const mockDbDelete = vi.hoisted(() => vi.fn());
@@ -14,6 +15,7 @@ const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
 vi.mock('../data-client', () => ({
   dbGet: mockDbGet,
   dbUpdate: mockDbUpdate,
+  dbConditionalUpdate: mockDbConditionalUpdate,
   dbCreate: mockDbCreate,
   dbList: mockDbList,
   dbDelete: mockDbDelete,
@@ -90,6 +92,7 @@ function mockAlliance(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockDbUpdate.mockResolvedValue(undefined);
+  mockDbConditionalUpdate.mockResolvedValue(undefined);
 });
 
 describe('alliance-treasury handler', () => {
@@ -109,11 +112,11 @@ describe('alliance-treasury handler', () => {
         expect(result.success).toBe(true);
 
         // Kingdom gold should be deducted
-        const kingdomUpdateCall = mockDbUpdate.mock.calls.find((c: unknown[]) => c[0] === 'Kingdom')!;
+        const kingdomUpdateCall = mockDbConditionalUpdate.mock.calls.find((c: unknown[]) => c[0] === 'Kingdom')!;
         expect(kingdomUpdateCall[2].resources.gold).toBe(10000 - 1000);
 
         // Treasury gold should be increased
-        const allianceUpdateCall = mockDbUpdate.mock.calls.find((c: unknown[]) => c[0] === 'Alliance')!;
+        const allianceUpdateCall = mockDbConditionalUpdate.mock.calls.find((c: unknown[]) => c[0] === 'Alliance')!;
         expect(allianceUpdateCall[2].treasury.gold).toBe(5000 + 1000);
 
         const parsed = JSON.parse(result.result as string);
@@ -133,7 +136,7 @@ describe('alliance-treasury handler', () => {
         );
 
         expect(result.success).toBe(true);
-        const allianceUpdateCall = mockDbUpdate.mock.calls.find((c: unknown[]) => c[0] === 'Alliance')!;
+        const allianceUpdateCall = mockDbConditionalUpdate.mock.calls.find((c: unknown[]) => c[0] === 'Alliance')!;
         expect(allianceUpdateCall[2].treasury.gold).toBe(500);
       });
     });
@@ -246,7 +249,7 @@ describe('alliance-treasury handler', () => {
         expect(kingdomUpdateCall[2].resources.gold).toBe(10000 + 2000);
 
         // Treasury gold should be decreased
-        const allianceUpdateCall = mockDbUpdate.mock.calls.find((c: unknown[]) => c[0] === 'Alliance')!;
+        const allianceUpdateCall = mockDbConditionalUpdate.mock.calls.find((c: unknown[]) => c[0] === 'Alliance')!;
         expect(allianceUpdateCall[2].treasury.gold).toBe(5000 - 2000);
 
         const parsed = JSON.parse(result.result as string);

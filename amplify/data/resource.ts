@@ -433,7 +433,6 @@ const schema = a.schema({
       kingdomId: a.string().required(),
       unitType: a.string().required(),
       quantity: a.integer().required(),
-      goldCost: a.integer()
     })
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])

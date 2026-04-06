@@ -6,6 +6,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 const mockDbGet = vi.hoisted(() => vi.fn());
 const mockDbUpdate = vi.hoisted(() => vi.fn());
+const mockDbConditionalUpdate = vi.hoisted(() => vi.fn());
 const mockDbCreate = vi.hoisted(() => vi.fn());
 const mockDbList = vi.hoisted(() => vi.fn());
 const mockDbDelete = vi.hoisted(() => vi.fn());
@@ -15,6 +16,7 @@ const mockDbQuery = vi.hoisted(() => vi.fn());
 vi.mock('../data-client', () => ({
   dbGet: mockDbGet,
   dbUpdate: mockDbUpdate,
+  dbConditionalUpdate: mockDbConditionalUpdate,
   dbCreate: mockDbCreate,
   dbList: mockDbList,
   dbDelete: mockDbDelete,
@@ -77,6 +79,7 @@ function mockKingdom(id: string, overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockDbUpdate.mockResolvedValue(undefined);
+  mockDbConditionalUpdate.mockResolvedValue(undefined);
   mockDbList.mockResolvedValue([]);
   mockDbQuery.mockResolvedValue([]);
 });
@@ -99,7 +102,7 @@ describe('thievery-processor handler', () => {
       expect(parsed.casualties).toBeGreaterThanOrEqual(0);
 
       // Attacker units updated (casualty deduction)
-      expect(mockDbUpdate).toHaveBeenCalled();
+      expect(mockDbConditionalUpdate).toHaveBeenCalled();
     });
   });
 

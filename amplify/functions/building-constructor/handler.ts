@@ -2,9 +2,10 @@ import type { Schema } from '../../data/resource';
 import type { KingdomBuildings, KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbQuery, parseJsonField, ensureTurnsBalance } from '../data-client';
+import { dbGet, dbConditionalUpdate, dbQuery, parseJsonField, ensureTurnsBalance } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
+import { isConditionalCheckFailed } from '../conditional-helpers';
 
 const VALID_BUILDING_TYPES = ['castle', 'barracks', 'farm', 'mine', 'temple', 'tower', 'wall'] as const;
 type BuildingType = typeof VALID_BUILDING_TYPES[number];
@@ -107,11 +108,22 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
     };
 
     const newTurns = Math.max(0, currentTurns - turnCost);
-    await dbUpdate('Kingdom', kingdomId, {
-      buildings: updatedBuildings,
-      resources: updatedResources,
-      turnsBalance: newTurns,
-    });
+    try {
+      await dbConditionalUpdate('Kingdom', kingdomId, {
+        buildings: updatedBuildings,
+        resources: updatedResources,
+        turnsBalance: newTurns,
+      },
+        '#res = :expectedRes',
+        { ':expectedRes': kingdom.resources },
+        { '#res': 'resources' }
+      );
+    } catch (err: unknown) {
+      if (isConditionalCheckFailed(err)) {
+        return { success: false, error: 'Kingdom state changed, please retry', errorCode: ErrorCode.CONFLICT };
+      }
+      throw err;
+    }
 
     log.info('building-constructor', 'constructBuildings', { kingdomId, buildingType, quantity });
     return { success: true, buildings: JSON.stringify(updatedBuildings) };
