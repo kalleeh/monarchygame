@@ -52,6 +52,7 @@ interface UnitCardProps {
     defense: number;
   };
   tier?: number;
+  race?: string;
 }
 
 const TIER_LABELS = ['T0', 'T1', 'T2', 'T3'];
@@ -88,7 +89,7 @@ function CasualtyRow({ unitType, count, race }: { unitType: string; count: numbe
   );
 }
 
-function BattleResultModal({ battle, onClose, defenderName }: { battle: import('../types/combat').BattleReport; onClose: () => void; defenderName?: string }) {
+function BattleResultModal({ battle, onClose, defenderName, attackerRace, defenderRace }: { battle: import('../types/combat').BattleReport; onClose: () => void; defenderName?: string; attackerRace: string; defenderRace: string }) {
   const isVictory = battle.result === 'victory';
   const accentColor = isVictory ? '#22c55e' : '#ef4444';
   const borderColor = isVictory ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)';
@@ -146,10 +147,7 @@ function BattleResultModal({ battle, onClose, defenderName }: { battle: import('
           <div>
             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>Enemy Losses</div>
             {defenderEntries.length > 0
-              ? defenderEntries.map(([t, c]) => {
-                const defRace = kingdomTargets.find(k => k.id === selectedTarget)?.race || 'Human';
-                return <CasualtyRow key={t} unitType={t} count={c as number} race={defRace} />;
-              })
+              ? defenderEntries.map(([t, c]) => <CasualtyRow key={t} unitType={t} count={c as number} race={defenderRace} />)
               : <p style={{ color: '#6b7280', fontSize: '0.85rem' }}>No data</p>
             }
           </div>
@@ -166,14 +164,14 @@ function BattleResultModal({ battle, onClose, defenderName }: { battle: import('
   );
 }
 
-const UnitCard: React.FC<UnitCardProps> = ({ unit, tier }) => {
+const UnitCard: React.FC<UnitCardProps> = ({ unit, tier, race = 'Human' }) => {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: '0.5rem',
       padding: '0.4rem 0.6rem', background: 'rgba(255,255,255,0.04)',
       borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)',
     }}>
-      <img src={getUnitImagePath(unit.type, attackerRace)} alt={unit.type}
+      <img src={getUnitImagePath(unit.type, race)} alt={unit.type}
         style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 4 }}
         onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
       />
@@ -487,7 +485,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
             {availableUnits.map(unit => (
-              <UnitCard key={unit.id} unit={unit} tier={raceDefs.find(u => u.id === unit.type)?.tier} />
+              <UnitCard key={unit.id} unit={unit} tier={raceDefs.find(u => u.id === unit.type)?.tier} race={attackerRace} />
             ))}
           </div>
         )}
@@ -721,6 +719,10 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
           defenderName={kingdomTargets.find(k => k.id === currentBattle.defender)?.name
             ?? aiKingdoms.find(k => k.id === currentBattle.defender)?.name
             ?? currentBattle.defender}
+          attackerRace={attackerRace}
+          defenderRace={kingdomTargets.find(k => k.id === currentBattle.defender)?.race
+            ?? aiKingdoms.find(k => k.id === currentBattle.defender)?.race
+            ?? 'Human'}
         />
       )}
       </div>
