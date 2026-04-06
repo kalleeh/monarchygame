@@ -153,12 +153,7 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
     if (activeRestoration) {
       let prohibited: string[] = [];
       if (typeof activeRestoration.prohibitedActions === 'string') {
-        try {
-          prohibited = JSON.parse(activeRestoration.prohibitedActions);
-        } catch {
-          log.warn('territory-claimer', 'prohibitedActionsParseError', { kingdomId });
-          prohibited = [];
-        }
+        prohibited = parseJsonField<string[]>(activeRestoration.prohibitedActions, []);
       } else {
         prohibited = activeRestoration.prohibitedActions ?? [];
       }
@@ -213,16 +208,7 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
 
     // Store a pending settlement in Kingdom.stats instead of immediately creating Territory
     let currentStats: Record<string, unknown>;
-    if (typeof kingdom.stats === 'string') {
-      try {
-        currentStats = JSON.parse(kingdom.stats as string);
-      } catch {
-        log.warn('territory-claimer', 'statsParseError', { kingdomId });
-        currentStats = {};
-      }
-    } else {
-      currentStats = (kingdom.stats ?? {}) as Record<string, unknown>;
-    }
+    currentStats = parseJsonField<Record<string, unknown>>(kingdom.stats, {});
     const pendingSettlements = (currentStats.pendingSettlements as unknown[]) ?? [];
     const completesAt = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
     const updatedPendingSettlements = [

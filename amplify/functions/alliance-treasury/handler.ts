@@ -47,6 +47,10 @@ async function handleContribute(args: { allianceId?: string | null; kingdomId?: 
     return { success: false, error: 'Amount must be a positive integer', errorCode: ErrorCode.INVALID_PARAM };
   }
 
+  if (!Number.isInteger(amount)) {
+    return { success: false, error: 'Amount must be a positive integer', errorCode: ErrorCode.INVALID_PARAM };
+  }
+
   // Fetch alliance and verify it exists
   const alliance = await dbGet<AllianceRecord>('Alliance', allianceId);
   if (!alliance) {
@@ -101,6 +105,10 @@ async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: st
   }
 
   if (amount <= 0) {
+    return { success: false, error: 'Amount must be a positive integer', errorCode: ErrorCode.INVALID_PARAM };
+  }
+
+  if (!Number.isInteger(amount)) {
     return { success: false, error: 'Amount must be a positive integer', errorCode: ErrorCode.INVALID_PARAM };
   }
 

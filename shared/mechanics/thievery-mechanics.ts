@@ -223,7 +223,7 @@ export const calculateScumCasualties = (
     (deathRates.GREEN_SCUM.min + deathRates.GREEN_SCUM.max) / 2
 
   const racialSurvival = RACIAL_SCUM_EFFECTIVENESS[raceId.toUpperCase() as keyof typeof RACIAL_SCUM_EFFECTIVENESS]?.survivalRate || 1.0
-  const adjustedRate = baseRate / racialSurvival
+  const adjustedRate = baseRate / Math.max(0.01, racialSurvival)
 
   // Operation type affects casualty rate
   const operationMultipliers = {
@@ -253,7 +253,7 @@ export const calculateProtectionLevels = (
   const racialEfficiency = RACIAL_SCUM_EFFECTIVENESS[raceId.toUpperCase() as keyof typeof RACIAL_SCUM_EFFECTIVENESS]?.effectiveness || 1.0
   
   // Adjust for racial efficiency
-  const adjustedRatio = baseRatios[threatLevel] / racialEfficiency
+  const adjustedRatio = baseRatios[threatLevel] / Math.max(0.01, racialEfficiency)
 
   return {
     minimum: Math.max(THIEVERY_MECHANICS.DETECTION.MINIMUM_SCUM, Math.floor(totalLand * 0.1)),

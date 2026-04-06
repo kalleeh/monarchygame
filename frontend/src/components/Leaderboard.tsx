@@ -112,11 +112,15 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<LeaderboardFilterState>(() => {
     const saved = localStorage.getItem('leaderboard-filters');
-    return saved ? JSON.parse(saved) : {
+    try { return saved ? JSON.parse(saved) : {
       showOnlyFairTargets: false,
       hideNPPKingdoms: false,
       showOnlyYourFaith: false,
-    };
+    }; } catch { return {
+      showOnlyFairTargets: false,
+      hideNPPKingdoms: false,
+      showOnlyYourFaith: false,
+    }; }
   });
 
   // ── Season-end ceremony modal ─────────────────────────────────────────────

@@ -79,7 +79,8 @@ function saveBounties(bounties: BountyEntry[]): void {
 
 function loadBounties(): BountyEntry[] {
   const raw = isDemoMode() ? localStorage.getItem(STORAGE_KEY_BOUNTIES) : null;
-  return raw ? JSON.parse(raw) : [];
+  if (!raw) return [];
+  try { return JSON.parse(raw); } catch { return []; }
 }
 
 function saveCompleted(completed: CompletedBounty[]): void {
@@ -88,7 +89,8 @@ function saveCompleted(completed: CompletedBounty[]): void {
 
 function loadCompleted(): CompletedBounty[] {
   const raw = isDemoMode() ? localStorage.getItem(STORAGE_KEY_COMPLETED) : null;
-  return raw ? JSON.parse(raw) : [];
+  if (!raw) return [];
+  try { return JSON.parse(raw); } catch { return []; }
 }
 
 /**

@@ -488,11 +488,7 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
         await recordSeasonRankings(season.seasonNumber);
 
         let existingTransitions: Record<string, unknown> = {};
-        try {
-          existingTransitions = JSON.parse(season.ageTransitions || '{}');
-        } catch {
-          log.warn('season-lifecycle', 'ageTransitionsParseError', { seasonId });
-        }
+        existingTransitions = parseJsonField<Record<string, unknown>>(season.ageTransitions, {});
         await dbUpdate('GameSeason', seasonId, {
           status: 'completed',
           endDate: new Date().toISOString(),

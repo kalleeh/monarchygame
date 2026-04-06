@@ -135,8 +135,10 @@ export const useAIKingdomStore = create<AIKingdomState>((set) => ({
       const data = allKingdoms.filter(k => (k as Record<string, unknown>).isAI === true);
       if (data.length === 0) return;
       const transformed = data.map(k => {
-        const res = typeof k.resources === 'string' ? JSON.parse(k.resources) : (k.resources ?? {});
-        const units = typeof k.totalUnits === 'string' ? JSON.parse(k.totalUnits) : (k.totalUnits ?? {});
+        let res: Record<string, unknown> = {};
+        try { res = typeof k.resources === 'string' ? JSON.parse(k.resources) : (k.resources ?? {}); } catch { /* use defaults */ }
+        let units: Record<string, unknown> = {};
+        try { units = typeof k.totalUnits === 'string' ? JSON.parse(k.totalUnits) : (k.totalUnits ?? {}); } catch { /* use defaults */ }
         return {
           id: k.id,
           name: k.name ?? 'Unknown',

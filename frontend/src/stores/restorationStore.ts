@@ -179,8 +179,8 @@ export const useRestorationStore = create(
               restorationType: status.type as RestorationType,
               restorationStartTime: new Date(status.startTime),
               restorationEndTime: endTime,
-              allowedActions: status.allowedActions ? JSON.parse(status.allowedActions as string) : [],
-              prohibitedActions: status.prohibitedActions ? JSON.parse(status.prohibitedActions as string) : [],
+              allowedActions: (() => { try { return status.allowedActions ? JSON.parse(status.allowedActions as string) : []; } catch { return []; } })(),
+              prohibitedActions: (() => { try { return status.prohibitedActions ? JSON.parse(status.prohibitedActions as string) : []; } catch { return []; } })(),
             });
           } else {
             set({

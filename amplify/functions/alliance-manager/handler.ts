@@ -1,7 +1,7 @@
 import type { Schema } from '../../data/resource';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbCreate, dbUpdate, dbDelete, dbList, dbQuery } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbDelete, dbList, dbQuery, parseJsonField } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 
@@ -127,9 +127,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
           return { success: false, error: 'Alliance not found', errorCode: ErrorCode.NOT_FOUND };
         }
 
-        const memberIds: string[] = typeof alliance.memberIds === 'string'
-          ? JSON.parse(alliance.memberIds)
-          : (alliance.memberIds as string[] ?? []);
+        const memberIds: string[] = parseJsonField<string[]>(alliance.memberIds, []);
 
         // Check if already a member
         if (memberIds.includes(kingdomId)) {
@@ -166,9 +164,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
 
         // Recompute and store composition bonus after member joins
         const compositionBonus = await calculateCompositionBonus(memberIds);
-        const existingStats = typeof alliance.stats === 'string'
-          ? JSON.parse(alliance.stats as string)
-          : (alliance.stats ?? {});
+        const existingStats = parseJsonField<Record<string, unknown>>(alliance.stats, {});
         const previousBonus = (existingStats.compositionBonus?.combat ?? 1.0) as number;
         await dbUpdate('Alliance', allianceId, {
           stats: JSON.stringify({ ...existingStats, compositionBonus }),
@@ -214,9 +210,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
           return { success: false, error: 'Alliance not found', errorCode: ErrorCode.NOT_FOUND };
         }
 
-        let memberIds: string[] = typeof alliance.memberIds === 'string'
-          ? JSON.parse(alliance.memberIds)
-          : (alliance.memberIds as string[] ?? []);
+        let memberIds: string[] = parseJsonField<string[]>(alliance.memberIds, []);
 
         memberIds = memberIds.filter((id) => id !== kingdomId);
 
@@ -238,9 +232,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         // Recalculate composition bonus after member leaves and notify if bonus was lost
         try {
           const compositionBonus = await calculateCompositionBonus(memberIds);
-          const currentStats = typeof alliance.stats === 'string'
-            ? JSON.parse(alliance.stats as string)
-            : (alliance.stats ?? {});
+          const currentStats = parseJsonField<Record<string, unknown>>(alliance.stats, {});
           const previousBonusOnLeave = (currentStats.compositionBonus?.combat ?? 1.0) as number;
           await dbUpdate('Alliance', allianceId, {
             stats: JSON.stringify({ ...currentStats, compositionBonus })
@@ -291,9 +283,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
           return { success: false, error: 'Only the alliance leader can kick members', errorCode: ErrorCode.FORBIDDEN };
         }
 
-        let memberIds: string[] = typeof alliance.memberIds === 'string'
-          ? JSON.parse(alliance.memberIds)
-          : (alliance.memberIds as string[] ?? []);
+        let memberIds: string[] = parseJsonField<string[]>(alliance.memberIds, []);
 
         memberIds = memberIds.filter((id) => id !== targetKingdomId);
         await dbUpdate('Alliance', allianceId, { memberIds: JSON.stringify(memberIds) });
@@ -301,9 +291,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         // Recalculate composition bonus and notify if kick caused bonus loss (best-effort)
         try {
           const compositionBonus = await calculateCompositionBonus(memberIds);
-          const currentStats = typeof alliance.stats === 'string'
-            ? JSON.parse(alliance.stats as string)
-            : (alliance.stats ?? {});
+          const currentStats = parseJsonField<Record<string, unknown>>(alliance.stats, {});
           const previousBonusOnKick = (currentStats.compositionBonus?.combat ?? 1.0) as number;
           await dbUpdate('Alliance', allianceId, {
             stats: JSON.stringify({ ...currentStats, compositionBonus })
@@ -413,9 +401,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         const ownerDenied = verifyOwnership(identity, leaderKingdom?.owner ?? null);
         if (ownerDenied) return ownerDenied;
 
-        const stats = typeof alliance.stats === 'string'
-          ? JSON.parse(alliance.stats as string)
-          : (alliance.stats ?? {});
+        const stats = parseJsonField<Record<string, unknown>>(alliance.stats, {});
         const relationships = (stats.relationships as Record<string, string>) ?? {};
         relationships[targetAllianceId] = relationship;
 
@@ -435,11 +421,9 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
           return { success: false, error: 'Alliance not found', errorCode: ErrorCode.NOT_FOUND };
         }
 
-        const stats = typeof alliance.stats === 'string'
-          ? JSON.parse(alliance.stats as string)
-          : (alliance.stats ?? {});
-        const relationships = (stats.relationships as Record<string, string>) ?? {};
-        const currentRelationship = relationships[targetAllianceId] ?? 'neutral';
+        const stats2 = parseJsonField<Record<string, unknown>>(alliance.stats, {});
+        const relationships2 = (stats2.relationships as Record<string, string>) ?? {};
+        const currentRelationship = relationships2[targetAllianceId] ?? 'neutral';
 
         return { success: true, result: JSON.stringify({ allianceId, targetAllianceId, relationship: currentRelationship }) };
       }

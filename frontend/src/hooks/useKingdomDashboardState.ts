@@ -566,7 +566,8 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
     if (!tutorialCompleted) return;
 
     const kingdomId = kingdom.id;
-    const coached = JSON.parse(localStorage.getItem(STORAGE_KEYS.COACHED(kingdomId)) || '{}');
+    let coached: Record<string, boolean> = {};
+    try { coached = JSON.parse(localStorage.getItem(STORAGE_KEYS.COACHED(kingdomId)) || '{}'); } catch { /* use empty */ }
 
     const visitCount = (parseInt(localStorage.getItem(STORAGE_KEYS.VISITS(kingdomId)) || '0')) + 1;
     localStorage.setItem(STORAGE_KEYS.VISITS(kingdomId), String(visitCount));

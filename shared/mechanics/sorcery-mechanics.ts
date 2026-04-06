@@ -258,6 +258,7 @@ export const calculateSorceryKillProgression = (
   casterRace: string,
   killSpell: string = 'FOUL_LIGHT'
 ): Array<{ cast: number, peasantsRemaining: number, percentageKilled: number }> => {
+  if (initialPeasants <= 0) return []
   let currentPeasants = initialPeasants
   const progression = []
   let castCount = 0

@@ -73,7 +73,7 @@ async function handleComplete(args: { kingdomId?: string | null; targetId?: stri
     return { success: false, error: 'Missing required parameters: kingdomId, targetId, landGained', errorCode: ErrorCode.MISSING_PARAMS };
   }
 
-  if (landGained < MIN_LAND_GAINED) {
+  if (typeof landGained !== 'number' || !Number.isInteger(landGained) || landGained < MIN_LAND_GAINED) {
     return { success: false, error: `landGained must be at least ${MIN_LAND_GAINED}`, errorCode: ErrorCode.INVALID_PARAM };
   }
   if (landGained > MAX_LAND_GAINED) {

@@ -1,7 +1,7 @@
 import type { Schema } from '../../data/resource';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbQuery, dbAtomicAdd, parseJsonField } from '../data-client';
+import { dbGet, dbUpdate, dbQuery, dbAtomicAdd, parseJsonField, ensureTurnsBalance } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 
@@ -137,6 +137,7 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
         updatedStats = { ...updatedStats, activeFaithEffects: [...activeEffects, newEffect] };
       } else if (abilityType === 'emergency') {
         // EMERGENCY_ACTION: immediate +5 turns — no persistent effect stored
+        await ensureTurnsBalance(kingdom as unknown as Record<string, unknown>);
         await dbAtomicAdd('Kingdom', kingdomId, 'turnsBalance', 5);
         log.info('faith-processor', 'emergency-action', { kingdomId, turnsGranted: 5 });
       }

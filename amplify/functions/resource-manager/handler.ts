@@ -79,9 +79,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       }
       const denied = verifyOwnership(identity, (kingdom.owner ?? null) as string | null);
       if (denied) return denied;
-      const currentStats: Record<string, unknown> = typeof kingdom.stats === 'string'
-        ? (JSON.parse(kingdom.stats as string) as Record<string, unknown>)
-        : ((kingdom.stats ?? {}) as Record<string, unknown>);
+      const currentStats: Record<string, unknown> = parseJsonField<Record<string, unknown>>(kingdom.stats, {});
       await dbUpdate('Kingdom', kingdomId, {
         stats: JSON.stringify({ ...currentStats, defensiveFormation: formationId }),
       });
@@ -124,9 +122,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       }
       const denied = verifyOwnership(identity, (kingdom.owner ?? null) as string | null);
       if (denied) return denied;
-      const currentStats: Record<string, unknown> = typeof kingdom.stats === 'string'
-        ? (JSON.parse(kingdom.stats as string) as Record<string, unknown>)
-        : ((kingdom.stats ?? {}) as Record<string, unknown>);
+      const currentStats: Record<string, unknown> = parseJsonField<Record<string, unknown>>(kingdom.stats, {});
 
       // Apply achievement rewards (gold/turns) to kingdom resources atomically
       const rewardGold = rawEvent.arguments.rewardGold as number | null | undefined;
@@ -417,9 +413,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     };
 
     const totalUnitsObj = (kingdom as Record<string, unknown>).totalUnits;
-    const totalUnitsMap = typeof totalUnitsObj === 'string'
-      ? (JSON.parse(totalUnitsObj) as Record<string, number>)
-      : ((totalUnitsObj ?? {}) as Record<string, number>);
+    const totalUnitsMap = parseJsonField<Record<string, number>>(totalUnitsObj, {});
     const totalUnits = Object.values(totalUnitsMap).reduce((sum, n) => sum + (n ?? 0), 0);
     const networth = (updated.land ?? 0) * 1000 + (updated.gold ?? 0) + totalUnits * 100;
 

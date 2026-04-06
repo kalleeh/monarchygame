@@ -1,5 +1,5 @@
 import type { Schema } from '../../data/resource';
-import { dbList, dbUpdate, dbGet } from '../data-client';
+import { dbList, dbUpdate, dbGet, parseJsonField } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { verifyOwnership } from '../verify-ownership';
@@ -72,7 +72,7 @@ async function handleGetActiveSeason(event: { identity?: unknown }): Promise<str
       await dbUpdate('GameSeason', season.id, {
         currentAge,
         ageTransitions: JSON.stringify({
-          ...JSON.parse((season.ageTransitions as string) || '{}'),
+          ...parseJsonField<Record<string, unknown>>(season.ageTransitions, {}),
           [currentAge]: new Date().toISOString()
         })
       });

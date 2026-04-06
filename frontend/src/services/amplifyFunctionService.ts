@@ -96,8 +96,10 @@ export class AmplifyFunctionService {
           case 'building-constructor': {
             // Persist building construction to localStorage
             const kingdomKey = `kingdom-${payload.kingdomId}`;
-            const kingdomData = JSON.parse(localStorage.getItem(kingdomKey) || '{}');
-            const buildings = kingdomData.buildings ? (typeof kingdomData.buildings === 'string' ? JSON.parse(kingdomData.buildings) : kingdomData.buildings) : {};
+            let kingdomData: Record<string, unknown> = {};
+            try { kingdomData = JSON.parse(localStorage.getItem(kingdomKey) || '{}'); } catch { /* use empty */ }
+            let buildings: Record<string, number> = {};
+            try { buildings = kingdomData.buildings ? (typeof kingdomData.buildings === 'string' ? JSON.parse(kingdomData.buildings as string) : kingdomData.buildings as Record<string, number>) : {}; } catch { /* use empty */ }
             const buildingType = payload.buildingType || 'unknown';
             const quantity = payload.quantity || 1;
             buildings[buildingType] = (buildings[buildingType] || 0) + quantity;

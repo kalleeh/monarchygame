@@ -172,9 +172,20 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     const attackerResources = parseJsonField<KingdomResources>(attacker.resources, {} as KingdomResources);
     await ensureTurnsBalance(attacker as Record<string, unknown>);
     const currentTurns = (attacker.turnsBalance ?? attackerResources.turns ?? 72) as number;
-    const turnCost = 4;
+    const baseTurnCost = 4;
+    const siegeExtraTurns = attackType === 'siege' ? 2 : 0;
+    const turnCost = baseTurnCost + siegeExtraTurns;
     if (currentTurns < turnCost) {
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
+    }
+
+    // Siege: validate minimum unit count early (before any resource deduction)
+    if (attackType === 'siege') {
+      const parsedUnitsForSiege = parseJsonField<Record<string, number>>(units, {});
+      const totalUnitsForSiege = Object.values(parsedUnitsForSiege).reduce((s, v) => s + (v as number), 0);
+      if (totalUnitsForSiege < 50) {
+        return { success: false, error: 'Siege requires at least 50 units', errorCode: 'VALIDATION_FAILED' };
+      }
     }
 
     // Enforce war declaration requirement for repeated attacks
@@ -603,14 +614,8 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
         }
         log.info('combat-processor', 'pillage-applied', { attackerId, extraGoldStolen, buildingDestroyed });
       } else if (attackType === 'siege') {
-        // Siege: sustained assault — more land, more casualties, costs 3 turns total
-        // Validate minimum unit count (siege requires organized force)
-        const totalAttackerUnits = Object.values(attackerUnits).reduce((s, v) => s + (v as number), 0);
-        if (totalAttackerUnits < 50) {
-          return { success: false, error: 'Siege requires at least 50 units', errorCode: 'VALIDATION_FAILED' };
-        }
-        // Extra turn cost: 2 more turns (1 already deducted by the standard turn deduction)
-        await dbAtomicAdd('Kingdom', attackerId, 'turnsBalance', -2);
+        // Siege: sustained assault — more land, more casualties
+        // Turn cost and unit minimum already validated upfront
         // Land bonus: +50% more land
         finalLandGained = Math.floor(finalLandGained * 1.5);
         // Casualty penalty: +30% attacker casualties (siege is costly)

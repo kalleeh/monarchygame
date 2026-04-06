@@ -575,8 +575,8 @@ describe('combat-processor handler', () => {
         expect(siegeData.landGained).toBeGreaterThan(standardData.landGained);
       }
 
-      // dbAtomicAdd should have been called with -2 extra turns for siege
-      expect(mockDbAtomicAdd).toHaveBeenCalledWith('Kingdom', 'attacker-1', 'turnsBalance', -2);
+      // dbAtomicAdd should have been called with -6 total turns for siege (4 base + 2 siege extra)
+      expect(mockDbAtomicAdd).toHaveBeenCalledWith('Kingdom', 'attacker-1', 'turnsBalance', -6);
     });
 
     it('defender with fortification alliance upgrade has boosted effective defense units', async () => {
