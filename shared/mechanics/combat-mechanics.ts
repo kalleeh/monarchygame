@@ -250,8 +250,13 @@ export const calculateCombatResult = (
   // Calculate losses proportional to enemy strength relative to yours
   // "With ease" = enemy is weak relative to you = very few attacker losses
   // Original Monarchy: crushing victories meant minimal attacker casualties
-  const totalAttackerUnits = Object.values(attacker.units).reduce((s, c) => s + c, 0)
-  const totalDefenderUnits = Object.values(defender.units).reduce((s, c) => s + c, 0)
+  // Scouts/scum are espionage-only — exclude from combat casualty counts
+  const totalAttackerUnits = Object.entries(attacker.units)
+    .filter(([t]) => t !== 'scouts' && t !== 'elite_scouts')
+    .reduce((s, [, c]) => s + c, 0)
+  const totalDefenderUnits = Object.entries(defender.units)
+    .filter(([t]) => t !== 'scouts' && t !== 'elite_scouts')
+    .reduce((s, [, c]) => s + c, 0)
 
   // Attacker losses scale with defender's relative strength (inverse of offense ratio)
   // with_ease (ratio>=2.0): ~2-3% attacker losses, 25% defender losses

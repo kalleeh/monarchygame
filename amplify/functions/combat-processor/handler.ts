@@ -541,20 +541,25 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
     // Distribute flat losses across unit types proportionally
     const distributeCasualties = (units: Record<string, number>, totalLosses: number): Record<string, number> => {
-      const totalUnits = Object.values(units).reduce((s, c) => s + c, 0);
+      // Scouts/scum are espionage units — they don't participate in combat
+      const combatUnits: Record<string, number> = {};
+      for (const [type, count] of Object.entries(units)) {
+        if (type !== 'scouts' && type !== 'elite_scouts') combatUnits[type] = count;
+      }
+      const totalUnits = Object.values(combatUnits).reduce((s, c) => s + c, 0);
       if (totalUnits === 0) return {};
       const result: Record<string, number> = {};
       let remaining = totalLosses;
-      for (const [type, count] of Object.entries(units)) {
+      for (const [type, count] of Object.entries(combatUnits)) {
         const share = Math.floor((count / totalUnits) * totalLosses);
         const capped = Math.min(share, count);
         result[type] = capped;
         remaining -= capped;
       }
-      const sorted = Object.entries(units).sort((a, b) => b[1] - a[1]);
+      const sorted = Object.entries(combatUnits).sort((a, b) => b[1] - a[1]);
       for (const [type] of sorted) {
         if (remaining <= 0) break;
-        const canLose = Math.min(remaining, units[type] - (result[type] ?? 0));
+        const canLose = Math.min(remaining, combatUnits[type] - (result[type] ?? 0));
         if (canLose > 0) { result[type] += canLose; remaining -= canLose; }
       }
       return result;

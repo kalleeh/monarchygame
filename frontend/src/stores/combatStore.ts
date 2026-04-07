@@ -720,6 +720,8 @@ async function simulateBattle(
   const defenderCasualties: Record<string, number> = {};
 
   scaledAttackerUnits.forEach(unit => {
+    // Scouts/scum are espionage units — don't take combat casualties
+    if (unit.type === 'scouts' || unit.type === 'elite_scouts') return;
     // Weight casualties by unit defense - tougher units take fewer losses
     const defenseModifier = Math.max(0.5, 1 - (unit.defense * 0.05));
     const casualties = applyCasualtyRate(unit.count, attackerCasualtyRate * defenseModifier);
@@ -729,6 +731,7 @@ async function simulateBattle(
   });
 
   defenderUnits.forEach(unit => {
+    if (unit.type === 'scouts' || unit.type === 'elite_scouts') return;
     const defenseModifier = Math.max(0.5, 1 - (unit.defense * 0.05));
     const casualties = applyCasualtyRate(unit.count, defenderCasualtyRate * defenseModifier);
     if (casualties > 0) {
