@@ -445,3 +445,128 @@ export const CompassIcon = () => (
     <path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z" />
   </svg>
 );
+
+/* ── Terrain icons ─────────────────────────────────────────────────── */
+
+/** Wheat/grain — Plains */
+export const PlainsIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22V10" /><path d="M8 10c0-3 2-6 4-8 2 2 4 5 4 8" /><path d="M6 14c2-1 4 0 6 2 2-2 4-3 6-2" />
+  </svg>
+);
+
+/** Pine tree — Forest */
+export const ForestIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3L6 13h4l-2 4h8l-2-4h4L12 3z" /><line x1="12" y1="17" x2="12" y2="22" />
+  </svg>
+);
+
+/** Mountain peak — Mountains */
+export const MountainIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 20L8 8l4 6 4-10 6 16H2z" />
+  </svg>
+);
+
+/** Reeds/marsh — Swamp */
+export const SwampIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 22v-6c0-2 2-4 3-5" /><path d="M12 22v-8c0-2 2-4 3-5" /><path d="M18 22v-6c0-2-2-4-3-5" />
+    <path d="M3 18c3-1 6 0 9 0s6-1 9 0" />
+  </svg>
+);
+
+/** Sand dune — Desert */
+export const DesertIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 18c4-4 8-2 10 0s6-4 10 0" /><circle cx="18" cy="6" r="3" /><path d="M2 22h20" />
+  </svg>
+);
+
+/** Wave — Coastal */
+export const CoastalIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0" /><path d="M2 17c2-2 4-2 6 0s4 2 6 0 4-2 6 0" /><path d="M2 7c2-2 4-2 6 0s4 2 6 0 4-2 6 0" />
+  </svg>
+);
+
+/** Robot/gear — AI kingdom */
+export const AIBotIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="5" y="8" width="14" height="12" rx="2" /><circle cx="9" cy="14" r="1.5" fill="currentColor" /><circle cx="15" cy="14" r="1.5" fill="currentColor" />
+    <line x1="12" y1="4" x2="12" y2="8" /><circle cx="12" cy="3" r="1" />
+  </svg>
+);
+
+/* ── Race icons ────────────────────────────────────────────────────── */
+
+/** Human silhouette */
+export const RaceHumanIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="7" r="4" /><path d="M5 21v-2a7 7 0 0114 0v2" />
+  </svg>
+);
+
+/** Pointed ears — Elven */
+export const RaceElvenIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="10" r="4" /><path d="M7 6L4 2" /><path d="M17 6l3-4" /><path d="M6 21v-2a6 6 0 0112 0v2" />
+  </svg>
+);
+
+/** Horned face — Goblin */
+export const RaceGoblinIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="10" r="5" /><path d="M7 5L5 2" /><path d="M17 5l2-3" /><path d="M10 12h4" /><path d="M6 21v-2a6 6 0 0112 0v2" />
+  </svg>
+);
+
+/** Dragon head — Droben */
+export const RaceDrobenIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3c-3 0-6 3-6 7 0 3 2 5 4 6v5h4v-5c2-1 4-3 4-6 0-4-3-7-6-7z" /><path d="M6 8L3 5" /><path d="M18 8l3-3" /><circle cx="10" cy="10" r="1" fill="currentColor" /><circle cx="14" cy="10" r="1" fill="currentColor" />
+  </svg>
+);
+
+/** Fangs — Vampire */
+export const RaceVampireIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="9" r="5" /><path d="M10 14l-1 3" /><path d="M14 14l1 3" /><path d="M6 21v-2a6 6 0 0112 0v2" />
+  </svg>
+);
+
+/** Flame — Elemental */
+export const RaceElementalIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2c-4 6-7 9-7 13a7 7 0 0014 0c0-4-3-7-7-13z" /><path d="M12 12c-1 2-2 3-2 5a2 2 0 004 0c0-2-1-3-2-5z" />
+  </svg>
+);
+
+/** Horse body — Centaur */
+export const RaceCentaurIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="8" cy="5" r="3" /><path d="M8 8v4l6 1 4-3" /><path d="M14 13l-2 9" /><path d="M18 10l2 12" /><path d="M6 12l-2 10" />
+  </svg>
+);
+
+/** Fairy wings — Sidhe */
+export const RaceSidheIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="8" r="3" /><path d="M12 11v6" /><path d="M8 8c-3-2-5 0-5 3s3 3 5 1" /><path d="M16 8c3-2 5 0 5 3s-3 3-5 1" /><path d="M10 22h4" />
+  </svg>
+);
+
+/** Helmet with beard — Dwarven */
+export const RaceDwarvenIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 10a6 6 0 0112 0" /><rect x="6" y="10" width="12" height="5" rx="1" /><path d="M9 15v4" /><path d="M12 15v5" /><path d="M15 15v4" /><line x1="6" y1="7" x2="18" y2="7" />
+  </svg>
+);
+
+/** Sparkle wings — Fae */
+export const RaceFaeIcon = () => (
+  <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="9" r="3" /><path d="M12 12v5" /><path d="M7 7c-2-3-1-5 1-5s3 3 4 5" /><path d="M17 7c2-3 1-5-1-5s-3 3-4 5" /><path d="M9 22l3-5 3 5" />
+  </svg>
+);

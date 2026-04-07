@@ -30,8 +30,9 @@ import {
   isInFogOfWar,
   claimCost,
   RACE_COLORS,
-  RACE_ICONS,
+  RACE_ICON_COMPONENTS,
 } from './worldmap/KingdomNode';
+import { AIBotIcon, GoldIcon } from './ui/MenuIcons';
 import { GoldIcon, PopulationIcon, LandIcon, SeedlingIcon, BoltIcon, FireIcon } from './ui/MenuIcons';
 import './WorldMapMobile.css';
 
@@ -130,7 +131,7 @@ const TerritoryCard: React.FC<CardProps> = ({
 
   // Race-colored left border for enemy/contested territories
   const raceColor = item.race ? RACE_COLORS[item.race] ?? '#6b7280' : undefined;
-  const raceIcon = item.race ? RACE_ICONS[item.race] ?? '' : '';
+  const raceIconNode = item.race ? RACE_ICON_COMPONENTS[item.race] ?? null : null;
   const cardStyle: React.CSSProperties = raceColor && (category === 'contested' || category === 'owned')
     ? { borderLeft: `3px solid ${raceColor}` }
     : {};
@@ -186,7 +187,7 @@ const TerritoryCard: React.FC<CardProps> = ({
         {isSettlingTerritory
           ? '⏳ Settling...'
           : canAfford && upgradeCost
-            ? `Upgrade to Lv.${(territory.defenseLevel ?? 0) + 1} · 💰${Math.floor(upgradeCost.gold).toLocaleString()}`
+            ? <>Upgrade to Lv.{(territory.defenseLevel ?? 0) + 1} · <GoldIcon />{Math.floor(upgradeCost.gold).toLocaleString()}</>
             : 'Insufficient Gold'}
       </button>
     ) : (
@@ -230,9 +231,9 @@ const TerritoryCard: React.FC<CardProps> = ({
         <span className="wm-territory-name">
           {emoji} {region.name}
         </span>
-        {raceIcon && category === 'contested' && (
-          <span style={{ fontSize: '1rem', marginRight: 4 }} title={item.race}>
-            {item.isAI ? '🤖' : raceIcon}
+        {raceIconNode && category === 'contested' && (
+          <span style={{ fontSize: '1.2rem', marginRight: 4, display: 'inline-flex' }} title={item.race}>
+            {item.isAI ? <AIBotIcon /> : raceIconNode}
           </span>
         )}
         <img

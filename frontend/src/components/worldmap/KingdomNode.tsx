@@ -7,7 +7,14 @@
  * Extracted from WorldMap.tsx to keep the orchestrator under 800 lines.
  */
 
+import React from 'react';
 import { TERRAINS } from '../../data/terrains';
+import {
+  PlainsIcon, ForestIcon, MountainIcon, SwampIcon, DesertIcon, CoastalIcon,
+  AIBotIcon,
+  RaceHumanIcon, RaceElvenIcon, RaceGoblinIcon, RaceDrobenIcon, RaceVampireIcon,
+  RaceElementalIcon, RaceCentaurIcon, RaceSidheIcon, RaceDwarvenIcon, RaceFaeIcon,
+} from '../ui/MenuIcons';
 
 // ─── Core types ──────────────────────────────────────────────────────────────
 
@@ -268,14 +275,15 @@ export function getRegionTerrain(regionId: string, aiTerrainOverride?: string): 
 }
 
 export function terrainEmoji(terrain: string): string {
+export function terrainEmoji(terrain: string): React.ReactNode {
   switch (terrain.toLowerCase()) {
-    case 'plains':    return '🌾';
-    case 'forest':    return '🌲';
-    case 'mountains': return '⛰';
-    case 'swamp':     return '🌿';
-    case 'desert':    return '🏜';
-    case 'coastal':   return '🌊';
-    default:          return '🌾';
+    case 'plains':    return <PlainsIcon />;
+    case 'forest':    return <ForestIcon />;
+    case 'mountains': return <MountainIcon />;
+    case 'swamp':     return <SwampIcon />;
+    case 'desert':    return <DesertIcon />;
+    case 'coastal':   return <CoastalIcon />;
+    default:          return <PlainsIcon />;
   }
 }
 
@@ -302,6 +310,14 @@ export const RACE_COLORS: Record<string, string> = {
   Fae: '#ec4899',
 };
 
+export const RACE_ICON_COMPONENTS: Record<string, React.ReactNode> = {
+  Human: <RaceHumanIcon />, Elven: <RaceElvenIcon />, Goblin: <RaceGoblinIcon />,
+  Droben: <RaceDrobenIcon />, Vampire: <RaceVampireIcon />, Elemental: <RaceElementalIcon />,
+  Centaur: <RaceCentaurIcon />, Sidhe: <RaceSidheIcon />, Dwarven: <RaceDwarvenIcon />,
+  Fae: <RaceFaeIcon />,
+};
+
+/** @deprecated Use RACE_ICON_COMPONENTS for JSX contexts */
 export const RACE_ICONS: Record<string, string> = {
   Human: '👤', Elven: '🧝', Goblin: '👹', Droben: '🐉', Vampire: '🧛',
   Elemental: '🔥', Centaur: '🐎', Sidhe: '🧚', Dwarven: '⛏️', Fae: '✨',
