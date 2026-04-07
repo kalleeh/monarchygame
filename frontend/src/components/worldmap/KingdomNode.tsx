@@ -327,12 +327,16 @@ export function buildNodeStyle(
   allianceControlled: boolean,
 ): Record<string, unknown> {
   const base: Record<string, unknown> = {
-    borderRadius: '8px',
-    padding: '10px',
-    fontSize: '11px',
-    minWidth: 100,
+    borderRadius: '12px',
+    padding: '18px 22px',
+    fontSize: '32px',
+    fontWeight: 600,
+    minWidth: 280,
     textAlign: 'center',
     cursor: 'pointer',
+    letterSpacing: '0.02em',
+    lineHeight: 1.4,
+    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
   };
 
   if (inFog) {
@@ -350,28 +354,29 @@ export function buildNodeStyle(
     if (wtType === 'capital') {
       return {
         ...base,
-        background: '#d4a017',
-        border: allianceControlled ? '3px solid #fbbf24' : '2px solid #f0c040',
-        boxShadow: allianceControlled ? '0 0 8px 2px rgba(251,191,36,0.55)' : undefined,
+        background: 'linear-gradient(135deg, #d4a017, #b8860b)',
+        border: allianceControlled ? '4px solid #fbbf24' : '3px solid #f0c040',
+        boxShadow: allianceControlled ? '0 0 16px 4px rgba(251,191,36,0.55)' : '0 4px 24px rgba(212,160,23,0.4)',
         color: '#000',
         fontWeight: 700,
-        padding: '12px',
+        padding: '22px 26px',
+        fontSize: '36px',
       };
     }
     return {
       ...base,
-      background: '#4ade80',
-      border: allianceControlled ? '3px solid #fbbf24' : '2px solid #16a34a',
-      boxShadow: allianceControlled ? '0 0 8px 2px rgba(251,191,36,0.55)' : undefined,
+      background: 'linear-gradient(135deg, #4ade80, #16a34a)',
+      border: allianceControlled ? '4px solid #fbbf24' : '3px solid #22c55e',
+      boxShadow: allianceControlled ? '0 0 16px 4px rgba(251,191,36,0.55)' : '0 4px 20px rgba(74,222,128,0.3)',
       color: '#000',
     };
   }
 
   if (ownership === 'enemy') {
     const diffMap: Record<string, { bg: string; border: string }> = {
-      hard:   { bg: '#dc2626', border: '2px dashed #dc2626' },
-      medium: { bg: '#7c3aed', border: '2px dashed #7c3aed' },
-      easy:   { bg: '#475569', border: '2px dashed #6b7280' },
+      hard:   { bg: 'linear-gradient(135deg, #dc2626, #991b1b)', border: '3px solid #ef4444' },
+      medium: { bg: 'linear-gradient(135deg, #7c3aed, #5b21b6)', border: '3px solid #8b5cf6' },
+      easy:   { bg: 'linear-gradient(135deg, #475569, #334155)', border: '3px solid #64748b' },
     };
     const colours = diffMap[difficulty ?? 'medium'] ?? diffMap.medium;
     return {
@@ -379,46 +384,42 @@ export function buildNodeStyle(
       background: colours.bg,
       border: colours.border,
       color: '#fff',
-      opacity: 0.85,
     };
   }
 
   if (settling) {
     return {
       ...base,
-      background: '#b45309',
-      border: '2px dashed #fcd34d',
+      background: 'linear-gradient(135deg, #b45309, #92400e)',
+      border: '3px dashed #fcd34d',
       color: '#fcd34d',
-      opacity: 0.9,
     };
   }
 
   if (enemySettling) {
     return {
       ...base,
-      background: '#c2410c',
-      border: '2px dashed #fb923c',
+      background: 'linear-gradient(135deg, #c2410c, #9a3412)',
+      border: '3px dashed #fb923c',
       color: '#fed7aa',
-      opacity: 0.9,
     };
   }
 
   if (contested) {
     return {
       ...base,
-      background: '#7f1d1d',
-      border: '2px dashed #dc2626',
+      background: 'linear-gradient(135deg, #7f1d1d, #991b1b)',
+      border: '3px dashed #ef4444',
       color: '#fca5a5',
-      opacity: 0.9,
     };
   }
 
   return {
     ...base,
-    background: '#1f2937',
-    border: '1px dashed #4b5563',
+    background: 'linear-gradient(135deg, #1f2937, #111827)',
+    border: '2px dashed #4b5563',
     color: '#9ca3af',
-    opacity: 0.75,
+    opacity: 0.8,
   };
 }
 
