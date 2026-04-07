@@ -16,10 +16,10 @@ jobs:
           node-version: '20'
 
       - name: Install backend dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Install frontend dependencies
-        run: cd frontend && npm ci
+        run: cd frontend && npm install --no-audit --no-fund
 
       - name: TypeScript check (backend)
         run: npx tsc --noEmit -p amplify/tsconfig.json
