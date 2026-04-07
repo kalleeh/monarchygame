@@ -91,7 +91,7 @@ interface CardProps {
   playerPositions: { x: number; y: number }[];
   resources: { gold: number; turns: number };
   onSendSettlers: (region: RegionSlot) => void;
-  onAttack: () => void;
+  onAttack: (item: CategorisedRegion) => void;
 }
 
 function settlingCountdown(completesAt: string): string {
@@ -216,7 +216,7 @@ const TerritoryCard: React.FC<CardProps> = ({
     );
   } else if (category === 'contested') {
     actionEl = (
-      <button className="wm-territory-action wm-action-attack" onClick={onAttack}>
+      <button className="wm-territory-action wm-action-attack" onClick={() => onAttack(item)}>
         Attack
       </button>
     );
@@ -279,7 +279,7 @@ interface SectionProps {
   playerPositions: { x: number; y: number }[];
   resources: { gold: number; turns: number };
   onSendSettlers: (region: RegionSlot) => void;
-  onAttack: () => void;
+  onAttack: (item: CategorisedRegion) => void;
   seasonAge?: 'early' | 'middle' | 'late';
 }
 
@@ -561,8 +561,25 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
     }
   };
 
-  const handleAttack = () => {
-    navigate(`/kingdom/${kingdom.id}/combat`);
+  const handleAttack = (item: CategorisedRegion) => {
+    // Find which AI kingdom owns this region
+    const aiInfo = aiRegionMap[item.region.id];
+    let targetKingdomId: string | undefined;
+    if (aiInfo) {
+      // Match back to the AI kingdom by finding which one hashes to this region
+      const match = aiKingdoms.find((k) => {
+        const h = hashId(k.id);
+        const slotCount = 1 + (h % 3);
+        const startIdx = h % WORLD_REGIONS.length;
+        for (let offset = 0; offset < WORLD_REGIONS.length && offset < slotCount + WORLD_REGIONS.length; offset++) {
+          const idx = (startIdx + offset) % WORLD_REGIONS.length;
+          if (WORLD_REGIONS[idx].id === item.region.id) return true;
+        }
+        return false;
+      });
+      targetKingdomId = match?.id;
+    }
+    navigate(`/kingdom/${kingdom.id}/combat`, { state: { targetKingdomId } });
   };
 
   // ── Resources summary for card affordability checks ───────────────────────
