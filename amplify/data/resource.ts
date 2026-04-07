@@ -99,6 +99,8 @@ const schema = a.schema({
         .authorization((allow) => [allow.owner()]),
       guildId: a.id()
         .authorization((allow) => [allow.owner()]),
+      aiPersonality: a.string()
+        .authorization((allow) => [allow.authenticated().to(['read']), allow.owner()]),
     })
     .secondaryIndexes((index) => [
       index('seasonId').sortKeys(['networth']).queryField('listKingdomsBySeasonNetworth'),

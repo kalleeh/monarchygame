@@ -29,6 +29,8 @@ import {
   isContested,
   isInFogOfWar,
   claimCost,
+  RACE_COLORS,
+  RACE_ICONS,
 } from './worldmap/KingdomNode';
 import './WorldMapMobile.css';
 
@@ -65,6 +67,9 @@ interface CategorisedRegion {
   isSettling: boolean;
   turnsRemaining?: number;
   completesAt?: string;
+  race?: string;
+  isAI?: boolean;
+  power?: number;
 }
 
 // ─── Helper: type display label ───────────────────────────────────────────────
@@ -121,6 +126,13 @@ const TerritoryCard: React.FC<CardProps> = ({
     category === 'fog'       ? 'card-fog'        : '',
     isSettling               ? 'card-settling'   : '',
   ].filter(Boolean).join(' ');
+
+  // Race-colored left border for enemy/contested territories
+  const raceColor = item.race ? RACE_COLORS[item.race] ?? '#6b7280' : undefined;
+  const raceIcon = item.race ? RACE_ICONS[item.race] ?? '' : '';
+  const cardStyle: React.CSSProperties = raceColor && (category === 'contested' || category === 'owned')
+    ? { borderLeft: `3px solid ${raceColor}` }
+    : {};
 
   // Status badge
   let statusBadgeClass = 'wm-badge ';
@@ -211,12 +223,17 @@ const TerritoryCard: React.FC<CardProps> = ({
   }
 
   return (
-    <div className={cardClass}>
+    <div className={cardClass} style={cardStyle}>
       {/* Name row */}
       <div className="wm-territory-name-row">
         <span className="wm-territory-name">
           {emoji} {region.name}
         </span>
+        {raceIcon && category === 'contested' && (
+          <span style={{ fontSize: '1rem', marginRight: 4 }} title={item.race}>
+            {item.isAI ? '🤖' : raceIcon}
+          </span>
+        )}
         <img
           src={img}
           alt={region.type}
@@ -263,13 +280,23 @@ interface SectionProps {
   resources: { gold: number; turns: number };
   onSendSettlers: (region: RegionSlot) => void;
   onAttack: () => void;
+  seasonAge?: 'early' | 'middle' | 'late';
 }
 
+const SEASON_HEADING_COLORS: Record<string, string> = {
+  early: '#22c55e',
+  middle: '#f59e0b',
+  late: '#ef4444',
+};
+
 const Section: React.FC<SectionProps> = ({
-  title, variant, items, playerPositions, resources, onSendSettlers, onAttack,
+  title, variant, items, playerPositions, resources, onSendSettlers, onAttack, seasonAge,
 }) => (
   <div className="wm-mobile-section">
-    <div className={`wm-mobile-section-heading ${variant}`}>
+    <div
+      className={`wm-mobile-section-heading ${variant}`}
+      style={seasonAge ? { borderLeftColor: SEASON_HEADING_COLORS[seasonAge] } : undefined}
+    >
       {title}
       <span className="wm-mobile-section-count">({items.length})</span>
     </div>
@@ -298,6 +325,21 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
   const ownedTerritories = useTerritoryStore((s) => s.ownedTerritories);
   const pendingSettlements = useTerritoryStore((s) => s.pendingSettlements);
   const aiKingdoms = useAIKingdomStore((s) => s.aiKingdoms);
+
+  // Season age for atmosphere
+  const seasonAge = useMemo((): 'early' | 'middle' | 'late' => {
+    try {
+      const raw = kingdom.stats;
+      const stats: Record<string, unknown> = typeof raw === 'string'
+        ? (JSON.parse(raw) as Record<string, unknown>)
+        : ((raw ?? {}) as Record<string, unknown>);
+      const age = (kingdom as Record<string, unknown>).currentAge as string | undefined;
+      if (age === 'early' || age === 'middle' || age === 'late') return age;
+      return 'early';
+    } catch {
+      return 'early';
+    }
+  }, [kingdom]);
 
   // Parse server-side pending settlements from kingdom.stats (set by territory-claimer Lambda)
   const serverPendingSettlements = useMemo((): Array<{ regionId: string | null; completesAt: string }> => {
@@ -367,6 +409,31 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
     [territoryOwnership],
   );
 
+  // ── Build AI kingdom → region mapping ───────────────────────────────────────
+
+  const aiRegionMap = useMemo((): Record<string, { race: string; isAI: boolean; power: number }> => {
+    const map: Record<string, { race: string; isAI: boolean; power: number }> = {};
+    aiKingdoms.forEach((k) => {
+      const h = hashId(k.id);
+      const slotCount = 1 + (h % 3);
+      const startIdx = h % WORLD_REGIONS.length;
+      let claimed = 0;
+      for (let offset = 0; offset < WORLD_REGIONS.length && claimed < slotCount; offset++) {
+        const idx = (startIdx + offset) % WORLD_REGIONS.length;
+        const r = WORLD_REGIONS[idx];
+        if (territoryOwnership[r.id] === 'enemy') {
+          map[r.id] = {
+            race: (k as Record<string, unknown>).race as string ?? 'Human',
+            isAI: true,
+            power: (k as Record<string, unknown>).networth as number ?? 1000,
+          };
+          claimed++;
+        }
+      }
+    });
+    return map;
+  }, [aiKingdoms, territoryOwnership]);
+
   // ── Categorise all 50 regions ─────────────────────────────────────────────
 
   const categorised = useMemo((): CategorisedRegion[] => {
@@ -392,6 +459,8 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
         category = 'available';
       }
 
+      const aiInfo = aiRegionMap[region.id];
+
       return {
         region,
         category,
@@ -399,6 +468,9 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
         isSettling: !!settling || !!serverSettling,
         turnsRemaining: settling?.turnsRemaining,
         completesAt: serverSettling?.completesAt,
+        race: ownership === 'player' ? (kingdom.race ?? 'Human') : aiInfo?.race,
+        isAI: aiInfo?.isAI ?? false,
+        power: aiInfo?.power,
       };
     });
   }, [territoryOwnership, playerPositions, pendingSettlements, serverPendingSettlements]);
@@ -500,6 +572,13 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
     turns: resources.turns ?? 0,
   };
 
+  const SEASON_BANNERS: Record<string, { icon: string; text: string; color: string }> = {
+    early: { icon: '🌱', text: 'Early Age — Kingdoms Grow', color: '#22c55e' },
+    middle: { icon: '⚡', text: 'Middle Age — Alliances Form', color: '#f59e0b' },
+    late: { icon: '🔥', text: 'Late Age — War Intensifies', color: '#ef4444' },
+  };
+  const seasonBanner = SEASON_BANNERS[seasonAge];
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -512,6 +591,23 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
       </div>
 
       <div className="wm-mobile-body">
+        {/* Season atmosphere banner */}
+        {seasonBanner && (
+          <div style={{
+            padding: '0.4rem 0.75rem',
+            margin: '0 0.5rem 0.5rem',
+            borderRadius: '8px',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            background: `${seasonBanner.color}15`,
+            border: `1px solid ${seasonBanner.color}40`,
+            color: seasonBanner.color,
+            textAlign: 'center',
+          }}>
+            {seasonBanner.icon} {seasonBanner.text}
+          </div>
+        )}
+
         <Section
           title="Your Territories"
           variant="yours"
@@ -520,6 +616,7 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
           resources={resourceSummary}
           onSendSettlers={handleSendSettlers}
           onAttack={handleAttack}
+          seasonAge={seasonAge}
         />
         <Section
           title="Available to Claim"
@@ -529,6 +626,7 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
           resources={resourceSummary}
           onSendSettlers={handleSendSettlers}
           onAttack={handleAttack}
+          seasonAge={seasonAge}
         />
         <Section
           title="Contested"
@@ -538,6 +636,7 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
           resources={resourceSummary}
           onSendSettlers={handleSendSettlers}
           onAttack={handleAttack}
+          seasonAge={seasonAge}
         />
         <Section
           title="Unknown / Fog of War"
@@ -547,6 +646,7 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
           resources={resourceSummary}
           onSendSettlers={handleSendSettlers}
           onAttack={handleAttack}
+          seasonAge={seasonAge}
         />
       </div>
     </div>

@@ -340,12 +340,18 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
       return JSON.stringify({ success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED });
     }
 
-    // Verify caller is an admin
-    if (!ADMIN_USER_IDS.includes(identity.sub)) {
+    // Allow EventBridge scheduler to call 'check' without admin credentials
+    const isScheduler = identity.sub === 'scheduler';
+    if (!isScheduler && !ADMIN_USER_IDS.includes(identity.sub)) {
       return JSON.stringify({ success: false, error: 'Forbidden: admin access required', errorCode: ErrorCode.FORBIDDEN });
     }
 
     const action = args.action;
+
+    // Restrict scheduler to 'check' action only
+    if (isScheduler && action !== 'check') {
+      return JSON.stringify({ success: false, error: 'Scheduler can only run check', errorCode: ErrorCode.FORBIDDEN });
+    }
 
     switch (action) {
       case 'create': {
@@ -458,6 +464,17 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
               currentAge,
               ageTransitions: JSON.stringify(transitions)
             });
+
+            // Propagate currentAge to all active kingdoms
+            const allKingdomsForAge = await dbList<KingdomType>('Kingdom');
+            const activeKingdomsForAge = allKingdomsForAge.filter(k => k.isActive === true);
+            for (const k of activeKingdomsForAge) {
+              try {
+                await dbUpdate('Kingdom', k.id, { currentAge });
+              } catch (err) {
+                log.error('season-lifecycle', err instanceof Error ? err : new Error(String(err)), { context: 'propagateAge', kingdomId: k.id });
+              }
+            }
 
             results.push({ seasonId: season.id, action: 'age_transition', from: season.currentAge, to: currentAge });
           } else {

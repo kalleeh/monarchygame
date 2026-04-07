@@ -295,6 +295,18 @@ export function terrainModSummary(terrain: string): string {
 
 // ─── Legacy helpers ───────────────────────────────────────────────────────────
 
+export const RACE_COLORS: Record<string, string> = {
+  Human: '#3b82f6', Elven: '#22c55e', Goblin: '#84cc16',
+  Droben: '#ef4444', Vampire: '#7c3aed', Elemental: '#06b6d4',
+  Centaur: '#f59e0b', Sidhe: '#a855f7', Dwarven: '#d97706',
+  Fae: '#ec4899',
+};
+
+export const RACE_ICONS: Record<string, string> = {
+  Human: '👤', Elven: '🧝', Goblin: '👹', Droben: '🐉', Vampire: '🧛',
+  Elemental: '🔥', Centaur: '🐎', Sidhe: '🧚', Dwarven: '⛏️', Fae: '✨',
+};
+
 export function getLandCategory(land: number): string {
   if (land < 2000) return 'Small Kingdom';
   if (land < 5000) return 'Medium Kingdom';

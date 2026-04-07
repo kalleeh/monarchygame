@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { isDemoMode } from '../../utils/authMode';
 import { SeasonBadge } from '../ui/SeasonBadge';
 import { NoActiveSeasonBanner } from '../ui/NoActiveSeasonBanner';
@@ -26,6 +26,11 @@ interface DashboardBannersProps {
   ownedTerritories: unknown[];
 }
 
+const AGE_BANNERS: Record<string, { icon: string; text: string; color: string }> = {
+  middle: { icon: '⚡', text: 'The Middle Age has begun — combat is balanced, training costs reduced 10%', color: '#fbbf24' },
+  late: { icon: '🔥', text: 'The Late Age has begun — offense +10%, defense -10%, training costs -20%', color: '#f87171' },
+};
+
 export function DashboardBanners({
   seasonInfo,
   noActiveSeason,
@@ -44,6 +49,12 @@ export function DashboardBanners({
   onViewWorldMap,
   onGenerateIncome,
 }: DashboardBannersProps) {
+  // Show persistent age transition banner for non-early ages
+  const ageBanner = useMemo(() => {
+    if (!seasonInfo || seasonInfo.currentAge === 'early') return null;
+    return AGE_BANNERS[seasonInfo.currentAge] ?? null;
+  }, [seasonInfo]);
+
   // Map the nextStep action label to the appropriate callback
   const getNextStepOnClick = () => {
     if (!nextStep) return undefined;
@@ -64,6 +75,21 @@ export function DashboardBanners({
           currentAge={seasonInfo.currentAge}
           startDate={seasonInfo.startDate}
         />
+      )}
+
+      {/* Persistent age transition banner */}
+      {ageBanner && (
+        <div style={{
+          padding: '0.4rem 0.75rem',
+          marginBottom: '0.5rem',
+          borderRadius: '8px',
+          fontSize: '0.8rem',
+          background: `${ageBanner.color}15`,
+          border: `1px solid ${ageBanner.color}40`,
+          color: ageBanner.color,
+        }}>
+          {ageBanner.icon} {ageBanner.text}
+        </div>
       )}
 
       {/* No Active Season Banner — auth mode only, shown when no season is running */}
