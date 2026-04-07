@@ -39,3 +39,5 @@ jobs:
 
       - name: Build
         run: cd frontend && npm run build
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
