@@ -98,6 +98,7 @@ interface BattleReport {
   attackerUnits: Unit[];
   defenderUnits: Unit[];
   result: 'victory' | 'defeat' | 'draw';
+  resultType?: 'with_ease' | 'good_fight' | 'failed';
   casualties: {
     attacker: Record<string, number>;
     defender: Record<string, number>;
@@ -186,6 +187,7 @@ export const useCombatStore = create(
               attackerUnits: kingdomUnits,
               defenderUnits: [],
               result: combatData.result === 'with_ease' || combatData.result === 'good_fight' ? 'victory' : 'defeat',
+              resultType: combatData.result as 'with_ease' | 'good_fight' | 'failed',
               casualties: combatData.casualties || { attacker: {}, defender: {} },
               landGained: combatData.landGained,
               resourcesGained: combatData.goldLooted ? { gold: combatData.goldLooted } : {},
@@ -321,6 +323,7 @@ export const useCombatStore = create(
             attackerUnits: kingdomUnits as unknown as Unit[],
             defenderUnits: battleResult.defenderUnits,
             result: battleResult.result,
+            resultType: battleResult.resultType,
             casualties: battleResult.casualties,
             landGained: battleResult.landGained,
             resourcesGained: battleResult.resourcesGained
@@ -773,6 +776,7 @@ async function simulateBattle(
 
   return {
     result,
+    resultType,
     casualties: { attacker: attackerCasualties, defender: defenderCasualties },
     defenderUnits,
     landGained,

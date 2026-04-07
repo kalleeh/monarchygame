@@ -247,13 +247,19 @@ export const calculateCombatResult = (
   const landGained = resultType !== 'failed' ? 
     calculateLandGained(effectiveAttackerOffense, effectiveDefenderDefense, targetLand, attackType, csPercentage) : 0
 
-  // Calculate losses based on combat intensity
-  const attackerLossRate = resultType === 'with_ease' ? 0.05 : resultType === 'good_fight' ? 0.15 : 0.25
-  const defenderLossRate = resultType === 'with_ease' ? 0.20 : resultType === 'good_fight' ? 0.15 : 0.05
-
-  // Calculate losses based on unit COUNT (not offense power)
+  // Calculate losses proportional to enemy strength relative to yours
+  // "With ease" = enemy is weak relative to you = very few attacker losses
+  // Original Monarchy: crushing victories meant minimal attacker casualties
   const totalAttackerUnits = Object.values(attacker.units).reduce((s, c) => s + c, 0)
   const totalDefenderUnits = Object.values(defender.units).reduce((s, c) => s + c, 0)
+
+  // Attacker losses scale with defender's relative strength (inverse of offense ratio)
+  // with_ease (ratio>=2.0): ~2-3% attacker losses, 25% defender losses
+  // good_fight (ratio>=1.2): ~8-12% attacker losses, 15% defender losses
+  // failed (ratio<1.2): ~20% attacker losses, 3% defender losses
+  const defenderStrengthRatio = Math.min(1, effectiveDefenderDefense / Math.max(1, effectiveAttackerOffense))
+  const attackerLossRate = resultType === 'failed' ? 0.20 : defenderStrengthRatio * 0.15
+  const defenderLossRate = resultType === 'with_ease' ? 0.25 : resultType === 'good_fight' ? 0.15 : 0.03
 
   return {
     success: resultType !== 'failed',

@@ -106,6 +106,11 @@ function BattleResultModal({ battle, onClose, defenderName, attackerRace, defend
           <h2 style={{ margin: 0, fontSize: '1.8rem', color: accentColor, fontFamily: 'var(--font-display, serif)' }}>
             {isVictory ? 'Victory!' : 'Defeat'}
           </h2>
+          {battle.resultType && (
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.95rem', fontWeight: 600, color: battle.resultType === 'with_ease' ? '#22c55e' : battle.resultType === 'good_fight' ? '#f59e0b' : '#ef4444' }}>
+              {battle.resultType === 'with_ease' ? '💪 Crushed with ease' : battle.resultType === 'good_fight' ? '⚔️ Hard-fought battle' : '💀 Attack failed'}
+            </p>
+          )}
           <p style={{ margin: '0.25rem 0 0', color: '#9ca3af', fontSize: '0.9rem' }}>
             vs {defenderName || battle.defender}
           </p>
