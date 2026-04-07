@@ -215,7 +215,9 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
   } = useCombatStore();
 
   // Get available units from kingdom store (single source of truth)
-  const availableUnits = useKingdomStore((state) => state.units);
+  const allUnits = useKingdomStore((state) => state.units);
+  // Scouts/elite_scouts are espionage-only — exclude from combat
+  const availableUnits = allUnits.filter(u => u.type !== 'scouts' && u.type !== 'elite_scouts');
   const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
   const generateAIKingdoms = useAIKingdomStore((state) => state.generateAIKingdoms);
   const attackerRace = race;
