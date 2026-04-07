@@ -4,11 +4,12 @@ import { useRestorationStore } from '../stores/restorationStore';
 import UnitRoster from './UnitRoster';
 import { HelpModal } from './ui/HelpModal';
 import { MobileBottomNav } from './MobileBottomNav';
+import { KingdomIcon, WarfareIcon, SocialIcon, BountyIcon, FaithIcon, EspionageIcon, LeaderboardIcon } from './ui/MenuIcons';
 import './KingdomActionBar.css';
 
 interface ActionItem {
   icon?: string;
-  emoji?: string;
+  svgIcon?: React.ReactNode;
   label: string;
   onClick: () => void;
   prohibitedAction?: string;
@@ -16,7 +17,7 @@ interface ActionItem {
 
 interface ActionGroup {
   key: string;
-  emoji: string;
+  svgIcon?: React.ReactNode;
   label: string;
   items: ActionItem[];
 }
@@ -63,37 +64,37 @@ export const KingdomActionBar: React.FC<KingdomActionBarProps> = ({
   const groups: ActionGroup[] = [
     {
       key: 'kingdom',
-      emoji: '🏛️',
+      svgIcon: <KingdomIcon />,
       label: 'Kingdom',
       items: [
         { icon: '/territories-icon.png', label: 'Manage Territories', onClick: () => onManageTerritories?.() },
         { icon: '/buildings-economy-icon.png', label: 'Construct Buildings', onClick: () => onManageBuildings?.() },
         { icon: '/world-map-icon.png', label: 'World Map', onClick: () => onViewWorldMap?.() },
-        { emoji: '🎯', label: 'Bounty Board', onClick: () => navigate(`/kingdom/${kingdom.id}/bounties`) },
-        { emoji: '🙏', label: 'Faith & Focus', onClick: () => navigate(`/kingdom/${kingdom.id}/faith`) },
+        { svgIcon: <BountyIcon />, label: 'Bounty Board', onClick: () => navigate(`/kingdom/${kingdom.id}/bounties`) },
+        { svgIcon: <FaithIcon />, label: 'Faith & Focus', onClick: () => navigate(`/kingdom/${kingdom.id}/faith`) },
       ],
     },
     {
       key: 'warfare',
-      emoji: '⚔️',
+      svgIcon: <WarfareIcon />,
       label: 'Warfare',
       items: [
         { icon: '/combat-icon.png', label: 'Combat Operations', onClick: () => onManageCombat?.(), prohibitedAction: 'combat_attacks' },
         { icon: '/train-units-icon.png', label: 'Summon Units', onClick: () => onSummonUnits?.(), prohibitedAction: 'train' },
         { icon: '/magic-spells-icon.png', label: 'Cast Spells', onClick: () => onCastSpells?.(), prohibitedAction: 'sorcery_casting' },
-        { emoji: '🕵️', label: 'Espionage', onClick: () => navigate(`/kingdom/${kingdom.id}/espionage`), prohibitedAction: 'espionage_operations' },
+        { svgIcon: <EspionageIcon />, label: 'Espionage', onClick: () => navigate(`/kingdom/${kingdom.id}/espionage`), prohibitedAction: 'espionage_operations' },
         { icon: '/battle-reports-icon.png', label: 'Battle History', onClick: () => onBattleReports?.() },
       ],
     },
     {
       key: 'social',
-      emoji: '🤝',
+      svgIcon: <SocialIcon />,
       label: 'Social',
       items: [
         { icon: '/alliance-icon.png', label: 'Alliance Management', onClick: () => onManageAlliance?.(), prohibitedAction: 'alliance_changes' },
         { icon: '/trade-economy-icon.png', label: 'Trade', onClick: () => onManageTrade?.(), prohibitedAction: 'diplomatic_actions' },
         { icon: '/diplomacy-icon.png', label: 'Diplomacy', onClick: () => onDiplomacy?.(), prohibitedAction: 'diplomatic_actions' },
-        { emoji: '🏆', label: 'Kingdom Scrolls', onClick: () => onViewLeaderboard?.() },
+        { svgIcon: <LeaderboardIcon />, label: 'Kingdom Scrolls', onClick: () => onViewLeaderboard?.() },
         { icon: '/achievements-icon.png', label: 'Achievements', onClick: () => navigate(`/kingdom/${kingdom.id}/achievements`) },
       ],
     },
@@ -137,7 +138,7 @@ export const KingdomActionBar: React.FC<KingdomActionBarProps> = ({
             <React.Fragment key={group.key}>
               {groupIdx > 0 && <div className="action-bar-divider" />}
               <span className="action-bar-group-label" title={group.label}>
-                <span className="action-bar-group-emoji">{group.emoji}</span>
+                <span className="action-bar-group-emoji">{group.svgIcon}</span>
                 <span className="action-bar-group-text">{group.label}</span>
               </span>
               {group.items.map((item) => {
@@ -152,7 +153,9 @@ export const KingdomActionBar: React.FC<KingdomActionBarProps> = ({
                   >
                     {item.icon
                       ? <img src={item.icon} alt={item.label} className="action-bar-icon" />
-                      : <span className="action-bar-emoji">{item.emoji}</span>
+                      : item.svgIcon
+                        ? <span className="action-bar-icon" style={{ display: 'inline-flex' }}>{item.svgIcon}</span>
+                        : null
                     }
                     {prohibited && <span className="action-bar-lock-icon" aria-hidden="true">🔒</span>}
                   </button>
@@ -195,7 +198,7 @@ export const KingdomActionBar: React.FC<KingdomActionBarProps> = ({
             {groups.map((group) => (
               <div key={group.key} className="action-bar-dropdown-group">
                 <h4 className="action-bar-dropdown-group-header">
-                  {group.emoji} {group.label}
+                  <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: '0.4rem' }}>{group.svgIcon}</span>{group.label}
                 </h4>
                 <div className="action-bar-dropdown-buttons">
                   {group.items.map((item) => {
@@ -210,7 +213,9 @@ export const KingdomActionBar: React.FC<KingdomActionBarProps> = ({
                       >
                         {item.icon
                           ? <img src={item.icon} alt={item.label} className="action-icon" />
-                          : <span style={{ marginRight: '0.5rem' }}>{item.emoji}</span>
+                          : item.svgIcon
+                            ? <span style={{ marginRight: '0.5rem', display: 'inline-flex', verticalAlign: 'middle' }}>{item.svgIcon}</span>
+                            : null
                         }
                         {item.label}
                       </button>
