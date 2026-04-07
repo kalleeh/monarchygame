@@ -188,10 +188,11 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
               const targetBuildings = parseJsonField<Record<string, number>>(targetKingdom.buildings, {});
               const targetLand = targetRes.land ?? 800;
 
-              // AI sends 70% of army
+              // AI sends 70% of military (scouts are espionage-only, excluded)
               const attackUnits: Record<string, number> = {};
               let totalOffense = 0;
               for (const [uType, count] of Object.entries(updatedUnits)) {
+                if (uType === 'scouts' || uType === 'elite_scouts') continue;
                 const sent = Math.floor((count ?? 0) * 0.7);
                 if (sent > 0) {
                   attackUnits[uType] = sent;
@@ -202,6 +203,7 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
               const defenseUnits: Record<string, number> = {};
               let totalDefense = 0;
               for (const [uType, count] of Object.entries(targetUnits)) {
+                if (uType === 'scouts' || uType === 'elite_scouts') continue;
                 if ((count ?? 0) > 0) {
                   defenseUnits[uType] = count;
                   totalDefense += count * 10;
