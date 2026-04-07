@@ -5,6 +5,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import type { CombatNotification } from '../../types/combat';
+import { WarningIcon, SwordIcon, ShieldIcon, InfoIcon, TrophyIcon, SkullIcon } from '../ui/MenuIcons';
 
 interface CombatNotificationsProps {
   notifications: CombatNotification[];
@@ -89,16 +90,16 @@ export const CombatNotifications: React.FC<CombatNotificationsProps> = ({
     }
   }, []);
 
-  const getNotificationIcon = useCallback((type: CombatNotification['type']): string => {
+  const getNotificationIcon = useCallback((type: CombatNotification['type']): React.ReactNode => {
     switch (type) {
       case 'incoming_attack':
-        return '⚠️';
+        return <WarningIcon />;
       case 'attack_result':
-        return '⚔️';
+        return <SwordIcon />;
       case 'defense_result':
-        return '🛡️';
+        return <ShieldIcon />;
       default:
-        return '📢';
+        return <InfoIcon />;
     }
   }, []);
 
@@ -265,7 +266,7 @@ export const CombatNotifications: React.FC<CombatNotificationsProps> = ({
       <div className="notifications-list">
         {filteredNotifications.length === 0 ? (
           <div className="no-notifications">
-            <span className="no-notifications-icon">🔔</span>
+            <span className="no-notifications-icon"><InfoIcon /></span>
             <span className="no-notifications-text">
               {filter === 'all' 
                 ? 'No notifications available' 
@@ -320,7 +321,7 @@ export const CombatNotifications: React.FC<CombatNotificationsProps> = ({
                       </div>
                       {priority === 'high' && (
                         <div className="urgent-warning">
-                          <span className="warning-icon">🚨</span>
+                          <span className="warning-icon"><WarningIcon /></span>
                           <span className="warning-text">URGENT - Imminent Attack!</span>
                         </div>
                       )}
@@ -331,7 +332,7 @@ export const CombatNotifications: React.FC<CombatNotificationsProps> = ({
                     <div className="notification-details">
                       <div className="result-preview">
                         <span className={`result-outcome ${notification.result.success ? 'victory' : 'defeat'}`}>
-                          {notification.result.success ? '🏆 Victory' : '💀 Defeat'}
+                        {notification.result.success ? <><TrophyIcon /> Victory</> : <><SkullIcon /> Defeat</>}
                         </span>
                         {notification.result.success && (
                           <span className="result-spoils">

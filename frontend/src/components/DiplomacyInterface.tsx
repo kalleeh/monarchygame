@@ -7,6 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useDiplomacyStore } from '../stores/useDiplomacyStore';
 import { ErrorBoundary } from './ErrorBoundary';
 import { TopNavigation } from './TopNavigation';
+import { DiplomacyIcon, SocialIcon, WarfareIcon, KingdomIcon } from './ui/MenuIcons';
 import type { Kingdom, TreatyProposal } from '../types/diplomacy';
 import './DiplomacyInterface.css';
 
@@ -119,8 +120,8 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
         {activeProposals.slice(0, 3).map(proposal => (
           <div key={proposal.id} className="activity-item">
             <div className="activity-icon">
-              {proposal.treatyType === 'NON_AGGRESSION' ? '🕊️' :
-               proposal.treatyType === 'TRADE_AGREEMENT' ? '🤝' : '⚔️'}
+              {proposal.treatyType === 'NON_AGGRESSION' ? <DiplomacyIcon /> :
+               proposal.treatyType === 'TRADE_AGREEMENT' ? <SocialIcon /> : <WarfareIcon />}
             </div>
             <div className="activity-details">
               <p>
@@ -160,7 +161,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
             return (
               <div key={kingdom.id} className="kingdom-card gm-card">
                 <div className="kingdom-info">
-                  <div className="kingdom-flag" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.75rem' }}>🏰</div>
+                  <div className="kingdom-flag" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.75rem' }}><KingdomIcon /></div>
                   <div className="kingdom-details">
                     <h4>{kingdom.name}</h4>
                     <p>{kingdom.race} Kingdom</p>
@@ -210,7 +211,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
           ) : incoming.map(proposal => (
             <div key={proposal.id} className="proposal-card incoming gm-card">
               <div className="proposal-header">
-                <div className="kingdom-flag" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>🏰</div>
+                <div className="kingdom-flag" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}><KingdomIcon /></div>
                 <div className="proposal-info">
                   <h5>{proposal.fromKingdom?.name ?? 'Unknown Kingdom'}</h5>
                   <p>{(proposal.treatyType ?? '').replace(/_/g, ' ')}</p>
@@ -246,7 +247,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
           ) : outgoing.map(proposal => (
             <div key={proposal.id} className="proposal-card outgoing gm-card">
               <div className="proposal-header">
-                <div className="kingdom-flag" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>🏰</div>
+                <div className="kingdom-flag" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}><KingdomIcon /></div>
                 <div className="proposal-info">
                   <h5>To: {proposal.toKingdom?.name ?? 'Unknown Kingdom'}</h5>
                   <p>{(proposal.treatyType ?? '').replace(/_/g, ' ')}</p>
@@ -280,7 +281,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
               status: 'PENDING'
             })}
           >
-            🕊️ Non-Aggression Pact
+            <DiplomacyIcon /> Non-Aggression Pact
           </button>
 
           <button
@@ -293,7 +294,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
               status: 'PENDING'
             })}
           >
-            🤝 Trade Agreement
+            <SocialIcon /> Trade Agreement
           </button>
 
           <button
@@ -306,7 +307,7 @@ const DiplomacyContent: React.FC<DiplomacyInterfaceProps> = ({
               status: 'PENDING'
             })}
           >
-            ⚔️ Military Alliance
+            <WarfareIcon /> Military Alliance
           </button>
         </div>
       </div>

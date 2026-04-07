@@ -4,12 +4,15 @@ import { useRestorationStore } from '../stores/restorationStore';
 import UnitRoster from './UnitRoster';
 import { HelpModal } from './ui/HelpModal';
 import { MobileBottomNav } from './MobileBottomNav';
-import { KingdomIcon, WarfareIcon, SocialIcon, BountyIcon, FaithIcon, EspionageIcon, LeaderboardIcon } from './ui/MenuIcons';
+import {
+  KingdomIcon, WarfareIcon, SocialIcon, BountyIcon, FaithIcon, EspionageIcon, LeaderboardIcon,
+  TerritoriesIcon, BuildingsIcon, WorldMapIcon, CombatIcon, TrainUnitsIcon, MagicSpellsIcon,
+  BattleReportsIcon, AllianceIcon, TradeIcon, DiplomacyIcon, AchievementsIcon, LockIcon,
+} from './ui/MenuIcons';
 import './KingdomActionBar.css';
 
 interface ActionItem {
-  icon?: string;
-  svgIcon?: React.ReactNode;
+  svgIcon: React.ReactNode;
   label: string;
   onClick: () => void;
   prohibitedAction?: string;
@@ -67,9 +70,9 @@ export const KingdomActionBar: React.FC<KingdomActionBarProps> = ({
       svgIcon: <KingdomIcon />,
       label: 'Kingdom',
       items: [
-        { icon: '/territories-icon.png', label: 'Manage Territories', onClick: () => onManageTerritories?.() },
-        { icon: '/buildings-economy-icon.png', label: 'Construct Buildings', onClick: () => onManageBuildings?.() },
-        { icon: '/world-map-icon.png', label: 'World Map', onClick: () => onViewWorldMap?.() },
+        { svgIcon: <TerritoriesIcon />, label: 'Manage Territories', onClick: () => onManageTerritories?.() },
+        { svgIcon: <BuildingsIcon />, label: 'Construct Buildings', onClick: () => onManageBuildings?.() },
+        { svgIcon: <WorldMapIcon />, label: 'World Map', onClick: () => onViewWorldMap?.() },
         { svgIcon: <BountyIcon />, label: 'Bounty Board', onClick: () => navigate(`/kingdom/${kingdom.id}/bounties`) },
         { svgIcon: <FaithIcon />, label: 'Faith & Focus', onClick: () => navigate(`/kingdom/${kingdom.id}/faith`) },
       ],
@@ -79,11 +82,11 @@ export const KingdomActionBar: React.FC<KingdomActionBarProps> = ({
       svgIcon: <WarfareIcon />,
       label: 'Warfare',
       items: [
-        { icon: '/combat-icon.png', label: 'Combat Operations', onClick: () => onManageCombat?.(), prohibitedAction: 'combat_attacks' },
-        { icon: '/train-units-icon.png', label: 'Summon Units', onClick: () => onSummonUnits?.(), prohibitedAction: 'train' },
-        { icon: '/magic-spells-icon.png', label: 'Cast Spells', onClick: () => onCastSpells?.(), prohibitedAction: 'sorcery_casting' },
+        { svgIcon: <CombatIcon />, label: 'Combat Operations', onClick: () => onManageCombat?.(), prohibitedAction: 'combat_attacks' },
+        { svgIcon: <TrainUnitsIcon />, label: 'Summon Units', onClick: () => onSummonUnits?.(), prohibitedAction: 'train' },
+        { svgIcon: <MagicSpellsIcon />, label: 'Cast Spells', onClick: () => onCastSpells?.(), prohibitedAction: 'sorcery_casting' },
         { svgIcon: <EspionageIcon />, label: 'Espionage', onClick: () => navigate(`/kingdom/${kingdom.id}/espionage`), prohibitedAction: 'espionage_operations' },
-        { icon: '/battle-reports-icon.png', label: 'Battle History', onClick: () => onBattleReports?.() },
+        { svgIcon: <BattleReportsIcon />, label: 'Battle History', onClick: () => onBattleReports?.() },
       ],
     },
     {
@@ -91,11 +94,11 @@ export const KingdomActionBar: React.FC<KingdomActionBarProps> = ({
       svgIcon: <SocialIcon />,
       label: 'Social',
       items: [
-        { icon: '/alliance-icon.png', label: 'Alliance Management', onClick: () => onManageAlliance?.(), prohibitedAction: 'alliance_changes' },
-        { icon: '/trade-economy-icon.png', label: 'Trade', onClick: () => onManageTrade?.(), prohibitedAction: 'diplomatic_actions' },
-        { icon: '/diplomacy-icon.png', label: 'Diplomacy', onClick: () => onDiplomacy?.(), prohibitedAction: 'diplomatic_actions' },
+        { svgIcon: <AllianceIcon />, label: 'Alliance Management', onClick: () => onManageAlliance?.(), prohibitedAction: 'alliance_changes' },
+        { svgIcon: <TradeIcon />, label: 'Trade', onClick: () => onManageTrade?.(), prohibitedAction: 'diplomatic_actions' },
+        { svgIcon: <DiplomacyIcon />, label: 'Diplomacy', onClick: () => onDiplomacy?.(), prohibitedAction: 'diplomatic_actions' },
         { svgIcon: <LeaderboardIcon />, label: 'Kingdom Scrolls', onClick: () => onViewLeaderboard?.() },
-        { icon: '/achievements-icon.png', label: 'Achievements', onClick: () => navigate(`/kingdom/${kingdom.id}/achievements`) },
+        { svgIcon: <AchievementsIcon />, label: 'Achievements', onClick: () => navigate(`/kingdom/${kingdom.id}/achievements`) },
       ],
     },
   ];
@@ -151,13 +154,8 @@ export const KingdomActionBar: React.FC<KingdomActionBarProps> = ({
                     title={prohibited ? `${item.label} (restricted)` : item.label}
                     disabled={prohibited}
                   >
-                    {item.icon
-                      ? <img src={item.icon} alt={item.label} className="action-bar-icon" />
-                      : item.svgIcon
-                        ? <span className="action-bar-icon" style={{ display: 'inline-flex' }}>{item.svgIcon}</span>
-                        : null
-                    }
-                    {prohibited && <span className="action-bar-lock-icon" aria-hidden="true">🔒</span>}
+                    <span className="action-bar-icon" style={{ display: 'inline-flex' }}>{item.svgIcon}</span>
+                    {prohibited && <span className="action-bar-lock-icon" aria-hidden="true"><LockIcon /></span>}
                   </button>
                 );
               })}
@@ -211,12 +209,7 @@ export const KingdomActionBar: React.FC<KingdomActionBarProps> = ({
                         disabled={prohibited}
                         title={prohibited ? 'In restoration — action prohibited' : undefined}
                       >
-                        {item.icon
-                          ? <img src={item.icon} alt={item.label} className="action-icon" />
-                          : item.svgIcon
-                            ? <span style={{ marginRight: '0.5rem', display: 'inline-flex', verticalAlign: 'middle' }}>{item.svgIcon}</span>
-                            : null
-                        }
+                        <span style={{ marginRight: '0.5rem', display: 'inline-flex', verticalAlign: 'middle' }}>{item.svgIcon}</span>
                         {item.label}
                       </button>
                     );

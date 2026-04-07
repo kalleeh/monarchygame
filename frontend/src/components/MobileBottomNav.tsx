@@ -1,5 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import {
+  KingdomIcon, WarfareIcon, SocialIcon, CombatIcon, TrainUnitsIcon, MagicSpellsIcon,
+  EspionageIcon, BattleReportsIcon, TerritoriesIcon, BuildingsIcon, WorldMapIcon,
+  BountyIcon, FaithIcon, AllianceIcon, TradeIcon, DiplomacyIcon, LeaderboardIcon,
+  ScrollIcon, InfoIcon, LockIcon,
+} from './ui/MenuIcons';
 import './MobileBottomNav.css';
 
 interface MobileBottomNavProps {
@@ -11,7 +17,7 @@ interface MobileBottomNavProps {
 
 interface TrayItem {
   label: string;
-  emoji: string;
+  svgIcon: React.ReactNode;
   path?: string;
   prohibitedAction?: string;
   onAction?: () => void;
@@ -19,7 +25,7 @@ interface TrayItem {
 
 interface Tab {
   key: string;
-  icon: string;
+  svgIcon: React.ReactNode;
   label: string;
   trayItems?: TrayItem[];
   directPath?: string;
@@ -38,52 +44,52 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   const tabs: Tab[] = [
     {
       key: 'home',
-      icon: '🏠',
+      svgIcon: <KingdomIcon />,
       label: 'Home',
       directPath: `/kingdom/${kingdomId}`,
     },
     {
       key: 'war',
-      icon: '⚔️',
+      svgIcon: <WarfareIcon />,
       label: 'War',
       trayItems: [
-        { label: 'Combat Operations', emoji: '⚔️', path: `/kingdom/${kingdomId}/combat`, prohibitedAction: 'combat_attacks' },
-        { label: 'Summon Units', emoji: '🪖', path: `/kingdom/${kingdomId}/summon`, prohibitedAction: 'train' },
-        { label: 'Cast Spells', emoji: '✨', path: `/kingdom/${kingdomId}/magic`, prohibitedAction: 'sorcery_casting' },
-        { label: 'Espionage', emoji: '🕵️', path: `/kingdom/${kingdomId}/espionage`, prohibitedAction: 'espionage_operations' },
-        { label: 'Battle History', emoji: '📜', path: `/kingdom/${kingdomId}/reports` },
+        { label: 'Combat Operations', svgIcon: <CombatIcon />, path: `/kingdom/${kingdomId}/combat`, prohibitedAction: 'combat_attacks' },
+        { label: 'Summon Units', svgIcon: <TrainUnitsIcon />, path: `/kingdom/${kingdomId}/summon`, prohibitedAction: 'train' },
+        { label: 'Cast Spells', svgIcon: <MagicSpellsIcon />, path: `/kingdom/${kingdomId}/magic`, prohibitedAction: 'sorcery_casting' },
+        { label: 'Espionage', svgIcon: <EspionageIcon />, path: `/kingdom/${kingdomId}/espionage`, prohibitedAction: 'espionage_operations' },
+        { label: 'Battle History', svgIcon: <BattleReportsIcon />, path: `/kingdom/${kingdomId}/reports` },
       ],
     },
     {
       key: 'kingdom',
-      icon: '🏛️',
+      svgIcon: <KingdomIcon />,
       label: 'Kingdom',
       trayItems: [
-        { label: 'Territories', emoji: '🗺️', path: `/kingdom/${kingdomId}/territories` },
-        { label: 'Buildings', emoji: '🏗️', path: `/kingdom/${kingdomId}/buildings` },
-        { label: 'World Map', emoji: '🌍', path: `/kingdom/${kingdomId}/worldmap` },
-        { label: 'Bounty Board', emoji: '🎯', path: `/kingdom/${kingdomId}/bounties` },
-        { label: 'Faith & Focus', emoji: '🙏', path: `/kingdom/${kingdomId}/faith` },
+        { label: 'Territories', svgIcon: <TerritoriesIcon />, path: `/kingdom/${kingdomId}/territories` },
+        { label: 'Buildings', svgIcon: <BuildingsIcon />, path: `/kingdom/${kingdomId}/buildings` },
+        { label: 'World Map', svgIcon: <WorldMapIcon />, path: `/kingdom/${kingdomId}/worldmap` },
+        { label: 'Bounty Board', svgIcon: <BountyIcon />, path: `/kingdom/${kingdomId}/bounties` },
+        { label: 'Faith & Focus', svgIcon: <FaithIcon />, path: `/kingdom/${kingdomId}/faith` },
       ],
     },
     {
       key: 'social',
-      icon: '🤝',
+      svgIcon: <SocialIcon />,
       label: 'Social',
       trayItems: [
-        { label: 'Alliance', emoji: '🛡️', path: `/kingdom/${kingdomId}/alliance`, prohibitedAction: 'alliance_changes' },
-        { label: 'Trade', emoji: '💰', path: `/kingdom/${kingdomId}/trade`, prohibitedAction: 'diplomatic_actions' },
-        { label: 'Diplomacy', emoji: '📜', path: `/kingdom/${kingdomId}/diplomacy`, prohibitedAction: 'diplomatic_actions' },
-        { label: 'Leaderboard', emoji: '🏆', path: `/kingdom/${kingdomId}/leaderboard` },
+        { label: 'Alliance', svgIcon: <AllianceIcon />, path: `/kingdom/${kingdomId}/alliance`, prohibitedAction: 'alliance_changes' },
+        { label: 'Trade', svgIcon: <TradeIcon />, path: `/kingdom/${kingdomId}/trade`, prohibitedAction: 'diplomatic_actions' },
+        { label: 'Diplomacy', svgIcon: <DiplomacyIcon />, path: `/kingdom/${kingdomId}/diplomacy`, prohibitedAction: 'diplomatic_actions' },
+        { label: 'Leaderboard', svgIcon: <LeaderboardIcon />, path: `/kingdom/${kingdomId}/leaderboard` },
       ],
     },
     {
       key: 'more',
-      icon: '☰',
+      svgIcon: <ScrollIcon />,
       label: 'More',
       trayItems: [
-        { label: '? Units', emoji: '📋', onAction: onShowUnitRoster },
-        { label: '? Help', emoji: '❓', onAction: onShowHelp },
+        { label: 'Units', svgIcon: <ScrollIcon />, onAction: onShowUnitRoster },
+        { label: 'Help', svgIcon: <InfoIcon />, onAction: onShowHelp },
       ],
     },
   ];
@@ -140,7 +146,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <div className={`mobile-bottom-nav__tray${openTray ? ' mobile-bottom-nav__tray--open' : ''}`}>
           <div className="mobile-bottom-nav__tray-header">
             <span className="mobile-bottom-nav__tray-title">
-              {openTab.icon} {openTab.label}
+              <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: '0.3rem' }}>{openTab.svgIcon}</span> {openTab.label}
             </span>
             <button
               className="mobile-bottom-nav__tray-close"
@@ -161,9 +167,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   disabled={prohibited}
                   title={prohibited ? `${item.label} (restricted)` : item.label}
                 >
-                  <span className="mobile-bottom-nav__tray-item-icon">{item.emoji}</span>
+                  <span className="mobile-bottom-nav__tray-item-icon" style={{ display: 'inline-flex' }}>{item.svgIcon}</span>
                   <span className="mobile-bottom-nav__tray-item-label">{item.label}</span>
-                  {prohibited && <span className="mobile-bottom-nav__tray-item-lock">🔒</span>}
+                  {prohibited && <span className="mobile-bottom-nav__tray-item-lock"><LockIcon /></span>}
                 </button>
               );
             })}
@@ -184,7 +190,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               aria-label={tab.label}
               aria-expanded={tab.trayItems ? isOpen : undefined}
             >
-              <span className="mobile-bottom-nav__tab-icon">{tab.icon}</span>
+              <span className="mobile-bottom-nav__tab-icon" style={{ display: 'inline-flex' }}>{tab.svgIcon}</span>
               <span className="mobile-bottom-nav__tab-label">{tab.label}</span>
             </button>
           );

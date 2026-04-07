@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { isDemoMode } from '../../utils/authMode';
+import { TurnsIcon } from './MenuIcons';
 import './DemoTimeControl.css';
 
 interface LoadingButtonProps {
@@ -48,12 +49,12 @@ export function DemoTimeControl({ onTimeTravel }: DemoTimeControlProps) {
         onClick={() => setIsExpanded(!isExpanded)}
         title="Demo Time Control"
       >
-        ⏰ Time Travel {isExpanded ? '▼' : '▶'}
+        <TurnsIcon /> Time Travel {isExpanded ? '▼' : '▶'}
       </button>
       
       {isExpanded && (
         <div className="time-control-panel">
-          <h3>⏰ Demo Time Control</h3>
+          <h3><TurnsIcon /> Demo Time Control</h3>
           <p className="time-control-hint">Fast-forward time to test mechanics</p>
           
           <div className="time-control-buttons">

@@ -11,6 +11,7 @@ import { useKingdomStore } from '../stores/kingdomStore';
 import { isDemoMode } from '../utils/authMode';
 import { useKingdomTargets } from '../hooks/useKingdomTargets';
 import { TopNavigation } from './TopNavigation';
+import { LandIcon, HammerIcon, TurnsIcon } from './ui/MenuIcons';
 import './BountyBoard.css';
 
 interface BountyBoardProps {
@@ -181,15 +182,15 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId, onBack }) => {
                   <h4>Estimated Rewards</h4>
                   <div className="reward-items">
                     <span className="reward-item">
-                      <span className="reward-icon">🏞️</span>
+                      <span className="reward-icon"><LandIcon /></span>
                       {bounty.reward.landGained.toLocaleString()} land
                     </span>
                     <span className="reward-item">
-                      <span className="reward-icon">🏗️</span>
+                      <span className="reward-icon"><HammerIcon /></span>
                       {bounty.reward.structuresGained.toLocaleString()} structures
                     </span>
                     <span className="reward-item">
-                      <span className="reward-icon">⏱️</span>
+                      <span className="reward-icon"><TurnsIcon /></span>
                       {bounty.reward.turnsSaved.toLocaleString()} turns saved
                     </span>
                   </div>
@@ -254,15 +255,15 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId, onBack }) => {
                   </div>
                   <div className="completed-rewards">
                     <span className="reward-item">
-                      <span className="reward-icon">🏞️</span>
+                      <span className="reward-icon"><LandIcon /></span>
                       {completed.landGained.toLocaleString()} land gained
                     </span>
                     <span className="reward-item">
-                      <span className="reward-icon">🏗️</span>
+                      <span className="reward-icon"><HammerIcon /></span>
                       {completed.reward.structuresGained.toLocaleString()} structures
                     </span>
                     <span className="reward-item">
-                      <span className="reward-icon">⏱️</span>
+                      <span className="reward-icon"><TurnsIcon /></span>
                       {completed.reward.turnsSaved.toLocaleString()} turns saved
                     </span>
                   </div>

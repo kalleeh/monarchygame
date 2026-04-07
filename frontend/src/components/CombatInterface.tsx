@@ -22,6 +22,7 @@ import { AttackPlanner } from './combat/AttackPlanner';
 import BattleReports from './combat/BattleReports';
 import { DefenseManager } from './combat/DefenseManager';
 import { CombatNotifications } from './combat/CombatNotifications';
+import { SwordIcon, ShieldIcon, ScrollIcon, InfoIcon, WarningIcon } from './ui/MenuIcons';
 
 interface CombatInterfaceProps {
   currentKingdom: Kingdom;
@@ -247,7 +248,7 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
           className={`tab-button ${activeTab === 'attack' ? 'active' : ''}`}
           onClick={() => handleTabChange('attack')}
         >
-          <span className="tab-icon">⚔️</span>
+          <span className="tab-icon"><SwordIcon /></span>
           Attack
         </button>
         
@@ -259,7 +260,7 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
           className={`tab-button ${activeTab === 'defense' ? 'active' : ''}`}
           onClick={() => handleTabChange('defense')}
         >
-          <span className="tab-icon">🛡️</span>
+          <span className="tab-icon"><ShieldIcon /></span>
           Defense
         </button>
         
@@ -271,7 +272,7 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
           className={`tab-button ${activeTab === 'reports' ? 'active' : ''}`}
           onClick={() => handleTabChange('reports')}
         >
-          <span className="tab-icon">📊</span>
+          <span className="tab-icon"><ScrollIcon /></span>
           Reports
         </button>
         
@@ -283,7 +284,7 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
           className={`tab-button ${activeTab === 'notifications' ? 'active' : ''} ${unreadNotifications > 0 ? 'has-notifications' : ''}`}
           onClick={() => handleTabChange('notifications')}
         >
-          <span className="tab-icon">🔔</span>
+          <span className="tab-icon"><InfoIcon /></span>
           Alerts
           {unreadNotifications > 0 && (
             <span className="notification-badge" aria-label={`${unreadNotifications} unread notifications`}>
@@ -310,7 +311,7 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
           aria-live="polite" 
           className="combat-error"
         >
-          <span className="error-icon">⚠️</span>
+          <span className="error-icon"><WarningIcon /></span>
           <span className="error-message">{error}</span>
           <button
             type="button"

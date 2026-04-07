@@ -7,6 +7,7 @@ import React, { useMemo, useCallback } from 'react';
 import type { Kingdom, AttackType, Army, Territory } from '../../types/combat';
 import { hasStats } from '../../types/guards';
 import { COMBAT } from '../../constants/gameConfig';
+import { GoldIcon, PopulationIcon, LandIcon } from '../ui/MenuIcons';
 
 interface AttackPreviewProps {
   attacker: Kingdom;
@@ -268,17 +269,17 @@ export const AttackPreview: React.FC<AttackPreviewProps> = ({
             <h5>Estimated Spoils (if victorious)</h5>
             <div className="spoils-grid">
               <div className="spoil-item">
-                <span className="spoil-icon">💰</span>
+                <span className="spoil-icon"><GoldIcon /></span>
                 <span className="spoil-label">Gold:</span>
                 <span className="spoil-value">{battleEstimate.estimatedSpoils.gold.toLocaleString()}</span>
               </div>
               <div className="spoil-item">
-                <span className="spoil-icon">👥</span>
+                <span className="spoil-icon"><PopulationIcon /></span>
                 <span className="spoil-label">Population:</span>
                 <span className="spoil-value">{battleEstimate.estimatedSpoils.population.toLocaleString()}</span>
               </div>
               <div className="spoil-item">
-                <span className="spoil-icon">🏞️</span>
+                <span className="spoil-icon"><LandIcon /></span>
                 <span className="spoil-label">Land:</span>
                 <span className="spoil-value">{battleEstimate.estimatedSpoils.land.toLocaleString()}</span>
               </div>

@@ -5,6 +5,7 @@ import { achievementTriggers } from '../../utils/achievementTriggers';
 import ActiveWarCard from './ActiveWarCard';
 import WarHistoryCard from './WarHistoryCard';
 import DeclareWarModal from './DeclareWarModal';
+import { SwordIcon } from '../ui/MenuIcons';
 
 interface GuildWarsPanelProps {
   kingdom: { id: string; guildId?: string | null };
@@ -195,7 +196,7 @@ const GuildWarsPanel: React.FC<GuildWarsPanelProps> = ({ kingdom, currentGuild, 
             ))
           ) : (
             <div style={{ textAlign: 'center', color: '#a0a0a0', padding: '2rem 0', marginBottom: '1.5rem' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⚔️</div>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}><SwordIcon /></div>
               <p style={{ margin: 0 }}>No active wars.</p>
               {isLeader && (
                 <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>

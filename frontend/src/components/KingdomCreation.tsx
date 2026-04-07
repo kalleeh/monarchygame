@@ -1,29 +1,30 @@
 import React, { useState, useCallback, memo } from 'react';
 import { RACES } from "../shared-races";
 import { StatBar } from './StatBar';
+import { WarfareIcon, MagicSpellsIcon, SocialIcon, SpyIcon, TradeIcon } from './ui/MenuIcons';
 import './KingdomCreation.css';
 
 const PLAYSTYLES = [
-  { id: 'conqueror',  icon: '⚔️', label: 'Conqueror',  desc: 'Combat & expansion. Attack enemies, claim land.',         recommended: ['Droben', 'Goblin', 'Elemental'] },
-  { id: 'sorcerer',   icon: '🔮', label: 'Sorcerer',   desc: 'Magic & spells. Cast powerful spells to weaken enemies.',  recommended: ['Sidhe', 'Elemental', 'Elven'] },
-  { id: 'diplomat',   icon: '🤝', label: 'Diplomat',   desc: 'Trade & alliances. Build wealth through cooperation.',     recommended: ['Human', 'Fae', 'Elven'] },
-  { id: 'saboteur',   icon: '🕵️', label: 'Saboteur',   desc: 'Espionage & disruption. Steal and undermine enemies.',    recommended: ['Centaur', 'Vampire', 'Human'] },
-  { id: 'balanced',   icon: '⚖️', label: 'Balanced',   desc: 'Try everything. Good for exploring the game systems.',    recommended: ['Human'] },
-] as const;
+  { id: 'conqueror' as const,  icon: <WarfareIcon />, label: 'Conqueror',  desc: 'Combat & expansion. Attack enemies, claim land.',         recommended: ['Droben', 'Goblin', 'Elemental'] },
+  { id: 'sorcerer' as const,   icon: <MagicSpellsIcon />, label: 'Sorcerer',   desc: 'Magic & spells. Cast powerful spells to weaken enemies.',  recommended: ['Sidhe', 'Elemental', 'Elven'] },
+  { id: 'diplomat' as const,   icon: <SocialIcon />, label: 'Diplomat',   desc: 'Trade & alliances. Build wealth through cooperation.',     recommended: ['Human', 'Fae', 'Elven'] },
+  { id: 'saboteur' as const,   icon: <SpyIcon />, label: 'Saboteur',   desc: 'Espionage & disruption. Steal and undermine enemies.',    recommended: ['Centaur', 'Vampire', 'Human'] },
+  { id: 'balanced' as const,   icon: <TradeIcon />, label: 'Balanced',   desc: 'Try everything. Good for exploring the game systems.',    recommended: ['Human'] },
+];
 
 type PlaystyleId = typeof PLAYSTYLES[number]['id'];
 
 const RACE_PLAYSTYLE: Record<string, { style: string; difficulty: 'Easy' | 'Medium' | 'Hard'; bestFor: string; color: string }> = {
-  Human:    { style: '⚖️ Balanced',    difficulty: 'Easy',   bestFor: 'New players, trade & economy',   color: '#60a5fa' },
-  Elven:    { style: '🛡️ Defensive',   difficulty: 'Easy',   bestFor: 'Building & magical defense',      color: '#34d399' },
-  Goblin:   { style: '⚔️ Aggressive',  difficulty: 'Medium', bestFor: 'Early raiding, siege warfare',    color: '#f87171' },
-  Droben:   { style: '⚔️ Warrior',     difficulty: 'Medium', bestFor: 'Elite combat, heavy offense',     color: '#fb923c' },
-  Vampire:  { style: '🦇 Fortress',    difficulty: 'Hard',   bestFor: 'Experienced defenders (2× costs)', color: '#c084fc' },
-  Elemental:{ style: '🔥 Hybrid',      difficulty: 'Medium', bestFor: 'Magic + combat combination',      color: '#38bdf8' },
-  Centaur:  { style: '🕵️ Saboteur',    difficulty: 'Medium', bestFor: 'Espionage & disruption',          color: '#a78bfa' },
-  Sidhe:    { style: '🔮 Sorcerer',    difficulty: 'Hard',   bestFor: 'Mastering the magic system',      color: '#e879f9' },
-  Dwarven:  { style: '🏰 Defender',    difficulty: 'Easy',   bestFor: 'Strong fortifications, mining',   color: '#fbbf24' },
-  Fae:      { style: '✨ Mystic',      difficulty: 'Medium', bestFor: 'High income, versatile magic',    color: '#f0abfc' },
+  Human:    { style: 'Balanced',    difficulty: 'Easy',   bestFor: 'New players, trade & economy',   color: '#60a5fa' },
+  Elven:    { style: 'Defensive',   difficulty: 'Easy',   bestFor: 'Building & magical defense',      color: '#34d399' },
+  Goblin:   { style: 'Aggressive',  difficulty: 'Medium', bestFor: 'Early raiding, siege warfare',    color: '#f87171' },
+  Droben:   { style: 'Warrior',     difficulty: 'Medium', bestFor: 'Elite combat, heavy offense',     color: '#fb923c' },
+  Vampire:  { style: 'Fortress',    difficulty: 'Hard',   bestFor: 'Experienced defenders (2× costs)', color: '#c084fc' },
+  Elemental:{ style: 'Hybrid',      difficulty: 'Medium', bestFor: 'Magic + combat combination',      color: '#38bdf8' },
+  Centaur:  { style: 'Saboteur',    difficulty: 'Medium', bestFor: 'Espionage & disruption',          color: '#a78bfa' },
+  Sidhe:    { style: 'Sorcerer',    difficulty: 'Hard',   bestFor: 'Mastering the magic system',      color: '#e879f9' },
+  Dwarven:  { style: 'Defender',    difficulty: 'Easy',   bestFor: 'Strong fortifications, mining',   color: '#fbbf24' },
+  Fae:      { style: 'Mystic',      difficulty: 'Medium', bestFor: 'High income, versatile magic',    color: '#f0abfc' },
 };
 
 const STAT_DESCRIPTIONS: Record<string, string> = {
@@ -135,7 +136,7 @@ const RaceGrid = memo(function RaceGrid({
           <p className="race-best-for">Best for: {RACE_PLAYSTYLE[race.name]?.bestFor}</p>
           <p>{race.description}</p>
           {race.name === 'Vampire' && (
-            <div className="race-cost-warning">⚠️ Requires 2× resources to maintain</div>
+            <div className="race-cost-warning">Requires 2× resources to maintain</div>
           )}
           <div className="stats">
             <div title={STAT_DESCRIPTIONS['offense']}><StatBar value={race.stats.warOffense} statType="offense" /></div>
@@ -243,7 +244,7 @@ const KingdomCreation: React.FC<KingdomCreationProps> = ({ onKingdomCreated }) =
           <div className="starting-resources">
             <h4>Starting Resources:</h4>
             <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem' }}>
-              {selectedRace.name === 'Vampire' ? '⚠️ All costs doubled for Vampire kingdoms' : ''}
+              {selectedRace.name === 'Vampire' ? 'All costs doubled for Vampire kingdoms' : ''}
             </p>
             <div className="resources-grid">
               <div className="resource-item">
@@ -302,7 +303,7 @@ const KingdomCreation: React.FC<KingdomCreationProps> = ({ onKingdomCreated }) =
           <p className="playstyle-subtitle">This customises your dashboard layout. You can change it later.</p>
           <div className="playstyle-grid">
             {PLAYSTYLES.map((ps) => {
-              const isRecommended = selectedRace && ps.recommended.includes(selectedRace.name as any);
+              const isRecommended = selectedRace && ps.recommended.includes(selectedRace.name);
               return (
                 <div
                   key={ps.id}

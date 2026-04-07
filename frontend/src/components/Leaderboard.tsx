@@ -17,6 +17,7 @@ import LeaderboardFilters from './leaderboard/LeaderboardFilters';
 import GuildRankingsTable from './leaderboard/GuildRankingsTable';
 import '../components/TerritoryExpansion.css';
 import '../components/Leaderboard.css';
+import { CrownIcon } from './ui/MenuIcons';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -88,7 +89,7 @@ function LoadingSkeleton() {
       {[0, 1, 2].map(i => (
         <div key={i} className="kingdom-card" style={{ opacity: 0.5 }}>
           <div className="territory-header">
-            <span className="territory-icon">👑</span>
+            <span className="territory-icon"><CrownIcon /></span>
             <div className="territory-info">
               <h4 style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 4, width: '60%', height: '1.1em', marginBottom: '0.4em' }} />
               <span className="territory-type" style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 4, width: '30%', height: '0.9em', display: 'inline-block' }} />

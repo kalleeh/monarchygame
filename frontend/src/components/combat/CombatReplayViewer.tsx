@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { CombatReplay } from '../../types/combat';
 import { TERRAINS } from '../../data/terrains';
 import { FORMATIONS } from '../../data/formations';
+import { SwordIcon } from '../ui/MenuIcons';
 import './CombatEnhancements.css';
 
 interface CombatReplayViewerProps {
@@ -23,7 +24,7 @@ export const CombatReplayViewer = ({ replay, onClose }: CombatReplayViewerProps)
       <div className="replay-viewer-overlay">
         <div className="replay-viewer">
           <div className="replay-header">
-            <h2>⚔️ Battle Replay</h2>
+            <h2><SwordIcon /> Battle Replay</h2>
             <button className="close-btn" onClick={onClose}>✕</button>
           </div>
           <p style={{ padding: '2rem', color: '#9ca3af', textAlign: 'center' }}>
@@ -38,7 +39,7 @@ export const CombatReplayViewer = ({ replay, onClose }: CombatReplayViewerProps)
     <div className="replay-viewer-overlay">
       <div className="replay-viewer">
         <div className="replay-header">
-          <h2>⚔️ Battle Replay</h2>
+          <h2><SwordIcon /> Battle Replay</h2>
           <button className="close-btn" onClick={onClose}>✕</button>
         </div>
 

@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import type { Schema } from '../../../amplify/data/resource';
 import { isDemoMode } from '../utils/authMode';
+import { GoldIcon, PopulationIcon, LandIcon, TurnsIcon, InfoIcon } from './ui/MenuIcons';
 import './KingdomList.css';
 
 function KingdomList({ kingdoms: propKingdoms }: { kingdoms: Schema['Kingdom']['type'][] }) {
@@ -57,10 +58,10 @@ function KingdomList({ kingdoms: propKingdoms }: { kingdoms: Schema['Kingdom']['
                 </h3>
                 <div className="kingdom-info">
                   <p><strong>Race:</strong> {kingdom.race}</p>
-                  <p><strong>💰 Gold:</strong> {resources?.gold?.toLocaleString() || 0}</p>
-                  <p><strong>👥 Population:</strong> {resources?.population?.toLocaleString() || 0}</p>
-                  <p><strong>🏞️ Land:</strong> {resources?.land?.toLocaleString() || 0}</p>
-                  <p><strong>⏱️ Turns:</strong> {resources?.turns || 0}</p>
+                  <p><strong><GoldIcon /> Gold:</strong> {resources?.gold?.toLocaleString() || 0}</p>
+                  <p><strong><PopulationIcon /> Population:</strong> {resources?.population?.toLocaleString() || 0}</p>
+                  <p><strong><LandIcon /> Land:</strong> {resources?.land?.toLocaleString() || 0}</p>
+                  <p><strong><TurnsIcon /> Turns:</strong> {resources?.turns || 0}</p>
                 </div>
                 <div className="kingdom-actions">
                   <button 
@@ -85,7 +86,7 @@ function KingdomList({ kingdoms: propKingdoms }: { kingdoms: Schema['Kingdom']['
           background:'rgba(255,255,255,0.03)'
         }}>
           <p style={{margin:0,fontSize:'0.85rem',color:'#9ca3af'}}>
-            💡 Tip: Claim territories to increase your income each turn.
+            <InfoIcon /> Tip: Claim territories to increase your income each turn.
           </p>
         </div>
       )}

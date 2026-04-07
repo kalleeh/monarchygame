@@ -32,6 +32,7 @@ import {
   RACE_COLORS,
   RACE_ICONS,
 } from './worldmap/KingdomNode';
+import { GoldIcon, PopulationIcon, LandIcon, SeedlingIcon, BoltIcon, FireIcon } from './ui/MenuIcons';
 import './WorldMapMobile.css';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -250,9 +251,9 @@ const TerritoryCard: React.FC<CardProps> = ({
       {/* Production stats — hide for fog */}
       {category !== 'fog' && (
         <div className="wm-territory-stats">
-          <span className="wm-stat">💰 {prod.gold}/tick</span>
-          <span className="wm-stat">👥 {prod.pop}/tick</span>
-          <span className="wm-stat">🏞 {prod.land}/tick</span>
+          <span className="wm-stat"><GoldIcon /> {prod.gold}/tick</span>
+          <span className="wm-stat"><PopulationIcon /> {prod.pop}/tick</span>
+          <span className="wm-stat"><LandIcon /> {prod.land}/tick</span>
         </div>
       )}
 
@@ -589,10 +590,10 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
     turns: resources.turns ?? 0,
   };
 
-  const SEASON_BANNERS: Record<string, { icon: string; text: string; color: string }> = {
-    early: { icon: '🌱', text: 'Early Age — Kingdoms Grow', color: '#22c55e' },
-    middle: { icon: '⚡', text: 'Middle Age — Alliances Form', color: '#f59e0b' },
-    late: { icon: '🔥', text: 'Late Age — War Intensifies', color: '#ef4444' },
+  const SEASON_BANNERS: Record<string, { icon: React.ReactNode; text: string; color: string }> = {
+    early: { icon: <SeedlingIcon />, text: 'Early Age — Kingdoms Grow', color: '#22c55e' },
+    middle: { icon: <BoltIcon />, text: 'Middle Age — Alliances Form', color: '#f59e0b' },
+    late: { icon: <FireIcon />, text: 'Late Age — War Intensifies', color: '#ef4444' },
   };
   const seasonBanner = SEASON_BANNERS[seasonAge];
 

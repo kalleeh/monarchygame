@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { calculateCurrentAge } from '../../../../shared/mechanics/age-mechanics';
+import { HammerIcon, InfoIcon, SwordIcon } from './MenuIcons';
 
 interface SeasonBadgeProps {
   seasonNumber: number;
@@ -7,10 +8,10 @@ interface SeasonBadgeProps {
   startDate: string;
 }
 
-const AGE_EFFECTS: Record<string, string> = {
-  early: '🏗️ Building -20% · Income +20% · Defense +10%',
-  middle: '⚖️ Balanced combat · Training -10%',
-  late: '⚔️ Offense +10% · Defense -10% · Training -20% · Building +20%',
+const AGE_EFFECTS: Record<string, React.ReactNode> = {
+  early: <><HammerIcon /> Building -20% · Income +20% · Defense +10%</>,
+  middle: <><InfoIcon /> Balanced combat · Training -10%</>,
+  late: <><SwordIcon /> Offense +10% · Defense -10% · Training -20% · Building +20%</>,
 };
 
 export function SeasonBadge({ seasonNumber, currentAge, startDate }: SeasonBadgeProps) {

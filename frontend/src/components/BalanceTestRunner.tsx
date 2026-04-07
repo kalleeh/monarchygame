@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { AIBalanceTester } from '../balance-testing/AIBalanceTester';
 import type { BalanceTestResult } from '../balance-testing/AIBalanceTester';
+import { CombatIcon, ScrollIcon, TrophyIcon } from './ui/MenuIcons';
 
 interface BalanceTestRunnerProps {
   onClose: () => void;
@@ -64,7 +65,7 @@ function BalanceTestRunner({ onClose }: BalanceTestRunnerProps) {
   return (
     <div className="balance-test-runner">
       <div className="balance-test-header">
-        <h2>🎮 AI Balance Testing System</h2>
+        <h2><CombatIcon /> AI Balance Testing System</h2>
         <p>Simulate thousands of AI vs AI games to test race balance</p>
         <button onClick={onClose} className="close-btn">×</button>
       </div>
@@ -109,7 +110,7 @@ function BalanceTestRunner({ onClose }: BalanceTestRunnerProps) {
       {results && (
         <div className="results-section">
           <div className="results-header">
-            <h3>📊 Balance Test Results</h3>
+            <h3><ScrollIcon /> Balance Test Results</h3>
             <div className="balance-score">
               <span>Overall Balance: </span>
               <span 
@@ -127,7 +128,7 @@ function BalanceTestRunner({ onClose }: BalanceTestRunnerProps) {
           </div>
 
           <div className="race-results">
-            <h4>🏆 Race Performance</h4>
+            <h4><TrophyIcon /> Race Performance</h4>
             <div className="race-grid">
               {Object.entries(results.raceStats)
                 .sort(([,a], [,b]) => b.winRate - a.winRate)
@@ -166,7 +167,7 @@ function BalanceTestRunner({ onClose }: BalanceTestRunnerProps) {
           </div>
 
           <div className="recommendations">
-            <h4>📋 Balance Recommendations</h4>
+            <h4><ScrollIcon /> Balance Recommendations</h4>
             <ul>
               {results.recommendations.map((rec, index) => (
                 <li key={index} className="recommendation">

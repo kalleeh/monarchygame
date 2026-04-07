@@ -5,6 +5,7 @@ import { NoActiveSeasonBanner } from '../ui/NoActiveSeasonBanner';
 import { RestorationNotice } from '../ui/RestorationNotice';
 import { NextStepBanner } from '../ui/NextStepBanner';
 import { FirstSteps } from '../ui/FirstSteps';
+import { BoltIcon, FireIcon } from '../ui/MenuIcons';
 
 interface DashboardBannersProps {
   seasonInfo: { seasonNumber: number; currentAge: 'early' | 'middle' | 'late'; startDate: string } | null;
@@ -26,9 +27,9 @@ interface DashboardBannersProps {
   ownedTerritories: unknown[];
 }
 
-const AGE_BANNERS: Record<string, { icon: string; text: string; color: string }> = {
-  middle: { icon: '⚡', text: 'The Middle Age has begun — combat is balanced, training costs reduced 10%', color: '#fbbf24' },
-  late: { icon: '🔥', text: 'The Late Age has begun — offense +10%, defense -10%, training costs -20%', color: '#f87171' },
+const AGE_BANNERS: Record<string, { icon: React.ReactNode; text: string; color: string }> = {
+  middle: { icon: <BoltIcon />, text: 'The Middle Age has begun — combat is balanced, training costs reduced 10%', color: '#fbbf24' },
+  late: { icon: <FireIcon />, text: 'The Late Age has begun — offense +10%, defense -10%, training costs -20%', color: '#f87171' },
 };
 
 export function DashboardBanners({

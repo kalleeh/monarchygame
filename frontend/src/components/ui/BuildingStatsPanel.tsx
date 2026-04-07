@@ -1,5 +1,6 @@
 import React from 'react';
 import { getBuildingName } from '../../utils/buildingMechanics';
+import { WarningIcon } from './MenuIcons';
 
 interface BuildingStats {
   brt: number;
@@ -47,7 +48,7 @@ export function BuildingStatsPanel({ buildingStats, upkeepInfo, race }: Building
         </small>
         {buildingStats.quarryPercentage < 25 && (
           <small style={{ color: '#f59e0b', display: 'block', marginTop: '0.25rem' }}>
-            ⚠️ Low BRT - Consider building more {getBuildingName(race || 'Human', 'buildrate')}
+            <WarningIcon /> Low BRT - Consider building more {getBuildingName(race || 'Human', 'buildrate')}
           </small>
         )}
       </div>
@@ -97,12 +98,12 @@ export function BuildingStatsPanel({ buildingStats, upkeepInfo, race }: Building
         </small>
         {upkeepInfo.isCritical && (
           <small style={{ color: '#ef4444', display: 'block', marginTop: '0.25rem', fontWeight: 600 }}>
-            🚨 CRITICAL: Upkeep exceeds 25% of gold! Risk of bankruptcy!
+            <WarningIcon /> CRITICAL: Upkeep exceeds 25% of gold! Risk of bankruptcy!
           </small>
         )}
         {upkeepInfo.isHigh && !upkeepInfo.isCritical && (
           <small style={{ color: '#f59e0b', display: 'block', marginTop: '0.25rem' }}>
-            ⚠️ High upkeep - Consider downsizing or increasing income
+            <WarningIcon /> High upkeep - Consider downsizing or increasing income
           </small>
         )}
         <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>

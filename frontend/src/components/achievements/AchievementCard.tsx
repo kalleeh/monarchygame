@@ -1,5 +1,6 @@
 import { AchievementTier } from '../../stores/achievementStore';
 import type { Achievement, AchievementProgress } from '../../stores/achievementStore';
+import { GoldIcon, TurnsIcon } from '../ui/MenuIcons';
 import './Achievement.css';
 
 interface AchievementCardProps {
@@ -60,8 +61,8 @@ export const AchievementCard = ({ achievement, progress }: AchievementCardProps)
         
         {achievement.reward && (
           <div className="achievement-reward">
-            {achievement.reward.gold && <span>💰 {achievement.reward.gold}</span>}
-            {achievement.reward.turns && <span>⏱️ {achievement.reward.turns}</span>}
+            {achievement.reward.gold && <span><GoldIcon /> {achievement.reward.gold}</span>}
+            {achievement.reward.turns && <span><TurnsIcon /> {achievement.reward.turns}</span>}
           </div>
         )}
       </div>

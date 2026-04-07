@@ -10,6 +10,7 @@ import { useTerritoryStore, type Territory } from '../stores/territoryStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { WORLD_REGIONS } from './worldmap/KingdomNode';
 import { TopNavigation } from './TopNavigation';
+import { GoldIcon, PopulationIcon, LandIcon, ShieldIcon, CompassIcon, KingdomIcon, HammerIcon, SeedlingIcon } from './ui/MenuIcons';
 import './TerritoryExpansion.css';
 
 interface TerritoryExpansionProps {
@@ -225,21 +226,21 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
         <h2>Your Kingdom Resources</h2>
         <div className="resource-display">
           <div className="resource-card">
-            <span className="resource-icon">💰</span>
+            <span className="resource-icon"><GoldIcon /></span>
             <div className="resource-details">
               <span className="resource-amount">{kingdomResources.gold.toLocaleString()}</span>
               <span className="resource-name">Gold</span>
             </div>
           </div>
           <div className="resource-card">
-            <span className="resource-icon">👥</span>
+            <span className="resource-icon"><PopulationIcon /></span>
             <div className="resource-details">
               <span className="resource-amount">{kingdomResources.population.toLocaleString()}</span>
               <span className="resource-name">Population</span>
             </div>
           </div>
           <div className="resource-card">
-            <span className="resource-icon">🏞️</span>
+            <span className="resource-icon"><LandIcon /></span>
             <div className="resource-details">
               <span className="resource-amount">{kingdomResources.land.toLocaleString()}</span>
               <span className="resource-name">Land</span>
@@ -253,9 +254,9 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
         <div className="territory-income-summary">
           <h3>Total territory income:</h3>
           <div className="income-chips">
-            <span className="income-chip">💰 {totalProduction.gold}/tick</span>
-            <span className="income-chip">👥 {totalProduction.pop}/tick</span>
-            <span className="income-chip">🏞️ {totalProduction.land}/tick</span>
+            <span className="income-chip"><GoldIcon /> {totalProduction.gold}/tick</span>
+            <span className="income-chip"><PopulationIcon /> {totalProduction.pop}/tick</span>
+            <span className="income-chip"><LandIcon /> {totalProduction.land}/tick</span>
           </div>
         </div>
       )}
@@ -429,13 +430,13 @@ const OwnedTerritoryCard: React.FC<OwnedTerritoryCardProps> = ({
 
   const getCategoryIcon = (category?: string) => {
     switch (category) {
-      case 'farmland':   return '🌾';
-      case 'mine':       return '⛏️';
-      case 'forest':     return '🌲';
-      case 'port':       return '⚓';
-      case 'stronghold': return '🛡️';
-      case 'ruins':      return '🏚️';
-      default:           return '📍';
+      case 'farmland':   return <SeedlingIcon />;
+      case 'mine':       return <HammerIcon />;
+      case 'forest':     return <SeedlingIcon />;
+      case 'port':       return <CompassIcon />;
+      case 'stronghold': return <ShieldIcon />;
+      case 'ruins':      return <KingdomIcon />;
+      default:           return <CompassIcon />;
     }
   };
 
@@ -468,9 +469,9 @@ const OwnedTerritoryCard: React.FC<OwnedTerritoryCardProps> = ({
       {/* Production stats per tick */}
       <div className="territory-production">
         <div className="production-chips">
-          <span className="production-chip" title="Gold per tick">💰 {production.gold}/tick</span>
-          <span className="production-chip" title="Population per tick">👥 {production.pop}/tick</span>
-          <span className="production-chip" title="Land per tick">🏞️ {production.land}/tick</span>
+          <span className="production-chip" title="Gold per tick"><GoldIcon /> {production.gold}/tick</span>
+          <span className="production-chip" title="Population per tick"><PopulationIcon /> {production.pop}/tick</span>
+          <span className="production-chip" title="Land per tick"><LandIcon /> {production.land}/tick</span>
         </div>
       </div>
 
@@ -479,7 +480,7 @@ const OwnedTerritoryCard: React.FC<OwnedTerritoryCardProps> = ({
           <div className="upgrade-cost">
             <span className="cost-label">Upgrade cost:</span>
             <span className={canAfford ? 'cost-affordable' : 'cost-insufficient'}>
-              💰 {Math.floor(upgradeCost.gold).toLocaleString()} Gold
+              <GoldIcon /> {Math.floor(upgradeCost.gold).toLocaleString()} Gold
             </span>
             <span className="upgrade-benefit">+{(territory.defenseLevel + 1) * 10}% territory income</span>
           </div>
@@ -551,11 +552,11 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'capital': return '🏰';
-      case 'settlement': return '🏘️';
-      case 'outpost': return '🏕️';
-      case 'fortress': return '🏯';
-      default: return '📍';
+      case 'capital': return <KingdomIcon />;
+      case 'settlement': return <KingdomIcon />;
+      case 'outpost': return <CompassIcon />;
+      case 'fortress': return <ShieldIcon />;
+      default: return <CompassIcon />;
     }
   };
 
@@ -592,9 +593,9 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
       <div className="territory-production">
         <div className="production-label">Production per tick:</div>
         <div className="production-chips">
-          <span className="production-chip" title="Gold per tick">💰 {production.gold}/tick</span>
-          <span className="production-chip" title="Population per tick">👥 {production.pop}/tick</span>
-          <span className="production-chip" title="Land per tick">🏞️ {production.land}/tick</span>
+          <span className="production-chip" title="Gold per tick"><GoldIcon /> {production.gold}/tick</span>
+          <span className="production-chip" title="Population per tick"><PopulationIcon /> {production.pop}/tick</span>
+          <span className="production-chip" title="Land per tick"><LandIcon /> {production.land}/tick</span>
         </div>
       </div>
 
@@ -606,7 +607,7 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
                 <span className="cost-label">Upgrade cost:</span>
                 <div className="cost-items">
                   <span className={canAfford ? 'cost-affordable' : 'cost-insufficient'}>
-                    💰 {Math.floor(upgradeCost.gold).toLocaleString()} Gold
+                    <GoldIcon /> {Math.floor(upgradeCost.gold).toLocaleString()} Gold
                   </span>
                 </div>
                 <span className="upgrade-benefit">+{(territory.defenseLevel + 1) * 10}% territory income</span>
@@ -639,10 +640,10 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
                 <span className="cost-label">Claim cost (settlers):</span>
                 <div className="cost-items">
                   <span className={canAffordClaim ? 'cost-affordable' : 'cost-insufficient'}>
-                    💰 {claimCost.gold.toLocaleString()}
+                    <GoldIcon /> {claimCost.gold.toLocaleString()}
                   </span>
                   <span className={canAffordClaim ? 'cost-affordable' : 'cost-insufficient'}>
-                    👥 {claimCost.population.toLocaleString()}
+                    <PopulationIcon /> {claimCost.population.toLocaleString()}
                   </span>
                 </div>
               </div>

@@ -1,5 +1,6 @@
 import { FormationType } from '../../types/combat';
 import { FORMATIONS } from '../../data/formations';
+import { SwordIcon, ShieldIcon } from '../ui/MenuIcons';
 import './CombatEnhancements.css';
 
 interface FormationSelectorProps {
@@ -10,7 +11,7 @@ interface FormationSelectorProps {
 export const FormationSelector = ({ selectedFormation, onFormationChange }: FormationSelectorProps) => {
   return (
     <div className="formation-selector">
-      <h3>⚔️ Battle Formation</h3>
+      <h3><SwordIcon /> Battle Formation</h3>
       
       <div className="formation-grid">
         {FORMATIONS.map((formation) => (
@@ -25,10 +26,10 @@ export const FormationSelector = ({ selectedFormation, onFormationChange }: Form
               <span className="formation-description">{formation.description}</span>
               <div className="formation-modifiers">
                 <span className={formation.modifiers.defense > 0 ? 'positive' : 'negative'}>
-                  🛡️ {formation.modifiers.defense > 0 ? '+' : ''}{(formation.modifiers.defense * 100).toFixed(0)}%
+                  <ShieldIcon /> {formation.modifiers.defense > 0 ? '+' : ''}{(formation.modifiers.defense * 100).toFixed(0)}%
                 </span>
                 <span className={formation.modifiers.offense > 0 ? 'positive' : 'negative'}>
-                  ⚔️ {formation.modifiers.offense > 0 ? '+' : ''}{(formation.modifiers.offense * 100).toFixed(0)}%
+                  <SwordIcon /> {formation.modifiers.offense > 0 ? '+' : ''}{(formation.modifiers.offense * 100).toFixed(0)}%
                 </span>
               </div>
             </div>

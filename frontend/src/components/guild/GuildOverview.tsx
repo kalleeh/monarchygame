@@ -4,6 +4,7 @@ import type { GuildData } from '../../services/GuildService';
 import type { Schema } from '../../../../amplify/data/resource';
 import { isDemoMode } from '../../utils/authMode';
 import GuildMemberList from './GuildMemberList';
+import { ShieldIcon, SwordIcon, ScrollIcon, GoldIcon, SocialIcon } from '../ui/MenuIcons';
 
 interface MemberDetail {
   id: string;
@@ -198,11 +199,11 @@ const GuildOverview: React.FC<GuildOverviewProps> = ({
           <div className="guild-benefits">
             <h4>Guild Benefits:</h4>
             <ul>
-              <li>🛡️ Mutual defense pacts</li>
-              <li>💬 Real-time guild chat</li>
-              <li>⚔️ Coordinated warfare</li>
-              <li>📊 Shared intelligence</li>
-              <li>🤝 Resource sharing</li>
+              <li><ShieldIcon /> Mutual defense pacts</li>
+              <li><SocialIcon /> Real-time guild chat</li>
+              <li><SwordIcon /> Coordinated warfare</li>
+              <li><ScrollIcon /> Shared intelligence</li>
+              <li><GoldIcon /> Resource sharing</li>
             </ul>
           </div>
         </div>

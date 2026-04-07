@@ -331,7 +331,7 @@ function ActiveSeasonPanel() {
             onClick={() => { void handleSeedAI(); }}
             disabled={!!actionLoading}
           >
-            {actionLoading === 'seedAI' ? 'Seeding…' : '⚔ Seed AI Kingdoms'}
+            {actionLoading === 'seedAI' ? 'Seeding…' : 'Seed AI Kingdoms'}
           </button>
         )}
         {season && (

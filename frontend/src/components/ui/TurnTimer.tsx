@@ -7,6 +7,7 @@
 import React, { useMemo, useCallback } from 'react';
 import { useSpring, animated, config } from '@react-spring/web';
 import { useTurnGeneration } from '../../hooks/useTurnGeneration';
+import { TurnsIcon, InfoIcon, SwordIcon } from './MenuIcons';
 import './TurnTimer.css';
 
 interface TurnTimerProps {
@@ -57,7 +58,7 @@ function TurnTimer({
   if (compact) {
     return (
       <animated.div className="turn-timer-compact" style={pulseSpring}>
-        <span className="timer-icon">⏱️</span>
+        <span className="timer-icon"><TurnsIcon /></span>
         <span className="timer-text">{formatTimeRemaining()}</span>
         {turnsToGenerate > 0 && (
           <span className="turns-ready">+{turnsToGenerate}</span>
@@ -70,7 +71,7 @@ function TurnTimer({
     <div className="turn-timer">
       <div className="turn-timer-header">
         <div className="timer-title">
-          <span className="timer-icon">⏱️</span>
+          <span className="timer-icon"><TurnsIcon /></span>
           <h4>Turn Generation</h4>
         </div>
         <button
@@ -78,7 +79,7 @@ function TurnTimer({
           onClick={handleToggleAutoGenerate}
           title={autoGenerate ? 'Auto-generation ON' : 'Auto-generation OFF'}
         >
-          {autoGenerate ? '🔄 Auto' : '⏸️ Manual'}
+          {autoGenerate ? 'Auto' : 'Manual'}
         </button>
       </div>
 
@@ -112,10 +113,10 @@ function TurnTimer({
       )}
 
       <div className="timer-info">
-        <span>💡 Turns generate every 20 minutes (3 per hour)</span>
+        <span><InfoIcon /> Turns generate every 20 minutes (3 per hour)</span>
       </div>
       <div className="timer-info timer-info-secondary">
-        ⚔️ Actions cost 1–4 turns · Build=1 · Train=1 · Attack=4 · Spell=1
+        <SwordIcon /> Actions cost 1–4 turns · Build=1 · Train=1 · Attack=4 · Spell=1
       </div>
     </div>
   );

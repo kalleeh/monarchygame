@@ -12,6 +12,7 @@ import { isDemoMode } from '../utils/authMode';
 import { useKingdomTargets } from '../hooks/useKingdomTargets';
 import { TopNavigation } from './TopNavigation';
 import { ToastService } from '../services/toastService';
+import { StarIcon } from './ui/MenuIcons';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 import { THIEVERY_MECHANICS } from '../../../shared/mechanics/thievery-mechanics';
 import './ThieveryInterface.css';
@@ -419,7 +420,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
                       <span>Destroyed: {op.result.casualtiesInflicted} enemy scum</span>
                     )}
                     {(op.result.promoted ?? 0) > 0 && (
-                      <span style={{color: '#fbbf24'}}>⭐ {op.result.promoted} promoted to elite</span>
+                      <span style={{color: '#fbbf24'}}><StarIcon /> {op.result.promoted} promoted to elite</span>
                     )}
                     <span className="history-time">
                       {new Date(op.timestamp).toLocaleTimeString()}

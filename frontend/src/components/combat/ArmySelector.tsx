@@ -6,6 +6,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { getUnitImagePath } from '../../utils/unitImages';
 import type { Army } from '../../types/combat';
+import { SwordIcon, ShieldIcon, WarningIcon } from '../ui/MenuIcons';
 
 interface ArmySelectorProps {
   availableArmy: Army;
@@ -252,11 +253,11 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
                 
                 <div className="unit-stats">
                   <div className="stat">
-                    <span className="stat-icon">⚔️</span>
+                    <span className="stat-icon"><SwordIcon /></span>
                     <span className="stat-value">{unitInfo.stats.offense}</span>
                   </div>
                   <div className="stat">
-                    <span className="stat-icon">🛡️</span>
+                    <span className="stat-icon"><ShieldIcon /></span>
                     <span className="stat-value">{unitInfo.stats.defense}</span>
                   </div>
                 </div>
@@ -324,7 +325,7 @@ export const ArmySelector: React.FC<ArmySelectorProps> = ({
 
       {(totalSelected ?? 0) > maxUnits && (
         <div className="warning-message" role="alert">
-          <span className="warning-icon">⚠️</span>
+          <span className="warning-icon"><WarningIcon /></span>
           <span>Army size exceeds maximum limit of {maxUnits.toLocaleString()} units</span>
         </div>
       )}

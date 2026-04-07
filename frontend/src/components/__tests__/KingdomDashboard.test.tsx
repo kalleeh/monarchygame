@@ -197,7 +197,7 @@ describe('KingdomDashboard', () => {
 
     expect(screen.getByText(/Race Abilities/)).toBeInTheDocument()
     await waitFor(() => {
-      expect(screen.getByText('✨ Special Ability')).toBeInTheDocument()
+      expect(screen.getByText('Special Ability')).toBeInTheDocument()
     })
   })
 

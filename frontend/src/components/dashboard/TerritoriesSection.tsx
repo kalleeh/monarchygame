@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Schema } from '../../../../amplify/data/resource';
+import { GoldIcon, PopulationIcon, LandIcon } from '../ui/MenuIcons';
 
 interface Territory {
   id: string;
@@ -75,9 +76,9 @@ export function TerritoriesSection({
               <h4>{territory.name}</h4>
               <p>Type: {territory.type}</p>
               <div className="territory-resources">
-                <span>💰 {territory.resources?.gold || 0}</span>
-                <span>👥 {territory.resources?.population || 0}</span>
-                <span>🏞️ {territory.resources?.land || 0}</span>
+                <span><GoldIcon /> {territory.resources?.gold || 0}</span>
+                <span><PopulationIcon /> {territory.resources?.population || 0}</span>
+                <span><LandIcon /> {territory.resources?.land || 0}</span>
               </div>
             </div>
           ))}

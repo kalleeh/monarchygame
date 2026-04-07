@@ -6,6 +6,7 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { Kingdom } from '../../types/combat';
 import type { RaceType } from '../../types/amplify';
+import { SpyIcon } from '../ui/MenuIcons';
 
 interface KingdomSearchProps {
   currentKingdomId: string;
@@ -263,7 +264,7 @@ export const KingdomSearch: React.FC<KingdomSearchProps> = ({
           </button>
         )}
         
-        <span className="search-icon">🔍</span>
+        <span className="search-icon"><SpyIcon /></span>
       </div>
 
       {isOpen && (

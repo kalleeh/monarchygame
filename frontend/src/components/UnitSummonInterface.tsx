@@ -9,6 +9,7 @@ import { useKingdomStore } from '../stores/kingdomStore';
 import { ErrorBoundary } from './ErrorBoundary';
 import { TopNavigation } from './TopNavigation';
 import { ToastService } from '../services/toastService';
+import { SwordIcon, ShieldIcon, GoldIcon, PopulationIcon, TurnsIcon, WarningIcon, InfoIcon, HammerIcon } from './ui/MenuIcons';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 import './UnitSummonInterface.css';
 
@@ -103,7 +104,7 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
           <h4>Total Upkeep</h4>
           <span className="stat-value">{totalUpkeep}g/turn</span>
           {totalUpkeep > (resources.gold || 0) * 0.1 && (
-            <small style={{ color: '#ff6b6b' }}>⚠️ High upkeep!</small>
+            <small style={{ color: '#ff6b6b' }}><WarningIcon /> High upkeep!</small>
           )}
         </div>
       </div>
@@ -136,7 +137,7 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
                   <div className="unit-info">
                     <h4>{unit.type}</h4>
                     <p>Count: {unit.count}</p>
-                    <p>⚔️ {unit.attack} | 🛡️ {unit.defense}</p>
+                    <p><SwordIcon /> {unit.attack} | <ShieldIcon /> {unit.defense}</p>
                     {unitData && unitData.upkeep && (
                       <p style={{ fontSize: '0.85em', color: '#888' }}>
                         Upkeep: {unitData.upkeep * unit.count}g/turn
@@ -157,13 +158,13 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
       <div className="unit-summon">
         <h3>Summon Units</h3>
         <div className="resource-display">
-          <span>💰 Gold: {resources.gold?.toLocaleString() || 0}</span>
-          <span>👥 Population: {resources.population?.toLocaleString() || 0}</span>
-          <span>⏱️ Turns: {resources.turns || 0}</span>
-          <span>🛡️ Capacity: {remainingCapacity.toLocaleString()}g remaining</span>
+          <span><GoldIcon /> Gold: {resources.gold?.toLocaleString() || 0}</span>
+          <span><PopulationIcon /> Population: {resources.population?.toLocaleString() || 0}</span>
+          <span><TurnsIcon /> Turns: {resources.turns || 0}</span>
+          <span><ShieldIcon /> Capacity: {remainingCapacity.toLocaleString()}g remaining</span>
         </div>
         <p className="summon-info">
-          💡 Remaining capacity: <strong>{remainingCapacity.toLocaleString()}g</strong>
+          <InfoIcon /> Remaining capacity: <strong>{remainingCapacity.toLocaleString()}g</strong>
         </p>
         <div className="units-grid">
           {availableUnits.map(unitType => {
@@ -187,11 +188,11 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
                   <h4>{unitType.name} (T{unitType.tier})</h4>
                   <p>{unitType.description}</p>
                   <div className="unit-costs">
-                    <span>💰 {unitType.goldCost.toLocaleString()}</span>
-                    <span>👥 {unitType.populationCost.toLocaleString()}</span>
-                    <span>⏱️ 1 turn</span>
+                    <span><GoldIcon /> {unitType.goldCost.toLocaleString()}</span>
+                    <span><PopulationIcon /> {unitType.populationCost.toLocaleString()}</span>
+                    <span><TurnsIcon /> 1 turn</span>
                     {unitType.upkeep && (
-                      <span title="Upkeep per turn">🔧 {unitType.upkeep}g/turn</span>
+                      <span title="Upkeep per turn"><HammerIcon /> {unitType.upkeep}g/turn</span>
                     )}
                   </div>
                   <div className="max-info">

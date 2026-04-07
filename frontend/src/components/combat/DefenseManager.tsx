@@ -6,6 +6,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import type { Kingdom, DefenseSettings } from '../../types/combat';
 import { hasTerritories } from '../../types/guards';
+import { SwordIcon, ShieldIcon, WarningIcon, CrownIcon, InfoIcon, BuildingsIcon } from '../ui/MenuIcons';
 
 interface DefenseManagerProps {
   currentKingdom: Kingdom;
@@ -132,21 +133,21 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
       value: 'aggressive' as const,
       label: 'Aggressive',
       description: 'Focus on counter-attacks. -20% defense, +30% retaliation damage.',
-      icon: '⚔️',
+      icon: <SwordIcon />,
       color: '#ef4444'
     },
     {
       value: 'balanced' as const,
       label: 'Balanced',
       description: 'Standard defensive posture. No bonuses or penalties.',
-      icon: '⚖️',
+      icon: <InfoIcon />,
       color: '#6b7280'
     },
     {
       value: 'defensive' as const,
       label: 'Defensive',
       description: 'Maximize protection. +30% defense, -50% retaliation damage.',
-      icon: '🛡️',
+      icon: <ShieldIcon />,
       color: '#22c55e'
     }
   ];
@@ -212,7 +213,7 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
             <div className="distribution-item">
               <div className="distribution-header">
                 <span className="distribution-label">
-                  <span className="distribution-icon">⚔️</span>
+                  <span className="distribution-icon"><SwordIcon /></span>
                   Frontline ({defenseSettings.unitDistribution?.frontline ?? 60}%)
                 </span>
                 <span className="unit-count">{distributedUnits.frontline.toLocaleString()} units</span>
@@ -233,7 +234,7 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
             <div className="distribution-item">
               <div className="distribution-header">
                 <span className="distribution-label">
-                  <span className="distribution-icon">🏃</span>
+                  <span className="distribution-icon"><ShieldIcon /></span>
                   Reserves ({defenseSettings.unitDistribution?.reserves ?? 30}%)
                 </span>
                 <span className="unit-count">{distributedUnits.reserves.toLocaleString()} units</span>
@@ -254,7 +255,7 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
             <div className="distribution-item">
               <div className="distribution-header">
                 <span className="distribution-label">
-                  <span className="distribution-icon">🏰</span>
+                  <span className="distribution-icon"><BuildingsIcon /></span>
                   Fortifications ({defenseSettings.unitDistribution?.fortifications ?? 10}%)
                 </span>
                 <span className="unit-count">{distributedUnits.fortifications.toLocaleString()} units</span>
@@ -279,7 +280,7 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
               </span>
               {distributionTotal !== 100 && (
                 <span className="total-warning">
-                  ⚠️ Distribution should total 100%
+                  <WarningIcon /> Distribution should total 100%
                 </span>
               )}
             </div>
@@ -298,7 +299,7 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
               />
               <div className="toggle-content">
                 <div className="toggle-header">
-                  <span className="toggle-icon">🔄</span>
+                  <span className="toggle-icon"><InfoIcon /></span>
                   <span className="toggle-label">Auto-Retaliate</span>
                 </div>
                 <p className="toggle-description">
@@ -315,7 +316,7 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
               />
               <div className="toggle-content">
                 <div className="toggle-header">
-                  <span className="toggle-icon">📢</span>
+                  <span className="toggle-icon"><InfoIcon /></span>
                   <span className="toggle-label">Alert Alliance</span>
                 </div>
                 <p className="toggle-description">
@@ -334,7 +335,7 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
               <div key={territory.id} className="fortification-item">
                 <div className="territory-info">
                   <span className="territory-name">{territory.name}</span>
-                  {territory.isCapital && <span className="capital-badge">👑 Capital</span>}
+                  {territory.isCapital && <span className="capital-badge"><CrownIcon /> Capital</span>}
                 </div>
                 <div className="fortification-level">
                   <span className="level-label">Level {territory.fortificationLevel}</span>
@@ -378,7 +379,7 @@ export const DefenseManager: React.FC<DefenseManagerProps> = ({
 
       {hasUnsavedChanges && (
         <div className="unsaved-warning">
-          <span className="warning-icon">⚠️</span>
+          <span className="warning-icon"><WarningIcon /></span>
           <span>You have unsaved changes to your defense settings.</span>
         </div>
       )}

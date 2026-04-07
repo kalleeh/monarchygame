@@ -26,6 +26,7 @@ const RACE_DEFENSE: Record<string, number> = {
 import { isDemoMode } from '../utils/authMode';
 import { useKingdomTargets } from '../hooks/useKingdomTargets';
 import { TopNavigation } from './TopNavigation';
+import { VictoryIcon, DefeatIcon, SwordIcon, ShieldIcon, SkullIcon, LandIcon, GoldIcon, WarfareIcon, TrophyIcon, KingdomIcon, WarningIcon, CombatIcon } from './ui/MenuIcons';
 import './BattleFormations.css';
 
 let _amplifyClient: ReturnType<typeof generateClient<Schema>> | null = null;
@@ -102,13 +103,13 @@ function BattleResultModal({ battle, onClose, defenderName, attackerRace, defend
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '0.25rem' }}>{isVictory ? '⚔️' : '🛡️'}</div>
+          <div style={{ fontSize: '3rem', marginBottom: '0.25rem' }}>{isVictory ? <VictoryIcon /> : <DefeatIcon />}</div>
           <h2 style={{ margin: 0, fontSize: '1.8rem', color: accentColor, fontFamily: 'var(--font-display, serif)' }}>
             {isVictory ? 'Victory!' : 'Defeat'}
           </h2>
           {battle.resultType && (
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.95rem', fontWeight: 600, color: battle.resultType === 'with_ease' ? '#22c55e' : battle.resultType === 'good_fight' ? '#f59e0b' : '#ef4444' }}>
-              {battle.resultType === 'with_ease' ? '💪 Crushed with ease' : battle.resultType === 'good_fight' ? '⚔️ Hard-fought battle' : '💀 Attack failed'}
+              {battle.resultType === 'with_ease' ? <><SwordIcon /> Crushed with ease</> : battle.resultType === 'good_fight' ? <><WarfareIcon /> Hard-fought battle</> : <><SkullIcon /> Attack failed</>}
             </p>
           )}
           <p style={{ margin: '0.25rem 0 0', color: '#9ca3af', fontSize: '0.9rem' }}>
@@ -122,19 +123,19 @@ function BattleResultModal({ battle, onClose, defenderName, attackerRace, defend
             {battle.landGained != null && battle.landGained > 0 && (
               <div style={{ textAlign: 'center', minWidth: 80 }}>
                 <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#4ecdc4' }}>+{battle.landGained}</div>
-                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>🏞️ Land</div>
+                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}><LandIcon /> Land</div>
               </div>
             )}
             {(battle.resourcesGained?.gold ?? 0) > 0 && (
               <div style={{ textAlign: 'center', minWidth: 80 }}>
                 <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fbbf24' }}>+{(battle.resourcesGained?.gold ?? 0).toLocaleString()}</div>
-                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>💰 Gold</div>
+                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}><GoldIcon /> Gold</div>
               </div>
             )}
             {battle.degradedTerritory && (
               <div style={{ textAlign: 'center', minWidth: 100 }}>
                 <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#f59e0b' }}>Degraded</div>
-                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>⚔️ Territory</div>
+                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}><WarfareIcon /> Territory</div>
               </div>
             )}
           </div>
@@ -187,7 +188,7 @@ const UnitCard: React.FC<UnitCardProps> = ({ unit, tier, race = 'Human' }) => {
         )}
       </span>
       <span style={{ fontSize: '0.85rem', color: '#fbbf24', fontWeight: 600 }}>×{unit.count}</span>
-      <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>⚔️{unit.attack} 🛡️{unit.defense}</span>
+      <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}><SwordIcon />{unit.attack} <ShieldIcon />{unit.defense}</span>
     </div>
   );
 };
@@ -424,7 +425,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
       {/* Error Display */}
       {error && (
         <div className="error-banner">
-          <span>⚠️ {error}</span>
+          <span><WarningIcon /> {error}</span>
           <button onClick={clearError} aria-label="Dismiss error">×</button>
         </div>
       )}
@@ -436,9 +437,9 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
         background: 'rgba(255,255,255,0.03)', borderRadius: 8,
         fontSize: '0.85rem', color: '#9ca3af',
       }}>
-        <span>⚔️ <animated.span style={{ color: '#fff', fontWeight: 600 }}>{statsSpring.totalBattles.to(v => Math.floor(v))}</animated.span> battles</span>
-        <span>🏆 <animated.span style={{ color: '#fff', fontWeight: 600 }}>{statsSpring.winRate.to(v => `${Math.floor(v)}%`)}</animated.span> wins</span>
-        <span>🏰 <span style={{ color: '#fff', fontWeight: 600 }}>{battleStats.totalLandGained}</span> land</span>
+        <span><WarfareIcon /> <animated.span style={{ color: '#fff', fontWeight: 600 }}>{statsSpring.totalBattles.to(v => Math.floor(v))}</animated.span> battles</span>
+        <span><TrophyIcon /> <animated.span style={{ color: '#fff', fontWeight: 600 }}>{statsSpring.winRate.to(v => `${Math.floor(v)}%`)}</animated.span> wins</span>
+        <span><KingdomIcon /> <span style={{ color: '#fff', fontWeight: 600 }}>{battleStats.totalLandGained}</span> land</span>
       </div>
 
       {/* Target Selection */}
@@ -449,7 +450,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
         padding: '1.5rem',
         marginBottom: '1.5rem'
       }}>
-        <h3 style={{ color: '#fff', marginBottom: '1rem' }}>🎯 Select Target</h3>
+        <h3 style={{ color: '#fff', marginBottom: '1rem' }}><CombatIcon /> Select Target</h3>
         {kingdomTargets.length === 0 && !preselectedTargetId ? (
           <p style={{ color: '#a0a0a0' }}>Loading targets…</p>
         ) : (
@@ -486,8 +487,8 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
         <h3>Your Army ({availableUnits.reduce((s, u) => s + u.count, 0)} units)</h3>
         {availableUnits.length === 0 ? (
           <div className="combat-empty-state">
-            <p>🗡️ No units trained yet.</p>
-            <button onClick={() => navigate(`/kingdom/${kingdomId}/summon`)}>⚔️ Train Units</button>
+            <p><SwordIcon /> No units trained yet.</p>
+            <button onClick={() => navigate(`/kingdom/${kingdomId}/summon`)}><WarfareIcon /> Train Units</button>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -507,7 +508,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
           padding: '1.5rem',
           marginBottom: '1.5rem'
         }}>
-          <h3 style={{ color: '#fff', marginBottom: '1rem' }}>⚔️ Battle Preview</h3>
+          <h3 style={{ color: '#fff', marginBottom: '1rem' }}><WarfareIcon /> Battle Preview</h3>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
             <div>
@@ -539,9 +540,9 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
               fontSize: '1.125rem',
               marginBottom: '0.5rem'
             }}>
-              {battlePreview.resultType === 'with_ease' ? '🎉 With Ease' :
-               battlePreview.resultType === 'good_fight' ? '⚔️ Good Fight' :
-               '💀 Failed Attack'}
+              {battlePreview.resultType === 'with_ease' ? <><VictoryIcon /> With Ease</> :
+               battlePreview.resultType === 'good_fight' ? <><WarfareIcon /> Good Fight</> :
+               <><SkullIcon /> Failed Attack</>}
             </p>
             <p style={{ color: '#a0a0a0', fontSize: '0.875rem' }}>
               Offense Ratio: {battlePreview.offenseRatio.toFixed(2)}x
@@ -574,7 +575,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
             {([
               { value: 'standard', label: 'Standard', desc: 'Captures land' },
               { value: 'raid', label: 'Raid', desc: 'Steals gold (5%), captures less land' },
-              { value: 'pillage', label: 'Pillage 💰', desc: 'Destructive raid — steals 10% gold, destroys buildings, no land captured' },
+              { value: 'pillage', label: 'Pillage', desc: 'Destructive raid — steals 10% gold, destroys buildings, no land captured' },
               { value: 'siege', label: 'Siege', desc: 'Heavy assault (+50% land, 3 turns, +30% casualties)' },
             ] as const).map(opt => (
               <button
@@ -618,7 +619,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
               <option value="">No formation bonus</option>
               {formations.map(f => (
                 <option key={f.id} value={f.id}>
-                  {f.name} (⚔️+{f.bonuses.attack} 🛡️+{f.bonuses.defense})
+                  {f.name} (Atk+{f.bonuses.attack} Def+{f.bonuses.defense})
                 </option>
               ))}
             </select>
@@ -635,7 +636,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
           </div>
           {error && error.toLowerCase().includes('war') && selectedTarget && (
             <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 8, padding: '1rem', marginBottom: '1rem', textAlign: 'center' }}>
-              <p style={{ color: '#f87171', marginBottom: '0.5rem', fontWeight: 600 }}>⚔️ War Declaration Required</p>
+              <p style={{ color: '#f87171', marginBottom: '0.5rem', fontWeight: 600 }}><WarfareIcon /> War Declaration Required</p>
               <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: '0.75rem' }}>You've attacked this kingdom 3+ times. Declare war to continue.</p>
               <button
                 onClick={() => {
@@ -644,15 +645,15 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
                 }}
                 style={{ background: 'rgba(239,68,68,0.4)', border: '1px solid rgba(239,68,68,0.6)', borderRadius: 6, padding: '0.5rem 1.5rem', color: '#fca5a5', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}
               >
-                ⚔️ Declare War &amp; Continue Attacking
+                <WarfareIcon /> Declare War &amp; Continue Attacking
               </button>
             </div>
           )}
           {(!selectedTarget || availableUnits.length === 0) && !loading && (
             <p style={{ fontSize: '0.8rem', color: '#f59e0b', margin: '0.5rem 0 0.25rem', textAlign: 'center' }}>
               {!selectedTarget
-                ? '⚠️ Select a target kingdom above'
-                : '⚠️ Train units before attacking'}
+                ? 'Select a target kingdom above'
+                : 'Train units before attacking'}
             </p>
           )}
           <button
@@ -687,7 +688,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
             color: '#9ca3af', cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left',
           }}
         >
-          🛡️ Defensive Stance {defensiveFormationSaved && <span style={{ color: '#22c55e', marginLeft: 8 }}>✓ Saved</span>}
+          <ShieldIcon /> Defensive Stance {defensiveFormationSaved && <span style={{ color: '#22c55e', marginLeft: 8 }}>✓ Saved</span>}
           <span style={{ float: 'right' }}>{showDefensiveStance ? '▾' : '▸'}</span>
         </button>
         {showDefensiveStance && (

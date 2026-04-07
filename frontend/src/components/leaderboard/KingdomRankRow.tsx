@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Kingdom } from '../../types/kingdom';
 import { calculateNetworth, getTargetIndicator } from './leaderboardHelpers';
+import { StarIcon, CrownIcon } from '../ui/MenuIcons';
 
 interface KingdomRankRowProps {
   kingdom: Kingdom;
@@ -37,7 +38,7 @@ const KingdomRankRow: React.FC<KingdomRankRowProps> = ({
   return (
     <div className={`kingdom-card ${isCurrentKingdom ? 'owned' : ''}`}>
       <div className="territory-header">
-        <span className="territory-icon">{isCurrentKingdom ? '⭐' : '👑'}</span>
+        <span className="territory-icon">{isCurrentKingdom ? <StarIcon /> : <CrownIcon />}</span>
         <div className="territory-info">
           <h4 style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.3rem' }}>
             {/* Online presence dot */}

@@ -7,6 +7,7 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { BattleHistory, Army } from '../../types/combat';
 import { useCombatReplayStore } from '../../stores/combatReplayStore';
+import { TrophyIcon, SkullIcon, WarningIcon, SwordIcon, ShieldIcon, GoldIcon, PopulationIcon, LandIcon, ScrollIcon } from '../ui/MenuIcons';
 import './BattleReports.css';
 
 interface BattleReportsProps {
@@ -144,12 +145,12 @@ const BattleReports: React.FC<BattleReportsProps> = ({
     }
   }, []);
 
-  const getOutcomeIcon = useCallback((outcome: string): string => {
+  const getOutcomeIcon = useCallback((outcome: string): React.ReactNode => {
     switch (outcome) {
-      case 'victory': return '🏆';
-      case 'defeat': return '💀';
-      case 'pyrrhic': return '⚠️';
-      default: return '❓';
+      case 'victory': return <TrophyIcon />;
+      case 'defeat': return <SkullIcon />;
+      case 'pyrrhic': return <WarningIcon />;
+      default: return '?';
     }
   }, []);
 
@@ -282,17 +283,17 @@ const BattleReports: React.FC<BattleReportsProps> = ({
               <h4>Battle Spoils</h4>
               <div className="spoils-grid">
                 <div className="spoil-item">
-                  <span className="spoil-icon">💰</span>
+                  <span className="spoil-icon"><GoldIcon /></span>
                   <span className="spoil-label">Gold:</span>
                   <span className="spoil-value">{(selectedReport.result.spoils?.gold ?? 0).toLocaleString()}</span>
                 </div>
                 <div className="spoil-item">
-                  <span className="spoil-icon">👥</span>
+                  <span className="spoil-icon"><PopulationIcon /></span>
                   <span className="spoil-label">Population:</span>
                   <span className="spoil-value">{(selectedReport.result.spoils?.population ?? 0).toLocaleString()}</span>
                 </div>
                 <div className="spoil-item">
-                  <span className="spoil-icon">🏞️</span>
+                  <span className="spoil-icon"><LandIcon /></span>
                   <span className="spoil-label">Land:</span>
                   <span className="spoil-value">{(selectedReport.result.spoils?.land ?? 0).toLocaleString()}</span>
                 </div>
@@ -384,7 +385,7 @@ const BattleReports: React.FC<BattleReportsProps> = ({
         <div className="table-body">
           {filteredAndSortedHistory.length === 0 ? (
             <div className="no-reports">
-              <span className="no-reports-icon">📊</span>
+              <span className="no-reports-icon"><ScrollIcon /></span>
               <span className="no-reports-text">
                 {searchTerm || filter !== 'all' 
                   ? 'No battles match your current filters' 
@@ -434,7 +435,7 @@ const BattleReports: React.FC<BattleReportsProps> = ({
                   
                   <div className="cell type-cell">
                     <span className="battle-type">
-                      {battle.isAttacker ? '⚔️ Attack' : '🛡️ Defense'}
+                      {battle.isAttacker ? <><SwordIcon /> Attack</> : <><ShieldIcon /> Defense</>}
                     </span>
                     <span className="attack-type">
                       {battle.result.attackType.replace('_', ' ')}
@@ -443,14 +444,14 @@ const BattleReports: React.FC<BattleReportsProps> = ({
                   
                   <div className="cell gain-cell">
                     <div className="gain-item">
-                      <span className="gain-icon">💰</span>
+                      <span className="gain-icon"><GoldIcon /></span>
                       <span className={`gain-value ${(battle.netGain?.gold ?? 0) >= 0 ? 'positive' : 'negative'}`}>
                         {(battle.netGain?.gold ?? 0) >= 0 ? '+' : ''}{(battle.netGain?.gold ?? 0).toLocaleString()}
                       </span>
                     </div>
                     {(battle.netGain?.land ?? 0) !== 0 && (
                       <div className="gain-item">
-                        <span className="gain-icon">🏞️</span>
+                        <span className="gain-icon"><LandIcon /></span>
                         <span className={`gain-value ${(battle.netGain?.land ?? 0) >= 0 ? 'positive' : 'negative'}`}>
                           {(battle.netGain?.land ?? 0) >= 0 ? '+' : ''}{battle.netGain?.land ?? 0}
                         </span>

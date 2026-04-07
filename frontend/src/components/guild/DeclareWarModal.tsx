@@ -67,7 +67,7 @@ const DeclareWarModal: React.FC<DeclareWarModalProps> = ({
             marginBottom: '0.75rem',
             flexShrink: 0,
           }}>
-            <span style={{ color: '#ef4444', fontSize: '1rem' }}>⚔</span>
+            <span style={{ color: '#ef4444', fontSize: '1rem' }}>&#x2694;</span>
             <span style={{ color: '#fff', fontWeight: 600, flex: 1 }}>
               [{selectedWarTargetGuild.tag}] {selectedWarTargetGuild.name}
             </span>

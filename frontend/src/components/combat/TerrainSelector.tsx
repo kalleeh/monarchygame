@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TerrainType } from '../../types/combat';
 import { TERRAINS } from '../../data/terrains';
+import { WorldMapIcon } from '../ui/MenuIcons';
 import './CombatEnhancements.css';
 
 interface TerrainSelectorProps {
@@ -15,7 +16,7 @@ export const TerrainSelector = ({ selectedTerrain, onTerrainChange }: TerrainSel
 
   return (
     <div className="terrain-selector">
-      <h3>🗺️ Battle Terrain</h3>
+      <h3><WorldMapIcon /> Battle Terrain</h3>
       
       <div className="terrain-grid">
         {TERRAINS.map((terrain) => (

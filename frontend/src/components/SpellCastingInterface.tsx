@@ -14,6 +14,7 @@ import { TopNavigation } from './TopNavigation';
 import { achievementTriggers } from '../utils/achievementTriggers';
 import { ToastService } from '../services/toastService';
 import { isDemoMode } from '../utils/authMode';
+import { WarningIcon, MagicSpellsIcon, ElanIcon, BoltIcon, FireIcon, HealIcon, StarIcon, SkullIcon, FaithIcon } from './ui/MenuIcons';
 import './SpellCastingInterface.css';
 
 interface SpellCastingInterfaceProps {
@@ -38,14 +39,14 @@ const EFFECT_TYPE_LABELS: Record<string, string> = {
   utility: 'Utility',
 };
 
-const SPELL_EMOJIS: Record<string, string> = {
-  calming_chant: '🎵',
-  rousing_wind: '💨',
-  shattering_calm: '🌪️',
-  hurricane: '🌊',
-  lightning_lance: '⚡',
-  banshee_deluge: '👻',
-  foul_light: '☠️',
+const SPELL_ICONS: Record<string, React.ReactNode> = {
+  calming_chant: <HealIcon />,
+  rousing_wind: <BoltIcon />,
+  shattering_calm: <FireIcon />,
+  hurricane: <BoltIcon />,
+  lightning_lance: <BoltIcon />,
+  banshee_deluge: <SkullIcon />,
+  foul_light: <SkullIcon />,
 };
 
 const TIER_LABELS: Record<number, string> = {
@@ -212,7 +213,7 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
       {/* Error Display */}
       {error && (
         <div className="error-banner">
-          <span>⚠️ {error}</span>
+          <span><WarningIcon /> {error}</span>
           <button onClick={clearError} aria-label="Dismiss error">×</button>
         </div>
       )}
@@ -256,21 +257,21 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
           <p className="spell-history-label">Recent Casts</p>
           {castHistory.length === 0 ? (
             <div className="spell-history-empty">
-              <span className="spell-history-empty-icon">🔮</span>
+              <span className="spell-history-empty-icon"><MagicSpellsIcon /></span>
               <span>No spells cast yet this session</span>
             </div>
           ) : (
             <ul className="spell-history-list">
               {castHistory.slice(0, 8).map((entry, idx) => {
                 const spell = SPELLS[entry.spellId];
-                const emoji = SPELL_EMOJIS[entry.spellId] || '✨';
+                const icon = SPELL_ICONS[entry.spellId] || <StarIcon />;
                 const timeAgo = Math.round((Date.now() - entry.timestamp) / 1000);
                 const timeLabel = timeAgo < 60
                   ? `${timeAgo}s ago`
                   : `${Math.floor(timeAgo / 60)}m ago`;
                 return (
                   <li key={idx} className={`spell-history-item ${entry.success ? 'success' : 'failure'}`}>
-                    <span className="spell-history-emoji">{emoji}</span>
+                    <span className="spell-history-emoji">{icon}</span>
                     <span className="spell-history-name">{spell?.name ?? entry.spellId}</span>
                     <span className="spell-history-meta">
                       {entry.damage ? `${entry.damage} dmg · ` : ''}
@@ -297,7 +298,7 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
             style={style}
             className={`spell-effect ${effect.success ? 'success' : 'failure'}`}
           >
-            <div className="effect-icon">✨</div>
+            <div className="effect-icon"><StarIcon /></div>
             <div className="effect-text">
               {SPELLS[effect.spellId]?.name}
               {effect.damage && ` (${effect.damage} damage)`}
@@ -360,7 +361,7 @@ const SpellCard: React.FC<SpellCardProps> = ({
     config: config.slow
   });
 
-  const emoji = SPELL_EMOJIS[spell.id] || '✨';
+  const icon = SPELL_ICONS[spell.id] || <StarIcon />;
   const tierLabel = TIER_LABELS[spell.tier] ?? `Tier ${spell.tier}`;
   const targetLabel = TARGET_TYPE_LABELS[spell.targetType] ?? spell.targetType;
   const effectLabel = EFFECT_TYPE_LABELS[spell.effects.type] ?? spell.effects.type;
@@ -386,7 +387,7 @@ const SpellCard: React.FC<SpellCardProps> = ({
       {/* Card header: emoji + name + tier badge */}
       <div className="spell-header">
         <div className="spell-title-row">
-          <span className="spell-emoji" aria-hidden="true">{emoji}</span>
+          <span className="spell-emoji" aria-hidden="true">{icon}</span>
           <h3>{spell.name}</h3>
         </div>
         <span className={`spell-tier-badge tier-${spell.tier}`}>{tierLabel}</span>
@@ -398,11 +399,11 @@ const SpellCard: React.FC<SpellCardProps> = ({
       <div className="spell-stats">
         <div className="spell-stat">
           <span className="spell-stat-label">Elan</span>
-          <span className="spell-stat-value mana-cost">💙 {spell.cost.elan}</span>
+          <span className="spell-stat-value mana-cost"><ElanIcon /> {spell.cost.elan}</span>
         </div>
         <div className="spell-stat">
           <span className="spell-stat-label">Cast Time</span>
-          <span className="spell-stat-value turn-cost">⏱ {spell.cost.turns}s</span>
+          <span className="spell-stat-value turn-cost"><BoltIcon /> {spell.cost.turns}s</span>
         </div>
         <div className="spell-stat">
           <span className="spell-stat-label">Backlash</span>
@@ -413,7 +414,7 @@ const SpellCard: React.FC<SpellCardProps> = ({
         {templeReqPct > 0 && (
           <div className="spell-stat">
             <span className="spell-stat-label">Temples</span>
-            <span className="spell-stat-value temple-req">🏛 {templeReqPct}%</span>
+            <span className="spell-stat-value temple-req"><FaithIcon /> {templeReqPct}%</span>
           </div>
         )}
       </div>

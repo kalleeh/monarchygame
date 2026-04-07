@@ -17,6 +17,7 @@ import { refreshKingdomResources } from '../services/domain/CombatService';
 import { ToastService } from '../services/toastService';
 import { getBuildingName, getBuildingImage } from '../utils/buildingMechanics';
 import { isDemoMode } from '../utils/authMode';
+import { GoldIcon, TurnsIcon } from './ui/MenuIcons';
 import './BuildingManagement.css';
 
 let _amplifyClient: ReturnType<typeof generateClient<Schema>> | null = null;
@@ -269,12 +270,12 @@ export default function BuildingManagement({
         {/* Resource summary bar */}
         <div className="bm-resources">
           <span className="bm-resource-item">
-            <span className="bm-resource-icon">💰</span>
+            <span className="bm-resource-icon"><GoldIcon /></span>
             <span className="bm-resource-label">Gold:</span>
             <span className="bm-resource-value">{gold.toLocaleString()}</span>
           </span>
           <span className="bm-resource-item">
-            <span className="bm-resource-icon">⏱️</span>
+            <span className="bm-resource-icon"><TurnsIcon /></span>
             <span className="bm-resource-label">Turns:</span>
             <span className="bm-resource-value">{turns}</span>
           </span>
@@ -353,7 +354,7 @@ export default function BuildingManagement({
                   <div className="bm-cost-row">
                     <span className="bm-cost-label">Cost:</span>
                     <span className={`bm-cost-value${!canAfford ? ' bm-cost--unaffordable' : ''}`}>
-                      💰 {totalCost.toLocaleString()} gold + 1 turn
+                      <GoldIcon /> {totalCost.toLocaleString()} gold + 1 turn
                     </span>
                   </div>
 

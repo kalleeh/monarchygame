@@ -15,33 +15,33 @@ interface TutorialStepData {
 const tutorialSteps: TutorialStepData[] = [
   {
     id: 0,
-    title: '👑 Welcome to Monarchy!',
+    title: 'Welcome to Monarchy!',
     description: 'Build your kingdom, command armies, and forge alliances in this strategic multiplayer game. Let\'s get you started!',
   },
   {
     id: 1,
-    title: '🏰 Kingdom Creation',
+    title: 'Kingdom Creation',
     description: 'Choose your race and name your kingdom wisely. Each race has unique strengths and special abilities that define your playstyle.',
     targetElement: '.race-grid',
     position: 'bottom',
   },
   {
     id: 2,
-    title: '💰 Resource Management',
+    title: 'Resource Management',
     description: 'These are your kingdom\'s vital resources. Gold funds your armies, Population provides workers, Land expands your territory, and Turns let you take actions.',
     targetElement: '.resources-panel',
     position: 'bottom',
   },
   {
     id: 3,
-    title: '🗺️ Territory & Actions',
+    title: 'Territory & Actions',
     description: 'Use these action buttons to expand your kingdom, train armies, cast spells, and manage diplomacy. Each action costs turns.',
     targetElement: '.actions-panel',
     position: 'top',
   },
   {
     id: 4,
-    title: '⚔️ Combat & Alliances',
+    title: 'Combat & Alliances',
     description: 'Battle other kingdoms, forge alliances, and dominate the leaderboard. Use your race\'s special abilities to gain the upper hand. Good luck, ruler!',
   },
 ];

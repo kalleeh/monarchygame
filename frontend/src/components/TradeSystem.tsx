@@ -9,6 +9,7 @@ import type { Resource, TradeOffer, TrendData, PriceHistoryEntry } from '../type
 import { useTradeStore } from '../stores/tradeStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { TopNavigation } from './TopNavigation';
+import { WarningIcon } from './ui/MenuIcons';
 import { ToastService } from '../services/toastService';
 import './TradeSystem.css';
 import { SimpleLineChart } from './ui/charts/SimpleLineChart';
@@ -156,7 +157,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ kingdomId, onBack }) => {
       {/* Error Display */}
       {error && (
         <div className="gm-error-banner">
-          <span>⚠️ {error}</span>
+          <span><WarningIcon /> {error}</span>
           <button onClick={clearError} aria-label="Dismiss error">×</button>
         </div>
       )}
@@ -179,7 +180,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ kingdomId, onBack }) => {
                 <div className="indicator-header">
                   <span className="indicator-name">{indicator.name}</span>
                   <span className={`indicator-trend ${indicator.trend}`}>
-                    {indicator.trend === 'up' ? '↗️' : indicator.trend === 'down' ? '↘️' : '➡️'}
+                    {indicator.trend === 'up' ? '▲' : indicator.trend === 'down' ? '▼' : '—'}
                   </span>
                 </div>
                 <div className="indicator-value">{(indicator.value || 0).toLocaleString()}</div>
@@ -265,8 +266,8 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ kingdomId, onBack }) => {
               </div>
               <div className="offer-details">
                 <div className="offer-quantity">{offer.quantity} units</div>
-                <div className="offer-price">{offer.pricePerUnit}💰 per unit</div>
-                <div className="offer-total">Total: {offer.totalPrice}💰</div>
+                <div className="offer-price">{offer.pricePerUnit}g per unit</div>
+                <div className="offer-total">Total: {offer.totalPrice}g</div>
               </div>
               <div className="offer-actions">
                 {offer.sellerId !== myKingdomId && offer.sellerId !== 'current-player' ? (
@@ -385,12 +386,12 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource, trend, isSelected
       <div className="resource-header">
         <span className="resource-name">{resource.name}</span>
         <span className={`trend-indicator ${trend}`}>
-          {trend === 'bullish' ? '📈' : trend === 'bearish' ? '📉' : '➡️'}
+          {trend === 'bullish' ? '▲' : trend === 'bearish' ? '▼' : '—'}
         </span>
       </div>
       
       <div className="resource-price">
-        <span className="current-price">{((resource as Resource & { currentPrice?: number }).currentPrice || 0).toFixed(2)}💰</span>
+        <span className="current-price">{((resource as Resource & { currentPrice?: number }).currentPrice || 0).toFixed(2)}g</span>
         <span className={`price-change ${priceChange >= 0 ? 'positive' : 'negative'}`}>
           {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(1)}%
         </span>

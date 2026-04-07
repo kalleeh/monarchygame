@@ -11,6 +11,7 @@ import { ToastService } from '../services/toastService';
 import { isDemoMode } from '../utils/authMode';
 import { ErrorBoundary } from './ErrorBoundary';
 import { TopNavigation } from './TopNavigation';
+import { ScrollIcon, WarningIcon, SocialIcon } from './ui/MenuIcons';
 import { achievementTriggers } from '../utils/achievementTriggers';
 import type { Schema } from '../../../amplify/data/resource';
 import GuildChat from './guild/GuildChat';
@@ -381,7 +382,7 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
           fontSize: '0.875rem',
           fontWeight: 600,
         }}>
-          📨 {pendingInvitations.length} pending invitation{pendingInvitations.length !== 1 ? 's' : ''}
+          <ScrollIcon /> {pendingInvitations.length} pending invitation{pendingInvitations.length !== 1 ? 's' : ''}
         </div>
       )}
 
@@ -557,7 +558,7 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
           <>
             {chatSubscriptionError && (
               <div className="gm-error-banner" role="alert" style={{ margin: '0.75rem 0' }}>
-                <span>⚠️ {chatSubscriptionError}</span>
+                <span><WarningIcon /> {chatSubscriptionError}</span>
                 <button onClick={() => setChatSubscriptionError(null)} aria-label="Dismiss">×</button>
               </div>
             )}
@@ -579,7 +580,7 @@ const GuildManagement: React.FC<GuildManagementProps> = (props) => {
   return (
     <ErrorBoundary fallback={
       <div className="guild-error">
-        <h2>🤝 Guild System Temporarily Unavailable</h2>
+        <h2><SocialIcon /> Guild System Temporarily Unavailable</h2>
         <p>We're working on getting the guild system back online.</p>
         <button onClick={props.onBack}>← Back to Kingdom</button>
       </div>

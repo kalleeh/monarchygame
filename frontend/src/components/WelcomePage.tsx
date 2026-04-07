@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { RACES } from '../shared-races';
+import { KingdomIcon, WarfareIcon, CrownIcon, BoltIcon, ShieldIcon, SwordIcon, StarIcon, TurnsIcon, GoldIcon, HammerIcon, TrophyIcon, InfoIcon } from './ui/MenuIcons';
 import './WelcomePage.css';
 
 interface WelcomePageProps {
@@ -32,22 +33,22 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onGetStarted }) => {
     {
       title: "Build Your Kingdom",
       description: "Create and manage territories, construct buildings, and grow your population",
-      icon: "🏰"
+      icon: <KingdomIcon />
     },
     {
       title: "Epic Combat System", 
       description: "Launch strategic attacks, defend your realm, and conquer enemy territories",
-      icon: "⚔️"
+      icon: <WarfareIcon />
     },
     {
       title: "Choose Your Race",
       description: "Select from 10 unique races, each with special abilities and bonuses",
-      icon: "👑"
+      icon: <CrownIcon />
     },
     {
       title: "Real-Time Strategy",
       description: "Experience live notifications, real-time battles, and dynamic gameplay",
-      icon: "⚡"
+      icon: <BoltIcon />
     }
   ];
 
@@ -114,10 +115,10 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onGetStarted }) => {
           <div className="floating-castle">
             <img src="/logo.png" alt="Monarchy Crown" className="castle-main" />
             <div className="floating-elements">
-              <span className="float-1">⚔️</span>
-              <span className="float-2">🛡️</span>
-              <span className="float-3">🏹</span>
-              <span className="float-4">✨</span>
+              <span className="float-1"><SwordIcon /></span>
+              <span className="float-2"><ShieldIcon /></span>
+              <span className="float-3"><WarfareIcon /></span>
+              <span className="float-4"><StarIcon /></span>
             </div>
           </div>
         </div>
@@ -129,37 +130,37 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onGetStarted }) => {
         <p className="loop-subtitle">Master the cycle of power in 5 steps</p>
         <div className="loop-steps">
           <div className="loop-step">
-            <div className="loop-icon">⏱️</div>
+            <div className="loop-icon"><TurnsIcon /></div>
             <div className="loop-step-title">Generate Turns</div>
             <div className="loop-step-desc">Turns regenerate automatically every 20 minutes (3/hour). Log in to collect them.</div>
           </div>
           <div className="loop-arrow">→</div>
           <div className="loop-step">
-            <div className="loop-icon">⚔️</div>
+            <div className="loop-icon"><WarfareIcon /></div>
             <div className="loop-step-title">Take Actions</div>
             <div className="loop-step-desc">Spend turns to build, train units, cast spells, or attack enemies. Most actions cost 1–4 turns.</div>
           </div>
           <div className="loop-arrow">→</div>
           <div className="loop-step">
-            <div className="loop-icon">💰</div>
+            <div className="loop-icon"><GoldIcon /></div>
             <div className="loop-step-title">Earn Resources</div>
             <div className="loop-step-desc">Buildings generate gold, population, and mana each turn. More buildings = more income.</div>
           </div>
           <div className="loop-arrow">→</div>
           <div className="loop-step">
-            <div className="loop-icon">🏗️</div>
+            <div className="loop-icon"><HammerIcon /></div>
             <div className="loop-step-title">Expand Your Realm</div>
             <div className="loop-step-desc">Claim territories, construct buildings, and grow your army to dominate the leaderboard.</div>
           </div>
           <div className="loop-arrow">→</div>
           <div className="loop-step">
-            <div className="loop-icon">🏆</div>
+            <div className="loop-icon"><TrophyIcon /></div>
             <div className="loop-step-title">Climb the Ranks</div>
             <div className="loop-step-desc">Your networth (Land × 1,000 + Gold + Units × 100) determines your leaderboard rank.</div>
           </div>
         </div>
         <div className="loop-tip">
-          💡 <strong>Key insight:</strong> You don't need to be online constantly — turns accumulate while you're away. Log in once or twice a day to collect turns and take actions.
+          <InfoIcon /> <strong>Key insight:</strong> You don't need to be online constantly — turns accumulate while you're away. Log in once or twice a day to collect turns and take actions.
         </div>
       </section>
 
@@ -343,7 +344,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onGetStarted }) => {
           </div>
 
           <button className="cta-button primary large" onClick={onGetStarted}>
-            <span className="button-icon">👑</span>
+            <span className="button-icon"><CrownIcon /></span>
             Start Playing Now - It's Free!
           </button>
           

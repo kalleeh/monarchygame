@@ -1,5 +1,6 @@
 import React from 'react';
 import type { GuildRow } from './leaderboardHelpers';
+import { SwordIcon, GoldIcon } from '../ui/MenuIcons';
 
 interface GuildRankingsTableProps {
   guildRows: GuildRow[];
@@ -55,13 +56,13 @@ const GuildRankingsTable: React.FC<GuildRankingsTableProps> = ({ guildRows }) =>
               <td className="lb-guilds-td lb-guilds-td--center">
                 {row.hasFullComposition ? (
                   <span title="Full composition: mage + warrior + scum" style={{ fontSize: '1rem', letterSpacing: '-0.05em' }}>
-                    ⚔🎭💰
+                    <SwordIcon />&#x1F3AD;<GoldIcon />
                   </span>
                 ) : (
                   <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>
-                    {row.hasWarrior ? '⚔' : '·'}
+                    {row.hasWarrior ? <SwordIcon /> : '·'}
                     {row.hasMage ? '🎭' : '·'}
-                    {row.hasScum ? '💰' : '·'}
+                    {row.hasScum ? <GoldIcon /> : '·'}
                   </span>
                 )}
               </td>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { SwordIcon, StarIcon } from './MenuIcons';
 
 interface RaceSpecialAbility {
   name: string;
@@ -34,11 +35,11 @@ export function RaceAbilitiesPanel({ raceData, compact = false }: RaceAbilitiesP
   return (
     <div className={compact ? 'race-abilities-compact' : 'race-stats-panel'}>
       {!compact && <h2>Race Abilities</h2>}
-      {compact && <div className="race-abilities-compact-header">⚔️ Race Abilities</div>}
+      {compact && <div className="race-abilities-compact-header"><SwordIcon /> Race Abilities</div>}
       <div className="race-info">
         {raceData && (
           <div className="race-ability-highlight">
-            <div className="race-ability-name">✨ Special Ability</div>
+            <div className="race-ability-name"><StarIcon /> Special Ability</div>
             <div className="race-ability-desc">{raceData.specialAbility.description}</div>
             {!compact && (raceData.specialAbility as any).strategicValue && (
               <div className="race-ability-effect">{(raceData.specialAbility as any).strategicValue}</div>
