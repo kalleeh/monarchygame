@@ -336,7 +336,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
       }
     };
     void fetchWars();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentKingdom.guildId]);
 
   // ── Guild name map ────────────────────────────────────────────────────────
@@ -357,7 +356,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
       }
     };
     void fetchNames();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kingdoms]);
 
   // ── AI kingdoms (demo mode) ───────────────────────────────────────────────

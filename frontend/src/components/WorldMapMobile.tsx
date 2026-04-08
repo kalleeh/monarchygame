@@ -32,8 +32,7 @@ import {
   RACE_COLORS,
   RACE_ICON_COMPONENTS,
 } from './worldmap/KingdomNode';
-import { AIBotIcon, GoldIcon } from './ui/MenuIcons';
-import { GoldIcon, PopulationIcon, LandIcon, SeedlingIcon, BoltIcon, FireIcon } from './ui/MenuIcons';
+import { AIBotIcon, GoldIcon, PopulationIcon, LandIcon, SeedlingIcon, BoltIcon, FireIcon } from './ui/MenuIcons';
 import './WorldMapMobile.css';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -332,7 +331,7 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
   const seasonAge = useMemo((): 'early' | 'middle' | 'late' => {
     try {
       const raw = kingdom.stats;
-      const stats: Record<string, unknown> = typeof raw === 'string'
+      const _stats: Record<string, unknown> = typeof raw === 'string'
         ? (JSON.parse(raw) as Record<string, unknown>)
         : ((raw ?? {}) as Record<string, unknown>);
       const age = (kingdom as Record<string, unknown>).currentAge as string | undefined;
@@ -475,7 +474,7 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
         power: aiInfo?.power,
       };
     });
-  }, [territoryOwnership, playerPositions, pendingSettlements, serverPendingSettlements]);
+  }, [territoryOwnership, playerPositions, pendingSettlements, serverPendingSettlements, aiRegionMap, kingdom.race]);
 
   const owned     = categorised.filter((c) => c.category === 'owned');
   const available = categorised.filter((c) => c.category === 'available');

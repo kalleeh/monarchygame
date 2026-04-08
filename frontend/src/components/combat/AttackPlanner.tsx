@@ -73,19 +73,6 @@ export function AttackPlanner({
     setSelectedArmy(army);
   }, []);
 
-  const handleLaunchAttack = useCallback(async () => {
-    if (!selectedTarget || !selectedTerritory) return;
-    
-    const attackRequest: AttackRequest = {
-      targetKingdom: selectedTarget,
-      targetTerritory: selectedTerritory,
-      attackType,
-      army: selectedArmy
-    };
-    
-    await onAttack(attackRequest);
-  }, [selectedTarget, selectedTerritory, attackType, selectedArmy, onAttack]);
-
   const totalSelectedUnits = useMemo(() => 
     Object.values(selectedArmy).reduce((sum, count) => (sum ?? 0) + (count ?? 0), 0)
   , [selectedArmy]);

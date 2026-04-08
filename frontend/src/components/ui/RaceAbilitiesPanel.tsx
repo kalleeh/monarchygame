@@ -41,8 +41,8 @@ export function RaceAbilitiesPanel({ raceData, compact = false }: RaceAbilitiesP
           <div className="race-ability-highlight">
             <div className="race-ability-name"><StarIcon /> Special Ability</div>
             <div className="race-ability-desc">{raceData.specialAbility.description}</div>
-            {!compact && (raceData.specialAbility as any).strategicValue && (
-              <div className="race-ability-effect">{(raceData.specialAbility as any).strategicValue}</div>
+            {!compact && (raceData.specialAbility as Record<string, unknown>).strategicValue && (
+              <div className="race-ability-effect">{(raceData.specialAbility as Record<string, unknown>).strategicValue as React.ReactNode}</div>
             )}
           </div>
         )}

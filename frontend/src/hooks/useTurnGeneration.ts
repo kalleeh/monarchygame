@@ -247,8 +247,6 @@ export const useTurnGeneration = ({
         clearInterval(intervalRef.current);
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit state.isGenerating;
-  // the inFlightRef check is synchronous so we don't need isGenerating in deps
   }, [calculateAvailableTurns, state.autoGenerate, generateTurns]);
 
   // Toggle auto-generation

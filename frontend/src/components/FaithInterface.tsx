@@ -104,6 +104,7 @@ const FaithInterface: React.FC<FaithInterfaceProps> = ({ kingdomId, race, onBack
 
   const handleUseAbility = useCallback(
     async (abilityKey: AbilityKey) => {
+      // eslint-disable-next-line react-hooks/rules-of-hooks -- useFocusAbility is a Zustand store action, not a React hook
       const result = await useFocusAbility(abilityKey);
       if (result?.success) {
         setLastResult(

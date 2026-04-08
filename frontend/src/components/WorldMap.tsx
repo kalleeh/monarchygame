@@ -411,7 +411,7 @@ const WorldMapDesktop: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
 
     setSelectedTerritoryNode(null);
     setSelectedTerritory(null);
-  }, [selectedTerritoryNode, selectedTerritory, resources, addGold, addTurns, playerPositions, territoryOwnership]);
+  }, [selectedTerritoryNode, selectedTerritory, resources, addGold, addTurns, playerPositions, territoryOwnership, kingdom.id]);
 
   // ── Raid settlers handler ─────────────────────────────────────────────────
 

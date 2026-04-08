@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { isDemoMode } from '../utils/authMode';
 import { getActiveSeason } from '../services/domain/SeasonService';
 import { TopNavigation } from './TopNavigation';
@@ -33,13 +33,13 @@ const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({
 
   useEffect(() => {
     loadSeasonInfo();
-  }, []);
+  }, [loadSeasonInfo]);
 
-  const loadSeasonInfo = async () => {
+  const loadSeasonInfo = useCallback(async () => {
     try {
       setLoading(true);
       const result = await getActiveSeason(kingdomId);
-      const data = (result as any)?.data ?? result;
+      const data = (result as Record<string, unknown>)?.data ?? result;
       if (data?.season) {
         setSeason(data.season);
       }
@@ -48,7 +48,7 @@ const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [kingdomId]);
 
   if (isDemoMode()) {
     return (

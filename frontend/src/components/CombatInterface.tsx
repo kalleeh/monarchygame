@@ -129,7 +129,7 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
     });
   }, [rawHistory, aiKingdoms, currentKingdom]);
 
-  const notifications: CombatNotification[] = [];
+  const notifications: CombatNotification[] = useMemo(() => [], []);
 
   const handleAttack = useCallback(async (request: AttackRequest) => {
     try {

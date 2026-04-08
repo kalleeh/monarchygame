@@ -55,13 +55,6 @@ function BalanceTestRunner({ onClose }: BalanceTestRunnerProps) {
     }
   }, [gameCount]);
 
-  const getBalanceRating = (winRate: number) => {
-    if (winRate >= 0.45 && winRate <= 0.55) return { text: 'Excellent', color: '#10b981' };
-    if (winRate >= 0.40 && winRate <= 0.60) return { text: 'Good', color: '#3b82f6' };
-    if (winRate >= 0.35 && winRate <= 0.65) return { text: 'Fair', color: '#f59e0b' };
-    return { text: 'Poor', color: '#ef4444' };
-  };
-
   return (
     <div className="balance-test-runner">
       <div className="balance-test-header">

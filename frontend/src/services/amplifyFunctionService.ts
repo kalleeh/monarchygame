@@ -405,7 +405,7 @@ export class AmplifyFunctionService {
       const { data, errors } = await getClient().mutations.claimTerritory({
         kingdomId: territoryData.kingdomId,
         territoryName: territoryData.name,
-        territoryType: (territoryData as any).territoryType || 'settlement',
+        territoryType: (territoryData as Record<string, unknown>).territoryType as string || 'settlement',
         terrainType: (territoryData.terrainType || 'plains') as 'plains' | 'forest' | 'mountains' | 'desert' | 'swamp' | 'coastal',
         coordinates: coordsArg,
         ...(territoryData.regionId ? { regionId: territoryData.regionId } : {}),

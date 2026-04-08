@@ -15,7 +15,7 @@ import { useAchievementStore } from '../stores/achievementStore';
 import { useRestorationStore } from '../stores/restorationStore';
 import { RACES } from '../../__mocks__/@game-data/races';
 import { useTutorial } from '../hooks/useTutorial';
-import { calculateTimeTravel, calculateGoldIncome, calculatePopulationGrowth, type BuildingCounts } from '../utils/resourceCalculations';
+import { calculateTimeTravel, type BuildingCounts } from '../utils/resourceCalculations';
 import { calculateBRT } from '../utils/buildingMechanics';
 import { getUnitsForRace } from '../utils/units';
 import { RESOURCE_GENERATION } from '../constants/gameConfig';
@@ -145,14 +145,14 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
   // Encamp server state — initialised from the kingdom prop on mount.
   const [encampEndTimeMs, setEncampEndTimeMs] = useState<number | null>(() => {
     if (isDemoMode()) return null;
-    const raw = (kingdom as any)?.encampEndTime as string | null | undefined;
+    const raw = (kingdom as unknown as Record<string, unknown>)?.encampEndTime as string | null | undefined;
     if (!raw) return null;
     const ms = new Date(raw).getTime();
     return ms > Date.now() ? ms : null;
   });
   const [encampBonusTurns, setEncampBonusTurns] = useState<number>(() => {
     if (isDemoMode()) return 0;
-    return ((kingdom as any)?.encampBonusTurns as number | null | undefined) ?? 0;
+    return ((kingdom as unknown as Record<string, unknown>)?.encampBonusTurns as number | null | undefined) ?? 0;
   });
   const [encampLoading, setEncampLoading] = useState(false);
 
@@ -166,7 +166,7 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
   const { hasCompleted: tutorialCompleted, markComplete: completeTutorial } = useTutorial('kingdom-dashboard');
 
   // Calculate BRT and upkeep
-  const { getTotalUpkeep: _getTotalUpkeep, accumulatedGoldSpent, calculateRemainingCapacity } = useSummonStore();
+  const { accumulatedGoldSpent, calculateRemainingCapacity } = useSummonStore();
 
   const getTotalUpkeep = useCallback(() => {
     const raceKey = normalizeRace(kingdom.race);
@@ -265,7 +265,7 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
         void useAchievementStore.getState().loadFromDatabase(kingdom.id);
       }
     }
-  }, [kingdom.id]); // Only run when kingdom ID changes
+  }, [kingdom.id]); // eslint-disable-line react-hooks/exhaustive-deps -- setKingdomId/setResources are stable Zustand selectors; kingdom.resources triggers on every resource change which would cause infinite re-init
 
   // Generate AI kingdoms on mount (demo mode) or load from server (auth mode)
   useEffect(() => {
@@ -300,9 +300,9 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
 
   // Unwrap the season payload returned by getActiveSeason / startSeason.
   const applySeasonResult = useCallback((raw: unknown) => {
-    const payload = (raw as any)?.data ?? raw;
+    const payload = (raw as Record<string, unknown>)?.data ?? raw;
     const lambdaResult =
-      (payload as any)?.getActiveSeason ??
+      (payload as Record<string, unknown>)?.getActiveSeason ??
       payload;
     const parsed = typeof lambdaResult === 'string'
       ? (() => { try { return JSON.parse(lambdaResult); } catch { return null; } })()
@@ -373,7 +373,7 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
     }
 
     try {
-      const raw = await AmplifyFunctionService.updateResources({
+      await AmplifyFunctionService.updateResources({
         kingdomId: kingdom.id,
         amount: action === 'generate_turns' ? 3 : undefined,
       });

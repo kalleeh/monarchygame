@@ -43,13 +43,13 @@ function isStepDone(id: string): boolean {
 function markStepDone(id: string): void {
   try {
     localStorage.setItem(stepKey(id), 'done');
-  } catch {}
+  } catch { /* no-op */ }
 }
 
 function markDismissed(): void {
   try {
     localStorage.setItem(DISMISSED_KEY, 'true');
-  } catch {}
+  } catch { /* no-op */ }
 }
 
 export const FirstSteps: React.FC<FirstStepsProps> = ({

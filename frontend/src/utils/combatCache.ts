@@ -7,7 +7,7 @@ import { COMBAT } from '../constants/gameConfig';
 
 // Disable caching for now to fix build issues
 const combatCache = {
-  wrap: <T extends (...args: any[]) => any>(fn: T, options?: any): T => fn,
+  wrap: <T extends (...args: unknown[]) => unknown>(fn: T, _options?: Record<string, unknown>): T => fn,
   clear: () => {},
   size: 0
 };

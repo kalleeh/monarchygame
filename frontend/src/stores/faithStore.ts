@@ -118,7 +118,7 @@ export const useFaithStore = create(
                 lastRegenTime: Date.now(),
               }));
             }
-          } catch {}
+          } catch { /* no-op */ }
         }
 
         set({

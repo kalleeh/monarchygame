@@ -30,6 +30,8 @@ interface UseKingdomTargetsOptions {
 
 export function useKingdomTargets(opts: UseKingdomTargetsOptions = {}) {
   const { range = [0.25, 2.0], limit = 50, nameSearch, race } = opts;
+  const rangeMin = range[0];
+  const rangeMax = range[1];
   const playerNetworth = usePlayerNetworth();
   const aiKingdoms = useAIKingdomStore(s => s.aiKingdoms);
   const [targets, setTargets] = useState<TargetKingdom[]>([]);
@@ -39,8 +41,8 @@ export function useKingdomTargets(opts: UseKingdomTargetsOptions = {}) {
 
   const load = useCallback(async (append: boolean, token: string | null) => {
     if (isDemoMode()) {
-      const min = playerNetworth * range[0];
-      const max = playerNetworth * range[1];
+      const min = playerNetworth * rangeMin;
+      const max = playerNetworth * rangeMax;
       const filtered = aiKingdoms
         .filter(k => {
           const nw = (k.resources.land ?? 0) * 1000 + (k.resources.gold ?? 0);
@@ -65,8 +67,8 @@ export function useKingdomTargets(opts: UseKingdomTargetsOptions = {}) {
     setLoading(true);
     try {
       const result = await KingdomSearchService.listByNetworth({
-        minNetworth: !nameSearch && playerNetworth > 0 ? playerNetworth * range[0] : undefined,
-        maxNetworth: !nameSearch && playerNetworth > 0 ? playerNetworth * range[1] : undefined,
+        minNetworth: !nameSearch && playerNetworth > 0 ? playerNetworth * rangeMin : undefined,
+        maxNetworth: !nameSearch && playerNetworth > 0 ? playerNetworth * rangeMax : undefined,
         limit,
         nextToken: append ? token : null,
         nameSearch,
@@ -88,13 +90,13 @@ export function useKingdomTargets(opts: UseKingdomTargetsOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [playerNetworth, aiKingdoms, range[0], range[1], limit, nameSearch, race]);
+  }, [playerNetworth, aiKingdoms, rangeMin, rangeMax, limit, nameSearch, race]);
 
   useEffect(() => {
     setNextToken(null);
     setHasMore(false);
     void load(false, null);
-  }, [playerNetworth, nameSearch, race]);
+  }, [playerNetworth, nameSearch, race, load]);
 
   const loadMore = useCallback(() => {
     if (hasMore && !loading) void load(true, nextToken);

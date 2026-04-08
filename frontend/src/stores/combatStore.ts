@@ -7,7 +7,6 @@
 
 import { create } from 'zustand';
 import { combine } from 'zustand/middleware';
-import { COMBAT } from '../constants/gameConfig';
 import { useKingdomStore, getKingdomAge } from './kingdomStore';
 import { useAIKingdomStore, type AIKingdom } from './aiKingdomStore';
 import { calculateTurnCost, requiresWarDeclaration, validateAttackType, calculateCombatSummonTroops, type WarDeclaration } from "../../../shared/mechanics/combat-mechanics";
@@ -167,7 +166,7 @@ export const useCombatStore = create(
               attackType,
               units: unitPayload,
               formationId: activeFormationId,
-            }) as any;
+            }) as unknown;
 
             const parsed = typeof result === 'string' ? JSON.parse(result) : result;
 

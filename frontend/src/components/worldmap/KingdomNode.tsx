@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * KingdomNode.tsx
  *
@@ -11,7 +12,6 @@ import React from 'react';
 import { TERRAINS } from '../../data/terrains';
 import {
   PlainsIcon, ForestIcon, MountainIcon, SwampIcon, DesertIcon, CoastalIcon,
-  AIBotIcon,
   RaceHumanIcon, RaceElvenIcon, RaceGoblinIcon, RaceDrobenIcon, RaceVampireIcon,
   RaceElementalIcon, RaceCentaurIcon, RaceSidheIcon, RaceDwarvenIcon, RaceFaeIcon,
 } from '../ui/MenuIcons';
@@ -274,7 +274,6 @@ export function getRegionTerrain(regionId: string, aiTerrainOverride?: string): 
   return TERRAIN_POOL[h % TERRAIN_POOL.length];
 }
 
-export function terrainEmoji(terrain: string): string {
 export function terrainEmoji(terrain: string): React.ReactNode {
   switch (terrain.toLowerCase()) {
     case 'plains':    return <PlainsIcon />;

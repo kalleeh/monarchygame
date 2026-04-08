@@ -244,7 +244,7 @@ export default function BuildingManagement({
         setLoading((prev) => ({ ...prev, [building.id]: false }));
       }
     },
-    [kingdomId, race, quantities, gold, turns, addGold, addTurns]
+    [kingdomId, race, quantities, gold, turns, addGold, addTurns, loading]
   );
 
   return (

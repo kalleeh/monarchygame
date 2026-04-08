@@ -130,7 +130,7 @@ export default function AdminDashboard() {
 
 function ActiveSeasonPanel() {
   const [season, setSeason] = useState<SeasonRow | null | undefined>(undefined); // undefined = loading
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchSeason = useCallback(async () => {

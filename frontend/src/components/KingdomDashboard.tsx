@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { TopNavigation } from './TopNavigation';
-import { useKingdomStore } from '../stores/kingdomStore';
 import { useCombatStore } from '../stores/combatStore';
 import { useDiplomacyStore } from '../stores/useDiplomacyStore';
 import { useTradeStore } from '../stores/tradeStore';
@@ -52,14 +51,14 @@ function KingdomDashboard({
   onBack,
   onManageTerritories,
   onManageCombat,
-  onManageAlliance,
+  _onManageAlliance,
   onViewWorldMap,
-  onCastSpells,
-  onManageTrade,
+  _onCastSpells,
+  _onManageTrade,
   onSummonUnits,
-  onDiplomacy,
-  onBattleReports,
-  onViewLeaderboard,
+  _onDiplomacy,
+  _onBattleReports,
+  _onViewLeaderboard,
   onManageBuildings,
   onComposeMessage,
 }: KingdomDashboardProps) {
@@ -67,7 +66,7 @@ function KingdomDashboard({
 
   const {
     resources,
-    liveUnits,
+    _liveUnits,
     addGold,
     addTurns,
     updateResources,
@@ -238,7 +237,7 @@ function KingdomDashboard({
                 addGold(goldEarned);
                 updateResources({
                   population: (resources.population || 0) + populationEarned,
-                  ...({ mana: Math.min(((resources as any).mana || 0) + manaEarned, 50000) } as any)
+                  ...({ mana: Math.min(((resources as Record<string, number>).mana || 0) + manaEarned, 50000) } as Record<string, number>)
                 });
 
                 achievementTriggers.onGoldChanged();
@@ -261,7 +260,7 @@ function KingdomDashboard({
 
           {/* Territories — full width at the bottom */}
           <TerritoriesSection
-            ownedTerritories={ownedTerritories as any}
+            ownedTerritories={ownedTerritories as React.ComponentProps<typeof TerritoriesSection>['ownedTerritories']}
             loading={loading}
             kingdomStats={kingdom.stats}
             onManageTerritories={onManageTerritories}

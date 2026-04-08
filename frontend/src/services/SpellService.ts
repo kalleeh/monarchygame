@@ -74,8 +74,7 @@ export class SpellService {
   static async castSpell(
     kingdomId: string,
     spellId: string,
-    targetId?: string,
-    _repeatCount: number = 1
+    targetId?: string
   ): Promise<SpellCastResponse> {
     try {
       const response = await AmplifyFunctionService.castSpell({

@@ -399,7 +399,7 @@ function AppContent() {
         let activeSeasonId: string | null = null;
         try {
           const seasonResult = await getActiveSeason('new');
-          const data = (seasonResult as any)?.data ?? seasonResult;
+          const data = (seasonResult as Record<string, unknown>)?.data ?? seasonResult;
           if (data?.success && data?.season?.id) {
             activeSeasonId = data.season.id;
           }

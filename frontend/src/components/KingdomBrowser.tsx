@@ -93,12 +93,12 @@ const KingdomBrowser: React.FC<KingdomBrowserProps> = ({
     setNextToken(null);
     setHasMore(false);
     void loadKingdoms(false, null, search, raceFilter);
-  }, [search, raceFilter]);
+  }, [search, raceFilter, loadKingdoms]);
 
   // Initial load
   useEffect(() => {
     void loadKingdoms(false, null, '', '');
-  }, []);
+  }, [loadKingdoms]);
 
   const handleLoadMore = () => {
     if (hasMore && !loading) void loadKingdoms(true, nextToken, search, raceFilter);

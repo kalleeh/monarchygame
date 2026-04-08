@@ -32,12 +32,6 @@ import './BattleFormations.css';
 let _amplifyClient: ReturnType<typeof generateClient<Schema>> | null = null;
 const getAmplifyClient = () => { if (!_amplifyClient) _amplifyClient = generateClient<Schema>(); return _amplifyClient; };
 
-const FORMATION_DESCRIPTIONS: Record<string, string> = {
-  'Defensive Wall': 'Minimizes casualties when defending',
-  'Cavalry Charge': 'Maximizes offense for a swift attack',
-  'Balanced Formation': 'Equal offense and defense for versatility',
-};
-
 interface BattleFormationsProps {
   kingdomId: string;
   race?: string;

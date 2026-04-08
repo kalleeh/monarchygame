@@ -204,7 +204,7 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
             unitType,
             quantity,
             goldCost: unitData.goldCost
-          }) as any;
+          }) as unknown;
 
           // Amplify client wraps custom mutation responses in { data, errors };
           // unwrap .data when present, otherwise fall back to the raw value.

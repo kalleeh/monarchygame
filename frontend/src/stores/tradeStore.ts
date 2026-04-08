@@ -226,11 +226,11 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
       try {
         const result = await postTradeOffer({
           kingdomId: offer.sellerId || PLAYER_ID,
-          seasonId: (offer as any).seasonId || 'current',
+          seasonId: (offer as Record<string, unknown>).seasonId as string || 'current',
           resourceType: offer.resourceId!,
           quantity: offer.quantity!,
           pricePerUnit: offer.pricePerUnit!
-        }) as any;
+        }) as unknown;
 
         const parsed = typeof result === 'string' ? JSON.parse(result) : result;
         if (!parsed.success) {
@@ -329,7 +329,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
         const result = await acceptTradeOffer({
           kingdomId: getKingdomId(),
           offerId
-        }) as any;
+        }) as unknown;
 
         const parsed = typeof result === 'string' ? JSON.parse(result) : result;
         if (!parsed.success) {
@@ -408,7 +408,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
         const result = await cancelTradeOffer({
           kingdomId: getKingdomId(),
           offerId
-        }) as any;
+        }) as unknown;
 
         const parsed = typeof result === 'string' ? JSON.parse(result) : result;
         if (!parsed.success) {

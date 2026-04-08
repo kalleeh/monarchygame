@@ -105,7 +105,7 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
           defenderKingdomId: ('toKingdomId' in proposal ? (proposal as TreatyProposal & { toKingdomId?: string }).toKingdomId : proposal.toKingdom?.id) || '',
           seasonId: 'current',
           treatyType: proposal.treatyType || ''
-        }) as any;
+        }) as unknown;
 
         const parsed = typeof result === 'string' ? JSON.parse(result) : result;
         if (!parsed.success) {
@@ -225,7 +225,7 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
           kingdomId: useKingdomStore.getState().kingdomId ?? 'default-kingdom',
           defenderKingdomId: targetKingdomId,
           seasonId: 'current'
-        }) as any;
+        }) as unknown;
         const parsed = typeof result === 'string' ? JSON.parse(result) : result;
         if (!parsed.success) {
           set({ error: parsed.error || 'Failed to declare war', loading: false });
@@ -265,7 +265,7 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
         const result = await makeDiplomaticPeace({
           kingdomId: useKingdomStore.getState().kingdomId ?? 'default-kingdom',
           defenderKingdomId: targetKingdomId
-        }) as any;
+        }) as unknown;
         const parsed = typeof result === 'string' ? JSON.parse(result) : result;
         if (!parsed.success) {
           set({ error: parsed.error || 'Failed to make peace', loading: false });

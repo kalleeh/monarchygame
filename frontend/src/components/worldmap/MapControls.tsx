@@ -389,7 +389,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
               </button>
               <button
                 className="attack-button"
-                onPointerDown={(e) => { e.stopPropagation(); selectedTerritoryNode && onAttack?.(selectedTerritoryNode.id); }}
+                onPointerDown={(e) => { e.stopPropagation(); if (selectedTerritoryNode) onAttack?.(selectedTerritoryNode.id); }}
                 disabled={!onAttack}
               >
                 Attack
