@@ -295,7 +295,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
 
     set({
       activeOffers: allOffers,
-      myOffers: allOffers.filter(o => o.sellerId === PLAYER_ID && o.status === 'open'),
+      myOffers: allOffers.filter(o => o.sellerId === getKingdomId() && o.status === 'open'),
       lastOfferTime: Date.now(),
       error: null,
     });
@@ -317,7 +317,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
       set({ error: 'Offer is no longer available' });
       return;
     }
-    if (offer.sellerId === PLAYER_ID) {
+    if (offer.sellerId === getKingdomId()) {
       set({ error: 'Cannot accept your own offer' });
       return;
     }
@@ -375,7 +375,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
 
     set({
       activeOffers: updatedOffers.filter(o => o.status === 'open'),
-      myOffers: updatedOffers.filter(o => o.sellerId === PLAYER_ID && o.status === 'open'),
+      myOffers: updatedOffers.filter(o => o.sellerId === getKingdomId() && o.status === 'open'),
       error: null,
     });
   },
@@ -392,7 +392,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
       set({ error: 'Offer not found' });
       return;
     }
-    if (offer.sellerId !== PLAYER_ID) {
+    if (offer.sellerId !== getKingdomId()) {
       set({ error: 'Can only cancel your own offers' });
       return;
     }
@@ -444,7 +444,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
 
     set({
       activeOffers: updatedOffers.filter(o => o.status === 'open'),
-      myOffers: updatedOffers.filter(o => o.sellerId === PLAYER_ID && o.status === 'open'),
+      myOffers: updatedOffers.filter(o => o.sellerId === getKingdomId() && o.status === 'open'),
       error: null,
     });
   },
@@ -541,7 +541,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
     const allOffers = loadOffers().filter(o => o.status === 'open');
     set({
       activeOffers: allOffers,
-      myOffers: allOffers.filter(o => o.sellerId === PLAYER_ID),
+      myOffers: allOffers.filter(o => o.sellerId === getKingdomId()),
     });
 
     // Seed a few AI offers so the market isn't empty
@@ -573,7 +573,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
       saveOffers(combined);
       set({
         activeOffers: combined,
-        myOffers: combined.filter(o => o.sellerId === PLAYER_ID && o.status === 'open'),
+        myOffers: combined.filter(o => o.sellerId === getKingdomId() && o.status === 'open'),
       });
     }
   },

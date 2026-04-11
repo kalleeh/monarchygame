@@ -11,7 +11,7 @@ import { useKingdomStore, getKingdomAge } from './kingdomStore';
 import { useAIKingdomStore, type AIKingdom } from './aiKingdomStore';
 import { calculateTurnCost, requiresWarDeclaration, validateAttackType, calculateCombatSummonTroops, type WarDeclaration } from "../../../shared/mechanics/combat-mechanics";
 import { isRacialAbilityActive } from "../../../shared/mechanics/age-mechanics";
-import { RACES } from '../../__mocks__/@game-data/races';
+import { RACES } from '../shared-races';
 import { useSummonStore } from './useSummonStore';
 import { isDemoMode } from '../utils/authMode';
 import { ToastService } from '../services/toastService';

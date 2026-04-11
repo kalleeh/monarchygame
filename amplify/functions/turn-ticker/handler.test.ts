@@ -166,10 +166,10 @@ describe('turn-ticker handler — AI kingdom ticking', () => {
       (call: unknown[]) =>
         call[0] === 'Kingdom' &&
         call[1] === 'kingdom-1' &&
-        typeof (call[2] as Record<string, unknown>)?.resources === 'string'
+        typeof (call[2] as Record<string, unknown>)?.resources === 'object'
     );
     expect(aiUpdateCall).toBeDefined();
-    const updatedResources = JSON.parse((aiUpdateCall![2] as Record<string, unknown>).resources as string);
+    const updatedResources = (aiUpdateCall![2] as Record<string, unknown>).resources as Record<string, number>;
     // Gold should have increased by AI_GOLD_PER_TICK (5000)
     expect(updatedResources.gold).toBeGreaterThan(10000);
     // Population should have increased by AI_POPULATION_PER_TICK (500)

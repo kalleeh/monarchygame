@@ -68,6 +68,9 @@ export const useTurnGeneration = ({
   // alone doesn't prevent the 1-second interval from firing multiple Lambda calls
   // before the first one sets isGenerating=true. A ref flips synchronously.
   const inFlightRef = useRef<boolean>(false);
+  // Stable ref for the callback to avoid recreating generateTurns on every parent render
+  const onTurnGeneratedRef = useRef(onTurnGenerated);
+  onTurnGeneratedRef.current = onTurnGenerated;
   const lastGenerationRef = useRef<number>(
     parseInt(localStorage.getItem(`turnTimer-last-${kingdomId}`) || '') || lastServerTickTime()
   );
@@ -98,7 +101,7 @@ export const useTurnGeneration = ({
 
     // Ref guard prevents concurrent calls — state.isGenerating is async so
     // the interval can fire a second call before the first flips it to true.
-    if (turnsAvailable === 0 || inFlightRef.current || state.isGenerating) {
+    if (turnsAvailable === 0 || inFlightRef.current) {
       return { success: false, turns: 0 };
     }
     inFlightRef.current = true;
@@ -151,7 +154,7 @@ export const useTurnGeneration = ({
           nextTurnIn: TURN_INTERVAL / 1000
         }));
 
-        onTurnGenerated?.(totalTurns);
+        onTurnGeneratedRef.current?.(totalTurns);
 
         // In auth mode, sync authoritative state from server after Lambda processed turns
         if (!isDemoMode()) {
@@ -215,7 +218,7 @@ export const useTurnGeneration = ({
       setState(prev => ({ ...prev, isGenerating: false }));
       return { success: false, turns: 0 };
     }
-  }, [kingdomId, calculateAvailableTurns, state.isGenerating, onTurnGenerated]);
+  }, [kingdomId, calculateAvailableTurns]);
 
   // Update countdown timer
   useEffect(() => {

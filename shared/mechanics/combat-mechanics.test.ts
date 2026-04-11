@@ -244,19 +244,19 @@ describe('combat-mechanics', () => {
       expect(troops).toBe(Math.floor(100000 * 0.0304));
     });
 
-    it('should use Elemental rate of 2.84%', () => {
+    it('should use Elemental rate of 2.7%', () => {
       const troops = calculateCombatSummonTroops('ELEMENTAL', 100000);
-      expect(troops).toBe(Math.floor(100000 * 0.0284));
+      expect(troops).toBe(Math.floor(100000 * 0.027));
     });
 
-    it('should use Goblin rate of 2.75%', () => {
+    it('should use Goblin rate of 2.4%', () => {
       const troops = calculateCombatSummonTroops('GOBLIN', 100000);
-      expect(troops).toBe(Math.floor(100000 * 0.0275));
+      expect(troops).toBe(Math.floor(100000 * 0.024));
     });
 
-    it('should use Dwarven rate of 2.75%', () => {
+    it('should use Dwarven rate of 2.9%', () => {
       const troops = calculateCombatSummonTroops('DWARVEN', 100000);
-      expect(troops).toBe(Math.floor(100000 * 0.0275));
+      expect(troops).toBe(Math.floor(100000 * 0.029));
     });
 
     it('should use Human rate of 2.5%', () => {

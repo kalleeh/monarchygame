@@ -106,7 +106,7 @@ async function handleUpgrade(
     return { success: true, defenseLevel: newDefenseLevel };
   } catch (error) {
     log.error('territory-claimer', error, { kingdomId, territoryId });
-    return { success: false, error: error instanceof Error ? error.message : 'Territory upgrade failed', errorCode: ErrorCode.INTERNAL_ERROR };
+    return { success: false, error: 'Territory upgrade failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 }
 
@@ -256,6 +256,6 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
     return { success: true, territory: territoryName, regionId: regionId ?? null, category: category ?? null, settling: true, completesAt };
   } catch (error) {
     log.error('territory-claimer', error, { kingdomId, territoryName });
-    return { success: false, error: error instanceof Error ? error.message : 'Territory claim failed', errorCode: ErrorCode.INTERNAL_ERROR };
+    return { success: false, error: 'Territory claim failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };

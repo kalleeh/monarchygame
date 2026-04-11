@@ -100,7 +100,9 @@ export function getUnitDefense(type: string): number {
   return TIER_DEFENSE[UNIT_TIER[type] ?? 0] ?? 1;
 }
 
-// Legacy UNIT_STATS table — kept for backward compatibility with existing code
+// Legacy UNIT_STATS table — takes precedence over tier-based stats for listed unit types.
+// These values are intentionally different from TIER_OFFENSE/TIER_DEFENSE for generic unit names.
+// Race-specific units (e.g. 'droben-bunar') fall through to tier-based lookup.
 const UNIT_STATS = {
   peasant:  { attack: 1, defense: 1 },
   infantry: { attack: 3, defense: 2 },
@@ -220,10 +222,15 @@ export const getCasualtyRates = combatCache.wrap(
 export const calculateLandGained = combatCache.wrap(
   (battleResult: string, defenderLand: number, seed?: number) => {
     if (battleResult === 'failed') return 0;
-    const baseGain = battleResult === 'with_ease' ? 0.0735 : 0.068;
     const randomFactor = seed ? Math.sin(seed) * 0.5 + 0.5 : Math.random();
-    const variance = (0.0735 - 0.0679) / ((0.0735 + 0.0679) / 2);
-    return Math.floor(defenderLand * baseGain * (1 + (randomFactor - 0.5) * variance));
+    let landPercentage: number;
+    if (battleResult === 'with_ease') {
+      landPercentage = 0.070 + randomFactor * (0.0735 - 0.070);
+    } else {
+      // good_fight: 6.79% - 7.0%
+      landPercentage = 0.0679 + randomFactor * (0.070 - 0.0679);
+    }
+    return Math.floor(defenderLand * landPercentage);
   },
   { ttl: '1h', keyPrefix: 'landGained' }
 );

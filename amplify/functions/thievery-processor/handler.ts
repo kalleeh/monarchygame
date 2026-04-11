@@ -314,6 +314,6 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     };
   } catch (error) {
     log.error('thievery-processor', error, { kingdomId, operation, targetKingdomId });
-    return { success: false, error: error instanceof Error ? error.message : 'Thievery operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
+    return { success: false, error: 'Thievery operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };

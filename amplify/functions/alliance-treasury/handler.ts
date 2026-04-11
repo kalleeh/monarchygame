@@ -224,6 +224,11 @@ async function handleUpgrade(args: { allianceId?: string | null; kingdomId?: str
     return { success: false, error: 'Alliance not found', errorCode: ErrorCode.NOT_FOUND };
   }
 
+  // Verify caller owns the kingdom first
+  const kingdom = await dbGet<{ owner?: string | null }>('Kingdom', kingdomId);
+  const denied = verifyOwnership(identity, kingdom?.owner ?? null);
+  if (denied) return denied;
+
   // Only leader can purchase upgrades
   if (alliance.leaderId !== kingdomId) {
     return { success: false, error: 'Only alliance leader can purchase upgrades', errorCode: ErrorCode.FORBIDDEN };

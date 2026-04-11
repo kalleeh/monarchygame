@@ -13,7 +13,7 @@ import { AIActionService } from '../services/aiActionService';
 import { achievementTriggers } from '../utils/achievementTriggers';
 import { useAchievementStore } from '../stores/achievementStore';
 import { useRestorationStore } from '../stores/restorationStore';
-import { RACES } from '../../__mocks__/@game-data/races';
+import { RACES } from '../shared-races';
 import { useTutorial } from '../hooks/useTutorial';
 import { calculateTimeTravel, type BuildingCounts } from '../utils/resourceCalculations';
 import { calculateBRT } from '../utils/buildingMechanics';
@@ -572,20 +572,24 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
     const visitCount = (parseInt(localStorage.getItem(STORAGE_KEYS.VISITS(kingdomId)) || '0')) + 1;
     localStorage.setItem(STORAGE_KEYS.VISITS(kingdomId), String(visitCount));
 
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+
     if (visitCount >= 2 && ownedTerritories.length === 0 && !coached.territory) {
-      setTimeout(() => {
+      timeouts.push(setTimeout(() => {
         ToastService.info('💡 Tip: Claiming a territory gives you income every turn. Try Manage Territories!');
         localStorage.setItem(STORAGE_KEYS.COACHED(kingdomId), JSON.stringify({ ...coached, territory: true }));
-      }, 3000);
+      }, 3000));
     }
 
     const hasBattled = localStorage.getItem(STORAGE_KEYS.HAS_BATTLED(kingdomId));
     if ((resources.turns || 0) > 40 && ownedTerritories.length > 0 && !coached.combat && !hasBattled) {
-      setTimeout(() => {
+      timeouts.push(setTimeout(() => {
         ToastService.info('💡 Tip: You have plenty of turns! Attack a kingdom on the Leaderboard to gain land.');
         localStorage.setItem(STORAGE_KEYS.COACHED(kingdomId), JSON.stringify({ ...coached, combat: true }));
-      }, 5000);
+      }, 5000));
     }
+
+    return () => { timeouts.forEach(clearTimeout); };
   }, [tutorialCompleted, ownedTerritories.length, resources.turns, kingdom.id]);
 
   // Notify player when the age changes

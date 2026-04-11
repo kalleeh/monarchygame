@@ -113,9 +113,9 @@ export const useFaithStore = create(
           restoredFP = serverFocusPoints;
           try {
             if (isDemoMode() && resolvedKingdomId) {
-              localStorage.setItem('faith-fp-' + resolvedKingdomId, JSON.stringify({
+              localStorage.setItem(FP_STORAGE_KEY(resolvedKingdomId), JSON.stringify({
                 focusPoints: restoredFP,
-                lastRegenTime: Date.now(),
+                lastFocusRegenTime: new Date().toISOString(),
               }));
             }
           } catch { /* no-op */ }

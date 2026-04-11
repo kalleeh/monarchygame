@@ -154,6 +154,6 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
     }
   } catch (error) {
     log.error('faith-processor', error, { kingdomId, action });
-    return { success: false, error: error instanceof Error ? error.message : 'Faith operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
+    return { success: false, error: 'Faith operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };

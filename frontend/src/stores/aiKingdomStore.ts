@@ -9,7 +9,7 @@ import { create } from 'zustand';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { NETWORTH, AI_KINGDOM } from '../constants/gameConfig';
-import { RACES } from '../../__mocks__/@game-data/races';
+import { RACES } from '../shared-races';
 import { isDemoMode } from '../utils/authMode';
 
 export interface AIKingdom {
@@ -130,9 +130,9 @@ export const useAIKingdomStore = create<AIKingdomState>((set) => ({
     if (isDemoMode()) return; // demo mode uses generated kingdoms
     try {
       const client = generateClient<Schema>();
-      const { data: allKingdoms } = await client.models.Kingdom.list({ limit: 100 });
+      const { data: allKingdoms } = await client.models.Kingdom.list({ limit: 100, filter: { isAI: { eq: true } } });
       if (!allKingdoms || allKingdoms.length === 0) return;
-      const data = allKingdoms.filter(k => (k as Record<string, unknown>).isAI === true);
+      const data = allKingdoms;
       if (data.length === 0) return;
       const transformed = data.map(k => {
         let res: Record<string, unknown> = {};

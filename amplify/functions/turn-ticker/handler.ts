@@ -246,8 +246,8 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
                 finalGold += combatResult.goldLooted;
 
                 await dbUpdate('Kingdom', decision.attackTarget, {
-                  resources: JSON.stringify({ ...targetRes, land: defLand, gold: defGold }),
-                  totalUnits: JSON.stringify(defUpdatedUnits),
+                  resources: { ...targetRes, land: defLand, gold: defGold },
+                  totalUnits: defUpdatedUnits,
                 });
               }
 
@@ -258,8 +258,8 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
                 attackType: 'standard',
                 result: JSON.stringify(combatResult),
                 casualties: JSON.stringify({
-                  attacker: combatResult.attackerLosses,
-                  defender: combatResult.defenderLosses,
+                  attacker: { tier1: combatResult.attackerLosses },
+                  defender: { tier1: combatResult.defenderLosses },
                 }),
                 landGained: combatResult.landGained,
                 timestamp: new Date().toISOString(),
@@ -296,9 +296,9 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
 
         // Write back all changes
         const updateFields: Record<string, unknown> = {
-          resources: JSON.stringify({ ...resources, gold: finalGold, population: newPopulation, land: finalLand }),
-          buildings: JSON.stringify(updatedBuildings),
-          totalUnits: JSON.stringify(updatedUnits),
+          resources: { ...resources, gold: finalGold, population: newPopulation, land: finalLand },
+          buildings: updatedBuildings,
+          totalUnits: updatedUnits,
           networth,
         };
 

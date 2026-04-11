@@ -113,10 +113,9 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     let allianceCoordBonus = 1.0;
     let attackerGuildId: string | undefined;
     try {
-      const attackerKingdomData = await dbGet<{ guildId?: string }>('Kingdom', attackerId);
-      attackerGuildId = attackerKingdomData?.guildId;
-      const defenderKingdomData = await dbGet<{ guildId?: string }>('Kingdom', defenderId);
-      if (attackerKingdomData?.guildId && attackerKingdomData.guildId !== defenderKingdomData?.guildId) {
+      attackerGuildId = (attacker as { guildId?: string }).guildId;
+      const defenderGuildId = (defender as { guildId?: string }).guildId;
+      if (attackerGuildId && attackerGuildId !== defenderGuildId) {
         const recentBattles = await getDefenderReports();
         const twentyMinAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
         const allyRecentAttack = recentBattles.find(r =>
@@ -127,7 +126,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
         if (allyRecentAttack) {
           // Verify the other attacker is in the same alliance
           const allyKingdom = await dbGet<{ guildId?: string }>('Kingdom', allyRecentAttack.attackerId);
-          if (allyKingdom?.guildId === attackerKingdomData.guildId) {
+          if (allyKingdom?.guildId === attackerGuildId) {
             allianceCoordBonus = 1.10;
             log.info('combat-processor', 'alliance-coord-bonus', { attackerId, allianceBonus: '10%' });
           }
@@ -886,6 +885,6 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     };
   } catch (error) {
     log.error('combat-processor', error, { attackerId, defenderId });
-    return { success: false, error: error instanceof Error ? error.message : 'Combat processing failed', errorCode: ErrorCode.INTERNAL_ERROR };
+    return { success: false, error: 'Combat processing failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };

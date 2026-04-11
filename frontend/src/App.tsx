@@ -16,7 +16,6 @@ import { getActiveSeason } from './services/domain/SeasonService';
 import './App.css';
 import './components/KingdomCreation.css';
 import './components/KingdomDashboard.css';
-import './components/TerritoryManagement.css';
 import './components/WelcomePage.css';
 import './components/TopNavigation.css';
 import './components/TerritoryExpansion.css';
@@ -34,6 +33,30 @@ import { useAITick } from './hooks/useAITick';
 // @aws-amplify/ui-react (Authenticator + ThemeProvider + CSS) is lazy-loaded
 // so it doesn't ship in the initial bundle for the welcome / demo-mode pages.
 const AuthProvider = lazy(() => import('./AuthProvider'));
+
+const TOASTER_STYLE = {
+  background: '#1a1a2e',
+  color: '#e8d5a3',
+  border: '1px solid rgba(212, 175, 55, 0.3)',
+  borderRadius: '8px',
+  fontSize: '0.875rem',
+  padding: '10px 14px',
+  boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+} as const;
+
+function GameToaster() {
+  return (
+    <Toaster
+      position="bottom-right"
+      toastOptions={{
+        style: TOASTER_STYLE,
+        success: { iconTheme: { primary: '#22c55e', secondary: '#1a1a2e' } },
+        error: { iconTheme: { primary: '#ef4444', secondary: '#1a1a2e' } },
+        duration: 4000,
+      }}
+    />
+  );
+}
 
 // Defined at module scope to satisfy Rules of Hooks — must not be inside another
 // component's render function, otherwise its hooks re-run on every parent render.
@@ -84,27 +107,7 @@ const AuthenticatedApp = React.memo(function AuthenticatedApp({
 
   return (
     <main className="app">
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          style: {
-            background: '#1a1a2e',
-            color: '#e8d5a3',
-            border: '1px solid rgba(212, 175, 55, 0.3)',
-            borderRadius: '8px',
-            fontSize: '0.875rem',
-            padding: '10px 14px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-          },
-          success: {
-            iconTheme: { primary: '#22c55e', secondary: '#1a1a2e' },
-          },
-          error: {
-            iconTheme: { primary: '#ef4444', secondary: '#1a1a2e' },
-          },
-          duration: 4000,
-        }}
-      />
+      <GameToaster />
       <div className="app-utility-bar">
         <span className="utility-bar-label">Welcome, {username}</span>
         {isAdminUser && (
@@ -201,7 +204,7 @@ function AppContent() {
 
       const myKingdoms = data.filter(k => {
         const owner = ((k as Record<string, unknown>).owner as string) ?? '';
-        return (sub && owner.includes(sub)) || (cognitoUsername && owner.includes(cognitoUsername));
+        return (sub && (owner === sub || owner.startsWith(sub + '::') || owner.endsWith('::' + sub))) || (cognitoUsername && (owner === cognitoUsername || owner.startsWith(cognitoUsername + '::') || owner.endsWith('::' + cognitoUsername)));
       });
       setKingdoms(myKingdoms);
 
@@ -469,27 +472,7 @@ function AppContent() {
   if (demoMode) {
     return (
       <main className="app">
-        <Toaster
-          position="bottom-right"
-          toastOptions={{
-            style: {
-              background: '#1a1a2e',
-              color: '#e8d5a3',
-              border: '1px solid rgba(212, 175, 55, 0.3)',
-              borderRadius: '8px',
-              fontSize: '0.875rem',
-              padding: '10px 14px',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-            },
-            success: {
-              iconTheme: { primary: '#22c55e', secondary: '#1a1a2e' },
-            },
-            error: {
-              iconTheme: { primary: '#ef4444', secondary: '#1a1a2e' },
-            },
-            duration: 4000,
-          }}
-        />
+        <GameToaster />
         <TutorialOverlay />
         <div className="app-utility-bar">
           <span className="utility-bar-label">Demo Mode</span>
@@ -540,6 +523,7 @@ function AppContent() {
   if (!showAuth && !demoMode) {
     return (
       <ErrorBoundary>
+        <GameToaster />
         <AppRouter
           kingdoms={kingdoms}
           kingdomsLoading={loading}

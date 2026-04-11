@@ -33,14 +33,8 @@ interface KingdomDashboardProps {
   onBack: () => void;
   onManageTerritories?: () => void;
   onManageCombat?: () => void;
-  onManageAlliance?: () => void;
   onViewWorldMap?: () => void;
-  onCastSpells?: () => void;
-  onManageTrade?: () => void;
   onSummonUnits?: () => void;
-  onDiplomacy?: () => void;
-  onBattleReports?: () => void;
-  onViewLeaderboard?: () => void;
   onManageBuildings?: () => void;
   /** Opens the diplomatic message compose modal for a given target kingdom. */
   onComposeMessage?: (target: { id: string; name: string }) => void;
@@ -51,14 +45,8 @@ function KingdomDashboard({
   onBack,
   onManageTerritories,
   onManageCombat,
-  _onManageAlliance,
   onViewWorldMap,
-  _onCastSpells,
-  _onManageTrade,
   onSummonUnits,
-  _onDiplomacy,
-  _onBattleReports,
-  _onViewLeaderboard,
   onManageBuildings,
   onComposeMessage,
 }: KingdomDashboardProps) {
@@ -66,7 +54,6 @@ function KingdomDashboard({
 
   const {
     resources,
-    _liveUnits,
     addGold,
     addTurns,
     updateResources,

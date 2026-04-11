@@ -15,7 +15,7 @@ A modern recreation of the classic Monarchy/Canon browser-based strategy game, b
 - **Alliance System** - Chat, invitations, and diplomacy (demo mode only)
 - **World Map System** - Interactive territory visualization with React Flow
 - **Magic System** - Animated spell casting with React Spring
-- **Trade & Economy System** - Data visualization and resource trading with Recharts
+- **Trade & Economy System** - Data visualization and resource trading
 - **Thievery/Espionage System** - 8 operations with race-specific bonuses
 - **Faith & Focus System** - Alignment selection and focus point abilities
 - **Bounty System** - Target claiming and reward mechanics
@@ -34,7 +34,7 @@ A modern recreation of the classic Monarchy/Canon browser-based strategy game, b
 - **Deployment:** AWS Amplify Hosting
 - **Visualization:** React Flow for interactive maps
 - **Animations:** React Spring for magical effects
-- **Charts:** Recharts for economic data visualization
+- **Charts:** Built-in chart components for economic data visualization
 
 ## 📚 **Documentation**
 

@@ -25,11 +25,12 @@ applications:
       cache:
         paths:
           - frontend/node_modules/**/*
+    # CORS: production domain only. Preview branches use Amplify's built-in CORS handling.
     customHeaders:
       - pattern: '**/*'
         headers:
           - key: 'Access-Control-Allow-Origin'
-            value: '*'
+            value: 'https://monarchy.gurum.se'
           - key: 'Access-Control-Allow-Methods'
             value: 'GET, POST, PUT, DELETE, OPTIONS'
           - key: 'Access-Control-Allow-Headers'

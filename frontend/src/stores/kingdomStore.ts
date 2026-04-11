@@ -270,7 +270,10 @@ export const useKingdomStore = create<KingdomState>((set, get) => {
       scheduleDatabaseSync();
     },
 
-    reset: () => set({ kingdomId: null, resources: initialResources, units: [] }),
+    reset: () => {
+      if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; }
+      set({ kingdomId: null, resources: initialResources, units: [] });
+    },
 
     /**
      * Apply authoritative server state to the store.

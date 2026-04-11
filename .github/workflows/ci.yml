@@ -13,7 +13,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+          cache: 'npm'
 
       - name: Install backend dependencies
         run: npm install --no-audit --no-fund
@@ -28,17 +29,18 @@ jobs:
         run: cd frontend && npx tsc --noEmit
 
       - name: Lint
-        run: cd frontend && npm run lint || echo "::warning::Lint has pre-existing issues"
-        continue-on-error: true
+        run: cd frontend && npm run lint
 
-      - name: Backend & shared tests
+      - name: Backend tests
         run: npx vitest run --config vitest.config.ts
 
+      - name: Shared mechanics tests
+        run: npx vitest run --config vitest.shared.config.ts
+
       - name: Frontend tests
-        run: cd frontend && npx vitest run
+        run: cd frontend && npx vitest run --coverage
 
       - name: Build
         run: cd frontend && npm run build
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
-        continue-on-error: true

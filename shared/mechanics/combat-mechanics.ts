@@ -90,11 +90,16 @@ export const COMBAT_MECHANICS = {
 
   // Summon mechanics - creates networth inflation strategy
   SUMMON_RATES: {
-    DROBEN: 0.0304,            // 3.04% of networth
-    ELEMENTAL: 0.0284,         // 2.84% of networth
-    GOBLIN: 0.0275,            // 2.75% of networth
-    DWARVEN: 0.0275,           // 2.75% of networth
-    HUMAN: 0.025,              // 2.5% of networth (estimated)
+    DROBEN: 0.0304,
+    FAE: 0.020,
+    HUMAN: 0.025,
+    ELVEN: 0.023,
+    GOBLIN: 0.024,
+    VAMPIRE: 0.026,
+    ELEMENTAL: 0.027,
+    CENTAUR: 0.028,
+    SIDHE: 0.022,
+    DWARVEN: 0.029,
   }
 }
 
@@ -187,8 +192,10 @@ export const calculateLandGained = (
   defenderDefense: number,
   targetLand: number,
   attackType: 'full_strike' | 'controlled_strike',
-  csPercentage?: number
+  csPercentage?: number,
+  seed?: number
 ): number => {
+  const rand = seed !== undefined ? (Math.sin(seed) + 1) / 2 : Math.random();
   const offenseRatio = attackerOffense / Math.max(1, defenderDefense)
 
   if (attackType === 'controlled_strike') {
@@ -202,11 +209,11 @@ export const calculateLandGained = (
   if (offenseRatio >= 2.0) {
     // "With ease" - higher land gain
     landPercentage = COMBAT_MECHANICS.LAND_ACQUISITION.WITH_EASE_MIN + 
-      (Math.random() * (COMBAT_MECHANICS.LAND_ACQUISITION.WITH_EASE_MAX - COMBAT_MECHANICS.LAND_ACQUISITION.WITH_EASE_MIN))
+      (rand * (COMBAT_MECHANICS.LAND_ACQUISITION.WITH_EASE_MAX - COMBAT_MECHANICS.LAND_ACQUISITION.WITH_EASE_MIN))
   } else if (offenseRatio >= 1.2) {
     // "Good fight" - moderate land gain
     landPercentage = COMBAT_MECHANICS.LAND_ACQUISITION.GOOD_FIGHT_MIN + 
-      (Math.random() * (COMBAT_MECHANICS.LAND_ACQUISITION.GOOD_FIGHT_MAX - COMBAT_MECHANICS.LAND_ACQUISITION.GOOD_FIGHT_MIN))
+      (rand * (COMBAT_MECHANICS.LAND_ACQUISITION.GOOD_FIGHT_MAX - COMBAT_MECHANICS.LAND_ACQUISITION.GOOD_FIGHT_MIN))
   } else {
     // Failed attack
     return 0
@@ -258,13 +265,12 @@ export const calculateCombatResult = (
     .filter(([t]) => t !== 'scouts' && t !== 'elite_scouts')
     .reduce((s, [, c]) => s + c, 0)
 
-  // Attacker losses scale with defender's relative strength (inverse of offense ratio)
-  // with_ease (ratio>=2.0): ~2-3% attacker losses, 25% defender losses
-  // good_fight (ratio>=1.2): ~8-12% attacker losses, 15% defender losses
-  // failed (ratio<1.2): ~20% attacker losses, 3% defender losses
-  const defenderStrengthRatio = Math.min(1, effectiveDefenderDefense / Math.max(1, effectiveAttackerOffense))
-  const attackerLossRate = resultType === 'failed' ? 0.20 : defenderStrengthRatio * 0.15
-  const defenderLossRate = resultType === 'with_ease' ? 0.25 : resultType === 'good_fight' ? 0.15 : 0.03
+  // Fixed casualty rates aligned with combatCache.ts (server-authoritative)
+  // with_ease (ratio>=2.0): 5% attacker losses, 20% defender losses
+  // good_fight (ratio>=1.2): 15% attacker losses, 15% defender losses
+  // failed (ratio<1.2): 25% attacker losses, 5% defender losses
+  const attackerLossRate = resultType === 'with_ease' ? 0.05 : resultType === 'good_fight' ? 0.15 : 0.25
+  const defenderLossRate = resultType === 'with_ease' ? 0.20 : resultType === 'good_fight' ? 0.15 : 0.05
 
   return {
     success: resultType !== 'failed',

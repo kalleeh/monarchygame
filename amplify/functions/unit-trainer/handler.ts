@@ -148,6 +148,6 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
     return { success: true, units: JSON.stringify(updatedUnits) };
   } catch (error) {
     log.error('unit-trainer', error, { kingdomId, unitType, quantity });
-    return { success: false, error: error instanceof Error ? error.message : 'Training failed', errorCode: ErrorCode.INTERNAL_ERROR };
+    return { success: false, error: 'Training failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };

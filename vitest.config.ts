@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['amplify/functions/**/*.test.ts'],
+    include: ['amplify/functions/**/*.test.ts', 'shared/**/*.test.ts'],
     setupFiles: ['amplify/functions/test-utils.ts'],
     clearMocks: true,
     restoreMocks: true,

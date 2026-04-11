@@ -166,32 +166,36 @@ const alertTopic = new sns.Topic(monitoringStack, 'GameAlerts', {
   displayName: 'Monarchy Game Alerts',
 });
 
-// Lambda error alarm — fires when any function errors ≥5 times in 5 minutes
+// Lambda error alarm — fires when app function errors ≥5 times in 5 minutes
+const errorMetrics: Record<string, cloudwatch.IMetric> = {};
+lambdaFunctions.forEach((fn, i) => {
+  errorMetrics[`e${i}`] = fn.resources.lambda.metricErrors({ period: cdk.Duration.minutes(5) });
+});
 const lambdaErrorAlarm = new cloudwatch.Alarm(monitoringStack, 'LambdaErrorAlarm', {
-  metric: new cloudwatch.Metric({
-    namespace: 'AWS/Lambda',
-    metricName: 'Errors',
-    statistic: 'Sum',
-    period: cdk.Duration.minutes(5),
+  metric: new cloudwatch.MathExpression({
+    expression: Object.keys(errorMetrics).join('+'),
+    usingMetrics: errorMetrics,
   }),
   threshold: 5,
   evaluationPeriods: 1,
-  alarmDescription: 'Lambda errors ≥5 in 5 minutes',
+  alarmDescription: 'Lambda errors ≥5 in 5 minutes (app functions only)',
   treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
 });
 lambdaErrorAlarm.addAlarmAction(new SnsAction(alertTopic));
 
-// Lambda duration alarm — fires when p99 latency exceeds 10s
+// Lambda duration alarm — fires when p99 latency exceeds 10s (app functions only)
+const durationMetrics: Record<string, cloudwatch.IMetric> = {};
+lambdaFunctions.forEach((fn, i) => {
+  durationMetrics[`d${i}`] = fn.resources.lambda.metricDuration({ statistic: 'p99', period: cdk.Duration.minutes(5) });
+});
 const lambdaDurationAlarm = new cloudwatch.Alarm(monitoringStack, 'LambdaDurationAlarm', {
-  metric: new cloudwatch.Metric({
-    namespace: 'AWS/Lambda',
-    metricName: 'Duration',
-    statistic: 'p99',
-    period: cdk.Duration.minutes(5),
+  metric: new cloudwatch.MathExpression({
+    expression: `MAX([${Object.keys(durationMetrics).join(',')}])`,
+    usingMetrics: durationMetrics,
   }),
   threshold: 10000,
   evaluationPeriods: 2,
-  alarmDescription: 'Lambda p99 duration >10s for 10 minutes',
+  alarmDescription: 'Lambda p99 duration >10s for 10 minutes (app functions only)',
   treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
 });
 lambdaDurationAlarm.addAlarmAction(new SnsAction(alertTopic));

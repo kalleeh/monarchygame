@@ -298,6 +298,6 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     return { success: true, result: JSON.stringify({ spellId, targetId, elanUsed: spellElanCost, remainingElan: updatedResources.elan, damageReport }) };
   } catch (error) {
     log.error('spell-caster', error, { casterId, spellId });
-    return { success: false, error: error instanceof Error ? error.message : 'Spell casting failed', errorCode: ErrorCode.INTERNAL_ERROR };
+    return { success: false, error: 'Spell casting failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
 };
