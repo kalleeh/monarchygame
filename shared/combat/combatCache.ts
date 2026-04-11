@@ -166,121 +166,87 @@ export function applyTerrainToUnitPower(
   return totalPower;
 }
 
-// Disable caching for now to fix build issues
-const combatCache = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  wrap: <T extends (...args: any[]) => any>(fn: T, _options?: unknown): T => fn,
-  clear: () => {},
-  size: 0
-};
+export function calculateUnitPower(units: Record<string, number>, type: 'attack' | 'defense'): number {
+  let totalPower = 0;
+  for (const [unitType, count] of Object.entries(units)) {
+    const unitStats = UNIT_STATS[unitType as keyof typeof UNIT_STATS];
+    const power = unitStats
+      ? (type === 'attack' ? unitStats.attack : unitStats.defense)
+      : (type === 'attack' ? getUnitOffense(unitType) : getUnitDefense(unitType));
+    totalPower += power * count;
+  }
+  return totalPower;
+}
 
-export const calculateUnitPower = combatCache.wrap(
-  (units: Record<string, number>, type: 'attack' | 'defense') => {
-    let totalPower = 0;
-    for (const [unitType, count] of Object.entries(units)) {
-      const unitStats = UNIT_STATS[unitType as keyof typeof UNIT_STATS];
-      const power = unitStats
-        ? (type === 'attack' ? unitStats.attack : unitStats.defense)
-        : (type === 'attack' ? getUnitOffense(unitType) : getUnitDefense(unitType));
-      totalPower += power * count;
-    }
-    return totalPower;
-  },
-  { ttl: '1h', keyPrefix: 'unitPower' }
-);
+export function calculatePowerRatio(attackerUnits: Record<string, number>, defenderUnits: Record<string, number>): number {
+  const attackerPower = calculateUnitPower(attackerUnits, 'attack');
+  const defenderPower = calculateUnitPower(defenderUnits, 'defense');
+  return defenderPower > 0 ? attackerPower / defenderPower : attackerPower;
+}
 
-export const calculatePowerRatio = combatCache.wrap(
-  (attackerUnits: Record<string, number>, defenderUnits: Record<string, number>) => {
-    const attackerPower = calculateUnitPower(attackerUnits, 'attack') as number;
-    const defenderPower = calculateUnitPower(defenderUnits, 'defense') as number;
-    return defenderPower > 0 ? attackerPower / defenderPower : attackerPower;
-  },
-  { ttl: '1h', keyPrefix: 'powerRatio' }
-);
+export function getBattleResult(powerRatio: number): string {
+  if (powerRatio >= 2.0) return 'with_ease';
+  if (powerRatio >= 1.2) return 'good_fight';
+  return 'failed';
+}
 
-export const getBattleResult = combatCache.wrap(
-  (powerRatio: number) => {
-    if (powerRatio >= 2.0) return 'with_ease';
-    if (powerRatio >= 1.2) return 'good_fight';
-    return 'failed';
-  },
-  { ttl: '1h', keyPrefix: 'battleResult' }
-);
+export function getCasualtyRates(battleResult: string): { attacker: number; defender: number } {
+  switch (battleResult) {
+    case 'with_ease': return { attacker: 0.05, defender: 0.2 };
+    case 'good_fight': return { attacker: 0.15, defender: 0.15 };
+    case 'failed': return { attacker: 0.25, defender: 0.05 };
+    default: return { attacker: 0.15, defender: 0.15 };
+  }
+}
 
-export const getCasualtyRates = combatCache.wrap(
-  (battleResult: string) => {
-    switch (battleResult) {
-      case 'with_ease': return { attacker: 0.05, defender: 0.2 };
-      case 'good_fight': return { attacker: 0.15, defender: 0.15 };
-      case 'failed': return { attacker: 0.25, defender: 0.05 };
-      default: return { attacker: 0.15, defender: 0.15 };
-    }
-  },
-  { ttl: '1h', keyPrefix: 'casualtyRates' }
-);
+export function calculateLandGained(battleResult: string, defenderLand: number, seed?: number): number {
+  if (battleResult === 'failed') return 0;
+  const randomFactor = seed ? Math.sin(seed) * 0.5 + 0.5 : Math.random();
+  let landPercentage: number;
+  if (battleResult === 'with_ease') {
+    landPercentage = 0.070 + randomFactor * (0.0735 - 0.070);
+  } else {
+    // good_fight: 6.79% - 7.0%
+    landPercentage = 0.0679 + randomFactor * (0.070 - 0.0679);
+  }
+  return Math.floor(defenderLand * landPercentage);
+}
 
-export const calculateLandGained = combatCache.wrap(
-  (battleResult: string, defenderLand: number, seed?: number) => {
-    if (battleResult === 'failed') return 0;
-    const randomFactor = seed ? Math.sin(seed) * 0.5 + 0.5 : Math.random();
-    let landPercentage: number;
-    if (battleResult === 'with_ease') {
-      landPercentage = 0.070 + randomFactor * (0.0735 - 0.070);
-    } else {
-      // good_fight: 6.79% - 7.0%
-      landPercentage = 0.0679 + randomFactor * (0.070 - 0.0679);
-    }
-    return Math.floor(defenderLand * landPercentage);
-  },
-  { ttl: '1h', keyPrefix: 'landGained' }
-);
+export function calculateCasualties(units: Record<string, number>, casualtyRate: number): Record<string, number> {
+  const casualties: Record<string, number> = {};
+  for (const [unitType, count] of Object.entries(units)) {
+    casualties[unitType] = Math.floor(count * casualtyRate);
+  }
+  return casualties;
+}
 
-export const calculateCasualties = combatCache.wrap(
-  (units: Record<string, number>, casualtyRate: number) => {
-    const casualties: Record<string, number> = {};
-    for (const [unitType, count] of Object.entries(units)) {
-      casualties[unitType] = Math.floor(count * casualtyRate);
-    }
-    return casualties;
-  },
-  { ttl: '1h', keyPrefix: 'casualties' }
-);
+export function calculateCombatResult(
+  attackerUnits: Record<string, number>,
+  defenderUnits: Record<string, number>,
+  defenderLand: number,
+  seed?: number
+): { result: string; powerRatio: number; casualties: { attacker: Record<string, number>; defender: Record<string, number> }; landGained: number; goldLooted: number; success: boolean } {
+  const powerRatio = calculatePowerRatio(attackerUnits, defenderUnits);
+  const battleResult = getBattleResult(powerRatio);
+  const casualtyRates = getCasualtyRates(battleResult);
+  const attackerCasualties = calculateCasualties(attackerUnits, casualtyRates.attacker);
+  const defenderCasualties = calculateCasualties(defenderUnits, casualtyRates.defender);
+  const landGained = calculateLandGained(battleResult, defenderLand, seed);
+  // Gold looted per acre: 1000 (must match frontend gameConfig.ts COMBAT.GOLD_LOOTED_PER_ACRE)
+  const goldLooted = landGained * 1000;
 
-export const calculateCombatResult = combatCache.wrap(
-  (
-    attackerUnits: Record<string, number>,
-    defenderUnits: Record<string, number>,
-    defenderLand: number,
-    seed?: number
-  ) => {
-    const powerRatio = calculatePowerRatio(attackerUnits, defenderUnits) as number;
-    const battleResult = getBattleResult(powerRatio) as string;
-    const casualtyRates = getCasualtyRates(battleResult) as { attacker: number; defender: number };
-    const attackerCasualties = calculateCasualties(attackerUnits, casualtyRates.attacker);
-    const defenderCasualties = calculateCasualties(defenderUnits, casualtyRates.defender);
-    const landGained = calculateLandGained(battleResult, defenderLand, seed) as number;
-    // Gold looted per acre: 1000 (must match frontend gameConfig.ts COMBAT.GOLD_LOOTED_PER_ACRE)
-    const goldLooted = landGained * 1000;
+  return {
+    result: battleResult,
+    powerRatio,
+    casualties: {
+      attacker: attackerCasualties,
+      defender: defenderCasualties
+    },
+    landGained,
+    goldLooted,
+    success: battleResult !== 'failed'
+  };
+}
 
-    return {
-      result: battleResult,
-      powerRatio,
-      casualties: {
-        attacker: attackerCasualties,
-        defender: defenderCasualties
-      },
-      landGained,
-      goldLooted,
-      success: battleResult !== 'failed'
-    };
-  },
-  { ttl: '1h', keyPrefix: 'combatResult' }
-);
-
-export const clearCombatCache = () => {
-  combatCache.clear();
-};
-
-export const getCacheStats = () => {
-  return { size: combatCache.size, entries: [] };
-};
+export function clearCombatCache(): void { /* no-op — caching not implemented */ }
+export function getCacheStats(): { size: number; entries: unknown[] } { return { size: 0, entries: [] }; }

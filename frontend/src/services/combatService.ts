@@ -3,8 +3,8 @@
  * Handles API calls for combat operations - NO authoritative calculations
  */
 
-import { generateClient } from 'aws-amplify/data';
 import { AmplifyFunctionService } from './amplifyFunctionService';
+import { getClient } from '../utils/amplifyClient';
 
 // Import the response type from amplifyFunctionService
 type LambdaResponse<T = unknown> = {
@@ -16,8 +16,6 @@ type LambdaResponse<T = unknown> = {
 import type { Schema } from '../../../amplify/data/resource';
 import type { AttackRequest, CombatResult, DefenseSettings } from '../types/combat';
 
-let _client: ReturnType<typeof generateClient<Schema>> | null = null;
-const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 export class CombatService {
   /**

@@ -353,6 +353,9 @@ const schema = a.schema({
       fogOfWar: a.json(),
       lastUpdated: a.datetime().required(),
     })
+    .secondaryIndexes((index) => [
+      index('kingdomId').sortKeys(['seasonId']).name('worldStatesByKingdomIdAndSeasonId')
+    ])
     .authorization((allow) => [
       allow.owner()
     ]),

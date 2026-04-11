@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
 import { Amplify } from 'aws-amplify';
-import { generateClient } from 'aws-amplify/data';
+import { getClient } from './utils/amplifyClient';
 import { Toaster } from 'react-hot-toast';
 import { fetchUserAttributes, fetchAuthSession } from 'aws-amplify/auth';
 import type { AuthUser } from 'aws-amplify/auth';
@@ -14,16 +14,6 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { isDemoMode, disableDemoMode } from './utils/authMode';
 import { getActiveSeason } from './services/domain/SeasonService';
 import './App.css';
-import './components/KingdomCreation.css';
-import './components/KingdomDashboard.css';
-import './components/WelcomePage.css';
-import './components/TopNavigation.css';
-import './components/TerritoryExpansion.css';
-import './components/BattleFormations.css';
-import './components/SpellCastingInterface.css';
-import './components/TradeSystem.css';
-import './components/UnitSummonInterface.css';
-import './components/DiplomacyInterface.css';
 import './styles/game-pages.css';
 import type { Schema } from '../../amplify/data/resource';
 import { TutorialOverlay } from './components/tutorial/TutorialOverlay';
@@ -139,8 +129,6 @@ const AuthenticatedApp = React.memo(function AuthenticatedApp({
 });
 
 Amplify.configure(outputs);
-let _client: ReturnType<typeof generateClient<Schema>> | null = null;
-const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 function AppContent() {
   const navigate = useNavigate();

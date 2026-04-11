@@ -2,9 +2,7 @@ import { generateClient } from 'aws-amplify/data';
 import type { DiplomaticRelationship, TreatyProposal, DiplomaticAction } from '../types/diplomacy';
 import { isDemoMode } from '../utils/authMode';
 import type { Schema } from '../../../amplify/data/resource';
-
-let _client: ReturnType<typeof generateClient<Schema>> | null = null;
-const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
+import { getClient } from '../utils/amplifyClient';
 
 // ── Demo / mock data ────────────────────────────────────────────────────────
 

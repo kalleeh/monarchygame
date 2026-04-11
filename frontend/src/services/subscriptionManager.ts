@@ -3,13 +3,9 @@
  * Centralized manager for all active GraphQL subscriptions.
  */
 
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../../amplify/data/resource';
+import { getClient } from '../utils/amplifyClient';
 import { ToastService } from './toastService';
 import { isDemoMode } from '../utils/authMode';
-
-let _client: ReturnType<typeof generateClient<Schema>> | null = null;
-const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 interface Subscription {
   key: string;

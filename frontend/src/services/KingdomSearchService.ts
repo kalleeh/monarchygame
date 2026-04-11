@@ -1,12 +1,7 @@
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { isDemoMode } from '../utils/authMode';
-
-let _client: ReturnType<typeof generateClient<Schema>> | null = null;
-const getClient = () => {
-  if (!_client) _client = generateClient<Schema>();
-  return _client;
-};
+import { getClient } from '../utils/amplifyClient';
 
 export interface KingdomPage {
   kingdoms: Array<{

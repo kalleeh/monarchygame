@@ -1,5 +1,5 @@
 import type { Schema } from '../../data/resource';
-import { dbList, dbUpdate, dbGet, parseJsonField } from '../data-client';
+import { dbList, dbUpdate, dbGet, dbQuery, parseJsonField } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { verifyOwnership } from '../verify-ownership';
@@ -92,7 +92,7 @@ async function handleGetActiveSeason(event: { identity?: unknown }): Promise<str
     });
   } catch (error) {
     log.error('season-manager', error);
-    return JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Season query failed', errorCode: ErrorCode.INTERNAL_ERROR });
+    return JSON.stringify({ success: false, error: 'Season query failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }
 }
 
@@ -116,8 +116,8 @@ async function handleFetchWorldState(event: { identity?: unknown; arguments?: un
     const denied = verifyOwnership(identity as { sub: string; username?: string }, kingdom.owner ?? null);
     if (denied) return JSON.stringify(denied);
 
-    const allStates = await dbList<{ id: string; kingdomId: string; seasonId: string; visibleKingdoms: unknown; fogOfWar: unknown }>('WorldState');
-    const state = allStates.find(s => s.kingdomId === kingdomId && s.seasonId === seasonId);
+    const states = await dbQuery<{ id: string; kingdomId: string; seasonId: string; visibleKingdoms: unknown; fogOfWar: unknown }>('WorldState', 'worldStatesByKingdomIdAndSeasonId', { field: 'kingdomId', value: kingdomId });
+    const state = states.find(s => s.seasonId === seasonId);
 
     log.info('season-manager', 'fetchWorldState', { kingdomId, seasonId, found: !!state });
     return JSON.stringify({
@@ -126,6 +126,6 @@ async function handleFetchWorldState(event: { identity?: unknown; arguments?: un
     });
   } catch (error) {
     log.error('season-manager', error);
-    return JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'World state query failed', errorCode: ErrorCode.INTERNAL_ERROR });
+    return JSON.stringify({ success: false, error: 'World state query failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }
 }

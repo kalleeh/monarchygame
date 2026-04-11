@@ -12,11 +12,7 @@ import {
   RESTORATION_MECHANICS,
 } from '../../../shared/mechanics/restoration-mechanics';
 import { isDemoMode } from '../utils/authMode';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../../amplify/data/resource';
-
-let _client: ReturnType<typeof generateClient<Schema>> | null = null;
-const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
+import { getClient } from '../utils/amplifyClient';
 
 type RestorationType = 'damage_based' | 'death_based' | 'none';
 

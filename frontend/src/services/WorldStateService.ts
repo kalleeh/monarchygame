@@ -4,12 +4,8 @@
  * In demo mode, returns full visibility.
  */
 
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../../amplify/data/resource';
+import { getClient } from '../utils/amplifyClient';
 import { isDemoMode } from '../utils/authMode';
-
-let _client: ReturnType<typeof generateClient<Schema>> | null = null;
-const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 export interface WorldStateData {
   seasonId: string;

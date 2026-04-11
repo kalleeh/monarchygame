@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
+import './KingdomDashboard.css';
 import type { Schema } from '../../../amplify/data/resource';
 import { TopNavigation } from './TopNavigation';
 import { useCombatStore } from '../stores/combatStore';

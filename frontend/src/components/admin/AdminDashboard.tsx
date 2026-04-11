@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { generateClient } from 'aws-amplify/data';
+import { getClient } from '../../utils/amplifyClient';
 import { fetchUserAttributes } from 'aws-amplify/auth';
 import toast from 'react-hot-toast';
 import type { Schema } from '../../../../amplify/data/resource';
@@ -12,9 +12,6 @@ import { isDemoMode } from '../../utils/authMode';
 import { cleanupKingdom } from '../../services/amplifyFunctionService';
 import SeasonResults from '../SeasonResults';
 import './AdminDashboard.css';
-
-let _client: ReturnType<typeof generateClient<Schema>> | null = null;
-const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

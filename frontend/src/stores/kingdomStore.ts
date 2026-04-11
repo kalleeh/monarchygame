@@ -1,14 +1,10 @@
 import { create } from 'zustand';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../../amplify/data/resource';
+import { getClient } from '../utils/amplifyClient';
 import type { KingdomResources } from '../types/amplify';
 import { calculateCurrentAge } from '../../../shared/mechanics/age-mechanics';
 import type { AgeStatus } from '../../../shared/mechanics/age-mechanics';
 import { isDemoMode } from '../utils/authMode';
 import { getUnitsForRace } from '../utils/units';
-
-let _client: ReturnType<typeof generateClient<Schema>> | null = null;
-const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 export interface KingdomUnit {
   id: string;

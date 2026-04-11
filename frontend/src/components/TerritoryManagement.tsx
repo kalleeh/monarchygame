@@ -1,6 +1,6 @@
 // Legacy: use TerritoryExpansion instead
 import { useState, useEffect, useCallback } from 'react';
-import { generateClient } from 'aws-amplify/data';
+import { getClient } from '../utils/amplifyClient';
 import type { Schema } from '../../../amplify/data/resource';
 import type { Territory } from '../types/territory';
 import { claimTerritory } from '../services/domain/TerritoryService';
@@ -10,9 +10,6 @@ import { TopNavigation } from './TopNavigation';
 import { LoadingButton } from './ui/loading/LoadingButton';
 import { SkeletonCard } from './ui/loading/Skeleton';
 import { getBuildingName } from '../../../shared/mechanics/building-mechanics';
-
-let _client: ReturnType<typeof generateClient<Schema>> | null = null;
-const getClient = () => { if (!_client) _client = generateClient<Schema>(); return _client; };
 
 interface TerritoryManagementProps {
   kingdom: Schema['Kingdom']['type'];
