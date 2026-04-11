@@ -156,13 +156,9 @@ export class DiplomacyService {
     if (isDemoMode()) {
       return 100;
     }
-    try {
-      const { data } = await getClient().models.Kingdom.get({ id: _kingdomId });
-      return (data?.networth as number) ?? 0;
-    } catch (error) {
-      console.error('Failed to fetch kingdom reputation:', error);
-      return 0;
-    }
+    // Kingdom model has no reputation field — return default neutral value.
+    // Reputation is tracked locally in the diplomacy store (0-200 range).
+    return 100;
   }
 
   /**
