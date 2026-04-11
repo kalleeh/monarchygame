@@ -26,5 +26,13 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:functions": "vitest amplify/functions/**/*.test.ts"
+  },
+  "overrides": {
+    "fast-xml-parser": ">=5.5.7",
+    "lodash": ">=4.17.24",
+    "@smithy/config-resolver": ">=4.4.0",
+    "minimatch": ">=10.2.3",
+    "handlebars": ">=4.7.9",
+    "immutable": ">=3.8.3"
   }
 }
