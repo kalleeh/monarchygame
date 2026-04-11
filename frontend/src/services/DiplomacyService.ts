@@ -156,9 +156,20 @@ export class DiplomacyService {
     if (isDemoMode()) {
       return 100;
     }
-    // Kingdom model has no reputation field — return default neutral value.
-    // Reputation is tracked locally in the diplomacy store (0-200 range).
-    return 100;
+    try {
+      // Aggregate reputation from all diplomatic relationships
+      const { data } = await getClient().models.DiplomaticRelation.list({
+        filter: { kingdomId: { eq: _kingdomId } } as Parameters<ReturnType<typeof generateClient<Schema>>['models']['DiplomaticRelation']['list']>[0]['filter'],
+        limit: 100,
+      });
+      if (!data || data.length === 0) return 100; // neutral default
+      const total = data.reduce((sum, rel) => sum + (rel.reputation ?? 0), 0);
+      // Clamp aggregated reputation to 0-200 range
+      return Math.max(0, Math.min(200, 100 + total));
+    } catch (error) {
+      console.error('Failed to fetch kingdom reputation:', error);
+      return 100;
+    }
   }
 
   /**
