@@ -46,6 +46,16 @@ type WarDeclarationType = {
   resolvedAt?: string;
 };
 
+async function updateKingdomReputation(kingdomId: string): Promise<void> {
+  const relations = await dbQuery<{ reputation?: number }>(
+    'DiplomaticRelation', 'diplomaticRelationsByKingdomId',
+    { field: 'kingdomId', value: kingdomId }
+  );
+  const total = relations.reduce((sum, r) => sum + (r.reputation ?? 0), 0);
+  const reputation = Math.max(0, Math.min(200, 100 + total));
+  await dbUpdate('Kingdom', kingdomId, { reputation });
+}
+
 export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (event) => {
   const args = event.arguments;
 
@@ -188,6 +198,7 @@ async function handleRespondToTreaty(args: { treatyId: string; accepted: boolean
         lastActionAt: new Date().toISOString()
       });
     }
+    await updateKingdomReputation(treaty.proposerId);
   }
 
   return JSON.stringify({
@@ -250,6 +261,7 @@ async function handleDeclareDiplomaticWar(args: { kingdomId: string; targetKingd
       owner: callerIdentity.sub
     });
   }
+  await updateKingdomReputation(kingdomId);
 
   return JSON.stringify({ success: true, kingdomId, targetKingdomId, status: 'war' });
 }
@@ -298,6 +310,7 @@ async function handleMakePeace(args: { kingdomId: string; targetKingdomId: strin
       reputation: (relations[0].reputation ?? 0) + 5,
       lastActionAt: new Date().toISOString()
     });
+    await updateKingdomReputation(kingdomId);
   }
 
   return JSON.stringify({ success: true, kingdomId, targetKingdomId, status: 'neutral' });

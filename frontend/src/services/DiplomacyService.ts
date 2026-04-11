@@ -140,7 +140,7 @@ export class DiplomacyService {
           name: k.name ?? 'Unknown',
           race: k.race ?? 'Human',
           power: k.networth ?? 0,
-          reputation: 50,
+          reputation: (k as Record<string, unknown>).reputation as number ?? 100,
           relationship: 'neutral',
         }));
     } catch (error) {
@@ -157,17 +157,9 @@ export class DiplomacyService {
       return 100;
     }
     try {
-      // Aggregate reputation from all diplomatic relationships
-      const { data } = await getClient().models.DiplomaticRelation.list({
-        filter: { kingdomId: { eq: _kingdomId } } as Parameters<ReturnType<typeof generateClient<Schema>>['models']['DiplomaticRelation']['list']>[0]['filter'],
-        limit: 100,
-      });
-      if (!data || data.length === 0) return 100; // neutral default
-      const total = data.reduce((sum, rel) => sum + (rel.reputation ?? 0), 0);
-      // Clamp aggregated reputation to 0-200 range
-      return Math.max(0, Math.min(200, 100 + total));
-    } catch (error) {
-      console.error('Failed to fetch kingdom reputation:', error);
+      const { data } = await getClient().models.Kingdom.get({ id: _kingdomId });
+      return (data as Record<string, unknown>)?.reputation as number ?? 100;
+    } catch {
       return 100;
     }
   }

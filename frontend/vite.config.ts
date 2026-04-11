@@ -36,8 +36,10 @@ export default defineConfig({
           if (id.includes('node_modules/react-dom')) return 'vendor-react';
           if (id.includes('node_modules/react/')) return 'vendor-react';
           if (id.includes('node_modules/react-router-dom')) return 'vendor-router';
-          if (id.includes('node_modules/aws-amplify/')) return 'vendor-aws-core';
+          // Split AWS SDK: auth UI is lazy-loaded, keep data client separate
           if (id.includes('node_modules/@aws-amplify/ui-react')) return 'vendor-aws-ui';
+          if (id.includes('node_modules/@aws-amplify/auth') || id.includes('node_modules/aws-amplify/auth')) return 'vendor-aws-auth';
+          if (id.includes('node_modules/aws-amplify/') || id.includes('node_modules/@aws-amplify/')) return 'vendor-aws-core';
           if (id.includes('node_modules/@dnd-kit/')) return 'vendor-dnd';
           if (id.includes('node_modules/react-hot-toast') || id.includes('node_modules/goober')) return 'vendor-toast';
         }

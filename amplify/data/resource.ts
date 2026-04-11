@@ -73,6 +73,8 @@ const schema = a.schema({
       isAI: a.boolean().default(false),
       isActive: a.boolean().default(true),
       networth: a.integer().default(0),
+      reputation: a.integer().default(100)
+        .authorization((allow) => [allow.authenticated().to(['read']), allow.owner()]),
       seasonId: a.id(),
       createdAt: a.datetime(),
       ageStartTime: a.datetime(),
