@@ -5,13 +5,17 @@ applications:
       phases:
         preBuild:
           commands:
-            # Deploy backend (CDK stacks, schema, Lambdas) first so outputs are fresh.
-            # Moved here from the top-level `backend:` section which was being skipped
-            # due to "No backend environment association found" on Gen2 apps.
-            # Use npm install (not npm ci) to handle transitive dep version drift.
+            # Install root deps for ampx CLI
             - npm install
-            - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
-            - npm install
+            # Deploy backend only when backend files changed; skip for frontend-only commits.
+            # The CDK deploy currently fails with "Unable to resolve AWS account" — under investigation.
+            - |
+              if git diff --name-only HEAD~1 HEAD 2>/dev/null | grep -qE '^amplify/|^shared/|^package\.json'; then
+                echo "Backend files changed — deploying backend..."
+                npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+              else
+                echo "Frontend-only change — skipping backend deploy"
+              fi
             - npx ampx generate outputs --branch $AWS_BRANCH --app-id $AWS_APP_ID
             - cp amplify_outputs.json frontend/amplify_outputs.json
             - npm install --prefix frontend
