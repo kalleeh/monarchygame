@@ -36,10 +36,9 @@ export default defineConfig({
           if (id.includes('node_modules/react-dom')) return 'vendor-react';
           if (id.includes('node_modules/react/')) return 'vendor-react';
           if (id.includes('node_modules/react-router-dom')) return 'vendor-router';
-          // Split AWS SDK: auth UI is lazy-loaded, keep auth+core in one chunk
-          // to avoid circular-dependency TDZ errors in the bundled output.
-          if (id.includes('node_modules/@aws-amplify/ui-react')) return 'vendor-aws-ui';
-          if (id.includes('node_modules/aws-amplify/') || id.includes('node_modules/@aws-amplify/')) return 'vendor-aws-core';
+          // All @aws-amplify/* packages must stay in ONE chunk — they have
+          // circular dependencies that cause TDZ errors when split.
+          if (id.includes('node_modules/aws-amplify/') || id.includes('node_modules/@aws-amplify/')) return 'vendor-aws';
           if (id.includes('node_modules/@dnd-kit/')) return 'vendor-dnd';
           if (id.includes('node_modules/react-hot-toast') || id.includes('node_modules/goober')) return 'vendor-toast';
         }
