@@ -76,6 +76,7 @@ All planned features, code quality improvements, and backlog items are complete.
 - ✅ DynamoDB rate limiter — already implemented (was incorrectly listed as in-memory)
 - ✅ Territory system — already coherent (single store + component + Lambda; legacy TerritoryManagement.tsx is dead code)
 - ✅ Additional GSIs — DiplomaticRelation.targetKingdomId added (only missing one; all others already existed)
+- ✅ `ampx pipeline-deploy` fixed — pinned @aws-amplify deps to exact versions (build 406)
 - ✅ Bundle size optimization — React Flow lazy-loaded with WorldMap (~172KB off initial page load)
 
 ### Quality Metrics
@@ -94,10 +95,11 @@ All planned features, code quality improvements, and backlog items are complete.
 
 ### Production Deployment
 - ✅ Deployed to AWS Amplify production (monarchy.gurum.se) via CodeCommit CI/CD pipeline
+- ✅ `ampx pipeline-deploy` fixed — pinned @aws-amplify deps to exact versions (build 406)
 - Subscribe to SNS alert topic for monitoring notifications
 - Validate CloudWatch dashboard and alarms
 
 ---
 
-**Last Updated:** 2026-04-05  
+**Last Updated:** 2026-04-26  
 **Status:** Deployed to production
