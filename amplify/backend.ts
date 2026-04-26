@@ -254,3 +254,4 @@ new cloudwatch.Dashboard(monitoringStack, 'GameDashboard', {
 // which causes CloudFormation to fail with "Invalid AttributeDataType input".
 // Clearing the Schema override tells CloudFormation to leave it unchanged.
 backend.auth.resources.cfnResources.cfnUserPool.addPropertyOverride('Schema', undefined);
+// ci: verify npm ci fixes pipeline-deploy

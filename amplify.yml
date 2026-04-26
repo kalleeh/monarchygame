@@ -5,8 +5,8 @@ applications:
       phases:
         preBuild:
           commands:
-            # Install root deps for ampx CLI
-            - npm install
+            # Install root deps for ampx CLI (ci = deterministic from lockfile)
+            - npm ci
             # Deploy backend only when backend files changed; skip for frontend-only commits.
             - |
               if git diff --name-only HEAD~1 HEAD 2>/dev/null | grep -qE '^amplify/|^shared/|^package\.json'; then
@@ -17,7 +17,7 @@ applications:
                 echo "Frontend-only change — using committed amplify_outputs.json"
               fi
             - cp amplify_outputs.json frontend/amplify_outputs.json
-            - npm install --prefix frontend
+            - npm ci --prefix frontend
         build:
           commands:
             - npm run build --prefix frontend
@@ -27,7 +27,7 @@ applications:
           - '**/*'
       cache:
         paths:
-          - frontend/node_modules/**/*
+          - ~/.npm/**/*
     # CORS: production domain only. Preview branches use Amplify's built-in CORS handling.
     customHeaders:
       - pattern: '**/*'
