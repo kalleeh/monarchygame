@@ -141,6 +141,15 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
   // Summon units (instant, gold-cost-based) - adds to kingdom store
   summonUnits: async (_kingdomId: string, unitType: string, quantity: number): Promise<{ success: boolean; error?: string }> => {
     if (get().loading) return { success: false, error: 'Already loading' };
+
+    // Match the server's unit-trainer bounds (1-1000) so an out-of-range quantity
+    // surfaces a clear message instead of the raw "must be an integer between 1 and 1000".
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 1000) {
+      const msg = 'Quantity must be a whole number between 1 and 1000.';
+      set({ error: msg });
+      return { success: false, error: msg };
+    }
+
     set({ loading: true, error: null });
 
     try {

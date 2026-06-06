@@ -295,13 +295,16 @@ export const useBountyStore = create<BountyState>((set, get) => ({
       error: null,
     });
 
-    // In auth mode, persist the completion to the backend
+    // In auth mode, persist the completion to the backend.
+    // The server verifies landGained against the 1000-10000 range; clamp here so a
+    // small/large battle result doesn't get silently rejected ("landGained must be …").
     const kingdomId = useKingdomStore.getState().kingdomId;
     if (!isDemoMode() && kingdomId) {
+      const clampedLandGained = Math.min(10000, Math.max(1000, Math.round(landGained)));
       completeBountyApi({
         kingdomId,
         targetId,
-        landGained,
+        landGained: clampedLandGained,
       }).catch(err => {
         console.error('[bountyStore] completeBounty Lambda failed:', err);
         ToastService.error('Bounty completion may not have saved — please try again if needed.');

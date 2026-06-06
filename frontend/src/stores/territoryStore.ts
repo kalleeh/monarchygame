@@ -9,6 +9,7 @@ import { combine } from 'zustand/middleware';
 const DEMO_KINGDOM_ID = 'current-player';
 import { useKingdomStore } from './kingdomStore';
 import { calculateActionTurnCost } from '../../../shared/mechanics/turn-mechanics';
+import { MAX_TERRITORY_DEFENSE_LEVEL } from '../../../shared/mechanics/territory-mechanics';
 import { isDemoMode } from '../utils/authMode';
 import { claimTerritory as claimTerritoryApi, upgradeTerritory as upgradeTerritoryApi } from '../services/domain/TerritoryService';
 import { refreshKingdomResources } from '../services/domain/CombatService';
@@ -310,6 +311,15 @@ export const useTerritoryStore = create(
         
         // Calculate upgrade cost (gold only - for construction and fortifications)
         const currentLevel = territory.defenseLevel || 0;
+
+        // Guard against upgrading at/above the cap. Legacy territories may already
+        // exceed MAX (data predates the cap); sending level+1 would be rejected by the
+        // server ("newDefenseLevel must be an integer 1-10"). Fail clearly instead.
+        if (currentLevel >= MAX_TERRITORY_DEFENSE_LEVEL) {
+          set({ error: `Territory is already at the maximum defense level (${MAX_TERRITORY_DEFENSE_LEVEL}).` });
+          return false;
+        }
+
         const upgradeCost = Math.floor(200 * Math.pow(currentLevel + 1, 1.5));
         
         // Get resources from centralized kingdom store
