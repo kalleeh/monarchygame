@@ -214,4 +214,39 @@ describe('territory-claimer handler', () => {
       expect(mockDbCreate).not.toHaveBeenCalled();
     });
   });
+
+  describe('upgradeTerritory — defense level bounds', () => {
+    function makeUpgradeEvent(args: Record<string, unknown>) {
+      return { arguments: args, identity: { sub: 'test-sub-123', username: 'test-user' }, fieldName: 'upgradeTerritory' } as any;
+    }
+
+    it('rejects newDefenseLevel above the max (11)', async () => {
+      const result = await callHandler(makeUpgradeEvent({
+        kingdomId: 'kingdom-1', territoryId: 'territory-1', newDefenseLevel: 11, goldCost: 5500,
+      }));
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('INVALID_PARAM');
+      expect(result.error).toMatch(/1-10/);
+      expect(mockDbUpdate).not.toHaveBeenCalled();
+    });
+
+    it('rejects newDefenseLevel below 1 (0)', async () => {
+      const result = await callHandler(makeUpgradeEvent({
+        kingdomId: 'kingdom-1', territoryId: 'territory-1', newDefenseLevel: 0, goldCost: 0,
+      }));
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('INVALID_PARAM');
+    });
+
+    it('accepts the max boundary (10) for an owned territory with enough gold', async () => {
+      mockDbGet
+        .mockResolvedValueOnce(mockKingdom({ resources: { gold: 100000, population: 1000, mana: 0, land: 1000 } })) // kingdom
+        .mockResolvedValueOnce({ id: 'territory-1', kingdomId: 'kingdom-1' }); // territory
+      const result = await callHandler(makeUpgradeEvent({
+        kingdomId: 'kingdom-1', territoryId: 'territory-1', newDefenseLevel: 10, goldCost: 5000,
+      }));
+      expect(result.success).toBe(true);
+      expect(mockDbUpdate).toHaveBeenCalledWith('Territory', 'territory-1', { defenseLevel: 10 });
+    });
+  });
 });

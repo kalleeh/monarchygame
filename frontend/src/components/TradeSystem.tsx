@@ -313,17 +313,22 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ kingdomId, onBack }) => {
               
               <input
                 type="number"
+                min="1"
+                step="1"
                 placeholder="Quantity"
                 value={offerForm.quantity || ''}
                 onChange={(e) => setOfferForm(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
                 className="form-input gm-input"
               />
-              
+
               <input
                 type="number"
-                placeholder="Price per unit"
+                min="1"
+                step="1"
+                placeholder="Price per unit (whole gold)"
                 value={offerForm.pricePerUnit || ''}
-                onChange={(e) => setOfferForm(prev => ({ ...prev, pricePerUnit: parseFloat(e.target.value) || 0 }))}
+                // Server requires integer gold per unit — parse as int, not float.
+                onChange={(e) => setOfferForm(prev => ({ ...prev, pricePerUnit: parseInt(e.target.value) || 0 }))}
                 className="form-input gm-input"
               />
               

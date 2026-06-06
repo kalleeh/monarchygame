@@ -6,6 +6,7 @@ import { dbGet, dbUpdate, dbConditionalUpdate, dbAtomicAdd, dbQuery, parseJsonFi
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 import { isConditionalCheckFailed } from '../conditional-helpers';
+import { MAX_TERRITORY_DEFENSE_LEVEL } from '../../../shared/mechanics/territory-mechanics';
 
 const TERRITORY_NAME_LIMITS = { min: 2, max: 50 } as const;
 const COORDINATE_LIMITS = { min: -10000, max: 10000 } as const;
@@ -52,8 +53,8 @@ async function handleUpgrade(
     if (!kingdomId || !territoryId) {
       return { success: false, error: 'Missing kingdomId or territoryId', errorCode: ErrorCode.MISSING_PARAMS };
     }
-    if (typeof newDefenseLevel !== 'number' || !Number.isInteger(newDefenseLevel) || newDefenseLevel < 1 || newDefenseLevel > 10) {
-      return { success: false, error: 'newDefenseLevel must be an integer 1-10', errorCode: ErrorCode.INVALID_PARAM };
+    if (typeof newDefenseLevel !== 'number' || !Number.isInteger(newDefenseLevel) || newDefenseLevel < 1 || newDefenseLevel > MAX_TERRITORY_DEFENSE_LEVEL) {
+      return { success: false, error: `newDefenseLevel must be an integer 1-${MAX_TERRITORY_DEFENSE_LEVEL}`, errorCode: ErrorCode.INVALID_PARAM };
     }
 
     // Server-side gold cost: 500 gold per defense level

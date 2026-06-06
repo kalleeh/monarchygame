@@ -124,6 +124,32 @@ describe('TerritoryStore', () => {
     expect(upgradedTerritory?.defenseLevel).toBe(initialLevel + 1);
   });
 
+  it('should refuse to upgrade a territory already at max defense level', async () => {
+    // Regression: legacy territories with defenseLevel >= 10 (e.g. 18, 28) must not
+    // send newDefenseLevel = level+1 to the server, which rejects anything > 10 with
+    // "newDefenseLevel must be an integer 1-10". The store must guard client-side.
+    const { addTerritory, upgradeTerritory, getTerritoryById } = useTerritoryStore.getState();
+
+    addTerritory({
+      id: 'maxed-territory',
+      name: 'Maxed Fort',
+      type: 'capital',
+      position: { x: 0, y: 0 },
+      ownerId: 'current-player',
+      resources: { gold: 0, population: 0, land: 0 },
+      buildings: {},
+      defenseLevel: 10,
+      adjacentTerritories: [],
+    });
+
+    const success = await upgradeTerritory('maxed-territory');
+
+    expect(success).toBe(false);
+    expect(useTerritoryStore.getState().error).toMatch(/max(imum)? (defense )?level/i);
+    // Level must be unchanged — no invalid upgrade applied.
+    expect(getTerritoryById('maxed-territory')?.defenseLevel).toBe(10);
+  });
+
   it('should get owned territories', () => {
     const { initializeTerritories, getOwnedTerritories } = useTerritoryStore.getState();
     

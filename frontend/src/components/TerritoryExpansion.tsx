@@ -7,6 +7,7 @@ import React, { useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useSpring, useTransition, animated, config } from '@react-spring/web';
 import { useTerritoryStore, type Territory } from '../stores/territoryStore';
+import { MAX_TERRITORY_DEFENSE_LEVEL } from '../../../shared/mechanics/territory-mechanics';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { WORLD_REGIONS } from './worldmap/KingdomNode';
 import { TopNavigation } from './TopNavigation';
@@ -42,11 +43,13 @@ function getTerritoryProduction(territory: Territory): { gold: number; pop: numb
   if (territory.category && CATEGORY_PRODUCTION[territory.category]) {
     return CATEGORY_PRODUCTION[territory.category];
   }
-  // Fallback: use legacy defenseLevel-based production
+  // Fallback: use legacy defenseLevel-based production.
+  // Guard against undefined/NaN defenseLevel so the UI never renders "NaN/tick".
+  const level = territory.defenseLevel || 0;
   return {
-    gold: 10 * territory.defenseLevel,
-    pop: 5 * territory.defenseLevel,
-    land: 2 * territory.defenseLevel,
+    gold: 10 * level,
+    pop: 5 * level,
+    land: 2 * level,
   };
 }
 
@@ -427,6 +430,7 @@ const OwnedTerritoryCard: React.FC<OwnedTerritoryCardProps> = ({
   });
 
   const production = getTerritoryProduction(territory);
+  const isMaxLevel = (territory.defenseLevel || 0) >= MAX_TERRITORY_DEFENSE_LEVEL;
 
   const getCategoryIcon = (category?: string) => {
     switch (category) {
@@ -476,7 +480,7 @@ const OwnedTerritoryCard: React.FC<OwnedTerritoryCardProps> = ({
       </div>
 
       <div className="territory-actions">
-        {upgradeCost && (
+        {upgradeCost && !isMaxLevel && (
           <div className="upgrade-cost">
             <span className="cost-label">Upgrade cost:</span>
             <span className={canAfford ? 'cost-affordable' : 'cost-insufficient'}>
@@ -491,18 +495,22 @@ const OwnedTerritoryCard: React.FC<OwnedTerritoryCardProps> = ({
             e.stopPropagation();
             onUpgrade();
           }}
-          disabled={!canAfford || territory.serverConfirmed === false}
+          disabled={isMaxLevel || !canAfford || territory.serverConfirmed === false}
           title={
-            territory.serverConfirmed === false
-              ? 'Settling in progress — upgrade available once settlers arrive'
-              : canAfford ? 'Upgrade this territory' : 'Not enough gold'
+            isMaxLevel
+              ? `Maximum defense level (${MAX_TERRITORY_DEFENSE_LEVEL}) reached`
+              : territory.serverConfirmed === false
+                ? 'Settling in progress — upgrade available once settlers arrive'
+                : canAfford ? 'Upgrade this territory' : 'Not enough gold'
           }
         >
-          {territory.serverConfirmed === false
-            ? '⏳ Settling...'
-            : canAfford
-              ? `Upgrade to Lv.${territory.defenseLevel + 1} (+${(territory.defenseLevel + 1) * 10}% income)`
-              : 'Insufficient Gold'}
+          {isMaxLevel
+            ? `Max Level (${MAX_TERRITORY_DEFENSE_LEVEL})`
+            : territory.serverConfirmed === false
+              ? '⏳ Settling...'
+              : canAfford
+                ? `Upgrade to Lv.${territory.defenseLevel + 1} (+${(territory.defenseLevel + 1) * 10}% income)`
+                : 'Insufficient Gold'}
         </button>
       </div>
     </animated.div>
@@ -549,6 +557,8 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
     scale: isSelected ? 1.02 : 1,
     config: config.gentle
   });
+
+  const isMaxLevel = (territory.defenseLevel || 0) >= MAX_TERRITORY_DEFENSE_LEVEL;
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -602,7 +612,7 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
       <div className="territory-actions">
         {isOwned ? (
           <>
-            {upgradeCost && (
+            {upgradeCost && !isMaxLevel && (
               <div className="upgrade-cost">
                 <span className="cost-label">Upgrade cost:</span>
                 <div className="cost-items">
@@ -619,18 +629,22 @@ const TerritoryCard: React.FC<TerritoryCardProps> = ({
                 e.stopPropagation();
                 onUpgrade();
               }}
-              disabled={!canAfford || territory.serverConfirmed === false}
+              disabled={isMaxLevel || !canAfford || territory.serverConfirmed === false}
               title={
-                territory.serverConfirmed === false
-                  ? 'Settling in progress — upgrade available once settlers arrive'
-                  : canAfford ? 'Upgrade this territory' : 'Not enough gold'
+                isMaxLevel
+                  ? `Maximum defense level (${MAX_TERRITORY_DEFENSE_LEVEL}) reached`
+                  : territory.serverConfirmed === false
+                    ? 'Settling in progress — upgrade available once settlers arrive'
+                    : canAfford ? 'Upgrade this territory' : 'Not enough gold'
               }
             >
-              {territory.serverConfirmed === false
-                ? '⏳ Settling...'
-                : canAfford
-                  ? `Upgrade to Lv.${territory.defenseLevel + 1} (+${(territory.defenseLevel + 1) * 10}% income)`
-                  : 'Insufficient Gold'}
+              {isMaxLevel
+                ? `Max Level (${MAX_TERRITORY_DEFENSE_LEVEL})`
+                : territory.serverConfirmed === false
+                  ? '⏳ Settling...'
+                  : canAfford
+                    ? `Upgrade to Lv.${territory.defenseLevel + 1} (+${(territory.defenseLevel + 1) * 10}% income)`
+                    : 'Insufficient Gold'}
             </button>
           </>
         ) : canClaim ? (
