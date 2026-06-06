@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { reportClientError } from '../../utils/errorReporter';
 import './ErrorBoundary.css';
 
 interface Props {
@@ -24,6 +25,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+    // Report to the ClientError log so we see render crashes proactively.
+    reportClientError({
+      message: error.message,
+      stack: error.stack ?? errorInfo.componentStack ?? undefined,
+      source: 'errorBoundary',
+    });
     this.props.onError?.(error, errorInfo);
   }
 

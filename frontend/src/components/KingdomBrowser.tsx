@@ -165,8 +165,8 @@ const KingdomBrowser: React.FC<KingdomBrowserProps> = ({
                 {kingdom.isOnline && <span className="online-badge">Online</span>}
               </div>
               <div className="kingdom-stats-row">
-                <span>Land: {kingdom.land.toLocaleString()}</span>
-                <span>Networth: {kingdom.networth.toLocaleString()}</span>
+                <span>Land: {(kingdom.land ?? 0).toLocaleString()}</span>
+                <span>Networth: {(kingdom.networth ?? 0).toLocaleString()}</span>
               </div>
               <div className="kingdom-action-buttons">
                 {onAttack && <button className="action-btn attack-btn" onClick={() => onAttack(kingdom.id)}>Attack</button>}
