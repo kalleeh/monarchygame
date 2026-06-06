@@ -85,7 +85,7 @@ async function maybeRecordGuildWarScore(params: {
   }
 }
 
-interface BattleReport {
+export interface BattleReport {
   id: string;
   timestamp: number;
   attacker: string;
@@ -179,7 +179,7 @@ export const useCombatStore = create(
               timestamp: Date.now(),
               attacker: kingdomId,
               defender: targetId,
-              attackerUnits: kingdomUnits,
+              attackerUnits: kingdomUnits as unknown as Unit[],
               defenderUnits: [],
               result: combatData.result === 'with_ease' || combatData.result === 'good_fight' ? 'victory' : 'defeat',
               resultType: combatData.result as 'with_ease' | 'good_fight' | 'failed',
@@ -504,7 +504,7 @@ export const useCombatStore = create(
           reason: 'Formal war declaration',
         }).catch((err: unknown) => {
           console.warn('[combatStore] war declaration persist failed:', err);
-          ToastService.warn('War declaration may not have saved — please try again if needed');
+          ToastService.warning('War declaration may not have saved — please try again if needed');
         });
         set((state) => ({
           warDeclarations: [...state.warDeclarations, warDeclaration]

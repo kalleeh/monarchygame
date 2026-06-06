@@ -183,22 +183,22 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
                 message = `Burn successful! Destroyed ${result.result.casualtiesInflicted} enemy scum in ${selectedKingdom.name}.`;
                 break;
               case 'desecrate':
-                message = result.result.templesDestroyed > 0
+                message = (result.result.templesDestroyed ?? 0) > 0
                   ? `Desecration successful! Destroyed ${result.result.templesDestroyed} temples in ${selectedKingdom.name}. Their elan generation is weakened.`
                   : `Desecration successful against ${selectedKingdom.name} (no temples to destroy).`;
                 break;
               case 'spread_dissention':
-                message = result.result.populationKilled > 0
-                  ? `Dissention spread through ${selectedKingdom.name}! Killed ${result.result.populationKilled.toLocaleString()} peasants.`
+                message = (result.result.populationKilled ?? 0) > 0
+                  ? `Dissention spread through ${selectedKingdom.name}! Killed ${(result.result.populationKilled ?? 0).toLocaleString()} peasants.`
                   : `Dissention spread through ${selectedKingdom.name} (no population to kill).`;
                 break;
               case 'intercept_caravans':
-                message = result.result.goldIntercepted > 0
-                  ? `Caravan intercepted! Seized ${result.result.goldIntercepted.toLocaleString()} gold from ${selectedKingdom.name}.`
+                message = (result.result.goldIntercepted ?? 0) > 0
+                  ? `Caravan intercepted! Seized ${(result.result.goldIntercepted ?? 0).toLocaleString()} gold from ${selectedKingdom.name}.`
                   : `Caravan interception against ${selectedKingdom.name} yielded no gold.`;
                 break;
               case 'scum_kill':
-                message = result.result.scoutsKilled > 0
+                message = (result.result.scoutsKilled ?? 0) > 0
                   ? `Scout execution successful! Eliminated ${result.result.scoutsKilled} scouts in ${selectedKingdom.name}.`
                   : `Scout execution against ${selectedKingdom.name} — no scouts to eliminate.`;
                 break;

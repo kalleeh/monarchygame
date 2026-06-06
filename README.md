@@ -129,7 +129,7 @@ npx playwright test
 
 ### **Test Coverage**
 - Backend Lambda tests: 220 tests across 18 files
-- Shared mechanics tests: 433 tests across 10 files
+- Shared mechanics tests: 461 tests across 11 files
 - Frontend store/service tests: 125 tests across 23 files
 - E2E tests: 21 Playwright specs
 
@@ -173,20 +173,19 @@ npx ampx generate    # Generate GraphQL types
 ```
 
 ### **Code Quality**
-- **TypeScript**: 0 compilation errors (strict mode enabled)
+- **TypeScript**: 0 compilation errors (`tsc -b`, strict mode enabled)
 - **ESLint**: 0 errors, 0 warnings (perfect compliance)
-- **Tests**: 778/778 passing (100% pass rate)
-- **Build**: Production ready (2.0MB JS, 8.28s)
+- **Tests**: 806/806 passing (100% pass rate)
+- **Build**: Production ready (~1.5MB JS gzipped split, ~11s)
 - **Lambda Functions**: 19 registered + 2 EventBridge schedules
 - **Component Testing**: React Testing Library
 - **Mobile-first**: Responsive design
 
 ## 📊 **Performance Metrics**
-- **Bundle Size:** 2.0MB (JS assets)
-- **Build Time:** 8.28s
+- **Build Time:** ~11s
 - **Load Time:** <3s on 3G
 - **Lighthouse Score:** 95+ (Performance)
-- **Test Pass Rate:** 100% (778/778 tests)
+- **Test Pass Rate:** 100% (806/806 tests)
 - **Code Quality:** Perfect (0 errors, 0 warnings)
 
 ## 🤝 **Contributing**

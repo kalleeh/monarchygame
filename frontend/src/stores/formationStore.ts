@@ -10,7 +10,9 @@ import { useKingdomStore } from './kingdomStore';
 
 interface Unit {
   id: string;
-  type: 'peasant' | 'militia' | 'knight' | 'cavalry' | 'archer' | 'mage';
+  // Combat units plus espionage units (scouts/elite_scouts), which are filtered
+  // out of combat casualty math but may appear in a kingdom's roster.
+  type: 'peasant' | 'militia' | 'knight' | 'cavalry' | 'archer' | 'mage' | 'scouts' | 'elite_scouts';
   count: number;
   attack: number;
   defense: number;

@@ -1,24 +1,27 @@
 {
   "project": {
     "name": "Monarchy Game Modernization",
-    "version": "2.0.0",
-    "status": "Production Ready",
-    "last_updated": "2025-11-23"
+    "version": "0.0.1",
+    "status": "Deployed to production",
+    "last_updated": "2026-04-26",
+    "production_url": "https://monarchy.gurum.se"
   },
   "quality_metrics": {
     "typescript_errors": 0,
     "eslint_errors": 0,
     "eslint_warnings": 0,
-    "tests_passing": "53/53",
+    "tests_passing": "806/806",
     "test_pass_rate": "100%",
+    "test_breakdown": "220 backend + 461 shared + 125 frontend",
+    "e2e_tests": "21 Playwright specs",
     "build_status": "SUCCESS",
-    "bundle_size": "1.44MB",
-    "build_time": "3.35s"
+    "bundle_size": "~1.5MB JS (gzipped, split)",
+    "build_time": "~11s"
   },
   "current_sprint": {
-    "name": "Context Optimization",
+    "name": "Production operations",
     "status": "In Progress",
-    "goal": "Reduce context files from 33 to 5 for better Claude 4.5 performance"
+    "goal": "Monitoring/observability validation post-deploy"
   },
   "completed_features": [
     "Welcome Page with parallax design",
@@ -26,14 +29,21 @@
     "Kingdom Creation (10 unique races)",
     "Kingdom Management Dashboard",
     "Territory System",
-    "Combat System (real-time battles)",
-    "Alliance System (real-time chat)",
+    "Combat System (single-player vs AI)",
+    "Combat Replay System",
+    "Alliance System (chat, invitations, diplomacy)",
     "World Map System (React Flow)",
     "Magic System (React Spring animations)",
-    "Trade & Economy System (Recharts)",
+    "Trade & Economy System",
+    "Thievery/Espionage System (8 operations)",
+    "Faith & Focus System",
+    "Bounty System",
+    "Season System (6-week seasons, age progression)",
+    "Achievement System (22 achievements)",
+    "Leaderboard",
+    "Kingdom Cleanup",
     "Tutorial/Onboarding System",
-    "Auto Turn Generation",
-    "Target Selection Enhancement"
+    "Auto Turn Generation"
   ],
   "active_features": [],
   "blockers": [],
@@ -49,10 +59,10 @@
     },
     "backend": {
       "platform": "AWS Amplify Gen 2",
-      "database": "Aurora Serverless v2 (PostgreSQL)",
-      "api": "GraphQL + WebSockets",
-      "auth": "AWS Cognito",
-      "functions": "AWS Lambda (6 functions)",
+      "database": "DynamoDB",
+      "api": "GraphQL + Subscriptions (observeQuery)",
+      "auth": "AWS Cognito User Pools",
+      "functions": "AWS Lambda (19 functions + 2 EventBridge schedules)",
       "deployment": "AWS Amplify Hosting"
     }
   },
@@ -65,15 +75,13 @@
     "testing": "100% test pass rate requirement"
   },
   "deployment": {
-    "production_url": "TBD",
+    "production_url": "https://monarchy.gurum.se",
     "staging_url": "TBD",
-    "deployment_command": "npx ampx sandbox deploy --branch main",
-    "ci_cd": "AWS Amplify auto-deploy on push"
+    "deployment_command": "ampx pipeline-deploy (CodeCommit CI/CD)",
+    "ci_cd": "AWS CodeCommit -> Amplify pipeline"
   },
   "next_steps": [
-    "Complete context file consolidation",
-    "Deploy to production environment",
-    "Set up monitoring and observability",
-    "Configure production environment variables"
+    "Subscribe to SNS alert topic for monitoring notifications",
+    "Validate CloudWatch dashboard and alarms"
   ]
 }

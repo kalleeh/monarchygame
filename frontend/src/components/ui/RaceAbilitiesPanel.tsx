@@ -1,11 +1,9 @@
-import React from 'react';
 import { SwordIcon, StarIcon } from './MenuIcons';
 
 interface RaceSpecialAbility {
   name: string;
   description: string;
   strategicValue?: string;
-  [key: string]: unknown;
 }
 
 interface RaceStats {
@@ -19,6 +17,7 @@ interface RaceData {
 }
 
 interface RaceAbilitiesPanelProps {
+  // Structural subset of the shared Race type — only the fields rendered here.
   raceData: RaceData | null | undefined;
   /** When true, hides the stat bars and strategic value — fits in a narrower side panel */
   compact?: boolean;
@@ -41,8 +40,8 @@ export function RaceAbilitiesPanel({ raceData, compact = false }: RaceAbilitiesP
           <div className="race-ability-highlight">
             <div className="race-ability-name"><StarIcon /> Special Ability</div>
             <div className="race-ability-desc">{raceData.specialAbility.description}</div>
-            {!compact && (raceData.specialAbility as Record<string, unknown>).strategicValue && (
-              <div className="race-ability-effect">{(raceData.specialAbility as Record<string, unknown>).strategicValue as React.ReactNode}</div>
+            {!compact && raceData.specialAbility.strategicValue && (
+              <div className="race-ability-effect">{raceData.specialAbility.strategicValue}</div>
             )}
           </div>
         )}

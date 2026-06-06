@@ -7,7 +7,7 @@ import { ToastService } from '../services/toastService';
 import { useTerritoryStore } from '../stores/territoryStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useFaithStore } from '../stores/faithStore';
-import { useAIKingdomStore } from '../stores/aiKingdomStore';
+import { useAIKingdomStore, type AIKingdom } from '../stores/aiKingdomStore';
 import { useSummonStore } from '../stores/useSummonStore';
 import { AIActionService } from '../services/aiActionService';
 import { achievementTriggers } from '../utils/achievementTriggers';
@@ -27,18 +27,9 @@ import { AGE_MECHANICS } from '../../../shared/mechanics/age-mechanics';
 
 // ── AI simulation helper ──────────────────────────────────────────────────────
 
-interface AIKingdomLike {
-  id: string;
-  name: string;
-  race: string;
-  resources: { gold: number; population: number; land: number; turns: number };
-  units: Record<string, number>;
-  networth: number;
-}
-
 function simulateAITick(
-  aiKingdoms: AIKingdomLike[],
-  updateAIKingdom: (id: string, updates: Partial<AIKingdomLike>) => void,
+  aiKingdoms: AIKingdom[],
+  updateAIKingdom: (id: string, updates: Partial<AIKingdom>) => void,
   incomeToGenerate: number,
   populationGrowth: number,
   landGrowth: number,

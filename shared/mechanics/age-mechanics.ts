@@ -197,6 +197,7 @@ export const calculateAgeBasedCosts = (
     ageEffects.economicModifiers.buildingCostMultiplier :
     ageEffects.economicModifiers.trainingCostMultiplier
 
+  // Negative inputs are intentionally clamped to 0 (project-wide silent-clamping convention).
   return Math.ceil(Math.max(0, baseCost) * multiplier)
 }
 

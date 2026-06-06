@@ -53,6 +53,28 @@ async function calculateCompositionBonus(memberIds: string[]): Promise<Compositi
   };
 }
 
+/**
+ * Recompute the composition bonus for the given members, merge it into the
+ * alliance's existing stats, and persist the result.
+ *
+ * Returns the newly computed bonus plus the previous combat-bonus multiplier
+ * (defaulting to 1.0) so callers can decide whether to fire gain/loss
+ * notifications.
+ */
+async function updateCompositionBonus(
+  allianceId: string,
+  memberIds: string[],
+  existingStats: unknown,
+): Promise<{ compositionBonus: CompositionBonus; previousBonus: number }> {
+  const compositionBonus = await calculateCompositionBonus(memberIds);
+  const stats = parseJsonField<Record<string, unknown>>(existingStats, {});
+  const previousBonus = ((stats.compositionBonus as Record<string, number> | undefined)?.combat ?? 1.0) as number;
+  await dbUpdate('Alliance', allianceId, {
+    stats: JSON.stringify({ ...stats, compositionBonus }),
+  });
+  return { compositionBonus, previousBonus };
+}
+
 
 export const handler: Schema["manageAlliance"]["functionHandler"] = async (event) => {
   const { kingdomId, action, allianceId, name, description, isPublic, targetKingdomId } = event.arguments;
@@ -109,10 +131,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
 
         // Compute and store composition bonus
         const memberIds = [kingdomId];
-        const compositionBonus = await calculateCompositionBonus(memberIds);
-        await dbUpdate('Alliance', newAlliance.id as string, {
-          stats: JSON.stringify({ compositionBonus }),
-        });
+        await updateCompositionBonus(newAlliance.id as string, memberIds, undefined);
 
         log.info('alliance-manager', 'createAlliance', { kingdomId, allianceId: newAlliance.id });
         return { success: true, result: JSON.stringify({ allianceId: newAlliance.id }) };
@@ -171,12 +190,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         }
 
         // Recompute and store composition bonus after member joins
-        const compositionBonus = await calculateCompositionBonus(memberIds);
-        const existingStats = parseJsonField<Record<string, unknown>>(alliance.stats, {});
-        const previousBonus = ((existingStats.compositionBonus as Record<string, number> | undefined)?.combat ?? 1.0) as number;
-        await dbUpdate('Alliance', allianceId, {
-          stats: JSON.stringify({ ...existingStats, compositionBonus }),
-        });
+        const { compositionBonus, previousBonus } = await updateCompositionBonus(allianceId, memberIds, alliance.stats);
 
         // Notify all members if full composition bonus was just unlocked (best-effort, non-fatal)
         if (previousBonus < 1.05 && compositionBonus.combat >= 1.05) {
@@ -239,12 +253,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
 
         // Recalculate composition bonus after member leaves and notify if bonus was lost
         try {
-          const compositionBonus = await calculateCompositionBonus(memberIds);
-          const currentStats = parseJsonField<Record<string, unknown>>(alliance.stats, {});
-          const previousBonusOnLeave = ((currentStats.compositionBonus as Record<string, number> | undefined)?.combat ?? 1.0) as number;
-          await dbUpdate('Alliance', allianceId, {
-            stats: JSON.stringify({ ...currentStats, compositionBonus })
-          });
+          const { compositionBonus, previousBonus: previousBonusOnLeave } = await updateCompositionBonus(allianceId, memberIds, alliance.stats);
           // Notify remaining members if full composition bonus was just lost (best-effort)
           if (previousBonusOnLeave >= 1.05 && compositionBonus.combat < 1.05) {
             const now = new Date().toISOString();
@@ -298,12 +307,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
 
         // Recalculate composition bonus and notify if kick caused bonus loss (best-effort)
         try {
-          const compositionBonus = await calculateCompositionBonus(memberIds);
-          const currentStats = parseJsonField<Record<string, unknown>>(alliance.stats, {});
-          const previousBonusOnKick = ((currentStats.compositionBonus as Record<string, number> | undefined)?.combat ?? 1.0) as number;
-          await dbUpdate('Alliance', allianceId, {
-            stats: JSON.stringify({ ...currentStats, compositionBonus })
-          });
+          const { compositionBonus, previousBonus: previousBonusOnKick } = await updateCompositionBonus(allianceId, memberIds, alliance.stats);
           if (previousBonusOnKick >= 1.05 && compositionBonus.combat < 1.05) {
             const now = new Date().toISOString();
             const kickResults = await Promise.allSettled(memberIds.map(memberId =>

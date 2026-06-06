@@ -4,7 +4,7 @@
  * Context7 Research: React Spring animations for smooth updates
  */
 
-import React, { useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useSpring, animated, config } from '@react-spring/web';
 import { useTurnGeneration } from '../../hooks/useTurnGeneration';
 import { TurnsIcon, InfoIcon, SwordIcon } from './MenuIcons';

@@ -84,7 +84,7 @@ function CasualtyRow({ unitType, count, race }: { unitType: string; count: numbe
   );
 }
 
-function BattleResultModal({ battle, onClose, defenderName, attackerRace, defenderRace }: { battle: import('../types/combat').BattleReport; onClose: () => void; defenderName?: string; attackerRace: string; defenderRace: string }) {
+function BattleResultModal({ battle, onClose, defenderName, attackerRace, defenderRace }: { battle: import('../stores/combatStore').BattleReport; onClose: () => void; defenderName?: string; attackerRace: string; defenderRace: string }) {
   const isVictory = battle.result === 'victory';
   const accentColor = isVictory ? '#22c55e' : '#ef4444';
   const borderColor = isVictory ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)';

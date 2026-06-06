@@ -1,4 +1,3 @@
-import React from 'react';
 import { getBuildingName } from '../../utils/buildingMechanics';
 import { WarningIcon } from './MenuIcons';
 

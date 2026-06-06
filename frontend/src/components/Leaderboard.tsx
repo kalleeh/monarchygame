@@ -228,9 +228,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
             const victoryResults = ageTransitions?.victoryResults as Record<string, unknown> | undefined;
             if (victoryResults) {
               victoryTracks = {
-                militaryChampion: victoryResults.militaryChampion as SeasonResultsProps['victoryTracks']['militaryChampion'],
-                economicPowerhouse: victoryResults.economicPowerhouse as SeasonResultsProps['victoryTracks']['economicPowerhouse'],
-                strategistGuild: victoryResults.strategistGuild as SeasonResultsProps['victoryTracks']['strategistGuild'],
+                militaryChampion: victoryResults.militaryChampion as NonNullable<SeasonResultsProps['victoryTracks']>['militaryChampion'],
+                economicPowerhouse: victoryResults.economicPowerhouse as NonNullable<SeasonResultsProps['victoryTracks']>['economicPowerhouse'],
+                strategistGuild: victoryResults.strategistGuild as NonNullable<SeasonResultsProps['victoryTracks']>['strategistGuild'],
               };
             }
           }

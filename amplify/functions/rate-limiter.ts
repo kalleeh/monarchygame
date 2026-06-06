@@ -9,7 +9,8 @@
  *
  * Fails open: if DynamoDB is unreachable, the request is allowed.
  */
-import { dbGet, dbCreate, dbUpdate } from './data-client';
+import { dbGet, dbCreate, dbConditionalUpdate } from './data-client';
+import { isConditionalCheckFailed } from './conditional-helpers';
 
 interface RateLimitRecord {
   id: string;
@@ -52,23 +53,61 @@ export async function checkRateLimit(
   const now = Date.now();
   const ttl = Math.floor((now + config.windowMs) / 1000);
 
+  // Retry a few times on lost optimistic-concurrency races (two concurrent
+  // requests reading the same count). Each retry re-reads fresh state.
+  const MAX_ATTEMPTS = 4;
   try {
-    const record = await dbGet<RateLimitRecord>('RateLimit', id);
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const record = await dbGet<RateLimitRecord>('RateLimit', id);
 
-    if (record && (now - record.windowStart) < config.windowMs) {
-      if (record.count >= config.maxRequests) {
-        return {
-          success: false,
-          error: `Rate limit exceeded: max ${config.maxRequests} ${action} actions per minute`,
-          errorCode: 'RATE_LIMITED',
-        };
+      if (record && (now - record.windowStart) < config.windowMs) {
+        if (record.count >= config.maxRequests) {
+          return {
+            success: false,
+            error: `Rate limit exceeded: max ${config.maxRequests} ${action} actions per minute`,
+            errorCode: 'RATE_LIMITED',
+          };
+        }
+        // Atomic increment: only succeeds if count is still what we just read.
+        // A concurrent request that incremented first will fail this condition,
+        // and we loop to re-read (closing the read-modify-write race window).
+        try {
+          await dbConditionalUpdate('RateLimit', id,
+            { count: record.count + 1, ttl },
+            '#count = :expectedCount',
+            { ':expectedCount': record.count },
+            { '#count': 'count' }
+          );
+          return null;
+        } catch (err) {
+          if (isConditionalCheckFailed(err)) continue; // lost the race — retry
+          throw err;
+        }
+      } else if (record) {
+        // Window expired — reset. Condition on the stale windowStart so a
+        // concurrent reset doesn't double-open the window.
+        try {
+          await dbConditionalUpdate('RateLimit', id,
+            { count: 1, windowStart: now, ttl },
+            '#windowStart = :expectedStart',
+            { ':expectedStart': record.windowStart },
+            { '#windowStart': 'windowStart' }
+          );
+          return null;
+        } catch (err) {
+          if (isConditionalCheckFailed(err)) continue; // another request reset first — retry
+          throw err;
+        }
+      } else {
+        // No record yet — create one. Two concurrent "first" requests can both
+        // create count:1 (PutItem overwrites), a tolerable one-off over-count on
+        // window open; the atomic increment path guards every subsequent request.
+        await dbCreate('RateLimit', { id, count: 1, windowStart: now, ttl });
+        return null;
       }
-      await dbUpdate('RateLimit', id, { count: record.count + 1, ttl });
-    } else if (record) {
-      await dbUpdate('RateLimit', id, { count: 1, windowStart: now, ttl });
-    } else {
-      await dbCreate('RateLimit', { id, count: 1, windowStart: now, ttl });
     }
+    // Exhausted retries under heavy contention — fail open rather than block a
+    // legitimate user. Worst case is a small over-count, not a bypass of the cap.
     return null;
   } catch (err) {
     // Fail open — allow the request if DynamoDB is unreachable

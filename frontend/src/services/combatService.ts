@@ -14,7 +14,7 @@ type LambdaResponse<T = unknown> = {
   message?: string;
 };
 import type { Schema } from '../../../amplify/data/resource';
-import type { AttackRequest, CombatResult, DefenseSettings } from '../types/combat';
+import type { AttackRequest, CombatResult, DefenseSettings, AttackType } from '../types/combat';
 
 
 export class CombatService {
@@ -40,11 +40,20 @@ export class CombatService {
         timestamp: string;
       };
 
+      // Map the game's AttackType vocabulary onto the BattleReport model enum.
+      const ATTACK_TYPE_TO_MODEL: Record<AttackType, 'standard' | 'raid' | 'siege' | 'pillage'> = {
+        controlled_strike: 'standard',
+        ambush: 'raid',
+        guerilla_raid: 'raid',
+        mob_assault: 'pillage',
+        full_attack: 'siege',
+      };
+
       // Store Lambda results in database (no client-side calculation)
       const battleReport = await getClient().models.BattleReport.create({
         attackerId: request.attackerId,
         defenderId: request.defenderId,
-        attackType: request.attackType,
+        attackType: ATTACK_TYPE_TO_MODEL[request.attackType],
         result: lambdaResult.success ? 'attacker_victory' : 'defender_victory',
         casualties: {
           attacker: lambdaResult.attackerCasualties,

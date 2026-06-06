@@ -22,9 +22,9 @@ import { ToastService } from '../services/toastService';
 import { achievementTriggers } from '../utils/achievementTriggers';
 import {
   WORLD_REGIONS,
-  TerritoryNode,
-  WorldStateResult,
-  SelectedTerritoryInfo,
+  type TerritoryNode,
+  type WorldStateResult,
+  type SelectedTerritoryInfo,
   MAP_BG_NODE,
   nodeTypes,
   hashId,

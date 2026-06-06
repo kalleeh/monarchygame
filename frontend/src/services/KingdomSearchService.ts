@@ -50,7 +50,7 @@ export class KingdomSearchService {
 
     try {
       const { data, nextToken: nt } = await getClient().models.Kingdom.list({
-        filter: filter as Parameters<ReturnType<typeof generateClient<Schema>>['models']['Kingdom']['list']>[0]['filter'],
+        filter: filter as NonNullable<Parameters<ReturnType<typeof generateClient<Schema>>['models']['Kingdom']['list']>[0]>['filter'],
         limit,
         nextToken: nextToken ?? undefined,
       });

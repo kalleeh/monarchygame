@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { StrategicAI } from '../StrategicAI';
-import type { Kingdom } from '../../types/kingdom';
+import { StrategicAI, type SimKingdom } from '../StrategicAI';
 
 describe('StrategicAI', () => {
-  const createMockKingdom = (overrides: Partial<Kingdom> = {}): Kingdom => ({
+  const createMockKingdom = (overrides: Partial<SimKingdom> = {}): SimKingdom => ({
     id: 'test-kingdom',
     race: 'Human',
     land: 10000,
@@ -25,7 +24,7 @@ describe('StrategicAI', () => {
       temples: 300
     },
     ...overrides
-  } as Kingdom);
+  } as SimKingdom);
 
   it('should make strategic decisions instead of random ones', () => {
     const kingdom = createMockKingdom({

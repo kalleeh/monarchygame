@@ -1,4 +1,27 @@
-import type { Kingdom } from '../types/kingdom';
+/**
+ * Simulation kingdom shape used by the balance-testing harness. This is a
+ * deliberately lightweight model (top-level land, aggregate offense/defense,
+ * mana resource) distinct from the app's full `Kingdom` type — it exists only
+ * to drive AI balance simulations, not to mirror persisted game state.
+ */
+export interface SimKingdom {
+  id: string;
+  race: string;
+  land: number;
+  resources: {
+    gold: number;
+    population: number;
+    mana: number;
+  };
+  units: {
+    offense: number;
+    defense: number;
+  };
+  buildings: {
+    forts: number;
+    [building: string]: number;
+  };
+}
 
 export interface StrategicDecision {
   action: 'build' | 'attack' | 'defend' | 'magic' | 'wait';
@@ -8,16 +31,16 @@ export interface StrategicDecision {
 }
 
 export class StrategicAI {
-  private kingdom: Kingdom;
+  private kingdom: SimKingdom;
   private gamePhase: 'early' | 'mid' | 'late';
-  
-  constructor(kingdom: Kingdom) {
+
+  constructor(kingdom: SimKingdom) {
     this.kingdom = kingdom;
     this.gamePhase = this.determineGamePhase();
   }
 
   // Core strategic decision making
-  makeDecision(availableTargets: Kingdom[]): StrategicDecision {
+  makeDecision(availableTargets: SimKingdom[]): StrategicDecision {
     const decisions = [
       this.evaluateEconomicActions(),
       this.evaluateMilitaryActions(availableTargets),
@@ -64,7 +87,7 @@ export class StrategicAI {
   }
 
   // Combat strategy using "with ease" progression AND race characteristics
-  private evaluateMilitaryActions(targets: Kingdom[]): StrategicDecision | null {
+  private evaluateMilitaryActions(targets: SimKingdom[]): StrategicDecision | null {
     if (targets.length === 0) return null;
     
     const raceStrategy = this.getRaceStrategy();
@@ -109,7 +132,7 @@ export class StrategicAI {
   }
 
   // Target selection based on pro strategies
-  private selectOptimalTarget(targets: Kingdom[]): Kingdom | null {
+  private selectOptimalTarget(targets: SimKingdom[]): SimKingdom | null {
     const myNetworth = this.calculateNetworth();
     
     // Filter targets by strategic criteria
@@ -193,19 +216,19 @@ export class StrategicAI {
     return Math.floor((totalBuildings / this.kingdom.land) * 100);
   }
 
-  private calculateNetworth(kingdom: Kingdom = this.kingdom): number {
+  private calculateNetworth(kingdom: SimKingdom = this.kingdom): number {
     // Simplified networth calculation
     return kingdom.resources.gold + (kingdom.land * 1000) + 
            (kingdom.units.offense * 500) + (kingdom.units.defense * 400);
   }
 
-  private calculateAttackStrength(target: Kingdom): number {
+  private calculateAttackStrength(target: SimKingdom): number {
     const myOffense = this.kingdom.units.offense;
     const targetDefense = this.estimateDefense(target);
     return myOffense / Math.max(targetDefense, 1);
   }
 
-  private estimateDefense(kingdom: Kingdom): number {
+  private estimateDefense(kingdom: SimKingdom): number {
     return kingdom.units.defense + (kingdom.buildings.forts * 100);
   }
 

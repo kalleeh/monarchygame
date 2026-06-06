@@ -12,8 +12,8 @@ import React from 'react';
 import type { PendingSettlement } from '../../stores/territoryStore';
 import {
   WORLD_REGIONS,
-  TerritoryNode,
-  SelectedTerritoryInfo,
+  type TerritoryNode,
+  type SelectedTerritoryInfo,
   getTerritoryImage,
   terrainEmoji,
   terrainModSummary,

@@ -37,6 +37,13 @@ interface KingdomDashboardProps {
   onViewWorldMap?: () => void;
   onSummonUnits?: () => void;
   onManageBuildings?: () => void;
+  // Navigation callbacks supplied by AppRouter; consumed by the nav sub-components.
+  onManageAlliance?: () => void;
+  onCastSpells?: () => void;
+  onManageTrade?: () => void;
+  onDiplomacy?: () => void;
+  onBattleReports?: () => void;
+  onViewLeaderboard?: () => void;
   /** Opens the diplomatic message compose modal for a given target kingdom. */
   onComposeMessage?: (target: { id: string; name: string }) => void;
 }
@@ -225,7 +232,7 @@ function KingdomDashboard({
                 addGold(goldEarned);
                 updateResources({
                   population: (resources.population || 0) + populationEarned,
-                  ...({ mana: Math.min(((resources as Record<string, number>).mana || 0) + manaEarned, 50000) } as Record<string, number>)
+                  ...({ mana: Math.min((resources.mana || 0) + manaEarned, 50000) } as Record<string, number>)
                 });
 
                 achievementTriggers.onGoldChanged();
@@ -233,7 +240,7 @@ function KingdomDashboard({
               }}
             />
             <div className="kingdom-status-divider" />
-            <RaceAbilitiesPanel raceData={raceData} compact />
+            <RaceAbilitiesPanel raceData={raceData as unknown as React.ComponentProps<typeof RaceAbilitiesPanel>['raceData']} compact />
           </div>
 
           {/* Buildings & Economy — below Resources in the same left column */}

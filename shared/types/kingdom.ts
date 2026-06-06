@@ -1,48 +1,17 @@
 /**
  * Shared type definitions for Kingdom game entities.
  * Used by both Lambda handlers and frontend code.
+ *
+ * Pure data interfaces live in ./kingdom-resources (enum-free, frontend-safe) and
+ * are re-exported here so existing backend imports from './kingdom' keep working.
  */
 
-export interface KingdomResources {
-  gold: number;
-  population: number;
-  elan: number;
-  mana?: number;
-  land: number;
-  turns?: number;
-}
-
-export interface KingdomBuildings {
-  castle?: number;
-  barracks?: number;
-  farm?: number;
-  mine?: number;
-  temple?: number;
-  tower?: number;
-  wall?: number;
-}
-
-export interface KingdomUnits {
-  infantry?: number;
-  archers?: number;
-  cavalry?: number;
-  siege?: number;
-  mages?: number;
-  scouts?: number;
-  elite_scouts?: number;
-}
-
-export interface CombatResultData {
-  result: string;
-  powerRatio: number;
-  casualties: {
-    attacker: Record<string, number>;
-    defender: Record<string, number>;
-  };
-  landGained: number;
-  goldLooted: number;
-  success: boolean;
-}
+export type {
+  KingdomResources,
+  KingdomBuildings,
+  KingdomUnits,
+  CombatResultData,
+} from './kingdom-resources';
 
 export enum ErrorCode {
   MISSING_PARAMS = 'MISSING_PARAMS',

@@ -20,11 +20,12 @@ export interface SpecialAbility {
   name: string
   description: string
   mechanics: {
-    type: 'caravan_frequency' | 'remote_fog' | 'kobold_rage' | 'fort_destruction' | 'scum_killing' | 'circle_summoning' | 'none'
+    type: 'caravan_frequency' | 'remote_fog' | 'kobold_rage' | 'fort_destruction' | 'scum_killing' | 'circle_summoning' | 'defense_bonus' | 'none'
     cooldownReduction?: number  // For caravan frequency (hours)
     targetScope?: 'guild' | 'faith' | 'self'  // For fog casting
     ageActivation?: 'early' | 'middle' | 'late'  // For kobold rage
     combatBonus?: number  // Combat effectiveness multiplier
+    value?: number  // Generic magnitude (e.g. defense_bonus multiplier)
     additionalEffects?: string[]
   }
   strategicValue: string

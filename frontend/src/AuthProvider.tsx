@@ -2,7 +2,7 @@
 // Only loaded when the user clicks "Sign In" (showAuth === true).
 import type { ReactNode } from 'react';
 import '@aws-amplify/ui-react/styles.css';
-import { Authenticator, ThemeProvider } from '@aws-amplify/ui-react';
+import { Authenticator, ThemeProvider, type Theme } from '@aws-amplify/ui-react';
 import type { AuthUser } from 'aws-amplify/auth';
 import { monarchyAuthTheme, monarchyFormFields, monarchyAuthComponents } from './themes/authenticatorTheme';
 
@@ -12,14 +12,14 @@ interface AuthProviderProps {
 
 export default function AuthProviderUI({ children }: AuthProviderProps) {
   return (
-    <ThemeProvider theme={monarchyAuthTheme}>
+    <ThemeProvider theme={monarchyAuthTheme as unknown as Theme}>
       <Authenticator
         formFields={monarchyFormFields}
         components={monarchyAuthComponents}
         signUpAttributes={['email', 'preferred_username']}
         loginMechanisms={['email']}
       >
-        {({ signOut, user }) => children({ signOut, user })}
+        {({ signOut, user }) => <>{children({ signOut, user })}</>}
       </Authenticator>
     </ThemeProvider>
   );

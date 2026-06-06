@@ -220,8 +220,7 @@ export const calculateBountyEfficiency = (
 
 export const identifyOptimalBountyTargets = (
   availableTargets: BountyTarget[],
-  hunterCapabilities: { maxTurns: number, buildRate: number, 
-  _raceId: string }
+  hunterCapabilities: { maxTurns: number, buildRate: number }
 ): BountyTarget[] => {
   return availableTargets
     .filter(target => target.estimatedTurns <= hunterCapabilities.maxTurns)

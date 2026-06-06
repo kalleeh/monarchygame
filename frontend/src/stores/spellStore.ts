@@ -207,25 +207,25 @@ export const useSpellStore = create(
             const serverNewElan = (result as unknown as Record<string, unknown>).newElan;
             const elanCost = Number((result as unknown as Record<string, unknown>).elanCost) || spell.cost.elan;
 
-            set((state) => ({
-              castingSpell: null,
-              error: null,
-              selectedSpell: null,
-              selectedTarget: null,
-              showTargetSelector: false,
-              currentElan: serverNewElan != null
+            set((state) => {
+              const elanAfterCost = serverNewElan != null
                 ? Number(serverNewElan)
-                : Math.max(0, state.currentElan - elanCost),
-              activeEffects: [...state.activeEffects, effect],
-              castHistory: [historyEntry, ...state.castHistory.slice(0, 49)],
-              cooldowns: [...state.cooldowns.filter(cd => cd.spellId !== spellId), cooldown]
-            }));
-
-            // Handle special spell effects
-            if (spellId === 'calming_chant') {
-              
-        set(state => ({ currentElan: state.currentElan + 1 }));
-            }
+                : Math.max(0, state.currentElan - elanCost);
+              // calming_chant refunds 1 elan as part of its effect. Folded into this
+              // single update so it can't interleave with a concurrent cast's set().
+              const finalElan = spellId === 'calming_chant' ? elanAfterCost + 1 : elanAfterCost;
+              return {
+                castingSpell: null,
+                error: null,
+                selectedSpell: null,
+                selectedTarget: null,
+                showTargetSelector: false,
+                currentElan: finalElan,
+                activeEffects: [...state.activeEffects, effect],
+                castHistory: [historyEntry, ...state.castHistory.slice(0, 49)],
+                cooldowns: [...state.cooldowns.filter(cd => cd.spellId !== spellId), cooldown]
+              };
+            });
           } else {
             set({ 
               castingSpell: null,

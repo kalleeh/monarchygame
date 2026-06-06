@@ -235,8 +235,6 @@ export const applyFocusEffect = (
 
 // Integration with existing racial abilities
 export const enhanceRacialAbilityWithFaith = (
-  
-  _raceId: string,
   abilityEffectiveness: number,
   faithAlignment: string,
   faithLevel: number

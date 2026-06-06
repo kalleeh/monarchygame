@@ -21,6 +21,9 @@ interface BaseTerritoryPayload {
   name: string;
   terrainType: string;
   coordinates: { x: number; y: number };
+  territoryType?: 'capital' | 'settlement' | 'outpost' | 'fortress';
+  regionId?: string;
+  category?: string;
 }
 
 interface FunctionPayload {
@@ -401,7 +404,7 @@ export class AmplifyFunctionService {
       const { data, errors } = await getClient().mutations.claimTerritory({
         kingdomId: territoryData.kingdomId,
         territoryName: territoryData.name,
-        territoryType: (territoryData as Record<string, unknown>).territoryType as string || 'settlement',
+        territoryType: territoryData.territoryType ?? 'settlement',
         terrainType: (territoryData.terrainType || 'plains') as 'plains' | 'forest' | 'mountains' | 'desert' | 'swamp' | 'coastal',
         coordinates: coordsArg,
         ...(territoryData.regionId ? { regionId: territoryData.regionId } : {}),

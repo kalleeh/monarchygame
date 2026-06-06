@@ -200,7 +200,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
 
     // Cooldown check: 12h for Human, 24h for others
     if (lastOfferTime) {
-      const playerRace = (useKingdomStore.getState() as Record<string, unknown>).race as string | undefined;
+      const playerRace = (useKingdomStore.getState() as unknown as Record<string, unknown>).race as string | undefined;
       const cooldownMs = playerRace?.toLowerCase() === 'human' ? 12 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
       if (Date.now() - lastOfferTime < cooldownMs) {
         const hoursLeft = Math.ceil((cooldownMs - (Date.now() - lastOfferTime)) / (60 * 60 * 1000));
@@ -269,7 +269,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
     // Demo mode: existing logic below
     // Deduct the offered resource from the player's kingdom
     const kingdom = useKingdomStore.getState();
-    const currentAmount = (kingdom.resources as Record<string, number>)[offer.resourceId] ?? 0;
+    const currentAmount = (kingdom.resources[offer.resourceId] ?? 0);
     if (currentAmount < offer.quantity) {
       set({ error: `Insufficient ${resource.name}: have ${currentAmount}, need ${offer.quantity}` });
       return;
@@ -361,7 +361,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
     }
 
     // Deduct gold and add the resource to the buyer
-    const currentResourceAmount = (kingdom.resources as Record<string, number>)[offer.resourceId] ?? 0;
+    const currentResourceAmount = (kingdom.resources[offer.resourceId] ?? 0);
     kingdom.updateResources({
       gold: currentGold - offer.totalPrice,
       [offer.resourceId]: currentResourceAmount + offer.quantity,
@@ -433,7 +433,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
     // Demo mode: existing logic below
     // Refund the resource back to the player
     const kingdom = useKingdomStore.getState();
-    const currentAmount = (kingdom.resources as Record<string, number>)[offer.resourceId] ?? 0;
+    const currentAmount = (kingdom.resources[offer.resourceId] ?? 0);
     kingdom.updateResources({ [offer.resourceId]: currentAmount + offer.quantity });
 
     // Mark offer as cancelled

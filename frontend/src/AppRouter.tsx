@@ -18,6 +18,7 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { useRestorationStore } from './stores/restorationStore';
 import UnitRoster from './components/UnitRoster';
 import { HelpModal } from './components/ui/HelpModal';
+import { parseKingdomUnits } from './utils/dynamoDbParsers';
 
 // Lazy-loaded components for code splitting
 const BattleReportsRoute = lazy(() => import('./components/BattleReportsRoute'));
@@ -348,15 +349,9 @@ function KingdomRoutes({ kingdoms, loading }: { kingdoms: Schema['Kingdom']['typ
               <Leaderboard
                 kingdoms={kingdoms.map(k => {
                   const rawStats = (k.stats ?? {}) as Record<string, unknown>;
-                  // Amplify returns json fields as strings — parse if needed
-                  const parsedResources: Record<string, number> = (() => {
-                    if (typeof k.resources !== 'string') return (k.resources ?? {}) as Record<string, number>;
-                    try { return JSON.parse(k.resources); } catch { return {}; }
-                  })();
-                  const parsedTotalUnits: Record<string, number> = (() => {
-                    if (typeof k.totalUnits !== 'string') return (k.totalUnits ?? {}) as Record<string, number>;
-                    try { return JSON.parse(k.totalUnits); } catch { return {}; }
-                  })();
+                  // Amplify returns json fields as strings — parse via shared helpers
+                  const parsedResources = parseKingdomUnits(k.resources);
+                  const parsedTotalUnits = parseKingdomUnits(k.totalUnits);
                   return {
                     id: k.id,
                     name: k.name || 'Unknown',
@@ -391,14 +386,8 @@ function KingdomRoutes({ kingdoms, loading }: { kingdoms: Schema['Kingdom']['typ
                 })}
                 currentKingdom={(() => {
                   const rawStats = (kingdom.stats ?? {}) as Record<string, unknown>;
-                  const parsedResources: Record<string, number> = (() => {
-                    if (typeof kingdom.resources !== 'string') return (kingdom.resources ?? {}) as Record<string, number>;
-                    try { return JSON.parse(kingdom.resources); } catch { return {}; }
-                  })();
-                  const parsedTotalUnitsK: Record<string, number> = (() => {
-                    if (typeof kingdom.totalUnits !== 'string') return (kingdom.totalUnits ?? {}) as Record<string, number>;
-                    try { return JSON.parse(kingdom.totalUnits); } catch { return {}; }
-                  })();
+                  const parsedResources = parseKingdomUnits(kingdom.resources);
+                  const parsedTotalUnitsK = parseKingdomUnits(kingdom.totalUnits);
                   return {
                     id: kingdom.id,
                     name: kingdom.name || 'Unknown',

@@ -1,4 +1,3 @@
-import React from 'react';
 import { AchievementWidget } from '../achievements/AchievementWidget';
 
 interface AchievementsPanelProps {

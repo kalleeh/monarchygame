@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { useCombatStore, type Unit } from '../stores/combatStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
-import type { BattleHistory, Army } from '../types/combat';
+import type { BattleHistory, Army, AttackType } from '../types/combat';
 import type { Schema } from '../../../amplify/data/resource';
 import { isDemoMode } from '../utils/authMode';
 import { lazy, Suspense } from 'react';
@@ -26,8 +26,17 @@ function BattleReportsRoute({ kingdom }: { kingdom: Schema['Kingdom']['type'] })
           limit: 50,
         });
         if (!data || data.length === 0) return;
+        // Map the BattleReport model's attackType enum back to the game AttackType.
+        const MODEL_TO_ATTACK_TYPE: Record<string, AttackType> = {
+          standard: 'controlled_strike',
+          raid: 'guerilla_raid',
+          siege: 'full_attack',
+          pillage: 'mob_assault',
+        };
         const parsed: BattleHistory[] = data.map(r => {
           const result = typeof r.result === 'string' ? JSON.parse(r.result) : (r.result ?? {});
+          const mappedAttackType: AttackType =
+            MODEL_TO_ATTACK_TYPE[(r as Record<string, unknown>).attackType as string] ?? 'full_attack';
           const outcome: 'victory' | 'defeat' | 'draw' =
             result.result === 'with_ease' || result.result === 'good_fight' || result.result === 'victory' ? 'victory'
             : result.result === 'failed' || result.result === 'defeat' ? 'defeat' : 'draw';
@@ -41,11 +50,11 @@ function BattleReportsRoute({ kingdom }: { kingdom: Schema['Kingdom']['type'] })
             attacker: attackerInfo,
             defender: defenderInfo,
             outcome,
-            result: { outcome, attacker: attackerInfo, defender: defenderInfo, attackType: ((r as Record<string, unknown>).attackType as string | undefined) ?? 'full_attack', success: outcome === 'victory', landGained: r.landGained ?? 0 },
+            result: { outcome, attacker: attackerInfo, defender: defenderInfo, attackType: mappedAttackType, success: outcome === 'victory', landGained: r.landGained ?? 0 },
             casualties: {},
             netGain: { gold: result.goldLooted ?? 0, land: r.landGained ?? 0, population: 0 },
             isAttacker: true,
-            attackType: (((r as Record<string, unknown>).attackType as string | undefined) ?? 'full_attack') as BattleHistory['attackType'],
+            attackType: mappedAttackType,
           } satisfies BattleHistory;
         });
         setServerHistory(parsed);

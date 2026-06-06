@@ -32,6 +32,16 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
   const [currentView, setCurrentView] = useState<SummonView>('dashboard');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Per-unit quantity inputs (controlled). Keyed by unitType.id; defaults to 1.
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+
+  const getQuantity = useCallback(
+    (unitId: string) => quantities[unitId] ?? 1,
+    [quantities]
+  );
+  const setQuantity = useCallback((unitId: string, value: number) => {
+    setQuantities(prev => ({ ...prev, [unitId]: value }));
+  }, []);
 
   const {
     availableUnits,
@@ -204,33 +214,30 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
                     )}
                   </div>
                   <div className="summon-controls">
-                    <input 
-                      type="number" 
-                      min="1" 
+                    <input
+                      type="number"
+                      min="1"
                       max={maxAffordable}
-                      defaultValue="1"
+                      value={getQuantity(unitType.id)}
+                      onChange={(e) => {
+                        const parsed = parseInt(e.target.value, 10);
+                        setQuantity(unitType.id, Number.isNaN(parsed) ? 1 : Math.max(1, parsed));
+                      }}
                       className="quantity-input"
                       id={`quantity-${unitType.id}`}
                       disabled={!canAfford}
                     />
-                    <button 
+                    <button
                       className="summon-btn-small"
-                      onClick={() => {
-                        const input = document.getElementById(`quantity-${unitType.id}`) as HTMLInputElement;
-                        input.value = String(maxAffordable);
-                      }}
+                      onClick={() => setQuantity(unitType.id, maxAffordable)}
                       disabled={!canAfford}
                       title="Set to maximum affordable"
                     >
                       Max
                     </button>
-                    <button 
+                    <button
                       className="summon-btn"
-                      onClick={() => {
-                        const input = document.getElementById(`quantity-${unitType.id}`) as HTMLInputElement;
-                        const quantity = parseInt(input.value) || 1;
-                        handleSummonUnit(unitType.type, quantity);
-                      }}
+                      onClick={() => handleSummonUnit(unitType.type, getQuantity(unitType.id))}
                       disabled={loading || !canAfford}
                     >
                       Summon
