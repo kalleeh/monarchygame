@@ -13,6 +13,7 @@ import { KingdomOverviewPanel } from './panels/KingdomOverviewPanel';
 import { KingdomManagementPanel } from './panels/KingdomManagementPanel';
 import { TurnManagementPanel } from './panels/TurnManagementPanel';
 import { SeasonHistoryPanel } from './panels/SeasonHistoryPanel';
+import { ErrorLogPanel } from './panels/ErrorLogPanel';
 import './AdminDashboard.css';
 
 export default function AdminDashboard() {
@@ -83,6 +84,7 @@ export default function AdminDashboard() {
         <KingdomOverviewPanel />
         <KingdomManagementPanel />
         <TurnManagementPanel />
+        <ErrorLogPanel />
         <SeasonHistoryPanel />
       </div>
     </div>

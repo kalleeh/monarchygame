@@ -140,6 +140,32 @@ const schema = a.schema({
       allow.authenticated().to(['read'])
     ]),
 
+  // Client-side error/crash reports. Written by the frontend errorReporter so we can
+  // proactively monitor what users hit (uncaught errors, unhandled rejections, React
+  // error-boundary catches) instead of waiting for manual reports.
+  ClientError: a
+    .model({
+      message: a.string().required(),
+      stack: a.string(),
+      source: a.string(),          // 'window.onerror' | 'unhandledrejection' | 'errorBoundary' | manual tag
+      url: a.string(),             // location.pathname + search when it fired
+      kingdomId: a.string(),
+      userAgent: a.string(),
+      appVersion: a.string(),
+      fingerprint: a.string(),     // hash of message+top-of-stack for dedup/grouping
+      occurredAt: a.datetime().required(),
+      ttl: a.integer(),            // epoch seconds for DynamoDB TTL auto-expiry
+    })
+    .secondaryIndexes((index) => [
+      index('source').sortKeys(['occurredAt']),
+    ])
+    // Any authenticated user may create (report their own crashes); reads are owner-only
+    // plus admins via the data console / CloudWatch. Keeps reporting cheap and safe.
+    .authorization((allow) => [
+      allow.authenticated().to(['create']),
+      allow.owner(),
+    ]),
+
   Alliance: a
     .model({
       name: a.string().required(),
