@@ -82,7 +82,7 @@ const TerritoryExpansion: React.FC<TerritoryExpansionProps> = ({ onBack }) => {
   // Initialize demo territory data, then load real server territories in auth mode
   useEffect(() => {
     initializeTerritories();
-    void loadTerritoriesFromServer(kingdomId);
+    if (kingdomId) void loadTerritoriesFromServer(kingdomId);
   }, [initializeTerritories, loadTerritoriesFromServer, kingdomId]);
 
   // Territory grid animation

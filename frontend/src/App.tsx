@@ -390,9 +390,8 @@ function AppContent() {
         let activeSeasonId: string | null = null;
         try {
           const seasonResult = await getActiveSeason('new');
-          const data = (seasonResult as Record<string, unknown>)?.data ?? seasonResult;
-          if (data?.success && data?.season?.id) {
-            activeSeasonId = data.season.id;
+          if (seasonResult?.success && seasonResult.season?.id) {
+            activeSeasonId = seasonResult.season.id;
           }
         } catch {
           // Non-fatal — kingdom can exist without a season

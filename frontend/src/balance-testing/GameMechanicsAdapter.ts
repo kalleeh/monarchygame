@@ -25,8 +25,23 @@ export interface UnitTypes {
   scum: number;
 }
 
+/** Loosely-typed combatant input accepted by the simulation's combat resolver. */
+export interface CombatantInput {
+  race?: string;
+  land?: number;
+  units?: { warOffense?: number; defense?: number };
+  offense?: number;
+  defense?: number;
+}
+
+export interface CombatResolution {
+  success: boolean;
+  landGained: number;
+  casualties: number;
+}
+
 export interface GameMechanics {
-  calculateCombatResult: (attacker: Record<string, unknown>, defender: Record<string, unknown>) => Record<string, unknown>;
+  calculateCombatResult: (attacker: CombatantInput, defender: CombatantInput) => CombatResolution;
   calculateLandGained: (attackerOffense: number, defenderDefense: number, targetLand: number) => number;
   calculateBuildRate: (quarryPercentage: number) => number;
   getRacialBonuses: (race: string) => RaceData;
@@ -89,23 +104,24 @@ export function initializeGameMechanics(): GameMechanics {
       }
     },
     
-    calculateCombatResult: (attacker: Record<string, unknown>, defender: Record<string, unknown>) => {
+    calculateCombatResult: (attacker: CombatantInput, defender: CombatantInput) => {
       const attackerRace = attacker.race || 'Human';
       const defenderRace = defender.race || 'Human';
-      
+
       const attackerBonus = initializeGameMechanics().RACES[attackerRace]?.multipliers.military || 1.0;
       const defenderBonus = initializeGameMechanics().RACES[defenderRace]?.multipliers.military || 1.0;
-      
+
       const attackerStr = (attacker.units?.warOffense || attacker.offense || 1000) * attackerBonus;
       const defenderStr = (defender.units?.defense || defender.defense || 1000) * defenderBonus;
-      
+
       const success = attackerStr > defenderStr;
       const ratio = attackerStr / Math.max(defenderStr, 1);
+      const defenderLand = defender.land ?? 0;
       // Land gain range: 6.79%-7.35% matching combat-mechanics.ts
       const landGained = !success ? 0
-        : ratio >= 2.0 ? Math.floor(defender.land * (0.070 + Math.random() * 0.0035))
-        : Math.floor(defender.land * (0.0679 + Math.random() * 0.0021));
-      
+        : ratio >= 2.0 ? Math.floor(defenderLand * (0.070 + Math.random() * 0.0035))
+        : Math.floor(defenderLand * (0.0679 + Math.random() * 0.0021));
+
       return {
         success,
         landGained,

@@ -238,7 +238,7 @@ export const useTerritoryStore = create(
               const kingdomId = useKingdomStore.getState().kingdomId;
               if (kingdomId) {
                 void refreshKingdomResources(kingdomId);
-                void get().loadTerritoriesFromServer(kingdomId);
+                void (get() as ReturnType<typeof get> & { loadTerritoriesFromServer: (id: string) => Promise<void> }).loadTerritoriesFromServer(kingdomId);
               }
               return true;
             }

@@ -180,7 +180,7 @@ const TradeSystem: React.FC<TradeSystemProps> = ({ kingdomId, onBack }) => {
                 <div className="indicator-header">
                   <span className="indicator-name">{indicator.name}</span>
                   <span className={`indicator-trend ${indicator.trend}`}>
-                    {indicator.trend === 'up' ? '▲' : indicator.trend === 'down' ? '▼' : '—'}
+                    {indicator.trend === 'up' ? '▲' : '—'}
                   </span>
                 </div>
                 <div className="indicator-value">{(indicator.value || 0).toLocaleString()}</div>

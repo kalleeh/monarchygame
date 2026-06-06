@@ -153,6 +153,13 @@ async function handleWithdraw(args: { allianceId?: string | null; kingdomId?: st
     return { success: false, error: 'Only the alliance leader can withdraw', errorCode: ErrorCode.FORBIDDEN };
   }
 
+  // Verify the withdrawal destination is a member of this alliance — prevents the
+  // leader from siphoning treasury gold to an arbitrary (e.g. alt/outsider) kingdom.
+  const memberIds = parseJsonField<string[]>(alliance.memberIds, []);
+  if (!memberIds.includes(kingdomId)) {
+    return { success: false, error: 'Withdrawal target must be a member of the alliance', errorCode: ErrorCode.FORBIDDEN };
+  }
+
   // Parse treasury and verify sufficient gold
   const rawTreasury = alliance.treasury;
   const treasury: Record<string, number> = parseJsonField<Record<string, number>>(rawTreasury, {});

@@ -80,7 +80,13 @@ interface Race {
     warOffense: number;
     warDefense: number;
     sorcery: number;
+    scum: number;
+    forts: number;
+    tithe: number;
+    training: number;
+    siege: number;
     economy: number;
+    building: number;
   };
   unitTypes: string[];
   startingResources: {

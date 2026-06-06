@@ -142,7 +142,7 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
         attackerKingdomId: currentKingdom.id,
         defenderKingdomId: request.targetKingdomId || request.defenderId,
         attackType: request.attackType,
-        units: request.units
+        units: request.units as Record<string, number>
       });
       
       if (combatResult.success) {

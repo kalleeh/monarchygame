@@ -217,4 +217,64 @@ describe('resource-manager handler', () => {
       expect(result.errorCode).toBe('INTERNAL_ERROR');
     });
   });
+
+  describe('saveAchievements — turns reward sync (regression)', () => {
+    it('credits rewardTurns to BOTH resources.turns and the authoritative turnsBalance', async () => {
+      // Regression: previously rewardTurns only updated resources.turns (display-only),
+      // so the turnsBalance every action deducts from never saw the reward — players
+      // silently lost rewarded turns.
+      mockDbGet.mockResolvedValue(mockKingdom({
+        resources: { gold: 10000, population: 1000, elan: 100, land: 1000, turns: 20 },
+        turnsBalance: 20,
+      }));
+
+      const result = await callHandler(makeEvent({
+        kingdomId: 'kingdom-1',
+        achievementIds: JSON.stringify(['first_blood']),
+        rewardTurns: 5,
+        rewardGold: 1000,
+      }));
+
+      expect(result.success).toBe(true);
+      const updateFields = mockDbUpdate.mock.calls[0][2];
+      // turnsBalance must be bumped to the new total...
+      expect(updateFields.turnsBalance).toBe(25);
+      // ...and resources.turns kept in sync for display.
+      const updatedResources = JSON.parse(updateFields.resources as string);
+      expect(updatedResources.turns).toBe(25);
+      expect(updatedResources.gold).toBe(11000);
+    });
+
+    it('caps rewarded turns at MAX_STORED_TURNS (72)', async () => {
+      mockDbGet.mockResolvedValue(mockKingdom({
+        resources: { gold: 0, population: 0, elan: 0, land: 1000, turns: 70 },
+        turnsBalance: 70,
+      }));
+
+      const result = await callHandler(makeEvent({
+        kingdomId: 'kingdom-1',
+        achievementIds: JSON.stringify(['grinder']),
+        rewardTurns: 10,
+      }));
+
+      expect(result.success).toBe(true);
+      const updateFields = mockDbUpdate.mock.calls[0][2];
+      expect(updateFields.turnsBalance).toBe(72);
+      expect(JSON.parse(updateFields.resources as string).turns).toBe(72);
+    });
+
+    it('does not touch turnsBalance when there is no turns reward', async () => {
+      mockDbGet.mockResolvedValue(mockKingdom({ turnsBalance: 20 }));
+
+      const result = await callHandler(makeEvent({
+        kingdomId: 'kingdom-1',
+        achievementIds: JSON.stringify(['lore_master']),
+        rewardGold: 500,
+      }));
+
+      expect(result.success).toBe(true);
+      const updateFields = mockDbUpdate.mock.calls[0][2];
+      expect(updateFields.turnsBalance).toBeUndefined();
+    });
+  });
 });

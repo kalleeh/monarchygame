@@ -9,7 +9,7 @@ interface SeasonInfo {
   seasonNumber: number;
   status: string;
   currentAge: string;
-  weeksRemaining: number;
+  weeksRemaining?: number;
 }
 
 interface MultiplayerLobbyProps {
@@ -31,17 +31,12 @@ const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadSeasonInfo();
-  }, [loadSeasonInfo]);
-
   const loadSeasonInfo = useCallback(async () => {
     try {
       setLoading(true);
       const result = await getActiveSeason(kingdomId);
-      const data = (result as Record<string, unknown>)?.data ?? result;
-      if (data?.season) {
-        setSeason(data.season);
+      if (result?.season) {
+        setSeason(result.season);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load season');
@@ -49,6 +44,10 @@ const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({
       setLoading(false);
     }
   }, [kingdomId]);
+
+  useEffect(() => {
+    loadSeasonInfo();
+  }, [loadSeasonInfo]);
 
   if (isDemoMode()) {
     return (

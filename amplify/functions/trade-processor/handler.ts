@@ -84,7 +84,7 @@ export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event
     if (sellerDenied) return JSON.stringify(sellerDenied);
 
     const sellerResources = parseJsonField<KingdomResources>(seller.resources, {} as KingdomResources);
-    const available = (sellerResources as unknown as Record<string, number>)[resourceType] ?? 0;
+    const available = sellerResources[resourceType] ?? 0;
     if (available < quantity) {
       return JSON.stringify({ success: false, error: `Insufficient ${resourceType}: have ${available}, need ${quantity}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES });
     }
@@ -227,7 +227,7 @@ async function handleAcceptOffer(args: { offerId: string; buyerId: string }, cal
   const updatedBuyerResources = {
     ...buyerResources,
     gold: (buyerResources.gold ?? 0) - offer.totalPrice,
-    [offer.resourceType]: ((buyerResources as unknown as Record<string, number>)[offer.resourceType] ?? 0) + offer.quantity
+    [offer.resourceType]: ((buyerResources[offer.resourceType] as number | undefined) ?? 0) + offer.quantity
   };
 
   // 2. Add gold to seller (resources already escrowed)

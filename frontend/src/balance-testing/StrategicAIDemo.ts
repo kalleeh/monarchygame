@@ -5,11 +5,10 @@
  * in the Monarchy Game balance testing system.
  */
 
-import { StrategicAI } from './StrategicAI';
-import type { Kingdom } from '../../types/kingdom';
+import { StrategicAI, type SimKingdom } from './StrategicAI';
 
 // Mock kingdom for testing
-const createTestKingdom = (race: string, land: number): Kingdom => ({
+const createTestKingdom = (race: string, land: number): SimKingdom => ({
   id: `${race.toLowerCase()}-kingdom`,
   race,
   land,
@@ -30,7 +29,7 @@ const createTestKingdom = (race: string, land: number): Kingdom => ({
     hovels: Math.floor(land * 0.08),
     temples: Math.floor(land * 0.04)
   }
-} as Kingdom);
+});
 
 // Demonstration function
 export function demonstrateStrategicAI() {

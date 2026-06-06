@@ -16,6 +16,16 @@ import { getClient } from '../utils/amplifyClient';
 
 type RestorationType = 'damage_based' | 'death_based' | 'none';
 
+/**
+ * Methods reachable via get() that are defined in the same combine() initializer.
+ * zustand's `combine` types get() as only the state slice, so cross-method calls
+ * need this explicit shape.
+ */
+interface RestorationActions {
+  isActionAllowed: (action: string) => boolean;
+  loadRestorationFromServer: (kingdomId: string) => Promise<void>;
+}
+
 export const useRestorationStore = create(
   combine(
     {
@@ -198,13 +208,14 @@ export const useRestorationStore = create(
        * In auth mode, the server enforces blocking — this is a client-side hint.
        */
       isActionAllowedWithServerCheck: async (action: string, kingdomId: string): Promise<boolean> => {
+        const self = get() as ReturnType<typeof get> & RestorationActions;
         if (isDemoMode()) {
-          return get().isActionAllowed(action);
+          return self.isActionAllowed(action);
         }
 
         // In auth mode, refresh from server first
-        await get().loadRestorationFromServer(kingdomId);
-        return get().isActionAllowed(action);
+        await self.loadRestorationFromServer(kingdomId);
+        return self.isActionAllowed(action);
       },
     })
   )

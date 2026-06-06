@@ -135,18 +135,20 @@ export const useAIKingdomStore = create<AIKingdomState>((set) => ({
       const data = allKingdoms;
       if (data.length === 0) return;
       const transformed = data.map(k => {
-        let res: Record<string, unknown> = {};
+        let res: Record<string, number> = {};
         try { res = typeof k.resources === 'string' ? JSON.parse(k.resources) : (k.resources ?? {}); } catch { /* use defaults */ }
-        let units: Record<string, unknown> = {};
+        let units: Record<string, number> = {};
         try { units = typeof k.totalUnits === 'string' ? JSON.parse(k.totalUnits) : (k.totalUnits ?? {}); } catch { /* use defaults */ }
+        const land = res.land ?? 800;
+        const gold = res.gold ?? 50000;
         return {
           id: k.id,
           name: k.name ?? 'Unknown',
           race: k.race ?? 'Human',
           resources: {
-            gold: res.gold ?? 50000,
+            gold,
             population: res.population ?? 10000,
-            land: res.land ?? 800,
+            land,
             turns: res.turns ?? 100,
           },
           units: {
@@ -156,7 +158,7 @@ export const useAIKingdomStore = create<AIKingdomState>((set) => ({
             tier4: units.cavalry ?? units.tier4 ?? 20,
           },
           difficulty: 'medium' as const,
-          networth: k.networth ?? ((res.land ?? 800) * 1000 + (res.gold ?? 50000)),
+          networth: k.networth ?? (land * 1000 + gold),
           isOnline: true,
           lastActive: new Date(),
         } as AIKingdom;

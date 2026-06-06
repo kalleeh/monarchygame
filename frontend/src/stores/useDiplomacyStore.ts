@@ -25,6 +25,7 @@ interface DiplomacyStore {
   diplomaticHistory: DiplomaticAction[];
   loading: boolean;
   error: string | null;
+  treatySub: { unsubscribe: () => void } | null;
 
   // Actions
   loadDiplomacyData: (kingdomId: string) => Promise<void>;
@@ -38,8 +39,6 @@ interface DiplomacyStore {
   applyIncomingWarDeclaration: (attackerId: string) => void;
 }
 
-let _treatySub: { unsubscribe: () => void } | null = null;
-
 export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
   // Initial state
   relationships: [],
@@ -49,6 +48,7 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
   diplomaticHistory: [],
   loading: false,
   error: null,
+  treatySub: null,
 
   // Load all diplomacy data for a kingdom
   loadDiplomacyData: async (kingdomId: string) => {
@@ -73,13 +73,14 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
       });
 
       // Set up real-time subscriptions (clean up previous first)
-      if (_treatySub) { _treatySub.unsubscribe(); _treatySub = null; }
-      _treatySub = DiplomacyService.subscribeToTreatyProposals(kingdomId, (data: Record<string, unknown>) => {
+      get().treatySub?.unsubscribe();
+      const treatySub = DiplomacyService.subscribeToTreatyProposals(kingdomId, (data: Record<string, unknown>) => {
         const proposal = data as unknown as TreatyProposal;
         set(state => ({
           activeProposals: [...state.activeProposals, proposal]
         }));
       });
+      set({ treatySub });
 
     } catch (error) {
       set({ 
@@ -90,7 +91,8 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
   },
 
   cleanupSubscription: () => {
-    if (_treatySub) { _treatySub.unsubscribe(); _treatySub = null; }
+    get().treatySub?.unsubscribe();
+    set({ treatySub: null });
   },
 
   // Send treaty proposal

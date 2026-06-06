@@ -30,7 +30,7 @@ describe('useDiplomacyStore atomic updates', () => {
         treaties: [],
         reputation: 0,
         lastAction: new Date(),
-      }] as unknown[],
+      }] as unknown as import('../../types/diplomacy').DiplomaticRelationship[],
       reputation: 100,
     });
     await useDiplomacyStore.getState().declareWar('target-1');
@@ -50,7 +50,7 @@ describe('useDiplomacyStore atomic updates', () => {
         treaties: [],
         reputation: 0,
         lastAction: new Date(),
-      }] as unknown[],
+      }] as unknown as import('../../types/diplomacy').DiplomaticRelationship[],
     });
     useDiplomacyStore.getState().applyIncomingWarDeclaration('attacker-99');
     expect(useDiplomacyStore.getState().relationships[0].status).toBe('WAR');

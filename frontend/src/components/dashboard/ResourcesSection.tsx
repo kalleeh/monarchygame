@@ -1,4 +1,3 @@
-import React from 'react';
 import { isDemoMode } from '../../utils/authMode';
 import { LoadingButton } from '../ui/loading/LoadingButton';
 import { EncampPanel } from '../ui/EncampPanel';

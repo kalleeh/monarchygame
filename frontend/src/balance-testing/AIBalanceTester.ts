@@ -12,8 +12,7 @@
  */
 
 import { initializeGameMechanics, type GameMechanics } from './GameMechanicsAdapter';
-import { StrategicAI, type StrategicDecision } from './StrategicAI';
-import type { Kingdom } from '../types/kingdom';
+import { StrategicAI, type StrategicDecision, type SimKingdom } from './StrategicAI';
 
 export interface AIPlayer {
   id: string;
@@ -231,38 +230,6 @@ export class AIBalanceTester {
     player.units.militia = Math.max(0, player.units.militia - militiaLosses);
     player.units.knights = Math.max(0, player.units.knights - knightLosses);
     player.units.cavalry = Math.max(0, player.units.cavalry - cavalryLosses);
-  }
-
-  private calculateSimpleCombatResult(attackerOffense: number, defenderDefense: number, attackerUnits: AIPlayer['units'], defenderUnits: AIPlayer['units']) {
-    const ratio = attackerOffense / Math.max(defenderDefense, 1);
-    const success = ratio > 1.2 + Math.random() * 0.6; // Some randomness
-    
-    // Simple loss calculation
-    const attackerLossRate = success ? 0.1 : 0.3;
-    const defenderLossRate = success ? 0.4 : 0.2;
-    
-    return {
-      success,
-      attackerLosses: {
-        peasants: Math.floor(attackerUnits.peasants * attackerLossRate),
-        militia: Math.floor(attackerUnits.militia * attackerLossRate),
-        knights: Math.floor(attackerUnits.knights * attackerLossRate),
-        cavalry: Math.floor(attackerUnits.cavalry * attackerLossRate)
-      },
-      defenderLosses: {
-        peasants: Math.floor(defenderUnits.peasants * defenderLossRate),
-        militia: Math.floor(defenderUnits.militia * defenderLossRate),
-        knights: Math.floor(defenderUnits.knights * defenderLossRate),
-        cavalry: Math.floor(defenderUnits.cavalry * defenderLossRate)
-      }
-    };
-  }
-
-  private calculateSimpleLandGained(attackerOffense: number, defenderDefense: number, defenderLand: number): number {
-    const ratio = attackerOffense / Math.max(defenderDefense, 1);
-    const baseGain = Math.floor(defenderLand * 0.05); // 5% base
-    const bonusGain = Math.floor(baseGain * Math.max(0, ratio - 1));
-    return Math.min(baseGain + bonusGain, Math.floor(defenderLand * 0.2)); // Max 20%
   }
 
   // Public method for property-based testing
@@ -512,7 +479,7 @@ export class AIBalanceTester {
     );
   }
 
-  private convertToKingdom(player: AIPlayer): Kingdom {
+  private convertToKingdom(player: AIPlayer): SimKingdom {
     return {
       id: player.id,
       race: player.race,
@@ -529,7 +496,7 @@ export class AIBalanceTester {
       buildings: {
         forts: player.stats.forts
       }
-    } as Kingdom;
+    };
   }
 
   private simulateStrategicCombat(attacker: AIPlayer, defender: AIPlayer, decision: StrategicDecision): GameSimulationResult {

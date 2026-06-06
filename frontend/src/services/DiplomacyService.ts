@@ -77,7 +77,7 @@ export class DiplomacyService {
     }
     try {
       const { data } = await getClient().models.DiplomaticRelation.list({
-        filter: { kingdomId: { eq: _kingdomId } } as Parameters<ReturnType<typeof generateClient<Schema>>['models']['DiplomaticRelation']['list']>[0]['filter'],
+        filter: { kingdomId: { eq: _kingdomId } } as NonNullable<Parameters<ReturnType<typeof generateClient<Schema>>['models']['DiplomaticRelation']['list']>[0]>['filter'],
         limit: 50,
       });
       return (data ?? []).map(rel => ({
@@ -102,7 +102,7 @@ export class DiplomacyService {
     }
     try {
       const { data } = await getClient().models.Treaty.list({
-        filter: { recipientId: { eq: _kingdomId }, status: { eq: 'proposed' } } as Parameters<ReturnType<typeof generateClient<Schema>>['models']['Treaty']['list']>[0]['filter'],
+        filter: { recipientId: { eq: _kingdomId }, status: { eq: 'proposed' } } as NonNullable<Parameters<ReturnType<typeof generateClient<Schema>>['models']['Treaty']['list']>[0]>['filter'],
         limit: 50,
       });
       return (data ?? []).map(t => ({
@@ -130,7 +130,7 @@ export class DiplomacyService {
     }
     try {
       const { data } = await getClient().models.Kingdom.list({
-        filter: { isActive: { eq: true } } as Parameters<ReturnType<typeof generateClient<Schema>>['models']['Kingdom']['list']>[0]['filter'],
+        filter: { isActive: { eq: true } } as NonNullable<Parameters<ReturnType<typeof generateClient<Schema>>['models']['Kingdom']['list']>[0]>['filter'],
         limit: 50,
       });
       return (data ?? [])
@@ -174,7 +174,7 @@ export class DiplomacyService {
     try {
       // No dedicated history model — derive from relations
       const { data } = await getClient().models.DiplomaticRelation.list({
-        filter: { kingdomId: { eq: _kingdomId } } as Parameters<ReturnType<typeof generateClient<Schema>>['models']['DiplomaticRelation']['list']>[0]['filter'],
+        filter: { kingdomId: { eq: _kingdomId } } as NonNullable<Parameters<ReturnType<typeof generateClient<Schema>>['models']['DiplomaticRelation']['list']>[0]>['filter'],
         limit: 20,
       });
       return (data ?? [])
@@ -312,7 +312,7 @@ export class DiplomacyService {
     }
     try {
       const sub = getClient().models.Treaty.observeQuery({
-        filter: { recipientId: { eq: kingdomId }, status: { eq: 'proposed' } } as Parameters<ReturnType<typeof generateClient<Schema>>['models']['Treaty']['observeQuery']>[0]['filter'],
+        filter: { recipientId: { eq: kingdomId }, status: { eq: 'proposed' } } as NonNullable<Parameters<ReturnType<typeof generateClient<Schema>>['models']['Treaty']['observeQuery']>[0]>['filter'],
       }).subscribe({
         next: ({ items }) => {
           for (const item of items) {

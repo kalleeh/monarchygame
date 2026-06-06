@@ -116,7 +116,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       }
       const rateLimited = await checkRateLimit(identity.sub, 'resource');
       if (rateLimited) return rateLimited;
-      const kingdom = await dbGet<{ id: string; owner?: string; stats?: unknown; resources?: unknown }>('Kingdom', kingdomId);
+      const kingdom = await dbGet<{ id: string; owner?: string; stats?: unknown; resources?: unknown; turnsBalance?: number }>('Kingdom', kingdomId);
       if (!kingdom) {
         return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
       }
@@ -132,11 +132,20 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       };
       if (rewardGold || rewardTurns) {
         const currentResources = parseJsonField<Record<string, number>>(kingdom.resources, {});
+        // turnsBalance is the server-authoritative turn count that every action deducts
+        // from. Rewarded turns MUST be added there too, not just to resources.turns
+        // (which is display-only) — otherwise rewarded turns are silently unspendable.
+        const cap = TURN_MECHANICS.BASE_GENERATION.MAX_STORED_TURNS;
+        const currentBalance = kingdom.turnsBalance ?? currentResources.turns ?? 0;
+        const newBalance = Math.min(cap, currentBalance + (rewardTurns ?? 0));
         updateFields.resources = JSON.stringify({
           ...currentResources,
           gold: (currentResources.gold ?? 0) + (rewardGold ?? 0),
-          turns: Math.min(100, (currentResources.turns ?? 0) + (rewardTurns ?? 0)),
+          turns: newBalance,
         });
+        if (rewardTurns) {
+          updateFields.turnsBalance = newBalance;
+        }
       }
       await dbUpdate('Kingdom', kingdomId, updateFields);
       log.info('resource-manager', 'achievements-saved', { kingdomId, count: (parsedIds as string[]).length, rewardGold, rewardTurns });

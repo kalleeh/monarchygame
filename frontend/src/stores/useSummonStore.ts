@@ -208,7 +208,8 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
 
           // Amplify client wraps custom mutation responses in { data, errors };
           // unwrap .data when present, otherwise fall back to the raw value.
-          const result = (raw && raw.data !== undefined) ? raw.data : raw;
+          const rawRecord = raw as { data?: unknown } | null;
+          const result = (rawRecord && rawRecord.data !== undefined) ? rawRecord.data : raw;
           const parsed = typeof result === 'string' ? JSON.parse(result) : result;
           if (!parsed.success) {
             const rawError: string = parsed.error || 'Failed to summon units';

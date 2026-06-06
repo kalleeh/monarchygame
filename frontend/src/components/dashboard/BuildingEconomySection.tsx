@@ -1,4 +1,3 @@
-import React from 'react';
 import { BuildingStatsPanel } from '../ui/BuildingStatsPanel';
 
 interface BuildingStats {

@@ -91,6 +91,53 @@ All planned features, code quality improvements, and backlog items are complete.
 
 ---
 
+## Deep Scan — 2026-06-06 (4 parallel reviewers, all findings verified against source)
+
+Reviewed backend Lambdas, shared mechanics, frontend stores/services, and React
+components. Reviewer findings were triaged: most "Critical" claims were verified as
+**false positives** before any code was changed.
+
+### Fixed (5 confirmed issues)
+- ✅ alliance-treasury withdraw: validate destination `kingdomId` is an alliance member
+  (leader could previously route treasury gold to any kingdom). `handler.ts` ~line 155.
+- ✅ rate-limiter: replaced non-atomic read-modify-write with conditional-update +
+  bounded retry (closes concurrent rate-limit-bypass window; still fails open).
+- ✅ spellStore: folded `calming_chant` +1 elan into the single `set()` (was a second
+  non-atomic `set` that could interleave with a concurrent cast).
+- ✅ useDiplomacyStore: moved treaty subscription from a module-level `let` into store
+  state (avoids leak across kingdom switches / strict-mode remounts).
+- ✅ UnitSummonInterface: converted DOM-read uncontrolled quantity input to controlled
+  React state (removed `document.getElementById().value` reads).
+
+Verification: backend 220/220, frontend 125/125, touched frontend files lint clean.
+
+### Verified false positives (no change needed)
+- Alliance treasury "no leader check" — leader IS verified (handler.ts:147-154).
+- Ambush "critical bug" — code matches comment; intentional balance choice.
+- "Math.random breaks combat replay" — replays play back stored rounds, not re-simulated;
+  randomness is intended gameplay variance.
+- Trade-accept double-spend & bounty double-claim — both guarded (conditional update
+  on stored resources; bounty re-claim resets `claimedAt` so old reports are excluded).
+- subscriptionManager cross-kingdom notifications — `startSubscriptions` calls
+  `stopSubscriptions()` first and resets counters.
+
+### ✅ TypeScript strict-mode cleanup (2026-06-06, follow-up)
+- Cleared **all 153 pre-existing `tsc -b` errors** → **0**. README's "0 errors" claim is now
+  actually true under `tsc -b` (build had been passing only because Vite/esbuild skips typecheck).
+- Root-cause fixes (cascaded): new `SimKingdom` type for the balance-testing harness (~42 errors);
+  relaxed `combatCache.wrap` generic to `any[]` (7); `NonNullable<>` on Amplify filter casts (6);
+  removed unused `React` imports / type-only imports under verbatimModuleSyntax (~20).
+- Real issues surfaced & fixed, not just silenced:
+  - admin `updateResources` was passing `gold`/`population` the mutation/handler never accepted
+    (silently ignored) — now passes only `turns` with an accurate toast.
+  - combat AttackType ↔ BattleReport model enum mismatch — added explicit bidirectional mappers
+    (combatService, BattleReportsRoute) instead of lossy casts.
+  - `Unit.type` union widened to include espionage units (scouts/elite_scouts) it already carried.
+- Verification: TypeScript 0 errors, ESLint 0/0, **806/806 tests** (220 backend + 461 shared +
+  125 frontend), production build succeeds (~11s).
+
+---
+
 ## Remaining Backlog
 
 ### Production Deployment
@@ -99,7 +146,53 @@ All planned features, code quality improvements, and backlog items are complete.
 - Subscribe to SNS alert topic for monitoring notifications
 - Validate CloudWatch dashboard and alarms
 
+### Code health (from 2026-06-06 deep scan)
+- ✅ Resolved all 153 `tsc` strict-mode errors (README claim now accurate)
+- Consider making combat/thievery/AI RNG seedable for reproducible tests (enhancement,
+  not a bug — current randomness is intended gameplay variance)
+
 ---
 
-**Last Updated:** 2026-04-26  
+## Architecture Cleanup — 2026-06-06 (8-item agent-team refactor)
+
+Investigated by 8 parallel read-only scouts, synthesized into a conflict-ordered plan,
+then executed: disjoint items in parallel git worktrees, the coupled type/parser cluster
+sequentially. Each item independently verified.
+
+### Completed
+- ✅ **CI typecheck no-op fixed** — `ci.yml` ran `tsc --noEmit` on the frontend's
+  solution-style tsconfig, which checks NOTHING (root cause of the 153-error drift).
+  Now `tsc -b` via a new `frontend` `typecheck` script.
+- ✅ **Combat engine de-duplicated** — deleted the orphaned `frontend/src/utils/combatCache.ts`
+  (zero importers; its 7 functions duplicated `shared/combat/combatCache.ts`, and its cache
+  wrapper was a no-op identity fn). `shared/` is now the sole combat source.
+- ✅ **KingdomResources unified** — one canonical type in new enum-free
+  `shared/types/kingdom-resources.ts` (re-exported by `kingdom.ts` for backend; by
+  `frontend/types/amplify.ts` for frontend). `turns` is now required + an index signature
+  was added, which removed 6 `as unknown as Record<string,number>` casts. The local copy
+  in AdminDashboard was deleted. (Split into a separate module because `kingdom.ts`'s
+  `ErrorCode` enum violates the frontend's `erasableSyntaxOnly`.)
+- ✅ **Deserialization layer** — new `frontend/src/utils/dynamoDbParsers.ts`
+  (`parseKingdomResources` / `parseKingdomStats` / `parseKingdomUnits`); migrated the
+  duplicated parse blocks in kingdomStore (×2) and AppRouter (×2).
+- ✅ **Achievement-turns bug FIXED (real bug)** — `resource-manager` saveAchievements added
+  reward turns to `resources.turns` only; every turn-spending action reads the authoritative
+  `turnsBalance`, which is seeded once and never re-synced → rewarded turns were silently
+  unspendable. Now credits `turnsBalance` too, capped at MAX_STORED_TURNS (72). +3 regression tests.
+- ✅ **alliance-manager** composition-bonus recalculation de-duplicated into one helper.
+- ✅ **shared/mechanics cleanup** — removed 2 genuinely-unused params; kept middle-positional
+  ones (would shift call sites); documented the silent-clamp convention. No behavior change.
+- ✅ **Oversized components split** — `AdminDashboard.tsx` 950→90 lines (5 panels →
+  `admin/panels/*` + `adminShared.ts` + `StatusBadge.tsx`); `WorldMapMobile.tsx` 672→393
+  (extracted `worldmap/TerritoryCard`, `MapSection`, `territoryTypes`).
+
+Verification: backend tsc 0, frontend tsc 0, lint clean, **1270 tests pass**
+(125 frontend + 684 backend + 461 shared), production build succeeds (~10s).
+
+Deferred (out of scope, by design): legacy `resources.turns` field removal is a multi-season
+data migration; `turnsBalance` overlay onto `resources.turns` for display is the interim pattern.
+
+---
+
+**Last Updated:** 2026-06-06  
 **Status:** Deployed to production

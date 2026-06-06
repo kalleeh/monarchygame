@@ -147,7 +147,6 @@ export const useBountyStore = create<BountyState>((set, get) => ({
       const optimalTargets = identifyOptimalBountyTargets(allTargets, {
         maxTurns: 150,
         buildRate: 18,
-        _raceId: 'human',
       });
 
       // Build BountyEntry list from the ranked targets

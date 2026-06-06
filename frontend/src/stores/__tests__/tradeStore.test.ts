@@ -12,7 +12,7 @@ describe('TradeStore', () => {
 
   it('can select a resource', () => {
     const store = useTradeStore.getState();
-    const mockResource = { id: '1', name: 'Gold', quantity: 100, value: 50, supply: 200, demand: 150, type: 'precious', currentPrice: 25, basePrice: 20 };
+    const mockResource = { id: '1', name: 'Gold', quantity: 100, value: 50, supply: 200, demand: 150, type: 'luxury' as const, currentPrice: 25, basePrice: 20 };
     
     // Add resource first
     useTradeStore.setState({ resources: [mockResource] });

@@ -5,6 +5,7 @@ import { calculateCurrentAge } from '../../../shared/mechanics/age-mechanics';
 import type { AgeStatus } from '../../../shared/mechanics/age-mechanics';
 import { isDemoMode } from '../utils/authMode';
 import { getUnitsForRace } from '../utils/units';
+import { parseKingdomResources, parseKingdomUnits } from '../utils/dynamoDbParsers';
 
 export interface KingdomUnit {
   id: string;
@@ -93,16 +94,16 @@ export const useKingdomStore = create<KingdomState>((set, get) => {
         try {
           const result = await getClient().models.Kingdom.get({ id });
           if (result.data) {
-            const serverResources = typeof result.data.resources === 'string'
-              ? JSON.parse(result.data.resources)
-              : (result.data.resources ?? localData.resources);
-            if ((result.data as Record<string, unknown>).turnsBalance != null) {
-              serverResources.turns = (result.data as Record<string, unknown>).turnsBalance;
+            const serverResources = parseKingdomResources(result.data.resources ?? localData.resources);
+            // turnsBalance is the server-authoritative turn count; overlay it for display.
+            const turnsBalance = (result.data as Record<string, unknown>).turnsBalance;
+            if (turnsBalance != null) {
+              serverResources.turns = Number(turnsBalance);
             }
             const raceKey = result.data.race || 'Human';
             const raceUnits = getUnitsForRace(raceKey);
             const serverUnits = typeof result.data.totalUnits === 'string'
-              ? Object.entries(JSON.parse(result.data.totalUnits) as Record<string, number>)
+              ? Object.entries(parseKingdomUnits(result.data.totalUnits))
                   .filter(([, count]) => count > 0)
                   .map(([type, count]) => {
                     const def = raceUnits.find(u => u.id === type);
@@ -135,16 +136,16 @@ export const useKingdomStore = create<KingdomState>((set, get) => {
         try {
           const result = await getClient().models.Kingdom.get({ id });
           if (result.data) {
-            const serverResources = typeof result.data.resources === 'string'
-              ? JSON.parse(result.data.resources)
-              : (result.data.resources ?? localData.resources);
+            const serverResources = parseKingdomResources(result.data.resources ?? localData.resources);
             const raceKey = result.data.race || 'Human';
-            if ((result.data as Record<string, unknown>).turnsBalance != null) {
-              serverResources.turns = (result.data as Record<string, unknown>).turnsBalance;
+            // turnsBalance is the server-authoritative turn count; overlay it for display.
+            const turnsBalance = (result.data as Record<string, unknown>).turnsBalance;
+            if (turnsBalance != null) {
+              serverResources.turns = Number(turnsBalance);
             }
             const raceUnits = getUnitsForRace(raceKey);
             const serverUnits = typeof result.data.totalUnits === 'string'
-              ? Object.entries(JSON.parse(result.data.totalUnits) as Record<string, number>)
+              ? Object.entries(parseKingdomUnits(result.data.totalUnits))
                   .filter(([, count]) => count > 0)
                   .map(([type, count]) => {
                     const def = raceUnits.find(u => u.id === type);

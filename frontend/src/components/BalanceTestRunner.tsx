@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { AIBalanceTester } from '../balance-testing/AIBalanceTester';
 import type { BalanceTestResult } from '../balance-testing/AIBalanceTester';
 import { CombatIcon, ScrollIcon, TrophyIcon } from './ui/MenuIcons';
@@ -191,7 +191,7 @@ function BalanceTestRunner({ onClose }: BalanceTestRunnerProps) {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .balance-test-runner {
           position: fixed;
           top: 0;

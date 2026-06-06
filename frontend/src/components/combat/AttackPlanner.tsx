@@ -3,7 +3,7 @@
  * Interface for planning and launching attacks against other kingdoms
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type {
   Kingdom,
   AttackRequest,
