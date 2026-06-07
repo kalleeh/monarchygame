@@ -10,6 +10,7 @@ const mockDbDelete = vi.hoisted(() => vi.fn());
 const mockDbQuery = vi.hoisted(() => vi.fn());
 
 vi.mock('../data-client', () => ({
+  persistErrorLog: vi.fn().mockResolvedValue(undefined),
   dbGet: mockDbGet,
   dbList: mockDbList,
   dbDelete: mockDbDelete,

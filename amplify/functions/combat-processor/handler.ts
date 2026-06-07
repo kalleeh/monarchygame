@@ -11,7 +11,7 @@ import type { AttackForce, DefenseForce } from '../../../shared/mechanics/combat
 import type { KingdomResources, CombatResultData } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbCreate, dbUpdate, dbAtomicAdd, dbQuery, parseJsonField, ensureTurnsBalance } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbAtomicAdd, dbQuery, parseJsonField, ensureTurnsBalance, persistErrorLog } from '../data-client';
 import { isRacialAbilityActive } from '../../../shared/mechanics/age-mechanics';
 import { checkRateLimit } from '../rate-limiter';
 import { verifyOwnership } from '../verify-ownership';
@@ -884,6 +884,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       })
     };
   } catch (error) {
+    await persistErrorLog('combat-processor', error, { attackerId, defenderId });
     log.error('combat-processor', error, { attackerId, defenderId });
     return { success: false, error: 'Combat processing failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }

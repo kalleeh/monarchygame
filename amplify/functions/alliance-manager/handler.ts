@@ -1,7 +1,7 @@
 import type { Schema } from '../../data/resource';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbCreate, dbUpdate, dbDelete, dbList, dbQuery, parseJsonField } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbDelete, dbList, dbQuery, parseJsonField, persistErrorLog } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 
@@ -444,6 +444,7 @@ export const handler: Schema["manageAlliance"]["functionHandler"] = async (event
         return { success: false, error: `Invalid action: ${action}. Must be one of: create, join, leave, kick, invite, decline, set_relationship, get_relationship`, errorCode: ErrorCode.INVALID_PARAM };
     }
   } catch (error) {
+    await persistErrorLog('alliance-manager', error, { kingdomId, action, allianceId });
     log.error('alliance-manager', error, { kingdomId, action, allianceId });
     return { success: false, error: error instanceof Error ? error.message : 'Alliance management operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }

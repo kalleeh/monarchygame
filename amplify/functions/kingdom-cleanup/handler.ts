@@ -1,7 +1,7 @@
 import type { Schema } from '../../data/resource';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbDelete, dbQuery } from '../data-client';
+import { dbGet, dbDelete, dbQuery, persistErrorLog } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 
@@ -158,6 +158,7 @@ export const handler = async (event: Parameters<Schema['cleanupKingdom']['functi
       },
     };
   } catch (error) {
+    await persistErrorLog('kingdom-cleanup', error, { kingdomId });
     log.error('kingdom-cleanup', error, { kingdomId });
     return { success: false, error: error instanceof Error ? error.message : 'Kingdom cleanup failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }

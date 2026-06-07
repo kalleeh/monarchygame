@@ -1,5 +1,5 @@
 import type { Schema } from '../../data/resource';
-import { dbGet, dbCreate, dbUpdate, dbQuery } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbQuery, persistErrorLog } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { verifyOwnership } from '../verify-ownership';
@@ -173,6 +173,7 @@ export const handler: Schema["declareWar"]["functionHandler"] = async (event) =>
       }
     });
   } catch (error) {
+    await persistErrorLog('war-manager', error);
     log.error('war-manager', error);
     return JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'War operation failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }

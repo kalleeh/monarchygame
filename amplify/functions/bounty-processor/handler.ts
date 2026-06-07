@@ -1,7 +1,7 @@
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbQuery, parseJsonField } from '../data-client';
+import { dbGet, dbUpdate, dbQuery, parseJsonField, persistErrorLog } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 
@@ -160,6 +160,7 @@ export const handler = async (event: any) => {
       return { success: false, error: `Unknown mutation: ${fieldName}`, errorCode: ErrorCode.INVALID_PARAM };
     }
   } catch (error) {
+    await persistErrorLog('bounty-processor', error, { fieldName });
     log.error('bounty-processor', error, { fieldName });
     return { success: false, error: error instanceof Error ? error.message : 'Bounty operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }

@@ -213,6 +213,28 @@ const dynamoThrottleAlarm = new cloudwatch.Alarm(monitoringStack, 'DynamoThrottl
 });
 dynamoThrottleAlarm.addAlarmAction(new SnsAction(alertTopic));
 
+// Client-error volume alarm — the ClientError table is written ONLY by error reports
+// (frontend crashes via errorReporter + backend log failures via persistErrorLog), so
+// its write volume is a direct proxy for the app-wide crash rate. A spike means many
+// users are hitting errors right now — page us via SNS so we look before they report.
+const clientErrorTable = backend.data.resources.tables['ClientError'];
+const clientErrorAlarm = new cloudwatch.Alarm(monitoringStack, 'ClientErrorVolumeAlarm', {
+  metric: new cloudwatch.Metric({
+    namespace: 'AWS/DynamoDB',
+    metricName: 'ConsumedWriteCapacityUnits',
+    dimensionsMap: { TableName: clientErrorTable.tableName },
+    statistic: 'Sum',
+    period: cdk.Duration.minutes(5),
+  }),
+  // ~10 error reports in 5 min. Dedup/rate-limiting in the reporter keeps normal noise
+  // far below this, so breaching means a real incident, not a single flaky user.
+  threshold: 10,
+  evaluationPeriods: 1,
+  alarmDescription: 'Client/backend error reports ≥10 in 5 minutes (app-wide crash spike)',
+  treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+});
+clientErrorAlarm.addAlarmAction(new SnsAction(alertTopic));
+
 // CloudWatch Dashboard
 new cloudwatch.Dashboard(monitoringStack, 'GameDashboard', {
   dashboardName: 'MonarchyGame',
@@ -242,6 +264,19 @@ new cloudwatch.Dashboard(monitoringStack, 'GameDashboard', {
         title: 'DynamoDB Throttles',
         left: [new cloudwatch.Metric({ namespace: 'AWS/DynamoDB', metricName: 'ThrottledRequests', statistic: 'Sum', period: cdk.Duration.minutes(5) })],
         width: 12,
+      }),
+    ],
+    [
+      new cloudwatch.GraphWidget({
+        title: 'Client/Backend Error Reports (ClientError writes)',
+        left: [new cloudwatch.Metric({
+          namespace: 'AWS/DynamoDB',
+          metricName: 'ConsumedWriteCapacityUnits',
+          dimensionsMap: { TableName: clientErrorTable.tableName },
+          statistic: 'Sum',
+          period: cdk.Duration.minutes(5),
+        })],
+        width: 24,
       }),
     ],
   ],

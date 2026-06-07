@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbConditionalUpdate, parseJsonField } from '../data-client';
+import { dbGet, dbUpdate, dbConditionalUpdate, parseJsonField, persistErrorLog } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 import { isConditionalCheckFailed } from '../conditional-helpers';
@@ -307,6 +307,7 @@ export const handler: Schema["manageAllianceTreasury"]["functionHandler"] = asyn
         return { success: false, error: `Invalid action: ${action}. Must be 'contribute', 'withdraw', or 'upgrade'`, errorCode: ErrorCode.INVALID_PARAM };
     }
   } catch (error) {
+    await persistErrorLog('alliance-treasury', error, { allianceId, kingdomId, action, amount });
     log.error('alliance-treasury', error, { allianceId, kingdomId, action, amount });
     return { success: false, error: 'Alliance treasury operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }

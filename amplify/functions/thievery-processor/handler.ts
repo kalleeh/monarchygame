@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources, KingdomUnits } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbConditionalUpdate, dbQuery, dbAtomicAdd, parseJsonField, ensureTurnsBalance } from '../data-client';
+import { dbGet, dbUpdate, dbConditionalUpdate, dbQuery, dbAtomicAdd, parseJsonField, ensureTurnsBalance, persistErrorLog } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { THIEVERY_MECHANICS } from '../../../shared/mechanics/thievery-mechanics';
 import { checkRateLimit } from '../rate-limiter';
@@ -313,6 +313,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
       result: JSON.stringify({ operation, succeeded, casualties, goldStolen, intelligence, promoted }),
     };
   } catch (error) {
+    await persistErrorLog('thievery-processor', error, { kingdomId, operation, targetKingdomId });
     log.error('thievery-processor', error, { kingdomId, operation, targetKingdomId });
     return { success: false, error: 'Thievery operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }

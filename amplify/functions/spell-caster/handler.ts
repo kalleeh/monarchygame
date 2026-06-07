@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbConditionalUpdate, dbQuery, parseJsonField, ensureTurnsBalance } from '../data-client';
+import { dbGet, dbUpdate, dbConditionalUpdate, dbQuery, parseJsonField, ensureTurnsBalance, persistErrorLog } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 import { isConditionalCheckFailed } from '../conditional-helpers';
@@ -297,6 +297,7 @@ export const handler: Schema["castSpell"]["functionHandler"] = async (event) => 
     log.info('spell-caster', 'castSpell', { casterId, spellId, targetId });
     return { success: true, result: JSON.stringify({ spellId, targetId, elanUsed: spellElanCost, remainingElan: updatedResources.elan, damageReport }) };
   } catch (error) {
+    await persistErrorLog('spell-caster', error, { casterId, spellId });
     log.error('spell-caster', error, { casterId, spellId });
     return { success: false, error: 'Spell casting failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }

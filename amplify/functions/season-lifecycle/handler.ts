@@ -1,5 +1,5 @@
 import type { Schema } from '../../data/resource';
-import { dbList, dbGet, dbCreate, dbUpdate, dbBatchWrite, getTableSuffix, parseJsonField } from '../data-client';
+import { dbList, dbGet, dbCreate, dbUpdate, dbBatchWrite, getTableSuffix, parseJsonField, persistErrorLog } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 
@@ -542,6 +542,7 @@ export const handler: Schema["manageSeason"]["functionHandler"] = async (event) 
         return JSON.stringify({ success: false, error: `Unknown action: ${action}`, errorCode: ErrorCode.INVALID_PARAM });
     }
   } catch (error) {
+    await persistErrorLog('season-lifecycle', error, { action: args.action });
     log.error('season-lifecycle', error, { action: args.action });
     return JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Season lifecycle operation failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }

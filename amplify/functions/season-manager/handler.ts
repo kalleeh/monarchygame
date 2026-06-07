@@ -1,5 +1,5 @@
 import type { Schema } from '../../data/resource';
-import { dbList, dbUpdate, dbGet, dbQuery, parseJsonField } from '../data-client';
+import { dbList, dbUpdate, dbGet, dbQuery, parseJsonField, persistErrorLog } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { verifyOwnership } from '../verify-ownership';
@@ -91,6 +91,7 @@ async function handleGetActiveSeason(event: { identity?: unknown }): Promise<str
       }
     });
   } catch (error) {
+    await persistErrorLog('season-manager', error);
     log.error('season-manager', error);
     return JSON.stringify({ success: false, error: 'Season query failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }
@@ -125,6 +126,7 @@ async function handleFetchWorldState(event: { identity?: unknown; arguments?: un
       worldState: state ?? { kingdomId, seasonId, visibleKingdoms: [], fogOfWar: {} },
     });
   } catch (error) {
+    await persistErrorLog('season-manager', error);
     log.error('season-manager', error);
     return JSON.stringify({ success: false, error: 'World state query failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }

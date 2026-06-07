@@ -1,7 +1,7 @@
 import type { Schema } from '../../data/resource';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbQuery, dbAtomicAdd, parseJsonField, ensureTurnsBalance } from '../data-client';
+import { dbGet, dbUpdate, dbQuery, dbAtomicAdd, parseJsonField, ensureTurnsBalance, persistErrorLog } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 
@@ -153,6 +153,7 @@ export const handler: Schema["updateFaith"]["functionHandler"] = async (event) =
       return { success: false, error: `Invalid action. Must be 'selectAlignment' or 'useFocusAbility'`, errorCode: ErrorCode.INVALID_PARAM };
     }
   } catch (error) {
+    await persistErrorLog('faith-processor', error, { kingdomId, action });
     log.error('faith-processor', error, { kingdomId, action });
     return { success: false, error: 'Faith operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
