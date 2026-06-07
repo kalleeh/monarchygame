@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomUnits, KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbConditionalUpdate, dbQuery, parseJsonField, ensureTurnsBalance } from '../data-client';
+import { dbGet, dbConditionalUpdate, dbQuery, parseJsonField, ensureTurnsBalance, persistErrorLog } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 import { isConditionalCheckFailed } from '../conditional-helpers';
@@ -147,6 +147,7 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
     log.info('unit-trainer', 'trainUnits', { kingdomId, unitType, quantity });
     return { success: true, units: JSON.stringify(updatedUnits) };
   } catch (error) {
+    await persistErrorLog('unit-trainer', error, { kingdomId, unitType, quantity });
     log.error('unit-trainer', error, { kingdomId, unitType, quantity });
     return { success: false, error: 'Training failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }

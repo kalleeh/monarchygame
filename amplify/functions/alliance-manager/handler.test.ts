@@ -13,6 +13,7 @@ const mockDbDelete = vi.hoisted(() => vi.fn());
 const mockDbAtomicAdd = vi.hoisted(() => vi.fn());
 
 vi.mock('../data-client', () => ({
+  persistErrorLog: vi.fn().mockResolvedValue(undefined),
   dbGet: mockDbGet,
   dbUpdate: mockDbUpdate,
   dbCreate: mockDbCreate,

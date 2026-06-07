@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbCreate, dbUpdate, dbConditionalUpdate, dbQuery, parseJsonField } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbConditionalUpdate, dbQuery, parseJsonField, persistErrorLog } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 import { isConditionalCheckFailed } from '../conditional-helpers';
@@ -149,6 +149,7 @@ export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event
       }
     });
   } catch (error) {
+    await persistErrorLog('trade-processor', error);
     log.error('trade-processor', error);
     return JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Trade operation failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }

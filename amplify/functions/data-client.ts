@@ -273,6 +273,45 @@ export async function dbAtomicAdd(
 }
 
 /**
+ * Persist a backend error into the ClientError table so server-side crashes show
+ * up in the same admin Error Log view as client crashes (source: "backend:<handler>").
+ *
+ * Self-contained and never throws — logging must never mask or replace the original
+ * error response. Awaited by callers (Lambda freezes after return, so a fire-and-forget
+ * write could be dropped). Best-effort: swallows its own failures.
+ */
+export async function persistErrorLog(
+  handler: string,
+  error: unknown,
+  context?: Record<string, unknown>
+): Promise<void> {
+  try {
+    const message = (error instanceof Error ? error.message : String(error)).slice(0, 1000);
+    const stack = error instanceof Error && error.stack ? error.stack.slice(0, 4000) : undefined;
+    const now = Date.now();
+    // Group identical backend errors by handler + message (cheap stable hash).
+    const basis = `${handler}:${message}`;
+    let h = 0;
+    for (let i = 0; i < basis.length; i++) h = (Math.imul(31, h) + basis.charCodeAt(i)) | 0;
+    const fingerprint = `b${(h >>> 0).toString(36)}`;
+
+    await dbCreate('ClientError', {
+      message,
+      stack,
+      source: `backend:${handler}`,
+      url: context ? JSON.stringify(context).slice(0, 500) : undefined,
+      kingdomId: (context?.kingdomId as string | undefined) ?? undefined,
+      appVersion: 'backend',
+      fingerprint,
+      occurredAt: new Date(now).toISOString(),
+      ttl: Math.floor(now / 1000) + 30 * 24 * 60 * 60,
+    });
+  } catch {
+    /* never let error-logging cascade */
+  }
+}
+
+/**
  * Ensure turnsBalance is initialized from resources.turns for kingdoms that
  * predate the turnsBalance field. Call before any dbAtomicAdd on turnsBalance.
  */

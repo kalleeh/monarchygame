@@ -1,5 +1,5 @@
 import type { Schema } from '../../data/resource';
-import { dbGet, dbCreate, dbUpdate, dbQuery } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbQuery, persistErrorLog } from '../data-client';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { verifyOwnership } from '../verify-ownership';
@@ -145,6 +145,7 @@ export const handler: Schema["sendTreatyProposal"]["functionHandler"] = async (e
       }
     });
   } catch (error) {
+    await persistErrorLog('diplomacy-processor', error);
     log.error('diplomacy-processor', error);
     return JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Diplomacy operation failed', errorCode: ErrorCode.INTERNAL_ERROR });
   }

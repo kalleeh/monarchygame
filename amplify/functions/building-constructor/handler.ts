@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomBuildings, KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbConditionalUpdate, dbQuery, parseJsonField, ensureTurnsBalance } from '../data-client';
+import { dbGet, dbConditionalUpdate, dbQuery, parseJsonField, ensureTurnsBalance, persistErrorLog } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 import { isConditionalCheckFailed } from '../conditional-helpers';
@@ -128,6 +128,7 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
     log.info('building-constructor', 'constructBuildings', { kingdomId, buildingType, quantity });
     return { success: true, buildings: JSON.stringify(updatedBuildings) };
   } catch (error) {
+    await persistErrorLog('building-constructor', error, { kingdomId, buildingType, quantity });
     log.error('building-constructor', error, { kingdomId, buildingType, quantity });
     return { success: false, error: 'Construction failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }

@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources, KingdomBuildings } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbQuery, parseJsonField } from '../data-client';
+import { dbGet, dbUpdate, dbQuery, parseJsonField, persistErrorLog } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
@@ -86,6 +86,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       log.info('resource-manager', 'defensive-formation-saved', { kingdomId, formationId });
       return { success: true };
     } catch (err) {
+      await persistErrorLog('resource-manager', err, { kingdomId, context: 'saveDefensiveFormation' });
       log.error('resource-manager', err, { kingdomId, context: 'saveDefensiveFormation' });
       return { success: false, error: 'Failed to save defensive formation', errorCode: ErrorCode.INTERNAL_ERROR };
     }
@@ -151,6 +152,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       log.info('resource-manager', 'achievements-saved', { kingdomId, count: (parsedIds as string[]).length, rewardGold, rewardTurns });
       return { success: true };
     } catch (err) {
+      await persistErrorLog('resource-manager', err, { kingdomId, context: 'saveAchievements' });
       log.error('resource-manager', err, { kingdomId, context: 'saveAchievements' });
       return { success: false, error: 'Failed to save achievements', errorCode: ErrorCode.INTERNAL_ERROR };
     }
@@ -207,6 +209,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       log.info('resource-manager', 'encamp', { kingdomId, duration, bonusTurns, encampEndTime });
       return { success: true, encampEndTime, encampBonusTurns: bonusTurns };
     } catch (error) {
+      await persistErrorLog('resource-manager', error, { kingdomId, action: 'encamp' });
       log.error('resource-manager', error, { kingdomId, action: 'encamp' });
       return { success: false, error: 'Encamp failed', errorCode: ErrorCode.INTERNAL_ERROR };
     }
@@ -435,6 +438,7 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     log.info('resource-manager', 'updateResources', { kingdomId, turns });
     return { success: true, resources: JSON.stringify(updated), newTurns: turns };
   } catch (error) {
+    await persistErrorLog('resource-manager', error, { kingdomId });
     log.error('resource-manager', error, { kingdomId });
     return { success: false, error: 'Resource update failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }

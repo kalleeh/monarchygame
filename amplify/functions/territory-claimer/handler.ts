@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbConditionalUpdate, dbAtomicAdd, dbQuery, parseJsonField, ensureTurnsBalance } from '../data-client';
+import { dbGet, dbUpdate, dbConditionalUpdate, dbAtomicAdd, dbQuery, parseJsonField, ensureTurnsBalance, persistErrorLog } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 import { isConditionalCheckFailed } from '../conditional-helpers';
@@ -106,6 +106,7 @@ async function handleUpgrade(
     log.info('territory-claimer', 'upgradeTerritory', { kingdomId, territoryId, newDefenseLevel });
     return { success: true, defenseLevel: newDefenseLevel };
   } catch (error) {
+    await persistErrorLog('territory-claimer', error, { kingdomId, territoryId });
     log.error('territory-claimer', error, { kingdomId, territoryId });
     return { success: false, error: 'Territory upgrade failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
@@ -256,6 +257,7 @@ export const handler = async (event: Parameters<Schema["claimTerritory"]["functi
     log.info('territory-claimer', 'claimTerritory', { kingdomId, territoryName, regionId, category, settling: true, completesAt });
     return { success: true, territory: territoryName, regionId: regionId ?? null, category: category ?? null, settling: true, completesAt };
   } catch (error) {
+    await persistErrorLog('territory-claimer', error, { kingdomId, territoryName });
     log.error('territory-claimer', error, { kingdomId, territoryName });
     return { success: false, error: 'Territory claim failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
