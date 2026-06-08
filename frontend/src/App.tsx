@@ -205,15 +205,22 @@ function AppContent() {
         }
       } catch { /* ignore corrupt cache */ }
 
-      // 2) Authoritative fetch. Server-side owner filter avoids pulling every AI kingdom
-      //    in the DB across all players (the old `list({limit:1000})` scan). Owner-based
-      //    auth still scopes results, but filtering server-side keeps the payload small.
+      // 2) Authoritative fetch. Server-side owner filter trims the payload (avoids pulling
+      //    every AI kingdom in the DB). The owner field is stored as Amplify's
+      //    `{identityId}::{sub}` composite — NOT a bare sub — so we match with `contains`
+      //    on the identifiers, then re-check precisely client-side via ownerMatches.
+      type KingdomListFilter = NonNullable<Parameters<ReturnType<typeof getClient>['models']['Kingdom']['list']>[0]>['filter'];
+      const ownerFilters: Array<Record<string, unknown>> = [];
+      if (sub) ownerFilters.push({ owner: { contains: sub } });
+      if (cognitoUsername) ownerFilters.push({ owner: { contains: cognitoUsername } });
+      const listFilter = (ownerFilters.length > 1 ? { or: ownerFilters } : ownerFilters[0]) as KingdomListFilter;
+
       const { data } = await getClient().models.Kingdom.list({
-        filter: { owner: { eq: sub || cognitoUsername } },
+        filter: listFilter,
         limit: 1000,
       });
 
-      // Defensive: keep the client-side owner match too (covers legacy `username::sub` owners).
+      // Authoritative precise match (covers `{id}::{sub}`, bare sub, and legacy `username::sub`).
       const myKingdoms = data.filter(k => ownerMatches(((k as Record<string, unknown>).owner as string) ?? ''));
       setKingdoms(myKingdoms);
 
