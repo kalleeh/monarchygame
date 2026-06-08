@@ -213,4 +213,50 @@ describe('unit-trainer handler', () => {
       expect(mockDbConditionalUpdate).not.toHaveBeenCalled();
     });
   });
+
+  describe('troop cap (gold invested in troops)', () => {
+    it('rejects training that would exceed the land+barracks-scaled cap', async () => {
+      // land 1000, barracks 0 -> cap floored at 2,000,000g.
+      // 6000 existing militia × 350g = 2,100,000g, already over cap.
+      mockDbGet.mockResolvedValue(
+        mockKingdom({
+          resources: { gold: 100000, population: 100000, mana: 0, land: 1000 },
+          totalUnits: { militia: 6000, infantry: 0, archers: 0, cavalry: 0, siege: 0, mages: 0, scouts: 0 },
+        })
+      );
+
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'militia', quantity: 1 }));
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('VALIDATION_FAILED');
+      expect(result.error).toMatch(/troop cap/i);
+      expect(mockDbConditionalUpdate).not.toHaveBeenCalled();
+    });
+
+    it('allows training comfortably under the cap', async () => {
+      // 100 militia = 35,000g invested vs 2M cap — fine.
+      mockDbGet.mockResolvedValue(
+        mockKingdom({
+          resources: { gold: 100000, population: 100000, mana: 0, land: 1000 },
+          totalUnits: { militia: 100, infantry: 0, archers: 0, cavalry: 0, siege: 0, mages: 0, scouts: 0 },
+        })
+      );
+
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'militia', quantity: 1 }));
+      expect(result.success).toBe(true);
+    });
+
+    it('raises the cap when the kingdom has more land + barracks', async () => {
+      // land 30000 × 1000 + 5000 barracks × 2000 = 40M cap — 2.1M of troops fits easily.
+      mockDbGet.mockResolvedValue(
+        mockKingdom({
+          resources: { gold: 100000, population: 100000, mana: 0, land: 30000 },
+          buildings: { mine: 0, farm: 0, tower: 0, temple: 0, castle: 0, barracks: 5000, wall: 0 },
+          totalUnits: { militia: 6000, infantry: 0, archers: 0, cavalry: 0, siege: 0, mages: 0, scouts: 0 },
+        })
+      );
+
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'militia', quantity: 1 }));
+      expect(result.success).toBe(true);
+    });
+  });
 });

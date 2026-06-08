@@ -46,6 +46,7 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
   const {
     availableUnits,
     accumulatedGoldSpent,
+    troopCapGold,
     summonUnits,
     calculateRemainingCapacity,
     calculateMaxAffordable,
@@ -58,11 +59,11 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
   // Get current units from kingdom store (single source of truth)
   const currentUnits = useKingdomStore((state) => state.units);
   const resources = useKingdomStore((state) => state.resources);
-  
-  // Calculate troop cap info
+
+  // Calculate troop cap info (cap scales with land + barracks)
   const remainingCapacity = calculateRemainingCapacity();
   const totalUpkeep = getTotalUpkeep();
-  const TROOP_CAP_GOLD = 10_000_000;
+  const TROOP_CAP_GOLD = troopCapGold;
 
   // On mount: refresh gold balance from server so affordability is accurate
   useEffect(() => {

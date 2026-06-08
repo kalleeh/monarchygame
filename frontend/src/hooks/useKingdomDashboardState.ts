@@ -159,7 +159,7 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
   const { hasCompleted: tutorialCompleted, markComplete: completeTutorial } = useTutorial('kingdom-dashboard');
 
   // Calculate BRT and upkeep
-  const { accumulatedGoldSpent, calculateRemainingCapacity } = useSummonStore();
+  const { accumulatedGoldSpent, troopCapGold, calculateRemainingCapacity } = useSummonStore();
 
   const getTotalUpkeep = useCallback(() => {
     const raceKey = normalizeRace(kingdom.race);
@@ -290,9 +290,10 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
       isHigh,
       isCritical,
       troopCapUsed: accumulatedGoldSpent,
-      troopCapRemaining: calculateRemainingCapacity()
+      troopCapRemaining: calculateRemainingCapacity(),
+      troopCapTotal: troopCapGold,
     };
-  }, [getTotalUpkeep, resources.gold, accumulatedGoldSpent, calculateRemainingCapacity]);
+  }, [getTotalUpkeep, resources.gold, accumulatedGoldSpent, troopCapGold, calculateRemainingCapacity]);
 
   // Initialize kingdom store ONCE on first mount only
   useEffect(() => {

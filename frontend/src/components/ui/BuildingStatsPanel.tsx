@@ -17,6 +17,7 @@ interface UpkeepInfo {
   isHigh: boolean;
   isCritical: boolean;
   troopCapUsed: number;
+  troopCapTotal?: number;
 }
 
 interface BuildingStatsPanelProps {
@@ -108,7 +109,7 @@ export function BuildingStatsPanel({ buildingStats, upkeepInfo, race }: Building
         <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
             <span>Troop Cap Used</span>
-            <span>{upkeepInfo.troopCapUsed.toLocaleString()}g / 10,000,000g</span>
+            <span>{upkeepInfo.troopCapUsed.toLocaleString()}g / {(upkeepInfo.troopCapTotal ?? 0).toLocaleString()}g</span>
           </div>
         </div>
       </div>

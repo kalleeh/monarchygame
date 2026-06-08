@@ -7,6 +7,8 @@ import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 import { isConditionalCheckFailed } from '../conditional-helpers';
 import { getUnitGoldCost } from '../../../shared/mechanics/unit-costs';
+import { calculateTroopCapGold } from '../../../shared/mechanics/troop-cap-mechanics';
+import type { KingdomBuildings } from '../../../shared/types/kingdom-resources';
 
 const UNIT_QUANTITY = { min: 1, max: 1000 } as const;
 const MAX_TOTAL_UNITS = 100000;
@@ -17,6 +19,7 @@ type KingdomType = {
   race?: string | null;
   resources?: KingdomResources | null;
   totalUnits?: KingdomUnits | null;
+  buildings?: KingdomBuildings | null;
   turnsBalance?: number | null;
 };
 
@@ -105,6 +108,29 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
     if (currentTotal + quantity > MAX_TOTAL_UNITS) {
       const available = Math.max(0, MAX_TOTAL_UNITS - currentTotal);
       return { success: false, error: `Unit limit reached: max ${MAX_TOTAL_UNITS} total units. You can train ${available} more.`, errorCode: ErrorCode.VALIDATION_FAILED };
+    }
+
+    // Troop cap — ceiling on accumulated gold invested in troops, scaled by land +
+    // barracks (original Monarchy behaviour). Authoritative here; the client mirrors it.
+    const buildings = parseJsonField(kingdom.buildings, {} as KingdomBuildings);
+    const troopCapGold = calculateTroopCapGold({
+      land: resources.land ?? 0,
+      barracks: buildings.barracks ?? 0,
+    });
+    // Value the kingdom's existing troops at current per-unit costs.
+    let accumulatedTroopGold = 0;
+    for (const [type, count] of Object.entries(units)) {
+      const perUnit = getUnitGoldCost(kingdom.race ?? '', type);
+      if (perUnit) accumulatedTroopGold += perUnit * (count ?? 0);
+    }
+    if (accumulatedTroopGold + goldCost > troopCapGold) {
+      const remaining = Math.max(0, troopCapGold - accumulatedTroopGold);
+      const affordableUnits = Math.floor(remaining / serverGoldCostPerUnit);
+      return {
+        success: false,
+        error: `Troop cap reached: max ${troopCapGold.toLocaleString()}g invested in troops (you have ${accumulatedTroopGold.toLocaleString()}g). Expand land or build barracks to raise it. You can train ${affordableUnits} more.`,
+        errorCode: ErrorCode.VALIDATION_FAILED,
+      };
     }
 
     const currentCount = units[unitType as keyof KingdomUnits] ?? 0;
