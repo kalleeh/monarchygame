@@ -90,6 +90,7 @@ function KingdomDashboard({
     networth,
     upkeepInfo,
     resourceStatus,
+    generationRates,
     nextStep,
     raceData,
     handleBack,
@@ -193,6 +194,7 @@ function KingdomDashboard({
             networth={networth}
             resources={resources}
             resourceStatus={resourceStatus}
+            generationRates={generationRates}
             resourceLoading={resourceLoading}
             onGenerateTurns={() => handleGenerateResources('generate_turns')}
             onGenerateIncome={() => handleGenerateResources('generate_income')}

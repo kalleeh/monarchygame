@@ -6,6 +6,7 @@ import { dbGet, dbUpdate, dbQuery, parseJsonField, persistErrorLog } from '../da
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
+import { calculateGenerationRates, type TerritoryLike } from '../../../shared/mechanics/economy-mechanics';
 
 const RESOURCE_LIMITS = {
   gold: { min: 0, max: 1000000 },
@@ -256,42 +257,9 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     const currentElan = resources.elan ?? 0;
     const currentLand = resources.land ?? 1000;
 
-    // Tithe income from temples: tithe stat (0–10 scale) acts as a multiplier
-    const titheMultiplier = ((stats.tithe as number) ?? 0) / 10; // 0–1.0 range
-    const tithePerTurn = Math.floor((buildings.temple ?? 0) * 5 * Math.max(titheMultiplier, 0.5));
-
-    // Age multipliers for income — kingdoms generate more in later ages
-    const AGE_INCOME_MULTIPLIERS: Record<string, number> = {
-      'early': 1.2,    // 20% bonus — growth phase (matches age-mechanics.ts incomeMultiplier: 1.2)
-      'middle': 1.15,  // 15% bonus — kingdoms have developed
-      'late': 1.30,    // 30% bonus — peak civilization
-    };
-    const ageMultiplier = AGE_INCOME_MULTIPLIERS[currentAge] ?? 1.0;
-
-    // Building-based income per turn (tithe is separated so it can be floored before age scaling)
-    let baseGoldPerTurn = Math.max(50, (buildings.mine ?? 0) * 20 + (buildings.farm ?? 0) * 8 + (buildings.tower ?? 0) * 50 + 100);
-    const populationPerTurn = (buildings.farm ?? 0) * 10;
-    // Race-specific elan generation per turn (matches shared/mechanics/elan-mechanics.ts)
     const currentRace = (kingdom.race as string) ?? '';
 
-    // Castle: small gold income for all races (10 gold per castle)
-    baseGoldPerTurn += (buildings.castle ?? 0) * 10;
-
-    // Barracks: small income from military levies (15 gold per barracks)
-    baseGoldPerTurn += (buildings.barracks ?? 0) * 15;
-
-    // Dwarven castle bonus: +30 gold per castle (stone mastery — castles doubly valuable)
-    if (currentRace.toLowerCase() === 'dwarven') {
-      baseGoldPerTurn += (buildings.castle ?? 0) * 30;
-    }
-
-    const ELAN_RATE = (['Sidhe', 'Vampire'].includes(currentRace)) ? 0.005 : 0.003;
-    const elanPerTurn = Math.ceil((buildings.temple ?? 0) * ELAN_RATE);
-
-    // Human caravan bonus: double-frequency trade caravans generate 40% bonus income
-    const caravan_bonus = currentRace === 'Human' ? Math.floor(baseGoldPerTurn * 0.40) : 0;
-
-    // Alliance composition and upgrade income bonuses
+    // Alliance composition and upgrade income bonuses (I/O — fetched here, math in shared module)
     let compositionIncomeBonus = 1.0;
     let upgradeIncomeBonus = 1.0;
     try {
@@ -311,106 +279,32 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
       }
     } catch { /* non-fatal */ }
 
-    // Apply age multiplier and alliance bonuses to all gold income (base + tithe + caravan bonus)
-    let totalGoldPerTurn = Math.floor((baseGoldPerTurn + tithePerTurn + caravan_bonus) * ageMultiplier * compositionIncomeBonus * upgradeIncomeBonus);
-
-    // Apply ECONOMIC_FOCUS faith effect bonus (+20% gold income)
+    // ECONOMIC_FOCUS faith effect (+20% gold income)
     const activeFaithEffects = (stats.activeFaithEffects as Array<{ effectType: string; expiresAt: string }>) ?? [];
     const nowIso = new Date().toISOString();
     const hasEconomicFocus = activeFaithEffects.some(e => e.effectType === 'ECONOMIC_FOCUS' && e.expiresAt > nowIso);
-    if (hasEconomicFocus) {
-      totalGoldPerTurn = Math.floor(totalGoldPerTurn * 1.20);
-    }
 
-    // Territory-based income (Tier 2 production)
-    const CATEGORY_PRODUCTION: Record<string, { gold: number; population: number; land: number }> = {
-      farmland:   { gold: 20,  population: 30, land: 50 },
-      mine:       { gold: 60,  population: 5,  land: 10 },
-      forest:     { gold: 10,  population: 10, land: 30 },
-      port:       { gold: 80,  population: 20, land: 5  },
-      stronghold: { gold: 5,   population: 0,  land: 0  },
-      ruins:      { gold: 0,   population: 0,  land: 0  },
-    };
-
-    const TERRAIN_MULTIPLIERS: Record<string, Partial<Record<string, number>>> = {
-      mountains: { mine: 1.5 },
-      coastal:   { port: 1.5 },
-      forest:    { forest: 1.5 },
-      plains:    {},
-    };
-
-    // Race-specific territory income bonuses by category
-    const RACE_TERRITORY_BONUS: Record<string, Partial<Record<string, number>>> = {
-      'Goblin':    { mine: 1.20 },                           // strip miners
-      'Dwarven':   { mine: 1.25, stronghold: 1.15 },         // master miners + fortress builders
-      'Elven':     { forest: 1.20 },                         // forest race
-      'Fae':       { farmland: 1.20 },                       // nature spirits
-      'Sidhe':     { farmland: 1.15 },                       // mystical nature race
-      'Human':     { port: 1.20 },                           // trade/caravan race
-      'Centaur':   { farmland: 1.10 },                       // plains runners
-      'Vampire':   { stronghold: 1.15 },                     // fortress race
-      'Elemental': { mine: 1.10, forest: 1.10 },             // nature hybrid
-      'Droben':    {},                                        // pure warrior, no territory bonus
-    };
-
-    const REGION_SLOT_COUNTS: Record<string, number> = { capital: 5, settlement: 3, outpost: 2, fortress: 4 };
-    const WORLD_REGION_TYPES: Record<string, string> = {
-      'wt-01':'fortress','wt-02':'outpost','wt-03':'capital','wt-04':'settlement','wt-05':'fortress',
-      'wt-06':'outpost','wt-07':'capital','wt-08':'settlement','wt-09':'capital','wt-10':'outpost',
-      'wt-11':'settlement','wt-12':'outpost','wt-13':'fortress','wt-14':'outpost','wt-15':'settlement',
-      'wt-16':'capital','wt-17':'outpost','wt-18':'settlement','wt-19':'settlement','wt-20':'capital',
-      'wt-21':'outpost','wt-22':'capital','wt-23':'settlement','wt-24':'outpost','wt-25':'capital',
-      'wt-26':'outpost','wt-27':'capital','wt-28':'settlement','wt-29':'outpost','wt-30':'capital',
-      'wt-31':'settlement','wt-32':'outpost','wt-33':'outpost','wt-34':'settlement','wt-35':'outpost',
-      'wt-36':'settlement','wt-37':'outpost','wt-38':'settlement','wt-39':'outpost','wt-40':'fortress',
-      'wt-41':'capital','wt-42':'settlement','wt-43':'settlement','wt-44':'outpost','wt-45':'settlement',
-      'wt-46':'outpost','wt-47':'settlement','wt-48':'fortress','wt-49':'capital','wt-50':'outpost',
-    };
-
+    // Territories (I/O — fetched here, math in shared module)
     let territories: TerritoryType[] = [];
-    let territoryGold = 0;
-    let territoryPop = 0;
-    let territoryLand = 0;
-
     try {
       territories = await dbQuery<TerritoryType>('Territory', 'territoriesByKingdomIdAndCreatedAt', { field: 'kingdomId', value: kingdomId });
-
-      for (const t of territories) {
-        const cat = t.category ?? 'farmland';
-        const terrain = t.terrainType ?? 'plains';
-        const base = CATEGORY_PRODUCTION[cat] ?? CATEGORY_PRODUCTION.farmland;
-        const mult = TERRAIN_MULTIPLIERS[terrain]?.[cat] ?? 1.0;
-        const dlvlMult = 1 + 0.1 * (t.defenseLevel ?? 0);
-        const raceBonus = RACE_TERRITORY_BONUS[currentRace]?.[cat] ?? 1.0;
-        territoryGold += Math.floor(base.gold * mult * dlvlMult * raceBonus);
-        territoryPop  += Math.floor(base.population * mult * dlvlMult);  // race bonus only applies to gold
-        territoryLand += Math.floor(base.land * mult * dlvlMult);
-      }
-
-      // Region completion bonus: +20% gold for fully-controlled regions
-      const regionGroups: Record<string, number> = {};
-      for (const t of territories) {
-        if (t.regionId) regionGroups[t.regionId] = (regionGroups[t.regionId] ?? 0) + 1;
-      }
-      for (const [regionId, count] of Object.entries(regionGroups)) {
-        const rtype = WORLD_REGION_TYPES[regionId];
-        if (rtype && count >= (REGION_SLOT_COUNTS[rtype] ?? 99)) {
-          const regionGold = territories
-            .filter(t => t.regionId === regionId)
-            .reduce((sum, t) => {
-              const cat = t.category ?? 'farmland';
-              const terrain = t.terrainType ?? 'plains';
-              const b = CATEGORY_PRODUCTION[cat] ?? CATEGORY_PRODUCTION.farmland;
-              const m = TERRAIN_MULTIPLIERS[terrain]?.[cat] ?? 1.0;
-              return sum + Math.floor(b.gold * m * (1 + 0.1 * (t.defenseLevel ?? 0)));
-            }, 0);
-          territoryGold += Math.floor(regionGold * 0.20);
-        }
-      }
     } catch (err) {
       log.warn('resource-manager', 'territory-income-failed', { err });
       // Non-fatal — proceed without territory income
     }
+
+    // Authoritative per-turn rates — SHARED with the frontend display so "+X/turn"
+    // shown to the player exactly matches what is granted here.
+    const rates = calculateGenerationRates({
+      race: currentRace,
+      age: currentAge,
+      buildings,
+      tithe: (stats.tithe as number) ?? 0,
+      territories: territories as TerritoryLike[],
+      compositionIncomeBonus,
+      upgradeIncomeBonus,
+      hasEconomicFocus,
+    });
 
     const maintenanceCost = Math.max(0, territories.length - 2) * 5 * turns;
 
@@ -418,10 +312,10 @@ export const handler: Schema["updateResources"]["functionHandler"] = async (even
     // Previous bug: not including turns caused it to be stripped on every income tick.
     const updated: KingdomResources = {
       ...resources,
-      gold: Math.max(0, Math.min(currentGold + (totalGoldPerTurn + territoryGold) * turns - maintenanceCost, RESOURCE_LIMITS.gold.max)),
-      land: Math.max(currentLand + territoryLand * turns, RESOURCE_LIMITS.land.min),
-      population: Math.min(currentPop + (populationPerTurn + territoryPop) * turns, RESOURCE_LIMITS.population.max),
-      elan: Math.min(currentElan + elanPerTurn * turns, RESOURCE_LIMITS.elan.max),
+      gold: Math.max(0, Math.min(currentGold + rates.goldPerTurn * turns - maintenanceCost, RESOURCE_LIMITS.gold.max)),
+      land: Math.max(currentLand + rates.landPerTurn * turns, RESOURCE_LIMITS.land.min),
+      population: Math.min(currentPop + rates.populationPerTurn * turns, RESOURCE_LIMITS.population.max),
+      elan: Math.min(currentElan + rates.elanPerTurn * turns, RESOURCE_LIMITS.elan.max),
     };
 
     const totalUnitsObj = (kingdom as Record<string, unknown>).totalUnits;
