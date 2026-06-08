@@ -102,6 +102,17 @@ export interface GenerationRates {
     populationSources: GoldSource[];
     elanSources: GoldSource[];
   };
+  /**
+   * Qualitative lists of what currently AFFECTS each rate — names only, no amounts.
+   * Surfaced to players so they see the levers (and can strategise) without the exact
+   * formula being handed to them. Only includes factors that are actually active.
+   */
+  factors: {
+    gold: string[];
+    population: string[];
+    elan: string[];
+    land: string[];
+  };
 }
 
 const REGION_SLOT_COUNTS: Record<string, number> = { capital: 5, settlement: 3, outpost: 2, fortress: 4 };
@@ -251,11 +262,43 @@ export function calculateGenerationRates(input: GenerationInput): GenerationRate
   }
   if (territoryPop) populationSources.push({ label: 'Territories', amount: territoryPop });
 
+  // --- Qualitative factor lists (names only, no magnitudes) ---
+  const goldFactors: string[] = [];
+  if (b.mine) goldFactors.push('Mines');
+  if (b.tower) goldFactors.push('Towers');
+  if (b.castle) goldFactors.push('Castles');
+  if (b.barracks) goldFactors.push('Barracks');
+  if (b.temple && tithe > 0) goldFactors.push('Temple tithe');
+  if (race === 'Human') goldFactors.push('Human caravans');
+  if (race.toLowerCase() === 'dwarven' && b.castle) goldFactors.push('Dwarven stone mastery');
+  goldFactors.push('Age of the season');
+  if (territoryGold > 0) goldFactors.push('Territories');
+  if (compositionIncomeBonus !== 1.0) goldFactors.push('Alliance composition');
+  if (upgradeIncomeBonus !== 1.0) goldFactors.push('Alliance upgrades');
+  if (hasEconomicFocus) goldFactors.push('Faith: Economic Focus');
+
+  const populationFactors: string[] = [];
+  if (farmPop) populationFactors.push('Farms');
+  if (territoryPop) populationFactors.push('Territories');
+
+  const elanFactors: string[] = [];
+  if (elanPerTurn) elanFactors.push('Temples');
+  if (race === 'Sidhe' || race === 'Vampire') elanFactors.push(`${race} affinity`);
+
+  const landFactors: string[] = [];
+  if (territoryLand > 0) landFactors.push('Territories');
+
   return {
     goldPerTurn: totalGoldPerTurn + territoryGold,
     populationPerTurn: populationPerTurn + territoryPop,
     elanPerTurn,
     landPerTurn: territoryLand,
+    factors: {
+      gold: goldFactors,
+      population: populationFactors,
+      elan: elanFactors,
+      land: landFactors,
+    },
     breakdown: {
       goldBase,
       goldSubtotal,

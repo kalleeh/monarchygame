@@ -293,12 +293,13 @@ export default function BuildingManagement({
             const displayName = getBuildingName(race, building.category);
             const imageSrc = getBuildingImage(race, building.category);
             const isLoading = loading[building.id] ?? false;
-            // Per-unit per-turn contribution (authoritative, from shared economy module).
+            // What this building boosts (qualitative — exact yields are for players to
+            // discover, so optimal builds stay part of the strategy).
             const contrib = buildingPerTurnContribution(building.id, race);
             const contribParts = [
-              contrib.gold ? `+${contrib.gold} gold` : '',
-              contrib.population ? `+${contrib.population} pop` : '',
-              contrib.elan ? `+${contrib.elan} elan` : '',
+              contrib.gold ? 'gold' : '',
+              contrib.population ? 'population' : '',
+              contrib.elan ? 'elan' : '',
             ].filter(Boolean);
 
             return (
@@ -327,7 +328,7 @@ export default function BuildingManagement({
                   <span className="bm-card-effect">{building.effect}</span>
                   {contribParts.length > 0 && (
                     <span className="bm-card-perturn" style={{ display: 'block', fontSize: '0.72rem', color: '#4ecdc4', fontWeight: 600, marginTop: '0.15rem' }}>
-                      Each: {contribParts.join(', ')} / turn
+                      Boosts: {contribParts.join(', ')} / turn
                     </span>
                   )}
                 </div>
