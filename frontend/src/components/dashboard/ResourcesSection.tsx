@@ -149,33 +149,61 @@ export function ResourcesSection({
           fontSize: '0.75rem', color: 'var(--text-secondary)',
           background: 'rgba(255,255,255,0.03)', borderRadius: '0.4rem', padding: '0.6rem 0.8rem', marginBottom: '0.75rem',
         }}>
-          <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: 'var(--text-primary)' }}>Gold / turn — {generationRates.goldPerTurn.toLocaleString()}</div>
-          {generationRates.breakdown.goldBase.map((s, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>{s.label}</span><span>+{s.amount.toLocaleString()}</span>
-            </div>
-          ))}
-          {generationRates.breakdown.ageMultiplier !== 1 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Age bonus</span><span>×{generationRates.breakdown.ageMultiplier}</span>
-            </div>
-          )}
-          {generationRates.breakdown.territoryGold > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Territories</span><span>+{generationRates.breakdown.territoryGold.toLocaleString()}</span>
-            </div>
-          )}
-          {generationRates.breakdown.populationSources.length > 0 && (
-            <div style={{ fontWeight: 700, margin: '0.5rem 0 0.35rem', color: 'var(--text-primary)' }}>Population / turn — {generationRates.populationPerTurn.toLocaleString()}</div>
-          )}
-          {generationRates.breakdown.populationSources.map((s, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>{s.label}</span><span>+{s.amount.toLocaleString()}</span>
-            </div>
-          ))}
-          <div style={{ marginTop: '0.5rem', fontStyle: 'italic', opacity: 0.7 }}>
-            Alliance & faith bonuses, if any, are applied on top at each tick.
-          </div>
+          {(() => {
+            const bd = generationRates.breakdown;
+            const row = (label: string, value: string, opts?: { strong?: boolean; rule?: boolean; muted?: boolean }) => (
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                fontWeight: opts?.strong ? 700 : 400,
+                color: opts?.strong ? 'var(--text-primary)' : opts?.muted ? 'rgba(255,255,255,0.45)' : 'inherit',
+                borderTop: opts?.rule ? '1px solid rgba(255,255,255,0.12)' : undefined,
+                paddingTop: opts?.rule ? '0.3rem' : undefined, marginTop: opts?.rule ? '0.3rem' : undefined,
+              }}>
+                <span>{label}</span><span>{value}</span>
+              </div>
+            );
+            return (
+              <>
+                {/* ── GOLD ── */}
+                <div style={{ fontWeight: 700, marginBottom: '0.35rem', color: 'var(--text-primary)' }}>
+                  Gold / turn — {generationRates.goldPerTurn.toLocaleString()}
+                </div>
+                {bd.goldBase.map((s) => row(s.label, `+${s.amount.toLocaleString()}`))}
+                {row('Subtotal', bd.goldSubtotal.toLocaleString(), { strong: true, rule: true })}
+                {bd.ageMultiplier !== 1 && row(`Age bonus`, `× ${bd.ageMultiplier}`)}
+                {bd.compositionIncomeBonus !== 1 && row('Alliance composition', `× ${bd.compositionIncomeBonus.toFixed(2)}`)}
+                {bd.upgradeIncomeBonus !== 1 && row('Alliance upgrades', `× ${bd.upgradeIncomeBonus.toFixed(2)}`)}
+                {bd.economicFocus && row('Faith: Economic Focus', `× ${bd.economicFocusMultiplier}`)}
+                {bd.territoryGold > 0 && row('From buildings', bd.goldAfterMultipliers.toLocaleString(), { rule: true })}
+                {bd.territoryGold > 0 && row('Territories', `+${bd.territoryGold.toLocaleString()}`)}
+                {row('= Gold / turn', generationRates.goldPerTurn.toLocaleString(), { strong: true, rule: true })}
+
+                {/* ── POPULATION ── */}
+                {(bd.populationSources.length > 0 || generationRates.populationPerTurn > 0) && (
+                  <div style={{ fontWeight: 700, margin: '0.6rem 0 0.35rem', color: 'var(--text-primary)' }}>
+                    Population / turn — {generationRates.populationPerTurn.toLocaleString()}
+                  </div>
+                )}
+                {bd.populationSources.map((s) => row(s.label, `+${s.amount.toLocaleString()}`))}
+
+                {/* ── ELAN ── */}
+                {bd.elanSources.length > 0 && (
+                  <div style={{ fontWeight: 700, margin: '0.6rem 0 0.35rem', color: 'var(--text-primary)' }}>
+                    Elan / turn — {generationRates.elanPerTurn.toLocaleString()}
+                  </div>
+                )}
+                {bd.elanSources.map((s) => row(s.label, `+${s.amount.toLocaleString()}`))}
+
+                {/* ── LAND ── */}
+                {generationRates.landPerTurn > 0 && row('Land / turn (territories)', `+${generationRates.landPerTurn.toLocaleString()}`, { strong: true, rule: true })}
+
+                <div style={{ marginTop: '0.5rem', fontStyle: 'italic', opacity: 0.6 }}>
+                  Rates update as you build, claim territory, or the age advances. Turns regenerate
+                  +1 every {TURN_MECHANICS.BASE_GENERATION.MINUTES_PER_TURN} min (max {TURN_MECHANICS.BASE_GENERATION.MAX_STORED_TURNS}).
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
 

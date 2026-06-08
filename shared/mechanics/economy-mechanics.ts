@@ -88,10 +88,16 @@ export interface GenerationRates {
   breakdown: {
     /** Base gold components before age/alliance/faith multipliers. */
     goldBase: GoldSource[];
+    /** Sum of goldBase (base + tithe + caravan) before any multiplier. */
+    goldSubtotal: number;
     ageMultiplier: number;
     compositionIncomeBonus: number;
     upgradeIncomeBonus: number;
     economicFocus: boolean;
+    /** Faith ECONOMIC_FOCUS multiplier as a number (1.0 or 1.2) for display. */
+    economicFocusMultiplier: number;
+    /** Gold/turn from buildings after all multipliers, before territory gold is added. */
+    goldAfterMultipliers: number;
     territoryGold: number;
     populationSources: GoldSource[];
     elanSources: GoldSource[];
@@ -191,8 +197,10 @@ export function calculateGenerationRates(input: GenerationInput): GenerationRate
   if (caravanBonus) goldBase.push({ label: 'Human caravans (+40%)', amount: caravanBonus });
 
   // Apply age + alliance multipliers
-  let totalGoldPerTurn = Math.floor((baseGoldPerTurn + tithePerTurn + caravanBonus) * ageMultiplier * compositionIncomeBonus * upgradeIncomeBonus);
+  const goldSubtotal = baseGoldPerTurn + tithePerTurn + caravanBonus;
+  let totalGoldPerTurn = Math.floor(goldSubtotal * ageMultiplier * compositionIncomeBonus * upgradeIncomeBonus);
   if (hasEconomicFocus) totalGoldPerTurn = Math.floor(totalGoldPerTurn * 1.20);
+  const goldAfterMultipliers = totalGoldPerTurn;
 
   // --- Population & elan (buildings) ---
   const populationSources: GoldSource[] = [];
@@ -250,10 +258,13 @@ export function calculateGenerationRates(input: GenerationInput): GenerationRate
     landPerTurn: territoryLand,
     breakdown: {
       goldBase,
+      goldSubtotal,
       ageMultiplier,
       compositionIncomeBonus,
       upgradeIncomeBonus,
       economicFocus: hasEconomicFocus,
+      economicFocusMultiplier: hasEconomicFocus ? 1.2 : 1.0,
+      goldAfterMultipliers,
       territoryGold,
       populationSources,
       elanSources,

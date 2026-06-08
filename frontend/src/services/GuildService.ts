@@ -1208,6 +1208,38 @@ export class GuildService {
     }
   }
 
+  /**
+   * Fetch the alliance's income multipliers in a single read — composition bonus
+   * and the product of active upgrade income bonuses. Mirrors the exact computation
+   * the resource-manager Lambda does, so the dashboard's displayed rate matches.
+   * Returns { composition: 1, upgrade: 1 } when not in an alliance or on error.
+   */
+  static async getIncomeBonuses(allianceId: string): Promise<{ composition: number; upgrade: number }> {
+    const fallback = { composition: 1.0, upgrade: 1.0 };
+    if (isDemoMode() || !allianceId) return fallback;
+    try {
+      const response = await getClient().models.Alliance.get({ id: allianceId });
+      if (response.errors || !response.data) return fallback;
+      const rawStats = response.data.stats as unknown;
+      const stats: Record<string, unknown> = rawStats
+        ? (typeof rawStats === 'string' ? JSON.parse(rawStats as string) : (rawStats as Record<string, unknown>))
+        : {};
+
+      const composition = (stats.compositionBonus as { income?: number } | undefined)?.income ?? 1.0;
+
+      const now = Date.now();
+      const upgrades = (stats.activeUpgrades as Array<{ expiresAt: string; effect: Record<string, number> }>) ?? [];
+      let upgrade = 1.0;
+      for (const u of upgrades) {
+        if (new Date(u.expiresAt).getTime() > now && u.effect?.incomeBonus) upgrade *= u.effect.incomeBonus;
+      }
+      return { composition, upgrade };
+    } catch (error) {
+      console.error('[GuildService] getIncomeBonuses error:', error);
+      return fallback;
+    }
+  }
+
   // =========================================================================
   // Alliance treasury upgrades
   // =========================================================================
