@@ -24,6 +24,7 @@ import { normalizeRace } from '../utils/raceUtils';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
 import { calculateGenerationRates } from '../../../shared/mechanics/economy-mechanics';
+import { GuildService } from '../services/GuildService';
 import { AGE_MECHANICS } from '../../../shared/mechanics/age-mechanics';
 
 // ── AI simulation helper ──────────────────────────────────────────────────────
@@ -207,6 +208,17 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
     };
   }, [resources.land, kingdom.buildings]);
 
+  // Alliance income multipliers (composition + active upgrades), fetched once per
+  // guild so the displayed rate includes them — matching the server's tick math.
+  const [allianceIncomeBonuses, setAllianceIncomeBonuses] = useState<{ composition: number; upgrade: number }>({ composition: 1, upgrade: 1 });
+  const guildId = (kingdom as { guildId?: string }).guildId;
+  useEffect(() => {
+    let cancelled = false;
+    if (!guildId) { setAllianceIncomeBonuses({ composition: 1, upgrade: 1 }); return; }
+    void GuildService.getIncomeBonuses(guildId).then(b => { if (!cancelled) setAllianceIncomeBonuses(b); });
+    return () => { cancelled = true; };
+  }, [guildId]);
+
   // Per-turn generation rates — computed via the SAME shared module the
   // resource-manager Lambda uses, so the displayed "+X/turn" matches what's granted.
   const generationRates = useMemo(() => {
@@ -214,6 +226,10 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
     const statsObj = (typeof kingdom.stats === 'string'
       ? (() => { try { return JSON.parse(kingdom.stats as string); } catch { return {}; } })()
       : (kingdom.stats ?? {})) as Record<string, unknown>;
+    // ECONOMIC_FOCUS faith effect (+20% gold) — same source the server reads.
+    const faithEffects = (statsObj.activeFaithEffects as Array<{ effectType: string; expiresAt: string }>) ?? [];
+    const nowIso = new Date().toISOString();
+    const hasEconomicFocus = faithEffects.some(e => e.effectType === 'ECONOMIC_FOCUS' && e.expiresAt > nowIso);
     return calculateGenerationRates({
       race: normalizeRace(kingdom.race),
       age: seasonInfo?.currentAge ?? 'early',
@@ -232,11 +248,11 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
         defenseLevel: t.defenseLevel,
         regionId: t.regionId,
       })),
-      // Alliance/faith bonuses aren't loaded client-side here; default to none.
-      // The dashboard shows the building/territory/age-driven baseline; the server
-      // applies any alliance/faith multipliers on top at tick time.
+      compositionIncomeBonus: allianceIncomeBonuses.composition,
+      upgradeIncomeBonus: allianceIncomeBonuses.upgrade,
+      hasEconomicFocus,
     });
-  }, [kingdom.buildings, kingdom.stats, kingdom.race, seasonInfo?.currentAge, ownedTerritories]);
+  }, [kingdom.buildings, kingdom.stats, kingdom.race, seasonInfo?.currentAge, ownedTerritories, allianceIncomeBonuses]);
 
   // Flush any pending DB sync before navigating away from the dashboard
   const handleBack = useCallback((onBack: () => void) => {

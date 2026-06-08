@@ -68,5 +68,20 @@ describe('calculateGenerationRates', () => {
     expect(labels).toContain('Base');
     expect(labels.some(l => l.startsWith('Mines'))).toBe(true);
     expect(r.breakdown.ageMultiplier).toBe(1.2);
+    // Subtotal is the sum of all base components, and after-multiplier total is consistent.
+    expect(r.breakdown.goldSubtotal).toBe(r.breakdown.goldBase.reduce((s, x) => s + x.amount, 0));
+    expect(r.breakdown.goldAfterMultipliers).toBe(r.goldPerTurn - r.breakdown.territoryGold);
+  });
+
+  it('compounds age, alliance and faith multipliers in the breakdown', () => {
+    // subtotal: base 100 + caravan(Human) 40 = 140; (no mine/farm/tower/temple)
+    // ×1.2 age ×1.10 comp ×1.05 upgrade = floor(140*1.2*1.1*1.05)=floor(194.04)=194; ×1.2 faith=232
+    const r = calculateGenerationRates({
+      race: 'Human', age: 'early', buildings: {},
+      compositionIncomeBonus: 1.10, upgradeIncomeBonus: 1.05, hasEconomicFocus: true,
+    });
+    expect(r.breakdown.goldSubtotal).toBe(140);
+    expect(r.breakdown.economicFocusMultiplier).toBe(1.2);
+    expect(r.goldPerTurn).toBe(232);
   });
 });
