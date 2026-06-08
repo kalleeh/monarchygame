@@ -6,9 +6,8 @@ import { calculateActionTurnCost } from '../../../shared/mechanics/turn-mechanic
 import { isDemoMode } from '../utils/authMode';
 import { trainUnits, refreshKingdomResources } from '../services/domain/TrainingService';
 import { achievementTriggers } from '../utils/achievementTriggers';
-
-// Troop cap based on accumulated gold cost (from hire-screen.md)
-const TROOP_CAP_GOLD = 10_000_000; // 10 million gold cap
+import { getClient } from '../utils/amplifyClient';
+import { calculateTroopCapGold } from '../../../shared/mechanics/troop-cap-mechanics';
 
 // Convert game-data UnitType to TrainableUnit format
 function convertToTrainableUnit(unit: UnitType): TrainableUnit {
@@ -30,6 +29,7 @@ interface SummonStore {
   // State
   availableUnits: TrainableUnit[];
   accumulatedGoldSpent: number; // Track total gold spent on troops
+  troopCapGold: number; // Max accumulated gold in troops, scaled by land + barracks
   currentRace: string; // Track race for unit lookups
   loading: boolean;
   error: string | null;
@@ -48,6 +48,7 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
   // Initial state
   availableUnits: [],
   accumulatedGoldSpent: 0,
+  troopCapGold: calculateTroopCapGold({ land: 0, barracks: 0 }), // MIN floor until loaded
   currentRace: 'HUMAN',
   loading: false,
   error: null,
@@ -76,10 +77,26 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
           totalGoldSpent += unitData.stats.cost.gold * unit.count;
         }
       });
-      
+
+      // Troop cap scales with land + barracks. Land comes from the kingdom store;
+      // barracks isn't in that store, so fetch it (auth mode). Demo falls back to
+      // land-only scaling, which still beats the old flat constant.
+      const land = kingdomStore.resources.land ?? 0;
+      let barracks = 0;
+      if (!isDemoMode() && _kingdomId) {
+        try {
+          const { data } = await getClient().models.Kingdom.get({ id: _kingdomId });
+          const b = data?.buildings;
+          const parsed = (typeof b === 'string' ? JSON.parse(b) : (b ?? {})) as Record<string, number>;
+          barracks = parsed.barracks ?? parsed.troop ?? 0;
+        } catch { /* non-fatal — fall back to land-only cap */ }
+      }
+      const troopCapGold = calculateTroopCapGold({ land, barracks });
+
       set({
         availableUnits: trainableUnits,
         accumulatedGoldSpent: totalGoldSpent,
+        troopCapGold,
         currentRace: race,
         loading: false,
         error: null
@@ -94,8 +111,8 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
 
   // Calculate remaining capacity based on accumulated gold cost
   calculateRemainingCapacity: () => {
-    const { accumulatedGoldSpent } = get();
-    return TROOP_CAP_GOLD - accumulatedGoldSpent;
+    const { accumulatedGoldSpent, troopCapGold } = get();
+    return Math.max(0, troopCapGold - accumulatedGoldSpent);
   },
 
   // Calculate max affordable units based on current gold
@@ -155,7 +172,7 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
     try {
       const kingdomStore = useKingdomStore.getState();
       const resources = kingdomStore.resources;
-      const { availableUnits, accumulatedGoldSpent } = get();
+      const { availableUnits, accumulatedGoldSpent, troopCapGold } = get();
       
       // Check turns using shared turn-mechanics cost calculation
       const turnCost = calculateActionTurnCost('TRAINING');
@@ -177,8 +194,8 @@ export const useSummonStore = create<SummonStore>((set, get) => ({
       const totalPop = unitData.populationCost * quantity;
       
       // Check gold cap (accumulated gold cost)
-      if (accumulatedGoldSpent + totalGold > TROOP_CAP_GOLD) {
-        const remaining = TROOP_CAP_GOLD - accumulatedGoldSpent;
+      if (accumulatedGoldSpent + totalGold > troopCapGold) {
+        const remaining = troopCapGold - accumulatedGoldSpent;
         const maxUnits = Math.floor(remaining / unitData.goldCost);
         const capMsg = `Troop cap reached! Can only summon ${maxUnits} more ${unitData.name} (${remaining.toLocaleString()}g capacity remaining)`;
         set({ error: capMsg, loading: false });
