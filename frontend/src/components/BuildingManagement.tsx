@@ -16,6 +16,7 @@ import { constructBuildings } from '../services/domain/BuildingService';
 import { refreshKingdomResources } from '../services/domain/CombatService';
 import { ToastService } from '../services/toastService';
 import { getBuildingName, getBuildingImage } from '../utils/buildingMechanics';
+import { buildingPerTurnContribution } from '../../../shared/mechanics/economy-mechanics';
 import { isDemoMode } from '../utils/authMode';
 import { GoldIcon, TurnsIcon } from './ui/MenuIcons';
 import './BuildingManagement.css';
@@ -292,6 +293,13 @@ export default function BuildingManagement({
             const displayName = getBuildingName(race, building.category);
             const imageSrc = getBuildingImage(race, building.category);
             const isLoading = loading[building.id] ?? false;
+            // Per-unit per-turn contribution (authoritative, from shared economy module).
+            const contrib = buildingPerTurnContribution(building.id, race);
+            const contribParts = [
+              contrib.gold ? `+${contrib.gold} gold` : '',
+              contrib.population ? `+${contrib.population} pop` : '',
+              contrib.elan ? `+${contrib.elan} elan` : '',
+            ].filter(Boolean);
 
             return (
               <div
@@ -317,6 +325,11 @@ export default function BuildingManagement({
                   </div>
                   <p className="bm-card-description">{building.description}</p>
                   <span className="bm-card-effect">{building.effect}</span>
+                  {contribParts.length > 0 && (
+                    <span className="bm-card-perturn" style={{ display: 'block', fontSize: '0.72rem', color: '#4ecdc4', fontWeight: 600, marginTop: '0.15rem' }}>
+                      Each: {contribParts.join(', ')} / turn
+                    </span>
+                  )}
                 </div>
 
                 <div className="bm-card-footer">

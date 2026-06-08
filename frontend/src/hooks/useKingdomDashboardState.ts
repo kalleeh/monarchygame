@@ -23,6 +23,7 @@ import { isDemoMode } from '../utils/authMode';
 import { normalizeRace } from '../utils/raceUtils';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
+import { calculateGenerationRates } from '../../../shared/mechanics/economy-mechanics';
 import { AGE_MECHANICS } from '../../../shared/mechanics/age-mechanics';
 
 // ── AI simulation helper ──────────────────────────────────────────────────────
@@ -205,6 +206,37 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
       brt
     };
   }, [resources.land, kingdom.buildings]);
+
+  // Per-turn generation rates — computed via the SAME shared module the
+  // resource-manager Lambda uses, so the displayed "+X/turn" matches what's granted.
+  const generationRates = useMemo(() => {
+    const b = (kingdom.buildings || {}) as Record<string, number>;
+    const statsObj = (typeof kingdom.stats === 'string'
+      ? (() => { try { return JSON.parse(kingdom.stats as string); } catch { return {}; } })()
+      : (kingdom.stats ?? {})) as Record<string, unknown>;
+    return calculateGenerationRates({
+      race: normalizeRace(kingdom.race),
+      age: seasonInfo?.currentAge ?? 'early',
+      buildings: {
+        mine: b.mine ?? b.quarries ?? b.buildrate ?? 0,
+        farm: b.farm ?? b.hovels ?? b.population ?? 0,
+        tower: b.tower ?? b.guildhalls ?? b.income ?? 0,
+        temple: b.temple ?? b.temples ?? b.magic ?? 0,
+        castle: b.castle ?? 0,
+        barracks: b.barracks ?? b.troop ?? 0,
+      },
+      tithe: (statsObj.tithe as number) ?? 0,
+      territories: ownedTerritories.map(t => ({
+        category: t.category,
+        terrainType: (t as { terrainType?: string }).terrainType,
+        defenseLevel: t.defenseLevel,
+        regionId: t.regionId,
+      })),
+      // Alliance/faith bonuses aren't loaded client-side here; default to none.
+      // The dashboard shows the building/territory/age-driven baseline; the server
+      // applies any alliance/faith multipliers on top at tick time.
+    });
+  }, [kingdom.buildings, kingdom.stats, kingdom.race, seasonInfo?.currentAge, ownedTerritories]);
 
   // Flush any pending DB sync before navigating away from the dashboard
   const handleBack = useCallback((onBack: () => void) => {
@@ -603,6 +635,7 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
   return {
     // Store values
     resources,
+    generationRates,
     liveUnits,
     addGold,
     addTurns,
