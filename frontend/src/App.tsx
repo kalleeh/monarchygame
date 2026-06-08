@@ -17,6 +17,7 @@ import './App.css';
 import './styles/game-pages.css';
 import type { Schema } from '../../amplify/data/resource';
 import { TutorialOverlay } from './components/tutorial/TutorialOverlay';
+import { LoadingSkeleton } from './components/ui/loading/LoadingSkeleton';
 import { useInitializeAchievements } from './hooks/useInitializeAchievements';
 import { useAITick } from './hooks/useAITick';
 
@@ -183,26 +184,45 @@ function AppContent() {
         return;
       }
 
-      // No API filter — isAI: { ne: true } excludes records where isAI is null (DynamoDB
-      // behaviour: missing attributes fail comparison conditions). Instead filter client-side
-      // using the owner field which reliably identifies the current user's kingdoms.
-      // AI kingdoms have owner: 'system', real kingdoms have owner: '{sub}'.
-      // limit: 1000 ensures all kingdoms are returned (default page size is 100).
-      const { data } = await getClient().models.Kingdom.list({ limit: 1000 });
+      const ownerMatches = (owner: string) =>
+        (sub && (owner === sub || owner.startsWith(sub + '::') || owner.endsWith('::' + sub))) ||
+        (cognitoUsername && (owner === cognitoUsername || owner.startsWith(cognitoUsername + '::') || owner.endsWith('::' + cognitoUsername)));
 
-      const myKingdoms = data.filter(k => {
-        const owner = ((k as Record<string, unknown>).owner as string) ?? '';
-        return (sub && (owner === sub || owner.startsWith(sub + '::') || owner.endsWith('::' + sub))) || (cognitoUsername && (owner === cognitoUsername || owner.startsWith(cognitoUsername + '::') || owner.endsWith('::' + cognitoUsername)));
+      // 1) Instant render from cache: a refresh shouldn't block behind a full-DB scan.
+      //    Show the cached kingdoms immediately, then reconcile with the server below.
+      const cacheKey = STORAGE_KEYS.KINGDOMS_CACHE(sub || cognitoUsername);
+      let renderedFromCache = false;
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached) as Schema['Kingdom']['type'][];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setKingdoms(parsed);
+            setLoading(false); // unblock the UI right away
+            renderedFromCache = true;
+            if (window.location.pathname === '/') navigate('/kingdoms');
+          }
+        }
+      } catch { /* ignore corrupt cache */ }
+
+      // 2) Authoritative fetch. Server-side owner filter avoids pulling every AI kingdom
+      //    in the DB across all players (the old `list({limit:1000})` scan). Owner-based
+      //    auth still scopes results, but filtering server-side keeps the payload small.
+      const { data } = await getClient().models.Kingdom.list({
+        filter: { owner: { eq: sub || cognitoUsername } },
+        limit: 1000,
       });
+
+      // Defensive: keep the client-side owner match too (covers legacy `username::sub` owners).
+      const myKingdoms = data.filter(k => ownerMatches(((k as Record<string, unknown>).owner as string) ?? ''));
       setKingdoms(myKingdoms);
 
-      // Use myKingdoms.length for navigation (not data.length — raw data includes AI kingdoms)
-      if (window.location.pathname === '/') {
-        if (myKingdoms.length === 0) {
-          navigate('/creation');
-        } else {
-          navigate('/kingdoms');
-        }
+      // Refresh the cache for next load.
+      try { localStorage.setItem(cacheKey, JSON.stringify(myKingdoms)); } catch { /* quota — non-fatal */ }
+
+      // Only navigate from root, and only if we didn't already route from cache.
+      if (window.location.pathname === '/' && !renderedFromCache) {
+        navigate(myKingdoms.length === 0 ? '/creation' : '/kingdoms');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -449,8 +469,8 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="loading">
-        <p>Loading your kingdoms...</p>
+      <div className="loading" aria-busy="true" aria-label="Loading your kingdoms">
+        <LoadingSkeleton type="list" />
       </div>
     );
   }

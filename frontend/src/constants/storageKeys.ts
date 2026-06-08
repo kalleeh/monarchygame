@@ -28,4 +28,8 @@ export const STORAGE_KEYS = {
   AI_TICK_LEADER: 'ai-tick-leader',
   AI_LAST_TICK: 'ai-last-tick',
   FAITH_FP: (kingdomId: string) => `faith-fp-${kingdomId}`,
+  // Cached list of the signed-in user's kingdoms, keyed by Cognito sub, so a page
+  // refresh can render instantly from cache while the authoritative list re-fetches
+  // in the background (avoids a blocking full-DB scan on every load).
+  KINGDOMS_CACHE: (sub: string) => `kingdoms-cache-${sub}`,
 } as const;
