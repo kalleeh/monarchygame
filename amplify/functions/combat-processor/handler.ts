@@ -640,6 +640,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
     await dbCreate<BattleReportType>('BattleReport', {
       attackerId,
       defenderId,
+      seasonId: (attacker.seasonId as string | undefined) ?? (defender.seasonId as string | undefined),
       attackType: attackType || 'standard',
       result: JSON.stringify({
         result: combatResult.result,

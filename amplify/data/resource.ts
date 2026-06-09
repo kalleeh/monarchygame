@@ -75,7 +75,10 @@ const schema = a.schema({
       networth: a.integer().default(0),
       reputation: a.integer().default(100)
         .authorization((allow) => [allow.authenticated().to(['read']), allow.owner()]),
-      seasonId: a.id(),
+      // Every kingdom belongs to exactly one season. Required so season-scoped
+      // queries (leaderboard, targets, AI roster) can never miss a row, and so
+      // an orphan kingdom with no season can't exist.
+      seasonId: a.id().required(),
       createdAt: a.datetime(),
       ageStartTime: a.datetime(),
       // Owner fields — full owner access (create/read/update); others get null
@@ -192,6 +195,7 @@ const schema = a.schema({
     .model({
       attackerId: a.id().required(),
       defenderId: a.id().required(),
+      seasonId: a.id().required(),
       attackType: a.ref('AttackType').required(),
       result: a.json().required(),
       casualties: a.json().required(),
@@ -204,6 +208,10 @@ const schema = a.schema({
     .secondaryIndexes((index) => [
       index('defenderId').sortKeys(['timestamp']),
       index('attackerId').sortKeys(['defenderId']),
+      // World feed: newest reports for the active season, server-sorted by time.
+      // Avoids an unordered full-table scan (500 AI kingdoms × a battle every
+      // 20 min would make a plain list() both wrong and expensive).
+      index('seasonId').sortKeys(['timestamp']).queryField('listBattleReportsBySeasonAndTime'),
     ])
     .authorization((allow) => [
       allow.owner(),
@@ -289,6 +297,8 @@ const schema = a.schema({
     .secondaryIndexes((index) => [
       index('attackerId').sortKeys(['status']),
       index('defenderId').sortKeys(['status']),
+      // World feed: newest war declarations for the active season, server-sorted.
+      index('seasonId').sortKeys(['declaredAt']).queryField('listWarDeclarationsBySeasonAndTime'),
     ])
     .authorization((allow) => [
       allow.authenticated().to(['read']),
@@ -402,6 +412,7 @@ const schema = a.schema({
       defendingGuildId: a.string().required(),
       attackingGuildName: a.string().required(),
       defendingGuildName: a.string().required(),
+      seasonId: a.id().required(),
       status: a.ref('GuildWarStatus').required(),
       declaredAt: a.datetime().required(),
       endsAt: a.datetime().required(),
@@ -410,6 +421,10 @@ const schema = a.schema({
       contributions: a.json(),
       winnerId: a.string(),
     })
+    .secondaryIndexes((index) => [
+      // World feed: newest guild wars for the active season, server-sorted.
+      index('seasonId').sortKeys(['declaredAt']).queryField('listGuildWarsBySeasonAndTime'),
+    ])
     .authorization((allow) => [
       allow.authenticated().to(['read']),
       allow.owner()

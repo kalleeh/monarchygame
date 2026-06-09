@@ -89,9 +89,11 @@ export const handler: Schema["postTradeOffer"]["functionHandler"] = async (event
       return JSON.stringify({ success: false, error: `Insufficient ${resourceType}: have ${available}, need ${quantity}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES });
     }
 
-    // Enforce active trade offer limit (Human race: 2, others: 1)
-    const allOffers = await dbQuery<{ sellerId: string; status: string }>('TradeOffer', 'tradeOffersBySellerId', { field: 'sellerId', value: sellerId });
-    const activeOffers = allOffers.filter(o => o.status === 'open');
+    // Enforce active trade offer limit (Human race: 2, others: 1).
+    // Scope to the current season — counting offers from ended seasons would let
+    // a player bypass the limit across season boundaries.
+    const allOffers = await dbQuery<{ sellerId: string; status: string; seasonId?: string }>('TradeOffer', 'tradeOffersBySellerId', { field: 'sellerId', value: sellerId });
+    const activeOffers = allOffers.filter(o => o.status === 'open' && o.seasonId === seasonId);
     const isHuman = (seller.race as string | undefined)?.toLowerCase() === 'human';
     const maxOffers = isHuman ? 2 : 1;
     if (activeOffers.length >= maxOffers) {

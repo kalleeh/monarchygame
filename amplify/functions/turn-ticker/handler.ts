@@ -46,6 +46,7 @@ interface KingdomRow {
   currentAge?: string | null;
   createdAt?: string | null;
   aiPersonality?: string | null;
+  seasonId?: string;
 }
 
 export const handler = async (_event: unknown): Promise<{ success: boolean; ticked: number; skipped: number }> => {
@@ -255,6 +256,7 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
               await dbCreate('BattleReport', {
                 attackerId: kingdom.id,
                 defenderId: decision.attackTarget,
+                seasonId: (kingdom as KingdomRow).seasonId,
                 attackType: 'standard',
                 result: JSON.stringify(combatResult),
                 casualties: JSON.stringify({
