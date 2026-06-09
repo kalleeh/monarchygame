@@ -247,6 +247,3 @@ export function calculateCombatResult(
     success: battleResult !== 'failed'
   };
 }
-
-export function clearCombatCache(): void { /* no-op — caching not implemented */ }
-export function getCacheStats(): { size: number; entries: unknown[] } { return { size: 0, entries: [] }; }
