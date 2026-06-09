@@ -2,6 +2,7 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { isDemoMode } from '../utils/authMode';
 import { getClient } from '../utils/amplifyClient';
+import { getCurrentSeasonId } from '../utils/currentSeason';
 
 export interface KingdomPage {
   kingdoms: Array<{
@@ -37,8 +38,12 @@ export class KingdomSearchService {
     if (isDemoMode()) return null;
     const { limit = 50, nextToken, nameSearch, race, minNetworth, maxNetworth } = opts;
 
-    // Build AppSync filter — active kingdoms only; AI kingdoms are valid leaderboard competition
-    // Note: name search is done client-side for case-insensitive matching
+    // The leaderboard/targets are strictly scoped to the active season. Without
+    // one there is no ranking to show, and the season-keyed GSI can't run.
+    const seasonId = await getCurrentSeasonId();
+    if (!seasonId) return { kingdoms: [], nextToken: null };
+
+    // Filter on everything except the season+networth keys, which the GSI handles.
     const filter: Record<string, unknown> = { isActive: { eq: true } };
     if (race) filter.race = { eq: race };
     if (minNetworth != null || maxNetworth != null) {
@@ -49,11 +54,18 @@ export class KingdomSearchService {
     }
 
     try {
-      const { data, nextToken: nt } = await getClient().models.Kingdom.list({
-        filter: filter as NonNullable<Parameters<ReturnType<typeof generateClient<Schema>>['models']['Kingdom']['list']>[0]>['filter'],
-        limit,
-        nextToken: nextToken ?? undefined,
-      });
+      // Query the seasonId GSI sorted by networth DESC — the DB returns the
+      // ranking pre-sorted, scoped to this season. No full-table scan, no
+      // client-side sort. Name search stays client-side (case-insensitive).
+      const { data, nextToken: nt } = await getClient().models.Kingdom.listKingdomsBySeasonNetworth(
+        { seasonId },
+        {
+          sortDirection: 'DESC',
+          filter: filter as NonNullable<Parameters<ReturnType<typeof generateClient<Schema>>['models']['Kingdom']['list']>[0]>['filter'],
+          limit,
+          nextToken: nextToken ?? undefined,
+        }
+      );
 
       return {
         kingdoms: [...(data ?? [])].map(k => {
@@ -102,8 +114,6 @@ export class KingdomSearchService {
         }).filter(k => {
           if (!nameSearch?.trim()) return true;
           return k.name.toLowerCase().includes(nameSearch.trim().toLowerCase());
-        }).sort((a, b) => {
-          return (b.networth ?? 0) - (a.networth ?? 0);
         }),
         nextToken: nt ?? null,
       };

@@ -3,6 +3,7 @@ import type { DiplomaticRelationship, TreatyProposal, DiplomaticAction } from '.
 import { isDemoMode } from '../utils/authMode';
 import type { Schema } from '../../../amplify/data/resource';
 import { getClient } from '../utils/amplifyClient';
+import { getCurrentSeasonId } from '../utils/currentSeason';
 
 // ── Demo / mock data ────────────────────────────────────────────────────────
 
@@ -204,10 +205,12 @@ export class DiplomacyService {
   }): Promise<boolean> {
     try {
       if (!isDemoMode()) {
+        const seasonId = await getCurrentSeasonId();
+        if (!seasonId) throw new Error('No active season — cannot send treaty proposal');
         await getClient().mutations.sendTreatyProposal({
           proposerId: data.fromKingdomId,
           recipientId: data.toKingdomId,
-          seasonId: 'current',
+          seasonId,
           treatyType: data.treatyType,
           terms: data.terms || '{}'
         });
@@ -267,10 +270,12 @@ export class DiplomacyService {
   static async declareWar(fromKingdomId: string, toKingdomId: string): Promise<boolean> {
     try {
       if (!isDemoMode()) {
+        const seasonId = await getCurrentSeasonId();
+        if (!seasonId) throw new Error('No active season — cannot declare war');
         await getClient().mutations.declareDiplomaticWar({
           kingdomId: fromKingdomId,
           targetKingdomId: toKingdomId,
-          seasonId: 'current'
+          seasonId
         });
         return true;
       }

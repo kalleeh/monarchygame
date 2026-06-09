@@ -413,7 +413,9 @@ function AppContent() {
           turns: 50
         };
 
-        // Get active season ID for the new kingdom
+        // Every kingdom belongs to a season — resolve it up front and fail if
+        // there is none, rather than creating an orphan kingdom that can never
+        // appear in season-scoped leaderboards/feeds.
         let activeSeasonId: string | null = null;
         try {
           const seasonResult = await getActiveSeason('new');
@@ -421,7 +423,10 @@ function AppContent() {
             activeSeasonId = seasonResult.season.id;
           }
         } catch {
-          // Non-fatal — kingdom can exist without a season
+          // fall through to the no-season error below
+        }
+        if (!activeSeasonId) {
+          throw new Error('No active season — a new season must be started before kingdoms can be created.');
         }
 
         const newKingdom = await getClient().models.Kingdom.create({
@@ -435,7 +440,7 @@ function AppContent() {
           currentAge: 'early',
           isActive: true,
           isOnline: true,
-          ...(activeSeasonId ? { seasonId: activeSeasonId } : {})
+          seasonId: activeSeasonId,
         });
 
         if (newKingdom.data) {

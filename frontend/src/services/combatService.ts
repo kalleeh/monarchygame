@@ -5,6 +5,7 @@
 
 import { AmplifyFunctionService } from './amplifyFunctionService';
 import { getClient } from '../utils/amplifyClient';
+import { getCurrentSeasonId } from '../utils/currentSeason';
 
 // Import the response type from amplifyFunctionService
 type LambdaResponse<T = unknown> = {
@@ -49,10 +50,17 @@ export class CombatService {
         full_attack: 'siege',
       };
 
-      // Store Lambda results in database (no client-side calculation)
+      // Store Lambda results in database (no client-side calculation).
+      // seasonId is required on BattleReport so the world feed can scope to the
+      // active season.
+      const seasonId = await getCurrentSeasonId();
+      if (!seasonId) {
+        throw new Error('No active season — cannot record battle report');
+      }
       const battleReport = await getClient().models.BattleReport.create({
         attackerId: request.attackerId,
         defenderId: request.defenderId,
+        seasonId,
         attackType: ATTACK_TYPE_TO_MODEL[request.attackType],
         result: lambdaResult.success ? 'attacker_victory' : 'defender_victory',
         casualties: {

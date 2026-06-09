@@ -9,6 +9,7 @@ import type { Resource, TradeOffer, MarketData, TrendData, PriceHistoryEntry } f
 import type { TradeOfferEvent } from '../services/subscriptionManager';
 import { useKingdomStore } from './kingdomStore';
 import { isDemoMode } from '../utils/authMode';
+import { getCurrentSeasonId } from '../utils/currentSeason';
 import { postTradeOffer, acceptTradeOffer, cancelTradeOffer } from '../services/domain/TradeService';
 
 // ---------------------------------------------------------------------------
@@ -224,9 +225,18 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
     if (!isDemoMode()) {
       set({ loading: true, error: null });
       try {
+        // seasonId must be the real active season — the server enforces the
+        // active-offer limit per season, so a placeholder would escape it.
+        const seasonId =
+          ((offer as Record<string, unknown>).seasonId as string | undefined) ||
+          (await getCurrentSeasonId());
+        if (!seasonId) {
+          set({ error: 'No active season — cannot post trade offer', loading: false });
+          throw new Error('No active season');
+        }
         const result = await postTradeOffer({
           kingdomId: offer.sellerId || PLAYER_ID,
-          seasonId: (offer as Record<string, unknown>).seasonId as string || 'current',
+          seasonId,
           resourceType: offer.resourceId!,
           quantity: offer.quantity!,
           pricePerUnit: offer.pricePerUnit!

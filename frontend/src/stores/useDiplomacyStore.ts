@@ -9,6 +9,7 @@ import { DiplomacyService } from '../services/DiplomacyService';
 import { isDemoMode } from '../utils/authMode';
 import { proposeTreaty, declareDiplomaticWar, makeDiplomaticPeace } from '../services/domain/DiplomacyService';
 import { useKingdomStore } from './kingdomStore';
+import { getCurrentSeasonId } from '../utils/currentSeason';
 import type {
   DiplomaticRelationship,
   TreatyProposal,
@@ -102,10 +103,12 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
     try {
       // Auth mode: call Lambda
       if (!isDemoMode()) {
+        const seasonId = await getCurrentSeasonId();
+        if (!seasonId) throw new Error('No active season — cannot send treaty proposal');
         const result = await proposeTreaty({
           kingdomId: ('fromKingdomId' in proposal ? (proposal as TreatyProposal & { fromKingdomId?: string }).fromKingdomId : proposal.fromKingdom?.id) || '',
           defenderKingdomId: ('toKingdomId' in proposal ? (proposal as TreatyProposal & { toKingdomId?: string }).toKingdomId : proposal.toKingdom?.id) || '',
-          seasonId: 'current',
+          seasonId,
           treatyType: proposal.treatyType || ''
         }) as unknown;
 
@@ -223,10 +226,12 @@ export const useDiplomacyStore = create<DiplomacyStore>((set, get) => ({
 
     try {
       if (!isDemoMode()) {
+        const seasonId = await getCurrentSeasonId();
+        if (!seasonId) throw new Error('No active season — cannot declare war');
         const result = await declareDiplomaticWar({
           kingdomId: useKingdomStore.getState().kingdomId ?? 'default-kingdom',
           defenderKingdomId: targetKingdomId,
-          seasonId: 'current'
+          seasonId
         }) as unknown;
         const parsed = typeof result === 'string' ? JSON.parse(result) : result;
         if (!parsed.success) {

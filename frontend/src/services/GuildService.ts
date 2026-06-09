@@ -5,6 +5,7 @@
 
 import { getClient } from '../utils/amplifyClient';
 import { isDemoMode } from '../utils/authMode';
+import { getCurrentSeasonId } from '../utils/currentSeason';
 import { AmplifyFunctionService } from './amplifyFunctionService';
 
 export interface AllianceUpgradeRecord {
@@ -659,11 +660,16 @@ export class GuildService {
         throw new Error('Already in an active war between these guilds');
       }
 
+      const seasonId = await getCurrentSeasonId();
+      if (!seasonId) {
+        throw new Error('Cannot declare a guild war without an active season');
+      }
       const response = await getClient().models.GuildWar.create({
         attackingGuildId,
         defendingGuildId,
         attackingGuildName,
         defendingGuildName,
+        seasonId,
         status: 'ACTIVE',
         declaredAt: now.toISOString(),
         endsAt: endsAt.toISOString(),

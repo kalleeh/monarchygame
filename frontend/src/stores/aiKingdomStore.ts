@@ -11,6 +11,7 @@ import type { Schema } from '../../../amplify/data/resource';
 import { NETWORTH, AI_KINGDOM } from '../constants/gameConfig';
 import { RACES } from '../shared-races';
 import { isDemoMode } from '../utils/authMode';
+import { getCurrentSeasonId } from '../utils/currentSeason';
 
 export interface AIKingdom {
   id: string;
@@ -130,7 +131,19 @@ export const useAIKingdomStore = create<AIKingdomState>((set) => ({
     if (isDemoMode()) return; // demo mode uses generated kingdoms
     try {
       const client = generateClient<Schema>();
-      const { data: allKingdoms } = await client.models.Kingdom.list({ limit: 100, filter: { isAI: { eq: true } } });
+      // Scope AI opponents to the active season via the seasonId GSI — without
+      // this, AI kingdoms from ended seasons leak in as combat targets. No
+      // active season → no opponents to load.
+      const seasonId = await getCurrentSeasonId();
+      if (!seasonId) return;
+      const { data: allKingdoms } = await client.models.Kingdom.listKingdomsBySeasonNetworth(
+        { seasonId },
+        {
+          sortDirection: 'DESC',
+          filter: { isAI: { eq: true } },
+          limit: 100,
+        }
+      );
       if (!allKingdoms || allKingdoms.length === 0) return;
       const data = allKingdoms;
       if (data.length === 0) return;

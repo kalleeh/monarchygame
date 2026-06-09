@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { isDemoMode } from '../utils/authMode';
+import { getCurrentSeasonId } from '../utils/currentSeason';
 import { useCombatStore } from '../stores/combatStore';
 import { useThieveryStore } from '../stores/thieveryStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
@@ -142,23 +143,22 @@ async function fetchKingdomName(id: string): Promise<string> {
 
 // ── Data fetchers ──────────────────────────────────────────────────────────
 
-async function fetchBattleReportEvents(): Promise<WorldEvent[]> {
+// All three fetchers query a season-scoped GSI sorted DESC by time, so the DB
+// returns the newest in-season events directly \u2014 no full-table scan, no
+// client-side sort/filter. Each requires a seasonId; the caller skips them when
+// no active season is resolved.
+
+async function fetchBattleReportEvents(seasonId: string): Promise<WorldEvent[]> {
   try {
-    const { data: reports } = await getAmplifyClient().models.BattleReport.list({
-      limit: 10,
-    });
+    const { data: reports } = await getAmplifyClient().models.BattleReport.listBattleReportsBySeasonAndTime(
+      { seasonId },
+      { sortDirection: 'DESC', limit: 10 }
+    );
 
     if (!reports || reports.length === 0) return [];
 
-    // Sort newest-first (timestamp is a required datetime string on the model)
-    const sorted = [...reports].sort((a, b) => {
-      const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-      const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-      return tb - ta;
-    });
-
-    const events: WorldEvent[] = await Promise.all(
-      sorted.slice(0, 10).map(async (report) => {
+    return Promise.all(
+      reports.map(async (report) => {
         const [attackerName, defenderName] = await Promise.all([
           fetchKingdomName(report.attackerId),
           fetchKingdomName(report.defenderId),
@@ -175,30 +175,23 @@ async function fetchBattleReportEvents(): Promise<WorldEvent[]> {
         };
       })
     );
-
-    return events;
   } catch (err) {
     console.warn('[WorldFeed] BattleReport fetch failed:', err);
     return [];
   }
 }
 
-async function fetchWarDeclarationEvents(): Promise<WorldEvent[]> {
+async function fetchWarDeclarationEvents(seasonId: string): Promise<WorldEvent[]> {
   try {
-    const { data: wars } = await getAmplifyClient().models.WarDeclaration.list({
-      limit: 5,
-    });
+    const { data: wars } = await getAmplifyClient().models.WarDeclaration.listWarDeclarationsBySeasonAndTime(
+      { seasonId },
+      { sortDirection: 'DESC', limit: 5 }
+    );
 
     if (!wars || wars.length === 0) return [];
 
-    const sorted = [...wars].sort((a, b) => {
-      const ta = a.declaredAt ? new Date(a.declaredAt).getTime() : 0;
-      const tb = b.declaredAt ? new Date(b.declaredAt).getTime() : 0;
-      return tb - ta;
-    });
-
-    const events: WorldEvent[] = await Promise.all(
-      sorted.slice(0, 5).map(async (war) => {
+    return Promise.all(
+      wars.map(async (war) => {
         const [attackerName, defenderName] = await Promise.all([
           fetchKingdomName(war.attackerId),
           fetchKingdomName(war.defenderId),
@@ -211,36 +204,27 @@ async function fetchWarDeclarationEvents(): Promise<WorldEvent[]> {
         };
       })
     );
-
-    return events;
   } catch (err) {
     console.warn('[WorldFeed] WarDeclaration fetch failed:', err);
     return [];
   }
 }
 
-async function fetchGuildWarEvents(): Promise<WorldEvent[]> {
+async function fetchGuildWarEvents(seasonId: string): Promise<WorldEvent[]> {
   try {
-    const { data: guildWars } = await getAmplifyClient().models.GuildWar.list({
-      limit: 5,
-    });
+    const { data: guildWars } = await getAmplifyClient().models.GuildWar.listGuildWarsBySeasonAndTime(
+      { seasonId },
+      { sortDirection: 'DESC', limit: 5 }
+    );
 
     if (!guildWars || guildWars.length === 0) return [];
 
-    const sorted = [...guildWars].sort((a, b) => {
-      const ta = a.declaredAt ? new Date(a.declaredAt).getTime() : 0;
-      const tb = b.declaredAt ? new Date(b.declaredAt).getTime() : 0;
-      return tb - ta;
-    });
-
-    const events: WorldEvent[] = sorted.slice(0, 5).map((gw) => ({
+    return guildWars.map((gw) => ({
       id: `gw-${gw.id}`,
       type: 'war' as EventType,
       message: `Alliance ${gw.attackingGuildName} declared war on Alliance ${gw.defendingGuildName}`,
       timestamp: new Date(gw.declaredAt),
     }));
-
-    return events;
   } catch (err) {
     console.warn('[WorldFeed] GuildWar fetch failed:', err);
     return [];
@@ -271,11 +255,21 @@ const WorldFeed: React.FC<WorldFeedProps> = ({ defaultCollapsed = false }) => {
         return;
       }
 
+      // The feed is strictly scoped to the active season. With no active season
+      // there is nothing to show (and the season-keyed queries can't run), so
+      // render the empty state.
+      const seasonId = await getCurrentSeasonId();
+      if (!seasonId) {
+        setEvents([]);
+        setIsLoading(false);
+        return;
+      }
+
       // Fetch from all available sources in parallel
       const [battleEvents, warEvents, guildWarEvents] = await Promise.all([
-        fetchBattleReportEvents(),
-        fetchWarDeclarationEvents(),
-        fetchGuildWarEvents(),
+        fetchBattleReportEvents(seasonId),
+        fetchWarDeclarationEvents(seasonId),
+        fetchGuildWarEvents(seasonId),
       ]);
 
       // Merge all event types, sort newest-first, cap at 20
@@ -283,10 +277,16 @@ const WorldFeed: React.FC<WorldFeedProps> = ({ defaultCollapsed = false }) => {
         .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
         .slice(0, 20);
 
-      setEvents(merged.length > 0 ? merged : buildDemoEvents(useAIKingdomStore.getState().aiKingdoms.map(k => k.name)));
+      // In auth mode, show real events only. Previously an empty real feed fell
+      // back to synthetic demo events ("Iron Reach attacked Ember Throne"),
+      // which made fake activity indistinguishable from real AI/player activity
+      // and masked the case where the server genuinely produced no events yet.
+      // An honest empty state is correct here.
+      setEvents(merged);
     } catch (err) {
       console.error('[WorldFeed] Failed to load events:', err);
-      setEvents(buildDemoEvents(useAIKingdomStore.getState().aiKingdoms.map(k => k.name)));
+      // Fail to an empty feed rather than fabricating events.
+      setEvents([]);
     } finally {
       setIsLoading(false);
     }

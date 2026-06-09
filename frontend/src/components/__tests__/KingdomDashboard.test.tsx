@@ -97,6 +97,7 @@ const mockKingdom = {
   id: '1',
   name: 'Test Kingdom',
   race: 'Human',
+  seasonId: 'season-1',
   currentAge: 'early' as const,
   resources: {
     gold: 1000,
