@@ -109,9 +109,15 @@ export function installGlobalErrorHandlers(): void {
   installed = true;
 
   window.addEventListener('error', (event: ErrorEvent) => {
+    // Browsers sometimes hand us a sanitized "Script error." with no `.error` object
+    // (errors surfacing from SDK/async contexts). In that case the stack is empty, but
+    // filename:line:col are still provided — capture them so the report stays actionable.
+    const stack = event.error instanceof Error
+      ? event.error.stack
+      : (event.filename ? `at ${event.filename}:${event.lineno ?? 0}:${event.colno ?? 0}` : undefined);
     reportClientError({
       message: event.message || String(event.error ?? 'window error'),
-      stack: event.error instanceof Error ? event.error.stack : undefined,
+      stack,
       source: 'window.onerror',
     });
   });
