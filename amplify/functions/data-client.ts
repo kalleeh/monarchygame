@@ -127,6 +127,34 @@ export async function dbQueryFilter<T>(
   return items;
 }
 
+/**
+ * Queries a GSI by partition key with a sort-key lower bound (sk >= since).
+ * Used for time-windowed reads, e.g. battle reports since the last tick.
+ */
+export async function dbQueryRange<T>(
+  modelName: string,
+  indexName: string,
+  partitionKey: { field: string; value: unknown },
+  sortKey: { field: string; gte: unknown },
+): Promise<T[]> {
+  const TableName = await getTableName(modelName);
+  const items: T[] = [];
+  let ExclusiveStartKey: Record<string, unknown> | undefined;
+  do {
+    const result = await docClient.send(new QueryCommand({
+      TableName,
+      IndexName: indexName,
+      KeyConditionExpression: '#pk = :pk AND #sk >= :sk',
+      ExpressionAttributeNames: { '#pk': partitionKey.field, '#sk': sortKey.field },
+      ExpressionAttributeValues: { ':pk': partitionKey.value, ':sk': sortKey.gte },
+      ExclusiveStartKey,
+    }));
+    items.push(...((result.Items ?? []) as T[]));
+    ExclusiveStartKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+  } while (ExclusiveStartKey);
+  return items;
+}
+
 /** Gets a single item by primary key id. Returns null if not found. */
 export async function dbGet<T>(modelName: string, id: string): Promise<T | null> {
   const TableName = await getTableName(modelName);
