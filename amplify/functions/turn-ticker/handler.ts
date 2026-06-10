@@ -263,6 +263,9 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
         await dbUpdate('Kingdom', kingdom.id, preCombatUpdateFields);
 
         // Execute combat if target selected — now uses the SAME resolveCombat path as players
+        // NOTE: resolveCombat handles ALL combat writes (land/gold/units/networth) AND turn deduction,
+        // so the turn-ticker does NOT deduct attack turns separately (that would be a double-deduction).
+        let attackExecuted = false;
         if (decision.attackTarget) {
           try {
             // Re-fetch attacker to get fresh totalUnits/turnsBalance after the build/train write
@@ -292,6 +295,7 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
                 const parsedResult = JSON.parse(combatResult.result);
                 combatLandGained = parsedResult.landGained ?? 0;
                 combatGoldGained = parsedResult.goldLooted ?? 0;
+                attackExecuted = true; // resolveCombat succeeded and wrote the attacker's final state
                 log.info('turn-ticker', 'ai-combat', {
                   kingdomId: kingdom.id,
                   targetId: decision.attackTarget,
@@ -315,17 +319,13 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
           }
         }
 
-        // Re-fetch attacker again to get the post-combat state (resolveCombat wrote land/gold/units)
-        const finalAttackerState = await dbGet<KingdomRow>('Kingdom', kingdom.id);
-        if (finalAttackerState) {
-          // Recalculate networth from the final post-combat state
-          const finalRes = parseJsonField<Record<string, number>>(finalAttackerState.resources, {});
-          const finalUnits = parseJsonField<Record<string, number>>(finalAttackerState.totalUnits, {});
-          const finalLand = finalRes.land ?? preCombatLand;
-          const finalGoldAfterCombat = finalRes.gold ?? finalGold;
-          const totalUnitCount = Object.values(finalUnits).reduce((sum, n) => sum + (n ?? 0), 0);
-          const networth = finalLand * 1000 + finalGoldAfterCombat + totalUnitCount * 100;
-
+        // For non-attacking AIs, compute and write networth from the build/train state.
+        // For attacking AIs, resolveCombat already wrote the correct post-combat networth,
+        // so skip the redundant refetch + networth-only write.
+        if (!attackExecuted) {
+          const finalLand = preCombatLand;
+          const totalUnitCount = Object.values(updatedUnits).reduce((sum, n) => sum + (n ?? 0), 0);
+          const networth = finalLand * 1000 + finalGold + totalUnitCount * 100;
           await dbUpdate('Kingdom', kingdom.id, { networth });
         }
 
@@ -361,9 +361,14 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
         // Feed (B): emit a milestone when this AI crosses a power tier UPWARD.
         // Keeps the live feed alive during early age (no combat yet) without
         // spamming — at most one event per tier crossing per kingdom.
-        if (finalAttackerState) {
+        // For attacking AIs: skip milestone detection this tick — the attack itself is
+        // already surfaced as a BattleReport in the feed, and the AI's networth will be
+        // re-evaluated next tick. This avoids an extra dbGet just for milestone checks.
+        if (!attackExecuted) {
           const prevNetworth = (kingdom as KingdomRow).networth ?? 0;
-          const currentNetworth = finalAttackerState.networth ?? prevNetworth;
+          const finalLand = preCombatLand;
+          const totalUnitCount = Object.values(updatedUnits).reduce((sum, n) => sum + (n ?? 0), 0);
+          const currentNetworth = finalLand * 1000 + finalGold + totalUnitCount * 100;
           const crossed = crossedPowerTier(prevNetworth, currentNetworth);
           if (crossed && (kingdom as KingdomRow).seasonId) {
             aiMilestones.push({
@@ -375,9 +380,16 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
           }
         }
 
-        // Deduct turns spent
-        if (decision.turnsSpent > 0) {
-          await dbAtomicAdd('Kingdom', kingdom.id, 'turnsBalance', -decision.turnsSpent);
+        // Deduct turns spent (builds/trains/war-declaration).
+        // IMPORTANT: if an attack was executed, resolveCombat already deducted the attack
+        // turns (4), so we must NOT double-deduct them. The strategist's turnsSpent includes
+        // attack turns when decision.attackTarget is set, so subtract 4 in that case.
+        let turnsToDeduct = decision.turnsSpent;
+        if (attackExecuted && decision.attackTarget) {
+          turnsToDeduct -= 4; // ATTACK_TURN_COST (resolveCombat already deducted these)
+        }
+        if (turnsToDeduct > 0) {
+          await dbAtomicAdd('Kingdom', kingdom.id, 'turnsBalance', -turnsToDeduct);
         }
 
         if (decision.builds.length > 0 || decision.trains.length > 0 || decision.attackTarget || decision.declareWarOn) {
