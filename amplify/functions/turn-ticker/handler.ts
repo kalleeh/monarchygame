@@ -7,20 +7,25 @@
  *
  * Turn rate: 3/hour (1 per 20 min), matching the game's TURNS_PER_HOUR constant.
  */
-import { dbList, dbAtomicAdd, dbUpdate, dbCreate, dbGet, dbQuery, parseJsonField } from '../data-client';
+import { dbList, dbAtomicAdd, dbUpdate, dbCreate, dbGet, dbQueryRange, parseJsonField } from '../data-client';
 import { log } from '../logger';
 import { FOCUS_MECHANICS } from '../../../shared/mechanics/faith-focus-mechanics';
 import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
 import { calculateCombatResult, calculateFortDefense, RACE_OFFENSE_BONUSES, RACE_DEFENSE_BONUSES } from '../../../shared/mechanics/combat-mechanics';
 import type { AttackForce, DefenseForce } from '../../../shared/mechanics/combat-mechanics';
 import {
-  decideAIActions,
-  assignPersonality,
+  decide,
+  assignPersona,
+  assignDifficulty,
   armyCombatPower,
-  type AIKingdomState,
-  type AIPersonality,
+  emptyMemory,
+  makeRng,
+  type PublicKingdomView,
+  type PublicBattleEvent,
+  type AIMemory,
+  type SelfState,
   type SeasonAge,
-} from '../../../shared/mechanics/ai-behavior';
+} from '../../../shared/mechanics/ai-strategist';
 import { calculateGenerationRates } from '../../../shared/mechanics/economy-mechanics';
 
 const MAX_STORED_TURNS = TURN_MECHANICS.BASE_GENERATION.MAX_STORED_TURNS; // 72
@@ -137,29 +142,42 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
     // Accumulate notable non-combat milestones; written to WorldEventLog after the loop.
     const aiMilestones: AIMilestone[] = [];
 
-    // Build AIKingdomState for all active kingdoms (needed for target selection)
-    const allKingdomStates: AIKingdomState[] = active.map(k => {
-      const res = parseJsonField<Record<string, number>>(k.resources, {});
-      const units = parseJsonField<Record<string, number>>(k.totalUnits, {});
-      const bldgs = parseJsonField<Record<string, number>>((k as KingdomRow).buildings, {});
-      const stats = parseJsonField<Record<string, unknown>>((k as KingdomRow).stats, {});
+    // INFORMATION FAIRNESS: the strategist sees other kingdoms only through the
+    // fields a player can read via AppSync (no units/gold/buildings). Defense is
+    // ESTIMATED from public networth + race inside the engine.
+    const publicViews: PublicKingdomView[] = active.map(k => {
+      const kr = k as KingdomRow;
+      const stats = parseJsonField<Record<string, unknown>>(kr.stats, {});
+      const restEnd = stats.restorationEndTime as string | undefined;
       return {
         id: k.id,
+        name: kr.name ?? undefined,
         race: (k.race as string) ?? 'Human',
-        land: res.land ?? 800,
-        gold: res.gold ?? 0,
-        turnsAvailable: k.turnsBalance ?? 0,
-        networth: (k as KingdomRow).networth ?? 0,
-        buildings: bldgs,
-        totalUnits: units,
-        guildId: (k as KingdomRow).guildId ?? null,
-        isAI: k.isAI ?? false,
+        networth: kr.networth ?? 0,
         isActive: k.isActive ?? true,
-        currentAge: (k as KingdomRow).currentAge ?? 'early',
-        createdAt: (k as KingdomRow).createdAt ?? undefined,
-        stats,
+        isAI: k.isAI ?? false,
+        createdAt: kr.createdAt ?? undefined,
+        // Protective-only flag (can spare a target, never advantage the attacker).
+        underRestoration: !!restEnd && new Date(restEnd).getTime() > Date.now(),
       };
     });
+
+    // One public battle-report query per tick (BattleReport is authenticated-read,
+    // i.e. player-visible). Used for grudges + wounded-target detection.
+    const seasonIdForTick = (aiKingdoms[0] as KingdomRow | undefined)?.seasonId;
+    let recentBattles: PublicBattleEvent[] = [];
+    if (seasonIdForTick) {
+      try {
+        const since = new Date(Date.now() - 25 * 60 * 1000).toISOString(); // last tick + margin
+        recentBattles = await dbQueryRange<PublicBattleEvent>(
+          'BattleReport', 'battleReportsBySeasonIdAndTimestamp',
+          { field: 'seasonId', value: seasonIdForTick },
+          { field: 'timestamp', gte: since },
+        );
+      } catch (brErr) {
+        log.error('turn-ticker', brErr, { context: 'recent-battles' });
+      }
+    }
 
     for (const kingdom of aiKingdoms) {
       try {
@@ -168,8 +186,8 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
         const buildingsMap = parseJsonField<Record<string, number>>((kingdom as KingdomRow).buildings, {});
         const statsMap = parseJsonField<Record<string, unknown>>((kingdom as KingdomRow).stats, {});
 
-        // Determine personality (assign on first tick if missing)
-        const personality: AIPersonality = ((kingdom as KingdomRow).aiPersonality as AIPersonality) ?? assignPersonality(kingdom.id);
+        const persona = assignPersona(kingdom.id);
+        const difficulty = assignDifficulty(kingdom.id);
         const seasonAge: SeasonAge = ((kingdom as KingdomRow).currentAge as SeasonAge) ?? 'early';
 
         // FAIRNESS: AI earns income from its OWN economy via the SAME formula
@@ -186,23 +204,32 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
         const newGold = Math.min(RESOURCE_LIMITS.gold.max, (resources.gold ?? 0) + rates.goldPerTurn);
         const newPopulation = Math.min(RESOURCE_LIMITS.population.max, (resources.population ?? 0) + rates.populationPerTurn);
 
-        // Build AI state for decision
-        const aiState: AIKingdomState = {
+        const selfState: SelfState = {
           id: kingdom.id,
-          race: (kingdom.race as string) ?? 'Human',
+          race: aiRace,
           land: resources.land ?? 800,
           gold: newGold,
           turnsAvailable: kingdom.turnsBalance ?? 0,
           networth: (kingdom as KingdomRow).networth ?? 0,
           buildings: { ...buildingsMap },
           totalUnits: { ...totalUnitsMap },
-          guildId: (kingdom as KingdomRow).guildId ?? null,
-          isAI: true,
-          isActive: true,
-          currentAge: seasonAge,
         };
+        const memory: AIMemory = (statsMap.aiMemory as AIMemory | undefined) ?? emptyMemory();
 
-        const decision = decideAIActions(aiState, personality, seasonAge, allKingdomStates);
+        // Deterministic per kingdom + tick (no Math.random drift across retries).
+        const tickBucket = Math.floor(Date.now() / (20 * 60 * 1000));
+        let seed = tickBucket;
+        for (let i = 0; i < kingdom.id.length; i++) seed = ((seed << 5) - seed + kingdom.id.charCodeAt(i)) | 0;
+
+        const decision = decide(selfState, publicViews, {
+          age: seasonAge,
+          persona,
+          difficulty,
+          memory,
+          recentBattles,
+          rng: makeRng(seed >>> 0),
+          nowMs: Date.now(),
+        });
 
         // Apply builds
         const updatedBuildings = { ...buildingsMap };
@@ -343,14 +370,41 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
           buildings: updatedBuildings,
           totalUnits: updatedUnits,
           networth,
+          // Persist memory (grudges/attacks/wars) and persona for next tick + admin visibility.
+          stats: { ...statsMap, aiMemory: decision.memory },
+          aiPersonality: persona,
         };
 
-        // Persist personality on first tick
-        if (!(kingdom as KingdomRow).aiPersonality) {
-          updateFields.aiPersonality = personality;
-        }
-
         await dbUpdate('Kingdom', kingdom.id, updateFields);
+
+        // War rule: the AI hit this defender 3 times — it must declare war before
+        // attacking again (same rule combat-processor enforces on players). Real
+        // WarDeclaration row → shows in the World Feed.
+        if (decision.declareWarOn && (kingdom as KingdomRow).seasonId) {
+          try {
+            await dbCreate('WarDeclaration', {
+              attackerId: kingdom.id,
+              defenderId: decision.declareWarOn,
+              seasonId: (kingdom as KingdomRow).seasonId,
+              status: 'active',
+              attackCount: 0,
+              declaredAt: new Date().toISOString(),
+              reason: 'Sustained campaign — formal declaration of war',
+              owner: 'AI_SYSTEM',
+            });
+            await dbCreate('CombatNotification', {
+              recipientId: decision.declareWarOn,
+              type: 'defense',
+              message: `${(kingdom as KingdomRow).name ?? 'A kingdom'} has declared war on you!`,
+              data: JSON.stringify({ attackerId: kingdom.id }),
+              isRead: false,
+              createdAt: new Date().toISOString(),
+              owner: decision.declareWarOn,
+            });
+          } catch (warErr) {
+            log.error('turn-ticker', warErr, { kingdomId: kingdom.id, context: 'ai-declare-war' });
+          }
+        }
 
         // Feed (B): emit a milestone when this AI crosses a power tier UPWARD.
         // Keeps the live feed alive during early age (no combat yet) without
@@ -371,14 +425,16 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
           await dbAtomicAdd('Kingdom', kingdom.id, 'turnsBalance', -decision.turnsSpent);
         }
 
-        if (decision.builds.length > 0 || decision.trains.length > 0 || decision.attackTarget) {
+        if (decision.builds.length > 0 || decision.trains.length > 0 || decision.attackTarget || decision.declareWarOn) {
           log.info('turn-ticker', 'ai-decision', {
             kingdomId: kingdom.id,
-            personality,
+            persona,
+            difficulty,
             seasonAge,
             builds: decision.builds.length,
             trains: decision.trains.length,
             attacked: !!decision.attackTarget,
+            declaredWar: !!decision.declareWarOn,
             turnsSpent: decision.turnsSpent,
             goldSpent: decision.goldSpent,
           });

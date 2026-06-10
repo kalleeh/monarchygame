@@ -10,6 +10,7 @@ const mockDbUpdate = vi.hoisted(() => vi.fn());
 const mockDbCreate = vi.hoisted(() => vi.fn());
 const mockDbGet = vi.hoisted(() => vi.fn());
 const mockDbQuery = vi.hoisted(() => vi.fn());
+const mockDbQueryRange = vi.hoisted(() => vi.fn());
 const mockDbDelete = vi.hoisted(() => vi.fn());
 
 vi.mock('../data-client', () => ({
@@ -20,6 +21,7 @@ vi.mock('../data-client', () => ({
   dbCreate: mockDbCreate,
   dbGet: mockDbGet,
   dbQuery: mockDbQuery,
+  dbQueryRange: mockDbQueryRange,
   dbDelete: mockDbDelete,
   parseJsonField: <T>(value: unknown, defaultValue: T): T => {
     if (value === null || value === undefined) return defaultValue;
@@ -71,6 +73,7 @@ beforeEach(() => {
   mockDbUpdate.mockResolvedValue(undefined);
   mockDbCreate.mockResolvedValue(undefined);
   mockDbGet.mockResolvedValue({ id: 'kingdom-1' });
+  mockDbQueryRange.mockResolvedValue([]);
 });
 
 describe('turn-ticker handler — settlement completion', () => {
@@ -208,6 +211,29 @@ describe('turn-ticker handler — AI kingdom ticking', () => {
     // Base income only: 100 ×1.2 = 120. Definitely less than the old 5000 handout.
     expect(updatedResources.gold).toBeLessThan(10500);
     expect(updatedResources.gold).toBeGreaterThanOrEqual(10000);
+  });
+
+  it('persists AI memory and persona to the kingdom row', async () => {
+    const aiKingdom = makeKingdom({
+      isAI: true,
+      seasonId: 'season-1',
+      currentAge: 'early',
+      resources: JSON.stringify({ gold: 10000, population: 5000, land: 1000 }),
+      buildings: JSON.stringify({ mine: 50 }),
+      totalUnits: JSON.stringify({ peasants: 100 }),
+    });
+    mockDbList.mockResolvedValue([aiKingdom]);
+    const result = await callHandler({});
+    expect(result.success).toBe(true);
+    const aiUpdateCall = mockDbUpdate.mock.calls.find(
+      (call: unknown[]) => call[0] === 'Kingdom' && call[1] === 'kingdom-1'
+        && (call[2] as Record<string, unknown>)?.stats !== undefined
+    );
+    expect(aiUpdateCall).toBeDefined();
+    const stats = (aiUpdateCall![2] as Record<string, unknown>).stats as Record<string, unknown>;
+    expect(stats.aiMemory).toBeDefined();
+    const persona = (aiUpdateCall![2] as Record<string, unknown>).aiPersonality;
+    expect(['warlord', 'raider', 'economist', 'turtle', 'opportunist', 'schemer']).toContain(persona);
   });
 });
 
