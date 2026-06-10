@@ -566,7 +566,12 @@ export function decide(
   // Persona splits spendable gold between economy and military; threat shifts
   // the split toward military (a player under attack does the same).
   const spendable = Math.max(0, goldLeft - reserve);
-  const milShare = Math.min(0.85, (w.military / (w.military + w.econ)) * (1 + (threat - 1) * 0.15));
+  // Split spendable gold between economy and military. Base split is the
+  // persona's military weight as a fraction of (military + econ); threat shifts
+  // it toward military by +15% per threat point above calm (1), capped at 85%.
+  const baseMilShare = w.military / (w.military + w.econ);
+  const threatBoost = 1 + (threat - 1) * 0.15;
+  const milShare = Math.min(0.85, baseMilShare * threatBoost);
   const buildBudget = Math.floor(spendable * (1 - milShare));
   const trainBudget = Math.floor(spendable * milShare);
 
@@ -590,12 +595,14 @@ export function decide(
   turnsLeft -= trains.length * TRAIN_TURN_COST;
 
   // ATTACK / DECLARE WAR — use the post-training army.
+  // Fold the units we just trained onto the base army for attack evaluation.
+  const unitsAfterTrain: Record<string, number> = { ...me.totalUnits };
+  for (const t of trains) {
+    unitsAfterTrain[t.unitType] = (unitsAfterTrain[t.unitType] ?? 0) + t.qty;
+  }
   const meAfterTrain: SelfState = {
     ...meAfterBuild,
-    totalUnits: trains.reduce(
-      (u, t) => ({ ...u, [t.unitType]: (u[t.unitType] ?? 0) + t.qty }),
-      { ...me.totalUnits },
-    ),
+    totalUnits: unitsAfterTrain,
     turnsAvailable: turnsLeft,
   };
   let attackTarget: string | null = null;
