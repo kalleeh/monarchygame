@@ -6,8 +6,7 @@
     "identity_pool_id": "eu-west-1:0f3fb3b8-7073-4a31-9856-cf7854ed8e2a",
     "mfa_methods": [],
     "standard_required_attributes": [
-      "email",
-      "preferred_username"
+      "email"
     ],
     "username_attributes": [
       "email"
@@ -62,34 +61,6 @@
               "isRequired": true,
               "attributes": []
             },
-            "resources": {
-              "name": "resources",
-              "isArray": false,
-              "type": "AWSJSON",
-              "isRequired": true,
-              "attributes": []
-            },
-            "stats": {
-              "name": "stats",
-              "isArray": false,
-              "type": "AWSJSON",
-              "isRequired": true,
-              "attributes": []
-            },
-            "buildings": {
-              "name": "buildings",
-              "isArray": false,
-              "type": "AWSJSON",
-              "isRequired": true,
-              "attributes": []
-            },
-            "totalUnits": {
-              "name": "totalUnits",
-              "isArray": false,
-              "type": "AWSJSON",
-              "isRequired": true,
-              "attributes": []
-            },
             "currentAge": {
               "name": "currentAge",
               "isArray": false,
@@ -99,6 +70,13 @@
               "isRequired": true,
               "attributes": []
             },
+            "isAI": {
+              "name": "isAI",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
             "isActive": {
               "name": "isActive",
               "isArray": false,
@@ -106,22 +84,29 @@
               "isRequired": false,
               "attributes": []
             },
-            "isOnline": {
-              "name": "isOnline",
+            "networth": {
+              "name": "networth",
               "isArray": false,
-              "type": "Boolean",
+              "type": "Int",
               "isRequired": false,
+              "attributes": []
+            },
+            "reputation": {
+              "name": "reputation",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "seasonId": {
+              "name": "seasonId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
               "attributes": []
             },
             "createdAt": {
               "name": "createdAt",
-              "isArray": false,
-              "type": "AWSDateTime",
-              "isRequired": false,
-              "attributes": []
-            },
-            "lastActive": {
-              "name": "lastActive",
               "isArray": false,
               "type": "AWSDateTime",
               "isRequired": false,
@@ -134,10 +119,87 @@
               "isRequired": false,
               "attributes": []
             },
+            "resources": {
+              "name": "resources",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "stats": {
+              "name": "stats",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "buildings": {
+              "name": "buildings",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "totalUnits": {
+              "name": "totalUnits",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "turnsBalance": {
+              "name": "turnsBalance",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "lastResourceTick": {
+              "name": "lastResourceTick",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "encampEndTime": {
+              "name": "encampEndTime",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "encampBonusTurns": {
+              "name": "encampBonusTurns",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "isOnline": {
+              "name": "isOnline",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "lastActive": {
+              "name": "lastActive",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
             "guildId": {
               "name": "guildId",
               "isArray": false,
               "type": "ID",
+              "isRequired": false,
+              "attributes": []
+            },
+            "aiPersonality": {
+              "name": "aiPersonality",
+              "isArray": false,
+              "type": "String",
               "isRequired": false,
               "attributes": []
             },
@@ -158,6 +220,17 @@
               "properties": {}
             },
             {
+              "type": "key",
+              "properties": {
+                "name": "kingdomsBySeasonIdAndNetworth",
+                "queryField": "listKingdomsBySeasonNetworth",
+                "fields": [
+                  "seasonId",
+                  "networth"
+                ]
+              }
+            },
+            {
               "type": "auth",
               "properties": {
                 "rules": [
@@ -165,13 +238,11 @@
                     "provider": "userPools",
                     "ownerField": "owner",
                     "allow": "owner",
-                    "identityClaim": "cognito:username",
                     "operations": [
-                      "create",
-                      "update",
-                      "delete",
-                      "read"
-                    ]
+                      "read",
+                      "create"
+                    ],
+                    "identityClaim": "cognito:username"
                   },
                   {
                     "allow": "private",
@@ -259,6 +330,22 @@
               "isRequired": true,
               "attributes": []
             },
+            "regionId": {
+              "name": "regionId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "category": {
+              "name": "category",
+              "isArray": false,
+              "type": {
+                "enum": "TerritoryCategory"
+              },
+              "isRequired": false,
+              "attributes": []
+            },
             "createdAt": {
               "name": "createdAt",
               "isArray": false,
@@ -282,6 +369,17 @@
               "properties": {}
             },
             {
+              "type": "key",
+              "properties": {
+                "name": "territoriesByKingdomIdAndCreatedAt",
+                "queryField": "listTerritoryByKingdomIdAndCreatedAt",
+                "fields": [
+                  "kingdomId",
+                  "createdAt"
+                ]
+              }
+            },
+            {
               "type": "auth",
               "properties": {
                 "rules": [
@@ -300,6 +398,153 @@
                   {
                     "allow": "private",
                     "operations": [
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "ClientError": {
+          "name": "ClientError",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "message": {
+              "name": "message",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "stack": {
+              "name": "stack",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "source": {
+              "name": "source",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "url": {
+              "name": "url",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "userAgent": {
+              "name": "userAgent",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "appVersion": {
+              "name": "appVersion",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "fingerprint": {
+              "name": "fingerprint",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "occurredAt": {
+              "name": "occurredAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "ttl": {
+              "name": "ttl",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "ClientErrors",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "clientErrorsBySourceAndOccurredAt",
+                "queryField": "listClientErrorBySourceAndOccurredAt",
+                "fields": [
+                  "source",
+                  "occurredAt"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "create"
+                    ]
+                  },
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
                       "read"
                     ]
                   }
@@ -385,6 +630,13 @@
               "type": "AWSJSON",
               "isRequired": false,
               "attributes": []
+            },
+            "stats": {
+              "name": "stats",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
             }
           },
           "syncable": true,
@@ -445,6 +697,13 @@
             },
             "defenderId": {
               "name": "defenderId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "seasonId": {
+              "name": "seasonId",
               "isArray": false,
               "type": "ID",
               "isRequired": true,
@@ -519,6 +778,39 @@
               "properties": {}
             },
             {
+              "type": "key",
+              "properties": {
+                "name": "battleReportsByAttackerIdAndDefenderId",
+                "queryField": "listBattleReportByAttackerIdAndDefenderId",
+                "fields": [
+                  "attackerId",
+                  "defenderId"
+                ]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "battleReportsByDefenderIdAndTimestamp",
+                "queryField": "listBattleReportByDefenderIdAndTimestamp",
+                "fields": [
+                  "defenderId",
+                  "timestamp"
+                ]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "battleReportsBySeasonIdAndTimestamp",
+                "queryField": "listBattleReportsBySeasonAndTime",
+                "fields": [
+                  "seasonId",
+                  "timestamp"
+                ]
+              }
+            },
+            {
               "type": "auth",
               "properties": {
                 "rules": [
@@ -537,6 +829,125 @@
                   {
                     "allow": "private",
                     "operations": [
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "WorldEventLog": {
+          "name": "WorldEventLog",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "seasonId": {
+              "name": "seasonId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "category": {
+              "name": "category",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": false,
+              "attributes": []
+            },
+            "message": {
+              "name": "message",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "timestamp": {
+              "name": "timestamp",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "ttl": {
+              "name": "ttl",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "WorldEventLogs",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "worldEventLogsBySeasonIdAndTimestamp",
+                "queryField": "listWorldEventsBySeasonAndTime",
+                "fields": [
+                  "seasonId",
+                  "timestamp"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "read"
+                    ]
+                  },
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
                       "read"
                     ]
                   }
@@ -708,6 +1119,16 @@
               "properties": {}
             },
             {
+              "type": "key",
+              "properties": {
+                "name": "combatNotificationsByRecipientId",
+                "queryField": "listCombatNotificationByRecipientId",
+                "fields": [
+                  "recipientId"
+                ]
+              }
+            },
+            {
               "type": "auth",
               "properties": {
                 "rules": [
@@ -809,6 +1230,26 @@
             {
               "type": "model",
               "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "allianceInvitationsByInviterId",
+                "queryField": "listAllianceInvitationByInviterId",
+                "fields": [
+                  "inviterId"
+                ]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "allianceInvitationsByInviteeId",
+                "queryField": "listAllianceInvitationByInviteeId",
+                "fields": [
+                  "inviteeId"
+                ]
+              }
             },
             {
               "type": "auth",
@@ -918,6 +1359,1191 @@
             "primaryKeyFieldName": "id",
             "sortKeyFieldNames": []
           }
+        },
+        "GameSeason": {
+          "name": "GameSeason",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "seasonNumber": {
+              "name": "seasonNumber",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": {
+                "enum": "SeasonStatus"
+              },
+              "isRequired": true,
+              "attributes": []
+            },
+            "startDate": {
+              "name": "startDate",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "endDate": {
+              "name": "endDate",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "currentAge": {
+              "name": "currentAge",
+              "isArray": false,
+              "type": {
+                "enum": "GameAge"
+              },
+              "isRequired": true,
+              "attributes": []
+            },
+            "ageTransitions": {
+              "name": "ageTransitions",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "participantCount": {
+              "name": "participantCount",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "GameSeasons",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "read"
+                    ]
+                  },
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "WarDeclaration": {
+          "name": "WarDeclaration",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "attackerId": {
+              "name": "attackerId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "defenderId": {
+              "name": "defenderId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "seasonId": {
+              "name": "seasonId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": {
+                "enum": "WarStatus"
+              },
+              "isRequired": true,
+              "attributes": []
+            },
+            "attackCount": {
+              "name": "attackCount",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "declaredAt": {
+              "name": "declaredAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "resolvedAt": {
+              "name": "resolvedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "reason": {
+              "name": "reason",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "WarDeclarations",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "warDeclarationsByAttackerIdAndStatus",
+                "queryField": "listWarDeclarationByAttackerIdAndStatus",
+                "fields": [
+                  "attackerId",
+                  "status"
+                ]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "warDeclarationsByDefenderIdAndStatus",
+                "queryField": "listWarDeclarationByDefenderIdAndStatus",
+                "fields": [
+                  "defenderId",
+                  "status"
+                ]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "warDeclarationsBySeasonIdAndDeclaredAt",
+                "queryField": "listWarDeclarationsBySeasonAndTime",
+                "fields": [
+                  "seasonId",
+                  "declaredAt"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "read"
+                    ]
+                  },
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "TradeOffer": {
+          "name": "TradeOffer",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "sellerId": {
+              "name": "sellerId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "buyerId": {
+              "name": "buyerId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": false,
+              "attributes": []
+            },
+            "seasonId": {
+              "name": "seasonId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "resourceType": {
+              "name": "resourceType",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "quantity": {
+              "name": "quantity",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "pricePerUnit": {
+              "name": "pricePerUnit",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": true,
+              "attributes": []
+            },
+            "totalPrice": {
+              "name": "totalPrice",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": true,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": {
+                "enum": "TradeOfferStatus"
+              },
+              "isRequired": true,
+              "attributes": []
+            },
+            "escrowedResources": {
+              "name": "escrowedResources",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "expiresAt": {
+              "name": "expiresAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "acceptedAt": {
+              "name": "acceptedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "TradeOffers",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "tradeOffersBySellerId",
+                "queryField": "listTradeOfferBySellerId",
+                "fields": [
+                  "sellerId"
+                ]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "tradeOffersByBuyerId",
+                "queryField": "listTradeOfferByBuyerId",
+                "fields": [
+                  "buyerId"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "read"
+                    ]
+                  },
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "DiplomaticRelation": {
+          "name": "DiplomaticRelation",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "targetKingdomId": {
+              "name": "targetKingdomId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": {
+                "enum": "DiplomaticStatus"
+              },
+              "isRequired": true,
+              "attributes": []
+            },
+            "reputation": {
+              "name": "reputation",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "lastActionAt": {
+              "name": "lastActionAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "DiplomaticRelations",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "diplomaticRelationsByKingdomId",
+                "queryField": "listDiplomaticRelationByKingdomId",
+                "fields": [
+                  "kingdomId"
+                ]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "diplomaticRelationsByTargetKingdomId",
+                "queryField": "listDiplomaticRelationByTargetKingdomId",
+                "fields": [
+                  "targetKingdomId"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "read"
+                    ]
+                  },
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "Treaty": {
+          "name": "Treaty",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "proposerId": {
+              "name": "proposerId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "recipientId": {
+              "name": "recipientId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "seasonId": {
+              "name": "seasonId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "type": {
+              "name": "type",
+              "isArray": false,
+              "type": {
+                "enum": "TreatyType"
+              },
+              "isRequired": true,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": {
+                "enum": "TreatyStatus"
+              },
+              "isRequired": true,
+              "attributes": []
+            },
+            "terms": {
+              "name": "terms",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "proposedAt": {
+              "name": "proposedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "respondedAt": {
+              "name": "respondedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "expiresAt": {
+              "name": "expiresAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "Treaties",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "treatiesByProposerId",
+                "queryField": "listTreatyByProposerId",
+                "fields": [
+                  "proposerId"
+                ]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "treatiesByRecipientId",
+                "queryField": "listTreatyByRecipientId",
+                "fields": [
+                  "recipientId"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "read"
+                    ]
+                  },
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "RestorationStatus": {
+          "name": "RestorationStatus",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "type": {
+              "name": "type",
+              "isArray": false,
+              "type": {
+                "enum": "RestorationType"
+              },
+              "isRequired": true,
+              "attributes": []
+            },
+            "startTime": {
+              "name": "startTime",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "endTime": {
+              "name": "endTime",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "allowedActions": {
+              "name": "allowedActions",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "prohibitedActions": {
+              "name": "prohibitedActions",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "RestorationStatuses",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "restorationStatusesByKingdomIdAndEndTime",
+                "queryField": "listRestorationStatusByKingdomIdAndEndTime",
+                "fields": [
+                  "kingdomId",
+                  "endTime"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "read"
+                    ]
+                  },
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "WorldState": {
+          "name": "WorldState",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "seasonId": {
+              "name": "seasonId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "visibleKingdoms": {
+              "name": "visibleKingdoms",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "fogOfWar": {
+              "name": "fogOfWar",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "lastUpdated": {
+              "name": "lastUpdated",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "WorldStates",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "worldStatesByKingdomIdAndSeasonId",
+                "queryField": "listWorldStateByKingdomIdAndSeasonId",
+                "fields": [
+                  "kingdomId",
+                  "seasonId"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "RateLimit": {
+          "name": "RateLimit",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "count": {
+              "name": "count",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "windowStart": {
+              "name": "windowStart",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "ttl": {
+              "name": "ttl",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "RateLimits",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "GuildWar": {
+          "name": "GuildWar",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "attackingGuildId": {
+              "name": "attackingGuildId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "defendingGuildId": {
+              "name": "defendingGuildId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "attackingGuildName": {
+              "name": "attackingGuildName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "defendingGuildName": {
+              "name": "defendingGuildName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "seasonId": {
+              "name": "seasonId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": {
+                "enum": "GuildWarStatus"
+              },
+              "isRequired": true,
+              "attributes": []
+            },
+            "declaredAt": {
+              "name": "declaredAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "endsAt": {
+              "name": "endsAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "attackingScore": {
+              "name": "attackingScore",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "defendingScore": {
+              "name": "defendingScore",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "contributions": {
+              "name": "contributions",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "winnerId": {
+              "name": "winnerId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "GuildWars",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "guildWarsBySeasonIdAndDeclaredAt",
+                "queryField": "listGuildWarsBySeasonAndTime",
+                "fields": [
+                  "seasonId",
+                  "declaredAt"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "read"
+                    ]
+                  },
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
         }
       },
       "enums": {
@@ -1000,9 +2626,117 @@
             "war",
             "diplomacy"
           ]
+        },
+        "SeasonStatus": {
+          "name": "SeasonStatus",
+          "values": [
+            "active",
+            "transitioning",
+            "completed"
+          ]
+        },
+        "WarStatus": {
+          "name": "WarStatus",
+          "values": [
+            "declared",
+            "active",
+            "resolved",
+            "ceasefire"
+          ]
+        },
+        "TradeOfferStatus": {
+          "name": "TradeOfferStatus",
+          "values": [
+            "open",
+            "accepted",
+            "cancelled",
+            "expired"
+          ]
+        },
+        "DiplomaticStatus": {
+          "name": "DiplomaticStatus",
+          "values": [
+            "neutral",
+            "friendly",
+            "allied",
+            "hostile",
+            "war"
+          ]
+        },
+        "TreatyType": {
+          "name": "TreatyType",
+          "values": [
+            "non_aggression",
+            "trade_agreement",
+            "military_alliance",
+            "ceasefire"
+          ]
+        },
+        "TreatyStatus": {
+          "name": "TreatyStatus",
+          "values": [
+            "proposed",
+            "active",
+            "expired",
+            "broken"
+          ]
+        },
+        "RestorationType": {
+          "name": "RestorationType",
+          "values": [
+            "none",
+            "damage_based",
+            "death_based"
+          ]
+        },
+        "GuildWarStatus": {
+          "name": "GuildWarStatus",
+          "values": [
+            "ACTIVE",
+            "ENDED"
+          ]
+        },
+        "TerritoryCategory": {
+          "name": "TerritoryCategory",
+          "values": [
+            "farmland",
+            "mine",
+            "forest",
+            "port",
+            "stronghold",
+            "ruins"
+          ]
         }
       },
       "nonModels": {},
+      "queries": {
+        "getActiveSeason": {
+          "name": "getActiveSeason",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false
+        },
+        "fetchWorldState": {
+          "name": "fetchWorldState",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "seasonId": {
+              "name": "seasonId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        }
+      },
       "mutations": {
         "processCombat": {
           "name": "processCombat",
@@ -1035,6 +2769,18 @@
               "isArray": false,
               "type": "AWSJSON",
               "isRequired": true
+            },
+            "formationId": {
+              "name": "formationId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "terrainId": {
+              "name": "terrainId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
             }
           }
         },
@@ -1050,10 +2796,30 @@
               "type": "String",
               "isRequired": true
             },
-            "resources": {
-              "name": "resources",
+            "turns": {
+              "name": "turns",
               "isArray": false,
-              "type": "AWSJSON",
+              "type": "Int",
+              "isRequired": false
+            }
+          }
+        },
+        "encampKingdom": {
+          "name": "encampKingdom",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "duration": {
+              "name": "duration",
+              "isArray": false,
+              "type": "Int",
               "isRequired": true
             }
           }
@@ -1174,6 +2940,580 @@
               "name": "coordinates",
               "isArray": false,
               "type": "AWSJSON",
+              "isRequired": true
+            },
+            "regionId": {
+              "name": "regionId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "category": {
+              "name": "category",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            }
+          }
+        },
+        "upgradeTerritory": {
+          "name": "upgradeTerritory",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "territoryId": {
+              "name": "territoryId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "newDefenseLevel": {
+              "name": "newDefenseLevel",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true
+            },
+            "goldCost": {
+              "name": "goldCost",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true
+            }
+          }
+        },
+        "declareWar": {
+          "name": "declareWar",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "attackerId": {
+              "name": "attackerId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "defenderId": {
+              "name": "defenderId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "seasonId": {
+              "name": "seasonId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "reason": {
+              "name": "reason",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            }
+          }
+        },
+        "resolveWar": {
+          "name": "resolveWar",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "warId": {
+              "name": "warId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "resolution": {
+              "name": "resolution",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        },
+        "postTradeOffer": {
+          "name": "postTradeOffer",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "sellerId": {
+              "name": "sellerId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "seasonId": {
+              "name": "seasonId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "resourceType": {
+              "name": "resourceType",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "quantity": {
+              "name": "quantity",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true
+            },
+            "pricePerUnit": {
+              "name": "pricePerUnit",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": true
+            }
+          }
+        },
+        "buyTradeOffer": {
+          "name": "buyTradeOffer",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "offerId": {
+              "name": "offerId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "buyerId": {
+              "name": "buyerId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        },
+        "revokeTradeOffer": {
+          "name": "revokeTradeOffer",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "offerId": {
+              "name": "offerId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "sellerId": {
+              "name": "sellerId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        },
+        "sendTreatyProposal": {
+          "name": "sendTreatyProposal",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "proposerId": {
+              "name": "proposerId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "recipientId": {
+              "name": "recipientId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "seasonId": {
+              "name": "seasonId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "treatyType": {
+              "name": "treatyType",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "terms": {
+              "name": "terms",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false
+            }
+          }
+        },
+        "respondToTreaty": {
+          "name": "respondToTreaty",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "treatyId": {
+              "name": "treatyId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "accepted": {
+              "name": "accepted",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": true
+            }
+          }
+        },
+        "declareDiplomaticWar": {
+          "name": "declareDiplomaticWar",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "targetKingdomId": {
+              "name": "targetKingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "seasonId": {
+              "name": "seasonId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        },
+        "makeDiplomaticPeace": {
+          "name": "makeDiplomaticPeace",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "targetKingdomId": {
+              "name": "targetKingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        },
+        "manageSeason": {
+          "name": "manageSeason",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "action": {
+              "name": "action",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "seasonId": {
+              "name": "seasonId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            }
+          }
+        },
+        "executeThievery": {
+          "name": "executeThievery",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "operation": {
+              "name": "operation",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "targetKingdomId": {
+              "name": "targetKingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        },
+        "updateFaith": {
+          "name": "updateFaith",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "action": {
+              "name": "action",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "alignment": {
+              "name": "alignment",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "abilityType": {
+              "name": "abilityType",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            }
+          }
+        },
+        "claimBounty": {
+          "name": "claimBounty",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "targetId": {
+              "name": "targetId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        },
+        "completeBounty": {
+          "name": "completeBounty",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "targetId": {
+              "name": "targetId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "landGained": {
+              "name": "landGained",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true
+            }
+          }
+        },
+        "manageAllianceTreasury": {
+          "name": "manageAllianceTreasury",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "allianceId": {
+              "name": "allianceId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "action": {
+              "name": "action",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "amount": {
+              "name": "amount",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false
+            },
+            "upgradeType": {
+              "name": "upgradeType",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            }
+          }
+        },
+        "manageAlliance": {
+          "name": "manageAlliance",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "action": {
+              "name": "action",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "allianceId": {
+              "name": "allianceId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "name": {
+              "name": "name",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "description": {
+              "name": "description",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "isPublic": {
+              "name": "isPublic",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false
+            },
+            "targetKingdomId": {
+              "name": "targetKingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "targetAllianceId": {
+              "name": "targetAllianceId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "relationship": {
+              "name": "relationship",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            }
+          }
+        },
+        "saveDefensiveFormation": {
+          "name": "saveDefensiveFormation",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "formationId": {
+              "name": "formationId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        },
+        "saveAchievements": {
+          "name": "saveAchievements",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "achievementIds": {
+              "name": "achievementIds",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "rewardGold": {
+              "name": "rewardGold",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false
+            },
+            "rewardTurns": {
+              "name": "rewardTurns",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false
+            }
+          }
+        },
+        "cleanupKingdom": {
+          "name": "cleanupKingdom",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "kingdomId": {
+              "name": "kingdomId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "confirmation": {
+              "name": "confirmation",
+              "isArray": false,
+              "type": "String",
               "isRequired": true
             }
           }
