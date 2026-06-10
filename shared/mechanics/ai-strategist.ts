@@ -503,3 +503,121 @@ export function scoreAttack(
     ? { attackTarget: null, declareWarOn: best.id }
     : { attackTarget: best.id, declareWarOn: null };
 }
+
+// ── Gold reserve (scales so player-sized AI can act from tick 1) ────────────
+
+const GOLD_FLOOR_MIN = 500;
+const GOLD_FLOOR_FRACTION = 0.10;
+export function goldFloor(gold: number): number {
+  return Math.max(GOLD_FLOOR_MIN, Math.floor(gold * GOLD_FLOOR_FRACTION));
+}
+
+// ── Memory maintenance ──────────────────────────────────────────────────────
+
+function refreshMemory(selfId: string, memory: AIMemory, battles: PublicBattleEvent[], nowMs: number): AIMemory {
+  const next: AIMemory = {
+    grudges: { ...memory.grudges },
+    attacksMade: { ...memory.attacksMade },
+    warsDeclared: [...memory.warsDeclared],
+  };
+  // Ingest new grudges from public reports (anyone who hit me — AI or player).
+  for (const b of battles) {
+    if (b.defenderId !== selfId) continue;
+    const g = next.grudges[b.attackerId];
+    next.grudges[b.attackerId] = { count: (g?.count ?? 0) + 1, lastAt: b.timestamp };
+  }
+  // Expire old grudges.
+  for (const [id, g] of Object.entries(next.grudges)) {
+    if (nowMs - new Date(g.lastAt).getTime() > GRUDGE_TTL_MS) delete next.grudges[id];
+  }
+  return next;
+}
+
+// ── Orchestrator ────────────────────────────────────────────────────────────
+
+export function decide(
+  me: SelfState,
+  world: PublicKingdomView[],
+  ctx: StrategistContext,
+): StrategistDecision {
+  const params = DIFFICULTY_PARAMS[ctx.difficulty];
+  const w = PERSONAS[ctx.persona];
+  const memory = refreshMemory(me.id, ctx.memory, ctx.recentBattles, ctx.nowMs);
+
+  const idle: StrategistDecision = {
+    builds: [], trains: [], attackTarget: null, declareWarOn: null,
+    turnsSpent: 0, goldSpent: 0, memory,
+  };
+
+  // Easy/medium AI sometimes just don't get around to it this tick.
+  if (ctx.rng() > params.actChance) return idle;
+
+  const turnsAvailable = Math.min(72, me.turnsAvailable);
+  if (turnsAvailable < 3) return idle;
+  const turnBudget = Math.floor(turnsAvailable * params.turnBudgetFrac);
+  let turnsLeft = turnBudget;
+
+  const reserve = goldFloor(me.gold);
+  let goldLeft = me.gold;
+
+  const threat = threatLevel(me.id, memory, ctx.recentBattles);
+  const invested = troopGoldInvested(me.race, me.totalUnits);
+
+  // Persona splits spendable gold between economy and military; threat shifts
+  // the split toward military (a player under attack does the same).
+  const spendable = Math.max(0, goldLeft - reserve);
+  const milShare = Math.min(0.85, (w.military / (w.military + w.econ)) * (1 + (threat - 1) * 0.15));
+  const buildBudget = Math.floor(spendable * (1 - milShare));
+  const trainBudget = Math.floor(spendable * milShare);
+
+  // BUILD
+  const builds = scoreBuilds(me, w, threat, turnsLeft, buildBudget, ctx.rng, invested);
+  const buildGold = builds.reduce((s, b) => s + b.qty * BUILDING_GOLD_COST, 0);
+  goldLeft -= buildGold;
+  turnsLeft -= builds.length * BUILD_TURN_COST;
+
+  // TRAIN — account for barracks built this tick raising the cap.
+  const barracksBuilt = builds.find(b => b.type === 'barracks')?.qty ?? 0;
+  const meAfterBuild: SelfState = {
+    ...me,
+    buildings: { ...me.buildings, barracks: (me.buildings.barracks ?? 0) + barracksBuilt },
+  };
+  const trains = turnsLeft >= TRAIN_TURN_COST
+    ? scoreTrains(meAfterBuild, w, turnsLeft, Math.min(trainBudget, goldLeft - reserve), ctx.rng)
+    : [];
+  const trainGold = trains.reduce((s, t) => s + t.cost, 0);
+  goldLeft -= trainGold;
+  turnsLeft -= trains.length * TRAIN_TURN_COST;
+
+  // ATTACK / DECLARE WAR — use the post-training army.
+  const meAfterTrain: SelfState = {
+    ...meAfterBuild,
+    totalUnits: trains.reduce(
+      (u, t) => ({ ...u, [t.unitType]: (u[t.unitType] ?? 0) + t.qty }),
+      { ...me.totalUnits },
+    ),
+    turnsAvailable: turnsLeft,
+  };
+  let attackTarget: string | null = null;
+  let declareWarOn: string | null = null;
+  if (turnsLeft >= ATTACK_TURN_COST) {
+    const choice = scoreAttack(meAfterTrain, world, { ...ctx, memory });
+    attackTarget = choice.attackTarget;
+    declareWarOn = choice.declareWarOn;
+    if (attackTarget) {
+      turnsLeft -= ATTACK_TURN_COST;
+      memory.attacksMade[attackTarget] = (memory.attacksMade[attackTarget] ?? 0) + 1;
+    }
+    if (declareWarOn && !memory.warsDeclared.includes(declareWarOn)) {
+      memory.warsDeclared.push(declareWarOn);
+      turnsLeft -= 1; // diplomatic action costs 1 turn (turn-mechanics)
+    }
+  }
+
+  return {
+    builds, trains, attackTarget, declareWarOn,
+    turnsSpent: turnBudget - turnsLeft,
+    goldSpent: me.gold - goldLeft,
+    memory,
+  };
+}

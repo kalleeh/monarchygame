@@ -13,6 +13,7 @@ import {
   scoreTrains,
   troopGoldInvested,
   scoreAttack,
+  decide,
   type Persona,
   type Difficulty,
 } from './ai-strategist';
@@ -283,5 +284,55 @@ describe('scoreAttack', () => {
     mem.warsDeclared = ['weak'];
     const r = scoreAttack(strongSelf(), [mkView('weak', 300_000)], attackCtx({ memory: mem }));
     expect(r.attackTarget).toBe('weak');
+  });
+});
+
+describe('decide()', () => {
+  it('a player-sized hard economist acts on its first tick (builds and/or trains)', () => {
+    const k = self({ land: 100, gold: 2000, buildings: {}, totalUnits: { peasants: 40 } });
+    const d = decide(k, [], attackCtx({ persona: 'economist', age: 'early', rng: makeRng(5) }));
+    expect(d.builds.length + d.trains.length).toBeGreaterThan(0);
+    expect(d.goldSpent).toBeLessThanOrEqual(2000);
+    expect(d.goldSpent).toBeGreaterThan(0);
+  });
+
+  it('easy AI sometimes idles (actChance < 1)', () => {
+    const k = self();
+    let idles = 0;
+    for (let i = 0; i < 100; i++) {
+      const d = decide(k, [], attackCtx({ difficulty: 'easy', rng: makeRng(1000 + i) }));
+      if (d.builds.length + d.trains.length === 0 && !d.attackTarget) idles++;
+    }
+    expect(idles).toBeGreaterThan(10); // ~40% expected
+  });
+
+  it('updates memory: records my attack and ingests grudges from public reports', () => {
+    const reports = [
+      { attackerId: 'bully', defenderId: 'me', landGained: 30, timestamp: new Date().toISOString() },
+    ];
+    const d = decide(strongSelf(), [mkView('weak', 300_000)], attackCtx({ recentBattles: reports }));
+    expect(d.memory.grudges['bully']?.count).toBe(1);
+    if (d.attackTarget) expect(d.memory.attacksMade[d.attackTarget]).toBe(1);
+  });
+
+  it('expires grudges older than 7 days', () => {
+    const mem = emptyMemory();
+    mem.grudges['old'] = { count: 3, lastAt: new Date(Date.now() - 8 * 24 * 3600_000).toISOString() };
+    const d = decide(self(), [], attackCtx({ memory: mem }));
+    expect(d.memory.grudges['old']).toBeUndefined();
+  });
+
+  it('turn spending never exceeds the difficulty turn budget', () => {
+    const k = self({ turnsAvailable: 72 });
+    const d = decide(k, [], attackCtx({ difficulty: 'easy', rng: makeRng(2) }));
+    expect(d.turnsSpent).toBeLessThanOrEqual(Math.floor(72 * 0.5));
+  });
+
+  it('records the war declaration in memory', () => {
+    const mem = emptyMemory();
+    mem.attacksMade['weak'] = 3;
+    const d = decide(strongSelf(), [mkView('weak', 300_000)], attackCtx({ memory: mem }));
+    expect(d.declareWarOn).toBe('weak');
+    expect(d.memory.warsDeclared).toContain('weak');
   });
 });
