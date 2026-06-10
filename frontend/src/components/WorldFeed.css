@@ -155,6 +155,10 @@
   border-left: 3px solid rgba(245, 158, 11, 0.65);
 }
 
+.world-feed-event--milestone {
+  border-left: 3px solid rgba(234, 179, 8, 0.7);
+}
+
 /* ── Event parts ─────────────────────────────────────────────────────── */
 
 .world-feed-event-icon {

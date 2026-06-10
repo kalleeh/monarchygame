@@ -218,6 +218,28 @@ const schema = a.schema({
       allow.authenticated().to(['read'])
     ]),
 
+  // Generic world-activity events for the live feed — notably non-combat AI
+  // milestones (e.g. crossing a power tier) so the feed isn't dead air in the
+  // early age before combat begins. Combat/war still come from BattleReport /
+  // WarDeclaration / GuildWar; this captures everything else worth surfacing.
+  // Writers (turn-ticker) emit sparingly (threshold crossings, not every tick).
+  WorldEventLog: a
+    .model({
+      seasonId: a.id().required(),
+      category: a.string().required(),   // 'milestone' | 'economy' | 'construction' | ...
+      kingdomId: a.id(),                  // subject kingdom, if any
+      message: a.string().required(),     // human-readable, pre-rendered
+      timestamp: a.datetime().required(),
+      ttl: a.integer(),                   // epoch seconds for DynamoDB TTL auto-expiry
+    })
+    .secondaryIndexes((index) => [
+      index('seasonId').sortKeys(['timestamp']).queryField('listWorldEventsBySeasonAndTime'),
+    ])
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+      allow.owner(),
+    ]),
+
   DefenseSettings: a
     .model({
       kingdomId: a.id().required(),

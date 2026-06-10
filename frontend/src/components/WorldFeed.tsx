@@ -10,7 +10,7 @@ import './WorldFeed.css';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type EventType = 'combat' | 'war' | 'thievery' | 'alliance';
+type EventType = 'combat' | 'war' | 'thievery' | 'alliance' | 'milestone';
 
 interface WorldEvent {
   id: string;
@@ -40,6 +40,7 @@ const EVENT_ICONS: Record<EventType, string> = {
   war:      '\uD83D\uDD25', // 🔥
   thievery: '\uD83D\uDDE1\uFE0F', // 🗡️
   alliance: '\uD83C\uDFF0', // 🏰
+  milestone: '\uD83D\uDC51', // crown
 };
 
 // ── Demo data builder — reads real stores + synthesises AI world events ────
@@ -231,6 +232,29 @@ async function fetchGuildWarEvents(seasonId: string): Promise<WorldEvent[]> {
   }
 }
 
+async function fetchWorldEventLogEvents(seasonId: string): Promise<WorldEvent[]> {
+  try {
+    // Non-combat activity (AI milestones, etc.) — keeps the feed alive in the
+    // early age before combat begins. Pre-rendered message; just map it through.
+    const { data: logs } = await getAmplifyClient().models.WorldEventLog.listWorldEventsBySeasonAndTime(
+      { seasonId },
+      { sortDirection: 'DESC', limit: 8 }
+    );
+
+    if (!logs || logs.length === 0) return [];
+
+    return logs.map((e) => ({
+      id: `we-${e.id}`,
+      type: (e.category === 'milestone' ? 'milestone' : 'alliance') as EventType,
+      message: e.message,
+      timestamp: new Date(e.timestamp),
+    }));
+  } catch (err) {
+    console.warn('[WorldFeed] WorldEventLog fetch failed:', err);
+    return [];
+  }
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 interface WorldFeedProps {
@@ -266,14 +290,15 @@ const WorldFeed: React.FC<WorldFeedProps> = ({ defaultCollapsed = false }) => {
       }
 
       // Fetch from all available sources in parallel
-      const [battleEvents, warEvents, guildWarEvents] = await Promise.all([
+      const [battleEvents, warEvents, guildWarEvents, worldLogEvents] = await Promise.all([
         fetchBattleReportEvents(seasonId),
         fetchWarDeclarationEvents(seasonId),
         fetchGuildWarEvents(seasonId),
+        fetchWorldEventLogEvents(seasonId),
       ]);
 
       // Merge all event types, sort newest-first, cap at 20
-      const merged = [...battleEvents, ...warEvents, ...guildWarEvents]
+      const merged = [...battleEvents, ...warEvents, ...guildWarEvents, ...worldLogEvents]
         .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
         .slice(0, 20);
 
