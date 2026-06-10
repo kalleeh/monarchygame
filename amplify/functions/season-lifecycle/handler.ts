@@ -279,13 +279,29 @@ async function seedAIKingdoms(seasonId: string): Promise<{ created: number }> {
       const warOffense = raceStats.warOffense + (rng() * 3 + 2) / 10; // 2–5 range contribution
       const warDefense = raceStats.warDefense + (rng() * 3 + 2) / 10;
 
+      // Seed a believable starting economy: an established kingdom of this size
+      // would already have buildings on ~50% of its land. Without this, the
+      // earned-income model (AI no longer gets free gold) would leave fresh AI
+      // near-static for hours. Uses REAL building types so it feeds the same
+      // income/troop-cap formulas — this is a realistic starting state, not a cheat.
+      const developed = Math.floor(land * 0.5);
+      const buildings = {
+        mine:     Math.floor(developed * 0.25),
+        tower:    Math.floor(developed * 0.15),
+        farm:     Math.floor(developed * 0.20),
+        barracks: Math.floor(developed * 0.20),
+        castle:   Math.floor(developed * 0.05),
+        wall:     Math.floor(developed * 0.10),
+        temple:   Math.floor(developed * 0.05),
+      };
+
       items.push({
         id: crypto.randomUUID(),
         name,
         race,
         resources: JSON.stringify({ gold, population, land, turns: 100 }),
         stats: JSON.stringify({ warOffense, warDefense }),
-        buildings: JSON.stringify({}),
+        buildings: JSON.stringify(buildings),
         totalUnits: JSON.stringify({ peasants, militia, knights, cavalry }),
         currentAge: 'early',
         isAI: true,
