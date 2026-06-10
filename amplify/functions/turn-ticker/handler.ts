@@ -11,23 +11,50 @@ import { dbList, dbAtomicAdd, dbUpdate, dbCreate, dbGet, dbQuery, parseJsonField
 import { log } from '../logger';
 import { FOCUS_MECHANICS } from '../../../shared/mechanics/faith-focus-mechanics';
 import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
-import { calculateCombatResult } from '../../../shared/mechanics/combat-mechanics';
+import { calculateCombatResult, calculateFortDefense, RACE_OFFENSE_BONUSES, RACE_DEFENSE_BONUSES } from '../../../shared/mechanics/combat-mechanics';
 import type { AttackForce, DefenseForce } from '../../../shared/mechanics/combat-mechanics';
-import { calculateFortDefense } from '../../../shared/mechanics/combat-mechanics';
 import {
   decideAIActions,
   assignPersonality,
+  armyCombatPower,
   type AIKingdomState,
   type AIPersonality,
   type SeasonAge,
 } from '../../../shared/mechanics/ai-behavior';
+import { calculateGenerationRates } from '../../../shared/mechanics/economy-mechanics';
 
 const MAX_STORED_TURNS = TURN_MECHANICS.BASE_GENERATION.MAX_STORED_TURNS; // 72
 const FOCUS_REGEN_PER_TICK = 1 / 3; // 20-min tick = 1/3 hour
-const AI_GOLD_PER_TICK = 5000;
-const AI_POPULATION_PER_TICK = 500;
-const AI_GOLD_CAP = 500000;
-const AI_POPULATION_CAP = 100000;
+
+// Resource caps — same ceilings the resource-manager enforces for players.
+const RESOURCE_LIMITS = {
+  gold: { min: 0, max: 1_000_000 },
+  population: { min: 0, max: 100_000 },
+} as const;
+
+// Power tiers for World Feed milestones (networth thresholds). When a kingdom's
+// networth crosses one of these upward, we emit one feed event.
+const POWER_TIERS: Array<{ min: number; label: string }> = [
+  { min: 50_000_000, label: 'Empire' },
+  { min: 20_000_000, label: 'Great Power' },
+  { min: 5_000_000,  label: 'Power' },
+  { min: 1_000_000,  label: 'Rising Power' },
+];
+
+/** Returns the tier label if `next` crosses a tier boundary above `prev`, else null. */
+function crossedPowerTier(prev: number, next: number): string | null {
+  for (const tier of POWER_TIERS) {
+    if (next >= tier.min && prev < tier.min) return tier.label;
+  }
+  return null;
+}
+
+interface AIMilestone {
+  seasonId: string;
+  kingdomId: string;
+  kingdomName?: string;
+  tierLabel: string;
+}
 
 interface KingdomRow {
   id: string;
@@ -47,6 +74,7 @@ interface KingdomRow {
   createdAt?: string | null;
   aiPersonality?: string | null;
   seasonId?: string;
+  name?: string | null;
 }
 
 export const handler = async (_event: unknown): Promise<{ success: boolean; ticked: number; skipped: number }> => {
@@ -106,6 +134,8 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
     // Process AI kingdoms: AI decision loop (build, train, attack)
     const aiKingdoms = active.filter(k => k.isAI === true);
     let aiTicked = 0;
+    // Accumulate notable non-combat milestones; written to WorldEventLog after the loop.
+    const aiMilestones: AIMilestone[] = [];
 
     // Build AIKingdomState for all active kingdoms (needed for target selection)
     const allKingdomStates: AIKingdomState[] = active.map(k => {
@@ -136,14 +166,25 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
         const resources = parseJsonField<Record<string, number>>(kingdom.resources, {});
         const totalUnitsMap = parseJsonField<Record<string, number>>((kingdom as unknown as Record<string, unknown>).totalUnits, {});
         const buildingsMap = parseJsonField<Record<string, number>>((kingdom as KingdomRow).buildings, {});
-
-        // Apply passive income first (same as before)
-        const newGold = Math.min(AI_GOLD_CAP, (resources.gold ?? 0) + AI_GOLD_PER_TICK);
-        const newPopulation = Math.min(AI_POPULATION_CAP, (resources.population ?? 0) + AI_POPULATION_PER_TICK);
+        const statsMap = parseJsonField<Record<string, unknown>>((kingdom as KingdomRow).stats, {});
 
         // Determine personality (assign on first tick if missing)
         const personality: AIPersonality = ((kingdom as KingdomRow).aiPersonality as AIPersonality) ?? assignPersonality(kingdom.id);
         const seasonAge: SeasonAge = ((kingdom as KingdomRow).currentAge as SeasonAge) ?? 'early';
+
+        // FAIRNESS: AI earns income from its OWN economy via the SAME formula
+        // players use (calculateGenerationRates) — no flat handout. Income scales
+        // with the AI's real buildings/land/age, so it must build to grow.
+        const aiRace = (kingdom.race as string) ?? 'Human';
+        const rates = calculateGenerationRates({
+          race: aiRace,
+          age: seasonAge,
+          buildings: buildingsMap as Record<string, number>,
+          tithe: (statsMap.tithe as number) ?? 0,
+          // AI kingdoms don't hold territories or alliance/faith bonuses; building income only.
+        });
+        const newGold = Math.min(RESOURCE_LIMITS.gold.max, (resources.gold ?? 0) + rates.goldPerTurn);
+        const newPopulation = Math.min(RESOURCE_LIMITS.population.max, (resources.population ?? 0) + rates.populationPerTurn);
 
         // Build AI state for decision
         const aiState: AIKingdomState = {
@@ -189,34 +230,34 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
               const targetBuildings = parseJsonField<Record<string, number>>(targetKingdom.buildings, {});
               const targetLand = targetRes.land ?? 800;
 
-              // AI sends 70% of military (scouts are espionage-only, excluded)
+              // AI sends 70% of military (scouts are espionage-only, excluded).
+              // Offense/defense use REAL per-tier unit values (armyCombatPower)
+              // and REAL race bonuses — the same numbers player combat uses,
+              // not a flat "every unit = 10" approximation.
               const attackUnits: Record<string, number> = {};
-              let totalOffense = 0;
               for (const [uType, count] of Object.entries(updatedUnits)) {
                 if (uType === 'scouts' || uType === 'elite_scouts') continue;
                 const sent = Math.floor((count ?? 0) * 0.7);
-                if (sent > 0) {
-                  attackUnits[uType] = sent;
-                  totalOffense += sent * 10; // simplified offense value per unit
-                }
+                if (sent > 0) attackUnits[uType] = sent;
               }
+              const attackerRace = (kingdom.race as string) ?? 'Human';
+              const defenderRace = (targetKingdom.race as string) ?? 'Human';
+              const offenseBonus = RACE_OFFENSE_BONUSES[attackerRace] ?? 1.0;
+              const defenseBonus = RACE_DEFENSE_BONUSES[defenderRace] ?? 1.0;
+              const totalOffense = Math.floor(armyCombatPower(attackerRace, attackUnits).offense * offenseBonus);
 
               const defenseUnits: Record<string, number> = {};
-              let totalDefense = 0;
               for (const [uType, count] of Object.entries(targetUnits)) {
                 if (uType === 'scouts' || uType === 'elite_scouts') continue;
-                if ((count ?? 0) > 0) {
-                  defenseUnits[uType] = count;
-                  totalDefense += count * 10;
-                }
+                if ((count ?? 0) > 0) defenseUnits[uType] = count;
               }
-              totalDefense += calculateFortDefense(
-                (targetKingdom.race as string) ?? 'Human',
-                targetBuildings.fortress ?? 0
-              );
+              // Forts come from the real 'wall' building (defended by race fort value).
+              const fortCount = targetBuildings.wall ?? 0;
+              let totalDefense = Math.floor(armyCombatPower(defenderRace, defenseUnits).defense * defenseBonus);
+              totalDefense += calculateFortDefense(defenderRace, fortCount);
 
               const attackForce: AttackForce = { units: attackUnits, totalOffense, totalDefense: 0 };
-              const defenseForce: DefenseForce = { units: defenseUnits, forts: targetBuildings.fortress ?? 0, totalDefense, ambushActive: false };
+              const defenseForce: DefenseForce = { units: defenseUnits, forts: fortCount, totalDefense, ambushActive: false };
 
               const combatResult = calculateCombatResult(attackForce, defenseForce, targetLand);
 
@@ -311,6 +352,20 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
 
         await dbUpdate('Kingdom', kingdom.id, updateFields);
 
+        // Feed (B): emit a milestone when this AI crosses a power tier UPWARD.
+        // Keeps the live feed alive during early age (no combat yet) without
+        // spamming — at most one event per tier crossing per kingdom.
+        const prevNetworth = (kingdom as KingdomRow).networth ?? 0;
+        const crossed = crossedPowerTier(prevNetworth, networth);
+        if (crossed && (kingdom as KingdomRow).seasonId) {
+          aiMilestones.push({
+            seasonId: (kingdom as KingdomRow).seasonId as string,
+            kingdomId: kingdom.id,
+            kingdomName: (kingdom as KingdomRow).name as string | undefined,
+            tierLabel: crossed,
+          });
+        }
+
         // Deduct turns spent
         if (decision.turnsSpent > 0) {
           await dbAtomicAdd('Kingdom', kingdom.id, 'turnsBalance', -decision.turnsSpent);
@@ -333,6 +388,30 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
       } catch (err) {
         log.error('turn-ticker', err, { kingdomId: kingdom.id, context: 'ai-tick' });
       }
+    }
+
+    // Persist AI power-tier milestones to the World Feed. Capped so a single
+    // tick can't flood the feed (e.g. right after season start). 30-day TTL.
+    const MAX_MILESTONES_PER_TICK = 8;
+    const eventTtl = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
+    for (const m of aiMilestones.slice(0, MAX_MILESTONES_PER_TICK)) {
+      try {
+        const who = m.kingdomName ?? 'A kingdom';
+        await dbCreate('WorldEventLog', {
+          seasonId: m.seasonId,
+          category: 'milestone',
+          kingdomId: m.kingdomId,
+          message: `${who} has risen to ${m.tierLabel} status`,
+          timestamp: new Date().toISOString(),
+          ttl: eventTtl,
+          owner: 'AI_SYSTEM',
+        });
+      } catch (evErr) {
+        log.error('turn-ticker', evErr, { kingdomId: m.kingdomId, context: 'world-event' });
+      }
+    }
+    if (aiMilestones.length > 0) {
+      log.info('turn-ticker', 'ai-milestones', { found: aiMilestones.length, written: Math.min(aiMilestones.length, MAX_MILESTONES_PER_TICK) });
     }
 
     // Complete pending settlements for real player kingdoms

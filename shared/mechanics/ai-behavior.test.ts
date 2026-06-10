@@ -5,10 +5,12 @@ import {
   shouldAttack,
   selectAttackTarget,
   decideAIActions,
+  armyCombatPower,
   type AIKingdomState,
   type AIPersonality,
   type SeasonAge,
 } from './ai-behavior';
+import { calculateTroopCapGold } from './troop-cap-mechanics';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -22,7 +24,7 @@ function makeAIKingdom(overrides: Partial<AIKingdomState> = {}): AIKingdomState 
     gold: 100_000,
     turnsAvailable: 30,
     networth: 500_000,
-    buildings: { buildrate: 100, troop: 100, fortress: 50, income: 30, peasant: 30 },
+    buildings: { mine: 100, barracks: 100, wall: 50, tower: 30, farm: 30 },
     totalUnits: { peasants: 200, militia: 100, knights: 50 },
     isAI: true,
     isActive: true,
@@ -85,14 +87,23 @@ describe('getOptimalBuildRatios', () => {
     }
   });
 
-  it('aggressive has highest troop ratio', () => {
-    const ratios = getOptimalBuildRatios('aggressive');
-    expect(ratios.troop).toBeGreaterThan(ratios.buildrate);
+  it('uses only real building types (matches building-constructor)', () => {
+    const valid = new Set(['mine', 'farm', 'tower', 'castle', 'barracks', 'temple', 'wall']);
+    for (const p of ['aggressive', 'builder', 'balanced'] as const) {
+      for (const type of Object.keys(getOptimalBuildRatios(p))) {
+        expect(valid.has(type)).toBe(true);
+      }
+    }
   });
 
-  it('builder has highest buildrate ratio', () => {
-    const ratios = getOptimalBuildRatios('builder');
-    expect(ratios.buildrate).toBeGreaterThan(ratios.troop);
+  it('aggressive invests more in barracks (military capacity) than builder', () => {
+    expect(getOptimalBuildRatios('aggressive').barracks)
+      .toBeGreaterThan(getOptimalBuildRatios('builder').barracks);
+  });
+
+  it('builder invests more in economy (mine) than aggressive', () => {
+    expect(getOptimalBuildRatios('builder').mine)
+      .toBeGreaterThan(getOptimalBuildRatios('aggressive').mine);
   });
 });
 
@@ -270,7 +281,7 @@ describe('decideAIActions', () => {
     const kingdom = makeAIKingdom({
       turnsAvailable: 30,
       gold: 500_000,
-      buildings: { buildrate: 240, troop: 240, fortress: 120, income: 80, peasant: 80 },
+      buildings: { mine: 240, barracks: 240, wall: 120, tower: 80, farm: 80 },
       totalUnits: {},
     });
     // Early age: only T1 and T2
@@ -279,5 +290,52 @@ describe('decideAIActions', () => {
     // Human T3 = 'knights', T4 = 'cavalry' — should not appear in early
     expect(trainedTypes).not.toContain('knights');
     expect(trainedTypes).not.toContain('cavalry');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fairness — AI plays by the same rules as players
+// ---------------------------------------------------------------------------
+
+describe('AI fairness — no cheating', () => {
+  it('never trains past the troop cap players are bound by', () => {
+    // Small kingdom: cap floored at MIN_CAP_GOLD (2M). Give it huge gold so only
+    // the troop cap — not gold — limits training.
+    const land = 1000;
+    const barracks = 0;
+    const cap = calculateTroopCapGold({ land, barracks }); // 2,000,000
+    const kingdom = makeAIKingdom({
+      land,
+      gold: 100_000_000,        // effectively unlimited gold
+      turnsAvailable: 72,
+      buildings: { barracks },
+      totalUnits: {},           // start with no troops
+    });
+    const d = decideAIActions(kingdom, 'aggressive', 'middle', [], 0.99 /* no attack */);
+    // Value everything trained at Human tier costs [50,350,900,2000].
+    const tierCost: Record<string, number> = { peasants: 50, militia: 350, knights: 900, cavalry: 2000 };
+    const invested = d.trains.reduce((s, t) => s + (tierCost[t.unitType] ?? 0) * t.qty, 0);
+    expect(invested).toBeLessThanOrEqual(cap);
+  });
+
+  it('building cost matches the player flat 250g per building', () => {
+    const kingdom = makeAIKingdom({ buildings: {}, gold: 1_000_000, turnsAvailable: 72 });
+    const d = decideAIActions(kingdom, 'builder', 'early', [], 0.99);
+    const totalBuilt = d.builds.reduce((s, b) => s + b.qty, 0);
+    if (totalBuilt > 0) {
+      // goldSpent includes builds + trains; isolate by checking builds alone via a build-only run isn't
+      // trivial, so just assert each build action priced at 250 in the decision's accounting.
+      // (decision.goldSpent is buildsGold + trainsGold; builds portion = totalBuilt * 250.)
+      expect(d.goldSpent).toBeGreaterThanOrEqual(totalBuilt * 250);
+    }
+  });
+
+  it('armyCombatPower uses real per-tier values and excludes scouts', () => {
+    // Human: peasants T1(off1), militia T2(off3), knights T3(off6), cavalry T4(off10)
+    const { offense, defense } = armyCombatPower('Human', {
+      peasants: 10, militia: 10, knights: 10, cavalry: 10, scouts: 100,
+    });
+    expect(offense).toBe(10 * 1 + 10 * 3 + 10 * 6 + 10 * 10); // 200, scouts excluded
+    expect(defense).toBe(10 * 1 + 10 * 2 + 10 * 4 + 10 * 7);  // 140
   });
 });

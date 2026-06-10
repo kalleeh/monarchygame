@@ -150,19 +150,22 @@ describe('turn-ticker handler — encamp bonus capping', () => {
 });
 
 describe('turn-ticker handler — AI kingdom ticking', () => {
-  it('updates gold and population for an AI kingdom (not the regular turn path)', async () => {
+  it('earns income from its own buildings (same formula as players, not a flat handout)', async () => {
+    // AI with real income buildings: 50 mines (20g), 20 towers (50g), 10 farms (8g+10pop).
+    // Base gold = 50*20 + 20*50 + 10*8 + 100 = 1000+1000+80+100 = 2180, ×1.2 (early age) = 2616.
+    // Population from farms = 10*10 = 100.
     const aiKingdom = makeKingdom({
       isAI: true,
+      currentAge: 'early',
       resources: JSON.stringify({ gold: 10000, population: 5000, land: 1000 }),
+      buildings: JSON.stringify({ mine: 50, tower: 20, farm: 10 }),
       totalUnits: JSON.stringify({ peasants: 100 }),
     });
     mockDbList.mockResolvedValue([aiKingdom]);
 
     const result = await callHandler({});
-
     expect(result.success).toBe(true);
 
-    // dbUpdate should be called on the AI kingdom with updated gold/population
     const aiUpdateCall = mockDbUpdate.mock.calls.find(
       (call: unknown[]) =>
         call[0] === 'Kingdom' &&
@@ -171,10 +174,40 @@ describe('turn-ticker handler — AI kingdom ticking', () => {
     );
     expect(aiUpdateCall).toBeDefined();
     const updatedResources = (aiUpdateCall![2] as Record<string, unknown>).resources as Record<string, number>;
-    // Gold should have increased by AI_GOLD_PER_TICK (5000)
-    expect(updatedResources.gold).toBeGreaterThan(10000);
-    // Population should have increased by AI_POPULATION_PER_TICK (500)
-    expect(updatedResources.population).toBeGreaterThan(5000);
+    // Gold grew by the real building income (≈2616), not a fixed handout. The AI
+    // also spends gold on builds/training, so assert it at least earned income
+    // beyond the starting 10000 minus any spend isn't trivial — assert income was
+    // applied by checking gold moved and population grew by the farm formula.
+    expect(updatedResources.population).toBe(5100); // 5000 + 100 from farms
+    expect(updatedResources.gold).toBeGreaterThan(10000); // earned > 0 income
+  });
+
+  it('does NOT hand free gold to an AI with no economy (fairness)', async () => {
+    // No income buildings → base gold only (100 ×1.2 = 120/turn). With a 10k gold
+    // floor the AI won't build/train, so gold should rise by just the small base
+    // income — nowhere near the old flat +5000 handout.
+    const aiKingdom = makeKingdom({
+      isAI: true,
+      currentAge: 'early',
+      resources: JSON.stringify({ gold: 10000, population: 5000, land: 1000 }),
+      buildings: JSON.stringify({}),
+      totalUnits: JSON.stringify({ peasants: 100 }),
+    });
+    mockDbList.mockResolvedValue([aiKingdom]);
+
+    const result = await callHandler({});
+    expect(result.success).toBe(true);
+
+    const aiUpdateCall = mockDbUpdate.mock.calls.find(
+      (call: unknown[]) =>
+        call[0] === 'Kingdom' &&
+        call[1] === 'kingdom-1' &&
+        typeof (call[2] as Record<string, unknown>)?.resources === 'object'
+    );
+    const updatedResources = (aiUpdateCall![2] as Record<string, unknown>).resources as Record<string, number>;
+    // Base income only: 100 ×1.2 = 120. Definitely less than the old 5000 handout.
+    expect(updatedResources.gold).toBeLessThan(10500);
+    expect(updatedResources.gold).toBeGreaterThanOrEqual(10000);
   });
 });
 

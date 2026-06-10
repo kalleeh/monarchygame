@@ -3,7 +3,15 @@
  *
  * Determines what AI kingdoms should do each tick: build, train, or attack.
  * No DynamoDB calls — all side effects happen in the turn-ticker handler.
+ *
+ * FAIRNESS: AI plays by the SAME server-authoritative rules as human players.
+ * It builds the same building types (which feed the same income/troop-cap
+ * formulas), pays the same building/unit costs and turn costs, and is bound by
+ * the same troop cap (calculateTroopCapGold). It must never use private
+ * constants that diverge from the player-facing mechanics.
  */
+
+import { calculateTroopCapGold } from './troop-cap-mechanics';
 
 export type AIPersonality = 'aggressive' | 'builder' | 'balanced';
 export type SeasonAge = 'early' | 'middle' | 'late';
@@ -44,10 +52,13 @@ export interface AIDecision {
   goldSpent: number;
 }
 
-// Building types used by the game
-const BUILDING_TYPES = ['buildrate', 'troop', 'fortress', 'income', 'peasant'] as const;
+// Real building types — MUST match building-constructor VALID_BUILDING_TYPES so
+// AI buildings feed the same income/troop-cap formulas players use.
+//   mine 20g/turn · farm 8g+10pop · tower 50g · castle 10g(+30 Dwarven)
+//   barracks 15g/turn AND raises troop cap · temple elan/tithe · wall fort defense
+const BUILDING_TYPES = ['mine', 'farm', 'tower', 'castle', 'barracks', 'temple', 'wall'] as const;
 
-// Gold cost per building (matches building-constructor)
+// Gold cost per building (matches building-constructor: flat 250g, 1 turn each)
 const BUILDING_GOLD_COST = 250;
 
 // Minimum gold reserve — AI won't spend below this
@@ -85,11 +96,15 @@ const RACE_UNITS: Record<string, string[]> = {
   Fae:       ['fae-sprites', 'fae-warriors', 'fae-nobles', 'fae-lords'],
 };
 
-// Build ratios per personality
+// Build ratios per personality, over the REAL building types. Each fraction is
+// the share of buildable slots that personality targets for that type.
+//   aggressive — leans barracks (troop cap) + tower/mine income to fund war, some walls
+//   builder    — economy first (mine/tower/farm), fewer barracks/walls
+//   balanced   — even split across economy, military capacity, and defense
 const BUILD_RATIOS: Record<AIPersonality, Record<string, number>> = {
-  aggressive: { troop: 0.40, buildrate: 0.25, fortress: 0.15, income: 0.10, peasant: 0.10 },
-  builder:    { buildrate: 0.35, troop: 0.25, income: 0.15, peasant: 0.15, fortress: 0.10 },
-  balanced:   { buildrate: 0.30, troop: 0.30, fortress: 0.15, income: 0.15, peasant: 0.10 },
+  aggressive: { barracks: 0.30, tower: 0.20, mine: 0.20, wall: 0.15, castle: 0.08, farm: 0.05, temple: 0.02 },
+  builder:    { mine: 0.28, tower: 0.25, farm: 0.18, castle: 0.12, barracks: 0.10, temple: 0.04, wall: 0.03 },
+  balanced:   { mine: 0.22, tower: 0.20, barracks: 0.20, farm: 0.13, wall: 0.13, castle: 0.08, temple: 0.04 },
 };
 
 // Train budget as fraction of gold, by personality
@@ -138,6 +153,45 @@ export function assignPersonality(kingdomId: string): AIPersonality {
  */
 export function getOptimalBuildRatios(personality: AIPersonality): Record<string, number> {
   return BUILD_RATIOS[personality];
+}
+
+// --- Real combat power (mirrors combat-processor TIER_OFFENSE/TIER_DEFENSE) ---
+// AI combat must use the SAME per-tier unit values as player combat, not a flat
+// "every unit = 10" approximation. Tier index 0..3 = T1..T4.
+const TIER_OFFENSE = [1, 3, 6, 10];
+const TIER_DEFENSE = [1, 2, 4, 7];
+
+/** Map a unit type id to its tier index (0-3) using the race's unit list; scouts excluded by caller. */
+function unitTierIndex(race: string, unitType: string): number {
+  const list = RACE_UNITS[race] ?? RACE_UNITS.Human;
+  const idx = list.indexOf(unitType);
+  if (idx >= 0) return idx;
+  // Generic fallbacks shared with combat-processor's UNIT_TIER map.
+  const generic: Record<string, number> = { tier1: 0, tier2: 1, tier3: 2, tier4: 3, peasants: 0, militia: 1, knights: 2, cavalry: 3 };
+  return generic[unitType] ?? 0;
+}
+
+/**
+ * Total offense/defense of an army using real per-tier unit values.
+ * Scouts/elite_scouts are espionage-only and excluded from combat power.
+ * Returned values are pre-race-bonus; the turn-ticker applies race multipliers
+ * via the same path player combat uses.
+ */
+export function armyCombatPower(
+  race: string,
+  units: Record<string, number>,
+): { offense: number; defense: number } {
+  let offense = 0;
+  let defense = 0;
+  for (const [type, count] of Object.entries(units)) {
+    if (type === 'scouts' || type === 'elite_scouts') continue;
+    const n = count ?? 0;
+    if (n <= 0) continue;
+    const tier = unitTierIndex(race, type);
+    offense += n * (TIER_OFFENSE[tier] ?? 1);
+    defense += n * (TIER_DEFENSE[tier] ?? 1);
+  }
+  return { offense, defense };
 }
 
 /**
@@ -260,7 +314,23 @@ export function decideAIActions(
   const econMult = RACE_ECON_MULT[kingdom.race] ?? 1.0;
   const trainBudget = Math.floor((goldLeft - GOLD_FLOOR) * TRAIN_BUDGET_FRAC[personality]);
 
-  if (turnsLeft >= TRAIN_TURN_COST && trainBudget > 0) {
+  // Troop cap — SAME ceiling the unit-trainer Lambda enforces for players:
+  // total gold invested in troops cannot exceed land*1000 + barracks*2000 (min 2M).
+  // We value existing troops at current per-unit cost and stop when the cap is hit.
+  // Count barracks decided this tick too, since they raise the cap for this turn.
+  const barracksBuiltThisTick = decision.builds
+    .filter(b => b.type === 'barracks')
+    .reduce((s, b) => s + b.qty, 0);
+  const barracks = (kingdom.buildings.barracks ?? 0) + barracksBuiltThisTick;
+  const troopCapGold = calculateTroopCapGold({ land: kingdom.land, barracks });
+  let accumulatedTroopGold = 0;
+  for (const [type, count] of Object.entries(kingdom.totalUnits)) {
+    const tierIdx = raceUnits.indexOf(type);
+    const perUnit = tierIdx >= 0 ? Math.round(TIER_BASE_GOLD[tierIdx] * econMult) : 0;
+    accumulatedTroopGold += perUnit * (count ?? 0);
+  }
+
+  if (turnsLeft >= TRAIN_TURN_COST && trainBudget > 0 && accumulatedTroopGold < troopCapGold) {
     let trainGoldLeft = Math.max(0, trainBudget);
     // Train lower tiers first (index 0 = T1, 1 = T2, etc.)
     // In late age, allow up to T3; in early, only T1-T2
@@ -279,14 +349,22 @@ export function decideAIActions(
       const deficit = targetCount - current;
       if (deficit <= 0) continue;
 
-      const affordable = Math.floor(trainGoldLeft / costPerUnit);
-      const toTrain = Math.min(deficit, affordable, 500);
-      if (toTrain <= 0) continue;
+      // Cap units by gold budget AND remaining troop-cap headroom.
+      const capHeadroom = Math.max(0, troopCapGold - accumulatedTroopGold);
+      const affordableByGold = Math.floor(trainGoldLeft / costPerUnit);
+      const affordableByCap = Math.floor(capHeadroom / costPerUnit);
+      const toTrain = Math.min(deficit, affordableByGold, affordableByCap, 500);
+      if (toTrain <= 0) {
+        // Out of troop-cap room entirely — no point checking higher tiers.
+        if (affordableByCap <= 0) break;
+        continue;
+      }
 
       const cost = toTrain * costPerUnit;
       decision.trains.push({ unitType, qty: toTrain, cost });
       trainGoldLeft -= cost;
       goldLeft -= cost;
+      accumulatedTroopGold += cost;
       turnsLeft -= TRAIN_TURN_COST;
     }
   }

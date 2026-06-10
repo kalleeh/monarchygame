@@ -6,7 +6,7 @@ import {
   applyTerrainToUnitPower,
   type TerrainModifiers
 } from '../../../shared/combat/combatCache';
-import { calculateCombatResult } from '../../../shared/mechanics/combat-mechanics';
+import { calculateCombatResult, RACE_OFFENSE_BONUSES, RACE_DEFENSE_BONUSES } from '../../../shared/mechanics/combat-mechanics';
 import type { AttackForce, DefenseForce } from '../../../shared/mechanics/combat-mechanics';
 import type { KingdomResources, CombatResultData } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
@@ -16,33 +16,8 @@ import { isRacialAbilityActive } from '../../../shared/mechanics/age-mechanics';
 import { checkRateLimit } from '../rate-limiter';
 import { verifyOwnership } from '../verify-ownership';
 
-// Race offensive combat bonuses (based on warOffense stat 1-5)
-const RACE_OFFENSE_BONUSES: Record<string, number> = {
-  'Droben':    1.20,  // warOffense: 5 — elite warriors, +20% offense
-  'Goblin':    1.10,  // warOffense: 4 — aggressive fighters, +10% offense
-  'Elemental': 1.10,  // warOffense: 4 — fighter-mage hybrid
-  'Human':     1.05,  // warOffense: 3 — balanced
-  'Centaur':   1.05,  // warOffense: 3 — moderate offense
-  'Sidhe':     1.00,  // warOffense: 2 — sorcerers, standard
-  'Elven':     1.00,  // warOffense: 2 — standard
-  'Vampire':   1.05,  // warOffense: 3 — moderate offense
-  'Fae':       1.00,  // warOffense: 2 — standard
-  'Dwarven':   1.05,  // warOffense: 3 — moderate, fortress breakers
-};
-
-// Race defensive combat bonuses (based on warDefense stat 1-5)
-const RACE_DEFENSE_BONUSES: Record<string, number> = {
-  'Dwarven':   1.20,  // warDefense: 5 — fortress defenders, +20% defense
-  'Elven':     1.10,  // warDefense: 4 — defensive specialists
-  'Vampire':   1.35,  // warDefense: 5 effective — fortress race, compensates for 2× building cost handicap
-  'Human':     1.05,  // warDefense: 3 — balanced
-  'Fae':       1.05,  // warDefense: 3 — moderate defense
-  'Goblin':    1.00,  // warDefense: 2 — glass cannon
-  'Droben':    1.05,  // warDefense: 3 — tough but offensive-focused
-  'Elemental': 1.05,  // warDefense: 3 — moderate
-  'Centaur':   1.00,  // warDefense: 2 — low defense
-  'Sidhe':     1.00,  // warDefense: 2 — fragile
-};
+// RACE_OFFENSE_BONUSES / RACE_DEFENSE_BONUSES now imported from the shared
+// combat-mechanics module (single source of truth shared with the AI).
 
 type KingdomType = Record<string, unknown>;
 type BattleReportType = Record<string, unknown>;

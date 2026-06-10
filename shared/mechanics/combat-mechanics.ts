@@ -166,6 +166,18 @@ export function validateAttackType(
   return { valid: true };
 }
 
+// Race combat multipliers (based on warOffense/warDefense stats 1-5).
+// Shared source of truth — used by both the combat-processor (player attacks)
+// and the turn-ticker AI so AI combat uses the exact same race bonuses.
+export const RACE_OFFENSE_BONUSES: Record<string, number> = {
+  Droben: 1.20, Goblin: 1.10, Elemental: 1.10, Human: 1.05, Centaur: 1.05,
+  Sidhe: 1.00, Elven: 1.00, Vampire: 1.05, Fae: 1.00, Dwarven: 1.05,
+};
+export const RACE_DEFENSE_BONUSES: Record<string, number> = {
+  Dwarven: 1.20, Elven: 1.10, Vampire: 1.35, Human: 1.05, Fae: 1.05,
+  Goblin: 1.00, Droben: 1.05, Elemental: 1.05, Centaur: 1.00, Sidhe: 1.00,
+};
+
 // Unit combat values that create natural tier preferences
 export const UNIT_COMBAT_VALUES = {
   // Droben units (naturally optimal for offense)
