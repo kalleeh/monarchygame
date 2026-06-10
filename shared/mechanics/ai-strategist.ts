@@ -517,7 +517,7 @@ export function goldFloor(gold: number): number {
 
 // ── Memory maintenance ──────────────────────────────────────────────────────
 
-function refreshMemory(selfId: string, memory: AIMemory, battles: PublicBattleEvent[], nowMs: number): AIMemory {
+function refreshMemory(selfId: string, memory: AIMemory, battles: PublicBattleEvent[], nowMs: number, activeIds?: Set<string>): AIMemory {
   const next: AIMemory = {
     grudges: { ...memory.grudges },
     attacksMade: { ...memory.attacksMade },
@@ -533,6 +533,12 @@ function refreshMemory(selfId: string, memory: AIMemory, battles: PublicBattleEv
   for (const [id, g] of Object.entries(next.grudges)) {
     if (nowMs - new Date(g.lastAt).getTime() > GRUDGE_TTL_MS) delete next.grudges[id];
   }
+  // Prune attacksMade / warsDeclared for kingdoms no longer active (dead/gone),
+  // so season-long memory doesn't grow unbounded in the stats JSON.
+  if (activeIds) {
+    for (const id of Object.keys(next.attacksMade)) if (!activeIds.has(id)) delete next.attacksMade[id];
+    next.warsDeclared = next.warsDeclared.filter(id => activeIds.has(id));
+  }
   return next;
 }
 
@@ -545,7 +551,8 @@ export function decide(
 ): StrategistDecision {
   const params = DIFFICULTY_PARAMS[ctx.difficulty];
   const w = PERSONAS[ctx.persona];
-  const memory = refreshMemory(me.id, ctx.memory, ctx.recentBattles, ctx.nowMs);
+  const activeIds = new Set(world.filter(v => v.isActive).map(v => v.id));
+  const memory = refreshMemory(me.id, ctx.memory, ctx.recentBattles, ctx.nowMs, activeIds);
 
   const idle: StrategistDecision = {
     builds: [], trains: [], attackTarget: null, declareWarOn: null,

@@ -140,13 +140,25 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
     // Accumulate notable non-combat milestones; written to WorldEventLog after the loop.
     const aiMilestones: AIMilestone[] = [];
 
+    // Fetch all active restoration rows (one query for all kingdoms, not per-kingdom).
+    // RestorationStatus is the authoritative source; nothing writes stats.restorationEndTime.
+    let underRestorationIds = new Set<string>();
+    try {
+      const restorationRows = await dbList<{ kingdomId?: string; endTime?: string }>('RestorationStatus');
+      const now = Date.now();
+      underRestorationIds = new Set(
+        restorationRows.filter(r => r.endTime && new Date(r.endTime).getTime() > now).map(r => r.kingdomId).filter(Boolean) as string[]
+      );
+    } catch (restErr) {
+      // Degrade gracefully: AI may attack a restoring target (same as today's bug), but won't crash.
+      log.error('turn-ticker', restErr, { context: 'fetch-restoration-status' });
+    }
+
     // INFORMATION FAIRNESS: the strategist sees other kingdoms only through the
     // fields a player can read via AppSync (no units/gold/buildings). Defense is
     // ESTIMATED from public networth + race inside the engine.
     const publicViews: PublicKingdomView[] = active.map(k => {
       const kr = k as KingdomRow;
-      const stats = parseJsonField<Record<string, unknown>>(kr.stats, {});
-      const restEnd = stats.restorationEndTime as string | undefined;
       return {
         id: k.id,
         name: kr.name ?? undefined,
@@ -156,7 +168,7 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
         isAI: k.isAI ?? false,
         createdAt: kr.createdAt ?? undefined,
         // Protective-only flag (can spare a target, never advantage the attacker).
-        underRestoration: !!restEnd && new Date(restEnd).getTime() > Date.now(),
+        underRestoration: underRestorationIds.has(k.id),
       };
     });
 
