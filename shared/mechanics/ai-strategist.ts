@@ -403,3 +403,88 @@ export function scoreTrains(
   }
   return out;
 }
+
+// ── Attack scoring ──────────────────────────────────────────────────────────
+//
+// Expected value per target (all from public info + own army):
+//   EV = P(win) · (estLand·7%·1000 + loot·lootFocus) − casualtyCost
+// multiplied by aggression / vengeance(grudge) / playerFocus / wounded bonus.
+// Hard AI demand a safety margin on the estimated power ratio; easy AI take
+// riskier fights on worse estimates. Early age is peaceful by design.
+
+const ATTACKS_BEFORE_WAR = 3;          // combat-processor war rule
+const LAND_GAIN_PCT = 0.07;            // full-strike "with ease" land share
+const GOLD_PER_LAND = 1000;            // networth/loot valuation
+const CASUALTY_FRACTION = 0.02;        // expected own-army value lost (2% per attack)
+const WOUNDED_BONUS = 1.2;             // target that just lost land
+
+export interface AttackChoice {
+  attackTarget: string | null;
+  declareWarOn: string | null;
+}
+
+export function scoreAttack(
+  me: SelfState,
+  world: PublicKingdomView[],
+  ctx: StrategistContext,
+): AttackChoice {
+  const none: AttackChoice = { attackTarget: null, declareWarOn: null };
+  if (ctx.age === 'early') return none;                       // peaceful early age
+  if (me.turnsAvailable < ATTACK_TURN_COST + 2) return none;
+
+  const w = PERSONAS[ctx.persona];
+  const params = DIFFICULTY_PARAMS[ctx.difficulty];
+
+  const myPower = armyCombatPower(me.race, me.totalUnits);
+  const myOffense = myPower.offense * 0.7 * (RACE_OFFENSE_BONUSES[me.race] ?? 1.0);
+  if (myOffense <= 0) return none;
+
+  const armyValue = troopGoldInvested(me.race, me.totalUnits);
+  const guildmates = new Set(me.guildmateIds ?? []);
+  const woundedIds = new Set(ctx.recentBattles.filter(b => b.landGained > 0).map(b => b.defenderId));
+
+  let best: { id: string; ev: number; needsWar: boolean } | null = null;
+
+  for (const t of world) {
+    if (t.id === me.id || !t.isActive) continue;
+    if (guildmates.has(t.id)) continue;
+    if (t.underRestoration) continue;
+    // Newbie protection (public createdAt + networth) — same rule the
+    // combat-processor enforces on players.
+    if (t.createdAt) {
+      const ageHours = (ctx.nowMs - new Date(t.createdAt).getTime()) / 3_600_000;
+      if (ageHours < 72 && t.networth < me.networth / 3) continue;
+    }
+
+    const estDef = estimateDefense(t, ctx.difficulty, ctx.rng);
+    const ratio = myOffense / estDef;
+    if (ratio < 1.2 * params.attackMargin) continue;          // not winnable safely
+
+    const pWin = ratio >= 2.0 * params.attackMargin ? 0.9 : 0.6;
+    const estLand = Math.max(50, t.networth * EST_LAND_PER_NETWORTH);
+    const landValue = estLand * LAND_GAIN_PCT * GOLD_PER_LAND;
+    const loot = estLand * LAND_GAIN_PCT * GOLD_PER_LAND;     // goldLooted ≈ landGained·1000
+    const casualty = armyValue * CASUALTY_FRACTION;
+
+    let ev = pWin * (landValue + loot * w.lootFocus) - casualty;
+    ev *= w.aggression;
+    const grudge = ctx.memory.grudges[t.id];
+    if (grudge) ev *= 1 + w.vengeance * Math.min(grudge.count, 4) * 0.5;
+    if (!t.isAI) ev *= w.playerFocus;
+    if (woundedIds.has(t.id)) ev *= WOUNDED_BONUS;
+    ev *= 1 + (ctx.rng() * 2 - 1) * params.utilityNoise;      // judgment jitter
+
+    if (ev <= 0) continue;
+
+    const made = ctx.memory.attacksMade[t.id] ?? 0;
+    const atWar = ctx.memory.warsDeclared.includes(t.id);
+    const needsWar = made >= ATTACKS_BEFORE_WAR && !atWar;
+
+    if (!best || ev > best.ev) best = { id: t.id, ev, needsWar };
+  }
+
+  if (!best) return none;
+  return best.needsWar
+    ? { attackTarget: null, declareWarOn: best.id }
+    : { attackTarget: best.id, declareWarOn: null };
+}

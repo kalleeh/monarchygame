@@ -12,6 +12,7 @@ import {
   emptyMemory,
   scoreTrains,
   troopGoldInvested,
+  scoreAttack,
   type Persona,
   type Difficulty,
 } from './ai-strategist';
@@ -199,5 +200,85 @@ describe('scoreTrains', () => {
 describe('troopGoldInvested', () => {
   it('values existing units at real per-unit cost', () => {
     expect(troopGoldInvested('Human', { peasants: 10, militia: 2 })).toBe(10 * 50 + 2 * 350);
+  });
+});
+
+const mkView = (id: string, networth: number, over: Partial<import('./ai-strategist').PublicKingdomView> = {}) => ({
+  id, race: 'Human', networth, isActive: true, isAI: true, ...over,
+});
+
+function attackCtx(over: Partial<import('./ai-strategist').StrategistContext> = {}) {
+  return {
+    age: 'middle' as const,
+    persona: 'warlord' as const,
+    difficulty: 'hard' as const,
+    memory: emptyMemory(),
+    recentBattles: [] as import('./ai-strategist').PublicBattleEvent[],
+    rng: makeRng(11),
+    nowMs: Date.now(),
+    ...over,
+  };
+}
+
+const strongSelf = () => self({
+  totalUnits: { peasants: 5000, militia: 2000, knights: 500 },
+  land: 2000, networth: 2_500_000,
+});
+
+describe('scoreAttack', () => {
+  it('never attacks in early age', () => {
+    const r = scoreAttack(strongSelf(), [mkView('t', 500_000)], attackCtx({ age: 'early' }));
+    expect(r.attackTarget).toBeNull();
+    expect(r.declareWarOn).toBeNull();
+  });
+
+  it('attacks a clearly weaker target when strong (hard, middle age)', () => {
+    const r = scoreAttack(strongSelf(), [mkView('weak', 300_000)], attackCtx());
+    expect(r.attackTarget).toBe('weak');
+  });
+
+  it('does NOT attack when estimated defense leaves no safety margin', () => {
+    const weakSelf = self({ totalUnits: { peasants: 100 }, networth: 150_000 });
+    const r = scoreAttack(weakSelf, [mkView('big', 5_000_000)], attackCtx());
+    expect(r.attackTarget).toBeNull();
+  });
+
+  it('respects newbie protection (under 72h old AND under a third of my networth)', () => {
+    const fresh = mkView('newbie', 100_000, { createdAt: new Date().toISOString(), isAI: false });
+    const r = scoreAttack(strongSelf(), [fresh], attackCtx());
+    expect(r.attackTarget).toBeNull();
+  });
+
+  it('skips targets under restoration', () => {
+    const t = mkView('rest', 600_000, { underRestoration: true });
+    const r = scoreAttack(strongSelf(), [t], attackCtx());
+    expect(r.attackTarget).toBeNull();
+  });
+
+  it('schemer prioritizes its grudge over a juicier neutral target', () => {
+    const mem = emptyMemory();
+    mem.grudges['attacker'] = { count: 2, lastAt: new Date().toISOString() };
+    const r = scoreAttack(
+      strongSelf(),
+      [mkView('attacker', 900_000), mkView('richer', 700_000)],
+      attackCtx({ persona: 'schemer', memory: mem }),
+    );
+    expect(r.attackTarget).toBe('attacker');
+  });
+
+  it('war rule: 4th attack on the same defender becomes a war declaration', () => {
+    const mem = emptyMemory();
+    mem.attacksMade['weak'] = 3;
+    const r = scoreAttack(strongSelf(), [mkView('weak', 300_000)], attackCtx({ memory: mem }));
+    expect(r.attackTarget).toBeNull();
+    expect(r.declareWarOn).toBe('weak');
+  });
+
+  it('after declaring war, attacks may continue', () => {
+    const mem = emptyMemory();
+    mem.attacksMade['weak'] = 5;
+    mem.warsDeclared = ['weak'];
+    const r = scoreAttack(strongSelf(), [mkView('weak', 300_000)], attackCtx({ memory: mem }));
+    expect(r.attackTarget).toBe('weak');
   });
 });
