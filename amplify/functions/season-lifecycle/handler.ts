@@ -243,7 +243,7 @@ async function seedAIKingdoms(seasonId: string): Promise<{ created: number }> {
   // AI start EXACTLY like a fresh player — same ballpark land/gold/units, no
   // buildings — and grow organically via the turn-ticker over the season. A new
   // season is genuinely fresh; nobody is seeded 100× ahead. The scaled AI gold
-  // reserve (goldFloor in ai-behavior) lets these small kingdoms act from tick 1.
+  // reserve (goldFloor in ai-strategist) lets these small kingdoms act from tick 1.
   const TOTAL_AI = 500;
 
   // Pre-generate all kingdom items
@@ -278,7 +278,7 @@ async function seedAIKingdoms(seasonId: string): Promise<{ created: number }> {
       const warDefense = raceStats.warDefense + (rng() * 3 + 2) / 10;
 
       // No starting buildings — exactly like a new player. The AI builds its own
-      // economy from tick 1 (turn-ticker + ai-behavior), using its starting gold.
+      // economy from tick 1 (turn-ticker + ai-strategist), using its starting gold.
       const buildings = {};
 
       items.push({
