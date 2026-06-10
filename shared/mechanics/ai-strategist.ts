@@ -317,10 +317,13 @@ export function scoreBuilds(
   let gold = goldBudget;
   let turns = turnsBudget;
 
+  // Spend a utility-proportional share (min 15%) of the REMAINING gold budget on
+  // each type, weighted against the utility of the types not yet processed.
+  let remainingU = ranked.reduce((s, r) => s + Math.max(0, r.u), 0) || 1;
   for (const { t, u } of ranked) {
     if (u <= 0 || slots <= 0 || gold < BUILDING_GOLD_COST || turns < BUILD_TURN_COST) break;
-    const totalU = ranked.reduce((s, r) => s + Math.max(0, r.u), 0) || 1;
-    const share = Math.max(0.15, u / totalU);
+    const share = Math.max(0.15, u / remainingU);
+    remainingU = Math.max(1, remainingU - Math.max(0, u));
     const byGold = Math.floor((gold * share) / BUILDING_GOLD_COST);
     const qty = Math.min(byGold, slots);
     if (qty <= 0) continue;
