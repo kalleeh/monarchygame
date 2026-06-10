@@ -334,3 +334,72 @@ export function scoreBuilds(
   }
   return out;
 }
+
+// ── Train scoring ───────────────────────────────────────────────────────────
+//
+// Optimal play: T1 maximizes power-per-gold (1/50 > 3/350 > 6/900 > 10/2000),
+// so train T1 until the 100k unit-count cap starts binding, then escalate to
+// tiers with more power per UNIT SLOT. Both the troop (gold) cap and the unit
+// cap are the same limits the unit-trainer Lambda enforces on players.
+
+export function troopGoldInvested(race: string, units: Record<string, number>): number {
+  const list = RACE_UNITS[race] ?? RACE_UNITS.Human;
+  const mult = RACE_ECON_MULT[race] ?? 1.0;
+  let invested = 0;
+  for (const [type, count] of Object.entries(units)) {
+    const tier = list.indexOf(type);
+    if (tier >= 0) invested += Math.round(TIER_BASE_GOLD[tier] * mult) * (count ?? 0);
+  }
+  return invested;
+}
+
+const MAX_TRAIN_PER_ACTION = 1000; // unit-trainer per-action quantity limit
+
+export function scoreTrains(
+  me: SelfState,
+  w: PersonaWeights,
+  turnsBudget: number,
+  goldBudget: number,
+  rng: () => number,
+): Array<{ unitType: string; qty: number; cost: number }> {
+  if (turnsBudget < TRAIN_TURN_COST || goldBudget <= 0) return [];
+
+  const list = RACE_UNITS[me.race] ?? RACE_UNITS.Human;
+  const mult = RACE_ECON_MULT[me.race] ?? 1.0;
+
+  const troopCap = calculateTroopCapGold({ land: me.land, barracks: me.buildings.barracks ?? 0 });
+  let invested = troopGoldInvested(me.race, me.totalUnits);
+  let capRoom = Math.max(0, troopCap - invested);
+
+  const currentCount = Object.values(me.totalUnits).reduce((s, n) => s + (n ?? 0), 0);
+  let unitSlots = Math.max(0, MAX_TOTAL_UNITS - currentCount);
+
+  let gold = Math.floor(goldBudget * Math.min(1, w.military));
+  let turns = turnsBudget;
+
+  // If T1 alone can spend the gold within unit slots, T1 is optimal. When unit
+  // slots are scarce relative to gold, higher tiers carry more power per slot.
+  const t1Cost = Math.round(TIER_BASE_GOLD[0] * mult);
+  const goldFitsInSlots = Math.floor(gold / t1Cost) <= unitSlots;
+  const startTier = goldFitsInSlots ? 0 : 1; // skip T1 when slots are the bottleneck
+
+  const out: Array<{ unitType: string; qty: number; cost: number }> = [];
+  for (let tier = startTier; tier < list.length; tier++) {
+    if (gold <= 0 || capRoom <= 0 || unitSlots <= 0 || turns < TRAIN_TURN_COST) break;
+    const costPer = Math.round(TIER_BASE_GOLD[tier] * mult);
+
+    const byGold = Math.floor(gold / costPer);
+    const byCap = Math.floor(capRoom / costPer);
+    const qty = Math.min(byGold, byCap, unitSlots, MAX_TRAIN_PER_ACTION);
+    if (qty <= 0) continue;
+
+    const cost = qty * costPer;
+    out.push({ unitType: list[tier], qty, cost });
+    gold -= cost;
+    capRoom -= cost;
+    invested += cost;
+    unitSlots -= qty;
+    turns -= TRAIN_TURN_COST;
+  }
+  return out;
+}

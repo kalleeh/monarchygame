@@ -10,6 +10,8 @@ import {
   scoreBuilds,
   threatLevel,
   emptyMemory,
+  scoreTrains,
+  troopGoldInvested,
   type Persona,
   type Difficulty,
 } from './ai-strategist';
@@ -152,5 +154,50 @@ describe('threatLevel', () => {
     mem.grudges['enemy'] = { count: 2, lastAt: new Date().toISOString() };
     const recent = [{ attackerId: 'enemy', defenderId: 'me', landGained: 50, timestamp: new Date().toISOString() }];
     expect(threatLevel('me', mem, recent)).toBeGreaterThan(threatLevel('me', emptyMemory(), []));
+  });
+});
+
+describe('scoreTrains', () => {
+  it('prefers T1 (best power-per-gold) when unit-count headroom is ample', () => {
+    const trains = scoreTrains(self(), PERSONAS.warlord, 30, 50_000, makeRng(1));
+    expect(trains.length).toBeGreaterThan(0);
+    expect(trains[0].unitType).toBe('peasants');
+  });
+
+  it('escalates to higher tiers when the 100k unit cap binds', () => {
+    // 99k units already: only 1k unit slots left, but lots of gold/cap room ->
+    // higher tiers pack more power per unit slot.
+    const crowded = self({
+      land: 30_000,
+      totalUnits: { peasants: 99_000 },
+      buildings: { barracks: 10_000 },
+      gold: 5_000_000,
+    });
+    const trains = scoreTrains(crowded, PERSONAS.warlord, 30, 4_000_000, makeRng(2));
+    const t1 = trains.find(t => t.unitType === 'peasants')?.qty ?? 0;
+    const higher = trains.filter(t => t.unitType !== 'peasants').reduce((s, t) => s + t.qty, 0);
+    expect(t1 + higher).toBeLessThanOrEqual(1_000); // never exceeds unit cap
+    expect(higher).toBeGreaterThan(0);              // shifted up-tier
+  });
+
+  it('never exceeds the troop cap players are bound by', () => {
+    const k = self({ land: 1000, buildings: {}, totalUnits: {} }); // cap = 2M floor
+    const trains = scoreTrains(k, PERSONAS.warlord, 72, 100_000_000, makeRng(3));
+    const invested = trains.reduce((s, t) => s + t.cost, 0);
+    expect(invested).toBeLessThanOrEqual(2_000_000);
+  });
+
+  it('Vampire pays double (economicMultiplier 2.0)', () => {
+    const v = self({ race: 'Vampire' });
+    const trains = scoreTrains(v, PERSONAS.warlord, 30, 10_000, makeRng(4));
+    const thralls = trains.find(t => t.unitType === 'thralls');
+    expect(thralls).toBeDefined();
+    expect(thralls!.cost / thralls!.qty).toBe(100); // 50 * 2.0
+  });
+});
+
+describe('troopGoldInvested', () => {
+  it('values existing units at real per-unit cost', () => {
+    expect(troopGoldInvested('Human', { peasants: 10, militia: 2 })).toBe(10 * 50 + 2 * 350);
   });
 });
