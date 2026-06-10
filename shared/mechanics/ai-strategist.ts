@@ -196,3 +196,60 @@ export function assignDifficulty(kingdomId: string): Difficulty {
   if (r === 3) return 'hard';
   return 'medium';
 }
+
+// ── Combat power (self — full knowledge of own army is fair) ───────────────
+
+function unitTierIndex(race: string, unitType: string): number {
+  const list = RACE_UNITS[race] ?? RACE_UNITS.Human;
+  const idx = list.indexOf(unitType);
+  if (idx >= 0) return idx;
+  const generic: Record<string, number> = {
+    tier1: 0, tier2: 1, tier3: 2, tier4: 3,
+    peasants: 0, militia: 1, knights: 2, cavalry: 3,
+  };
+  return generic[unitType] ?? 0;
+}
+
+/** Real per-tier army power. Scouts are espionage-only and excluded. */
+export function armyCombatPower(
+  race: string,
+  units: Record<string, number>,
+): { offense: number; defense: number } {
+  let offense = 0;
+  let defense = 0;
+  for (const [type, count] of Object.entries(units)) {
+    if (type === 'scouts' || type === 'elite_scouts') continue;
+    const n = count ?? 0;
+    if (n <= 0) continue;
+    const tier = unitTierIndex(race, type);
+    offense += n * (TIER_OFFENSE[tier] ?? 1);
+    defense += n * (TIER_DEFENSE[tier] ?? 1);
+  }
+  return { offense, defense };
+}
+
+// ── Defense estimation (enemies — public info ONLY) ────────────────────────
+//
+// A player sizing up a target sees networth and race. Land dominates networth
+// (land × 1000), so estLand ≈ networth / 1100 (the rest is gold + units).
+// Typical kingdoms train toward ~0.5L T1 + 0.3L T2 (+ T3 later) ≈ 1.7 def/land,
+// and keep some walls (fort defense ~265 each) ≈ +8 def/land. These are
+// calibration heuristics — exactly the rough math a human makes — and the
+// difficulty noise dominates them anyway.
+
+const EST_LAND_PER_NETWORTH = 1 / 1100;
+const EST_ARMY_DEF_PER_LAND = 1.7;
+const EST_WALL_DEF_PER_LAND = 8;
+
+export function estimateDefense(
+  target: PublicKingdomView,
+  difficulty: Difficulty,
+  rng: () => number,
+): number {
+  const params = DIFFICULTY_PARAMS[difficulty];
+  const estLand = Math.max(50, target.networth * EST_LAND_PER_NETWORTH);
+  const raceBonus = RACE_DEFENSE_BONUSES[target.race] ?? 1.0;
+  const base = estLand * (EST_ARMY_DEF_PER_LAND + EST_WALL_DEF_PER_LAND) * raceBonus;
+  const noise = 1 + (rng() * 2 - 1) * params.estNoise;
+  return Math.max(1, base * noise);
+}
