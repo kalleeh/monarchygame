@@ -104,7 +104,7 @@ describe('AI intelligence proof: combat win rate', () => {
 
     const kingdoms: SimKingdom[] = [...easyCohort, ...hardCohort, ...preyPool];
 
-    const nowBase = Date.now();
+    const nowBase = Date.UTC(2026, 5, 1); // fixed epoch — fully deterministic, reproducible run-to-run
     const createdAt = nowBase - 100 * 3600_000; // 100 hours ago (no newbie protection)
     const battles: BattleEvent[] = [];
 
