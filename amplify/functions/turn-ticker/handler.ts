@@ -11,13 +11,11 @@ import { dbList, dbAtomicAdd, dbUpdate, dbCreate, dbGet, dbQueryRange, parseJson
 import { log } from '../logger';
 import { FOCUS_MECHANICS } from '../../../shared/mechanics/faith-focus-mechanics';
 import { TURN_MECHANICS } from '../../../shared/mechanics/turn-mechanics';
-import { calculateCombatResult, calculateFortDefense, RACE_OFFENSE_BONUSES, RACE_DEFENSE_BONUSES } from '../../../shared/mechanics/combat-mechanics';
-import type { AttackForce, DefenseForce } from '../../../shared/mechanics/combat-mechanics';
+import { resolveCombat } from '../combat-processor/handler';
 import {
   decide,
   assignPersona,
   assignDifficulty,
-  armyCombatPower,
   emptyMemory,
   makeRng,
   type PublicKingdomView,
@@ -246,136 +244,90 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
         // Apply gold spent
         let finalGold = newGold - decision.goldSpent;
 
-        // Execute combat if target selected
+        // SEQUENCING: Persist builds/trains/income BEFORE combat so resolveCombat sees the
+        // updated army + resources. Combat resolution will update land/gold/units again.
+        // This is a two-phase write: (1) build/train/income, (2) combat outcome.
+        const preCombatLand = resources.land ?? 800;
         let combatLandGained = 0;
+        let combatGoldGained = 0;
+
+        const preCombatUpdateFields: Record<string, unknown> = {
+          resources: { ...resources, gold: finalGold, population: newPopulation, land: preCombatLand },
+          buildings: updatedBuildings,
+          totalUnits: updatedUnits,
+          // No networth update yet — will be recalculated after combat
+          stats: { ...statsMap, aiMemory: decision.memory },
+          aiPersonality: persona,
+        };
+
+        await dbUpdate('Kingdom', kingdom.id, preCombatUpdateFields);
+
+        // Execute combat if target selected — now uses the SAME resolveCombat path as players
         if (decision.attackTarget) {
           try {
+            // Re-fetch attacker to get fresh totalUnits/turnsBalance after the build/train write
+            const attackerKingdom = await dbGet<KingdomRow>('Kingdom', kingdom.id);
             const targetKingdom = await dbGet<KingdomRow>('Kingdom', decision.attackTarget);
-            if (targetKingdom && targetKingdom.isActive) {
-              const targetRes = parseJsonField<Record<string, number>>(targetKingdom.resources, {});
-              const targetUnits = parseJsonField<Record<string, number>>(targetKingdom.totalUnits, {});
-              const targetBuildings = parseJsonField<Record<string, number>>(targetKingdom.buildings, {});
-              const targetLand = targetRes.land ?? 800;
 
+            if (attackerKingdom && targetKingdom && targetKingdom.isActive) {
               // AI sends 70% of military (scouts are espionage-only, excluded).
-              // Offense/defense use REAL per-tier unit values (armyCombatPower)
-              // and REAL race bonuses — the same numbers player combat uses,
-              // not a flat "every unit = 10" approximation.
               const attackUnits: Record<string, number> = {};
               for (const [uType, count] of Object.entries(updatedUnits)) {
                 if (uType === 'scouts' || uType === 'elite_scouts') continue;
                 const sent = Math.floor((count ?? 0) * 0.7);
                 if (sent > 0) attackUnits[uType] = sent;
               }
-              const attackerRace = (kingdom.race as string) ?? 'Human';
-              const defenderRace = (targetKingdom.race as string) ?? 'Human';
-              const offenseBonus = RACE_OFFENSE_BONUSES[attackerRace] ?? 1.0;
-              const defenseBonus = RACE_DEFENSE_BONUSES[defenderRace] ?? 1.0;
-              const totalOffense = Math.floor(armyCombatPower(attackerRace, attackUnits).offense * offenseBonus);
 
-              const defenseUnits: Record<string, number> = {};
-              for (const [uType, count] of Object.entries(targetUnits)) {
-                if (uType === 'scouts' || uType === 'elite_scouts') continue;
-                if ((count ?? 0) > 0) defenseUnits[uType] = count;
-              }
-              // Forts come from the real 'wall' building (defended by race fort value).
-              const fortCount = targetBuildings.wall ?? 0;
-              let totalDefense = Math.floor(armyCombatPower(defenderRace, defenseUnits).defense * defenseBonus);
-              totalDefense += calculateFortDefense(defenderRace, fortCount);
+              // Call resolveCombat — same path as player attacks (unit validation, newbie
+              // protection, turn cost, war-declaration enforcement, restoration checks, etc.)
+              const combatResult = await resolveCombat({
+                attacker: attackerKingdom as unknown as Record<string, unknown>,
+                defender: targetKingdom as unknown as Record<string, unknown>,
+                attackerUnits: attackUnits,
+                attackType: 'standard',
+                ownerSub: 'AI_SYSTEM',
+              });
 
-              const attackForce: AttackForce = { units: attackUnits, totalOffense, totalDefense: 0 };
-              const defenseForce: DefenseForce = { units: defenseUnits, forts: fortCount, totalDefense, ambushActive: false };
-
-              const combatResult = calculateCombatResult(attackForce, defenseForce, targetLand);
-
-              // Apply casualties to attacker (from sent units)
-              if (combatResult.attackerLosses > 0) {
-                const totalSent = Object.values(attackUnits).reduce((s, n) => s + n, 0);
-                const lossRatio = totalSent > 0 ? combatResult.attackerLosses / totalSent : 0;
-                for (const [uType, sent] of Object.entries(attackUnits)) {
-                  const losses = Math.floor(sent * lossRatio);
-                  updatedUnits[uType] = Math.max(0, (updatedUnits[uType] ?? 0) - losses);
-                }
-              }
-
-              // Apply casualties to defender
-              if (combatResult.defenderLosses > 0) {
-                const totalDef = Object.values(defenseUnits).reduce((s, n) => s + n, 0);
-                const lossRatio = totalDef > 0 ? combatResult.defenderLosses / totalDef : 0;
-                const defUpdatedUnits = { ...targetUnits };
-                for (const [uType, count] of Object.entries(defenseUnits)) {
-                  const losses = Math.floor(count * lossRatio);
-                  defUpdatedUnits[uType] = Math.max(0, (defUpdatedUnits[uType] ?? 0) - losses);
-                }
-
-                // Transfer land and gold
-                const defLand = Math.max(100, targetLand - combatResult.landGained);
-                const defGold = Math.max(0, (targetRes.gold ?? 0) - combatResult.goldLooted);
-                combatLandGained = combatResult.landGained;
-                finalGold += combatResult.goldLooted;
-
-                await dbUpdate('Kingdom', decision.attackTarget, {
-                  resources: { ...targetRes, land: defLand, gold: defGold },
-                  totalUnits: defUpdatedUnits,
+              if (combatResult.success && combatResult.result) {
+                const parsedResult = JSON.parse(combatResult.result);
+                combatLandGained = parsedResult.landGained ?? 0;
+                combatGoldGained = parsedResult.goldLooted ?? 0;
+                log.info('turn-ticker', 'ai-combat', {
+                  kingdomId: kingdom.id,
+                  targetId: decision.attackTarget,
+                  result: parsedResult.result,
+                  landGained: combatLandGained,
+                  goldLooted: combatGoldGained,
+                });
+              } else {
+                // Combat was rejected (e.g. newbie protection, war required, restoration active)
+                // or failed — log and continue. The AI will adjust next tick.
+                log.warn('turn-ticker', 'ai-combat-rejected', {
+                  kingdomId: kingdom.id,
+                  targetId: decision.attackTarget,
+                  error: combatResult.error,
+                  errorCode: combatResult.errorCode,
                 });
               }
-
-              // Create battle report
-              await dbCreate('BattleReport', {
-                attackerId: kingdom.id,
-                defenderId: decision.attackTarget,
-                seasonId: (kingdom as KingdomRow).seasonId,
-                attackType: 'standard',
-                result: JSON.stringify(combatResult),
-                casualties: JSON.stringify({
-                  attacker: { tier1: combatResult.attackerLosses },
-                  defender: { tier1: combatResult.defenderLosses },
-                }),
-                landGained: combatResult.landGained,
-                timestamp: new Date().toISOString(),
-                owner: 'AI_SYSTEM',
-              });
-
-              // Create notification for defender
-              await dbCreate('CombatNotification', {
-                recipientId: decision.attackTarget,
-                type: combatResult.success ? 'attack' : 'defense',
-                message: `AI kingdom attacked you! ${combatResult.success ? `Lost ${combatResult.landGained} land.` : 'Attack repelled!'}`,
-                data: JSON.stringify({ attackerId: kingdom.id, result: combatResult.resultType }),
-                isRead: false,
-                createdAt: new Date().toISOString(),
-                owner: decision.attackTarget,
-              });
-
-              log.info('turn-ticker', 'ai-combat', {
-                kingdomId: kingdom.id,
-                targetId: decision.attackTarget,
-                result: combatResult.resultType,
-                landGained: combatResult.landGained,
-              });
             }
           } catch (combatErr) {
             log.error('turn-ticker', combatErr, { kingdomId: kingdom.id, context: 'ai-combat' });
           }
         }
 
-        // Calculate final land and networth
-        const finalLand = (resources.land ?? 800) + combatLandGained;
-        const totalUnitCount = Object.values(updatedUnits).reduce((sum, n) => sum + (n ?? 0), 0);
-        const networth = finalLand * 1000 + finalGold + totalUnitCount * 100;
+        // Re-fetch attacker again to get the post-combat state (resolveCombat wrote land/gold/units)
+        const finalAttackerState = await dbGet<KingdomRow>('Kingdom', kingdom.id);
+        if (finalAttackerState) {
+          // Recalculate networth from the final post-combat state
+          const finalRes = parseJsonField<Record<string, number>>(finalAttackerState.resources, {});
+          const finalUnits = parseJsonField<Record<string, number>>(finalAttackerState.totalUnits, {});
+          const finalLand = finalRes.land ?? preCombatLand;
+          const finalGoldAfterCombat = finalRes.gold ?? finalGold;
+          const totalUnitCount = Object.values(finalUnits).reduce((sum, n) => sum + (n ?? 0), 0);
+          const networth = finalLand * 1000 + finalGoldAfterCombat + totalUnitCount * 100;
 
-        // Write back all changes
-        const updateFields: Record<string, unknown> = {
-          resources: { ...resources, gold: finalGold, population: newPopulation, land: finalLand },
-          buildings: updatedBuildings,
-          totalUnits: updatedUnits,
-          networth,
-          // Persist memory (grudges/attacks/wars) and persona for next tick + admin visibility.
-          stats: { ...statsMap, aiMemory: decision.memory },
-          aiPersonality: persona,
-        };
-
-        await dbUpdate('Kingdom', kingdom.id, updateFields);
+          await dbUpdate('Kingdom', kingdom.id, { networth });
+        }
 
         // War rule: the AI hit this defender 3 times — it must declare war before
         // attacking again (same rule combat-processor enforces on players). Real
@@ -409,15 +361,18 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
         // Feed (B): emit a milestone when this AI crosses a power tier UPWARD.
         // Keeps the live feed alive during early age (no combat yet) without
         // spamming — at most one event per tier crossing per kingdom.
-        const prevNetworth = (kingdom as KingdomRow).networth ?? 0;
-        const crossed = crossedPowerTier(prevNetworth, networth);
-        if (crossed && (kingdom as KingdomRow).seasonId) {
-          aiMilestones.push({
-            seasonId: (kingdom as KingdomRow).seasonId as string,
-            kingdomId: kingdom.id,
-            kingdomName: (kingdom as KingdomRow).name as string | undefined,
-            tierLabel: crossed,
-          });
+        if (finalAttackerState) {
+          const prevNetworth = (kingdom as KingdomRow).networth ?? 0;
+          const currentNetworth = finalAttackerState.networth ?? prevNetworth;
+          const crossed = crossedPowerTier(prevNetworth, currentNetworth);
+          if (crossed && (kingdom as KingdomRow).seasonId) {
+            aiMilestones.push({
+              seasonId: (kingdom as KingdomRow).seasonId as string,
+              kingdomId: kingdom.id,
+              kingdomName: (kingdom as KingdomRow).name as string | undefined,
+              tierLabel: crossed,
+            });
+          }
         }
 
         // Deduct turns spent
