@@ -151,17 +151,17 @@ export const PERSONAS: Record<Persona, PersonaWeights> = {
 };
 
 export interface DifficultyParams {
-  estNoise: number;       // ± fraction on defense estimates
+  estNoise: number;       // ± fraction on defense estimates (the skill differentiator)
   utilityNoise: number;   // ± fraction jitter when comparing options
   actChance: number;      // probability of doing anything at all this tick
-  attackMargin: number;   // required estimated power ratio before attacking
+  attackMargin: number;   // required estimated power ratio before attacking (uniform — risk appetite is persona, not skill)
   turnBudgetFrac: number; // fraction of stored turns it is willing to spend
 }
 
 export const DIFFICULTY_PARAMS: Record<Difficulty, DifficultyParams> = {
-  easy:   { estNoise: 0.60, utilityNoise: 0.35, actChance: 0.60, attackMargin: 1.25, turnBudgetFrac: 0.50 },
-  medium: { estNoise: 0.30, utilityNoise: 0.15, actChance: 0.85, attackMargin: 1.50, turnBudgetFrac: 0.70 },
-  hard:   { estNoise: 0.12, utilityNoise: 0.05, actChance: 1.00, attackMargin: 1.50, turnBudgetFrac: 0.90 },
+  easy:   { estNoise: 0.60, utilityNoise: 0.35, actChance: 0.60, attackMargin: 1.0, turnBudgetFrac: 0.50 },
+  medium: { estNoise: 0.30, utilityNoise: 0.15, actChance: 0.85, attackMargin: 1.0, turnBudgetFrac: 0.70 },
+  hard:   { estNoise: 0.12, utilityNoise: 0.05, actChance: 1.00, attackMargin: 1.0, turnBudgetFrac: 0.90 },
 };
 
 // ── Deterministic helpers ───────────────────────────────────────────────────
