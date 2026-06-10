@@ -6,6 +6,7 @@
 import { getClient } from '../utils/amplifyClient';
 import { rateLimiter } from '../utils/rateLimiter';
 import { isDemoMode } from '../utils/authMode';
+import { unwrapAmplifyJson } from '../utils/unwrapAmplifyJson';
 
 // Type definitions for service payloads
 interface BaseSpellPayload {
@@ -75,13 +76,12 @@ type TerritoryPayload = FunctionPayload & BaseTerritoryPayload;
 type SpellPayload = FunctionPayload & BaseSpellPayload;
 
 export class AmplifyFunctionService {
-  /** Unwrap Amplify {data:string} envelope and parse JSON if needed. */
+  /**
+   * Unwrap an Amplify custom-operation response (handles the double-encoding of
+   * `a.json()` handlers that JSON.stringify their result). See unwrapAmplifyJson.
+   */
   private static parseResult(raw: unknown): unknown {
-    if (raw && typeof raw === 'object' && 'data' in (raw as object)) {
-      raw = (raw as { data: unknown }).data;
-    }
-    if (typeof raw === 'string') { try { return JSON.parse(raw); } catch { /* not JSON */ } }
-    return raw;
+    return unwrapAmplifyJson(raw);
   }
 
   /**

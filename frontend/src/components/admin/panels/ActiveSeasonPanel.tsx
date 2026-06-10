@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { isDemoMode } from '../../../utils/authMode';
 import type { SeasonRow } from '../adminShared';
 import { StatusBadge } from '../StatusBadge';
+import { unwrapAmplifyJson } from '../../../utils/unwrapAmplifyJson';
 
 export function ActiveSeasonPanel() {
   const [season, setSeason] = useState<SeasonRow | null | undefined>(undefined); // undefined = loading
@@ -51,8 +52,7 @@ export function ActiveSeasonPanel() {
     setActionLoading('create');
     try {
       const raw = await getClient().mutations.manageSeason({ action: 'create' });
-      const result = typeof raw === 'string' ? JSON.parse(raw) : (raw as { data?: unknown }).data ?? raw;
-      const parsed = typeof result === 'string' ? JSON.parse(result) : result as { success?: boolean; error?: string };
+      const parsed = unwrapAmplifyJson<{ success?: boolean; error?: string }>(raw);
       if (parsed?.success === false) throw new Error(parsed.error || 'Create failed');
       toast.success('Season created successfully.');
       await fetchSeason();
@@ -71,8 +71,7 @@ export function ActiveSeasonPanel() {
     setActionLoading('check');
     try {
       const raw = await getClient().mutations.manageSeason({ action: 'check' });
-      const result = typeof raw === 'string' ? JSON.parse(raw) : (raw as { data?: unknown }).data ?? raw;
-      const parsed = typeof result === 'string' ? JSON.parse(result) : result as { success?: boolean; error?: string; processed?: unknown[] };
+      const parsed = unwrapAmplifyJson<{ success?: boolean; error?: string; processed?: unknown[] }>(raw);
       if (parsed?.success === false) throw new Error(parsed.error || 'Check failed');
       const count = Array.isArray(parsed?.processed) ? parsed.processed.length : 0;
       toast.success(`Season check complete. ${count} season(s) processed.`);
@@ -96,11 +95,10 @@ export function ActiveSeasonPanel() {
         action: 'seed_ai_kingdoms',
         seasonId: season.id,
       });
-      const result = typeof raw === 'string' ? JSON.parse(raw) : (raw as { data?: unknown }).data ?? raw;
-      const parsed = typeof result === 'string' ? JSON.parse(result) : result as { success?: boolean; created?: number; result?: string; error?: string };
+      const parsed = unwrapAmplifyJson<{ success?: boolean; created?: number; result?: string; error?: string }>(raw);
       if (parsed?.success === false) throw new Error(parsed.error || 'Seed failed');
       // `created` may be top-level or nested inside parsed.result
-      const inner = parsed?.result ? (typeof parsed.result === 'string' ? JSON.parse(parsed.result) : parsed.result) as { created?: number } : null;
+      const inner = parsed?.result ? unwrapAmplifyJson<{ created?: number }>(parsed.result) : null;
       const created = parsed?.created ?? inner?.created ?? 0;
       toast.success(`Seeded ${created} AI kingdoms for Season #${season.seasonNumber}.`);
     } catch (err) {
@@ -120,8 +118,7 @@ export function ActiveSeasonPanel() {
     setActionLoading('end');
     try {
       const raw = await getClient().mutations.manageSeason({ action: 'end', seasonId: season.id });
-      const result = typeof raw === 'string' ? JSON.parse(raw) : (raw as { data?: unknown }).data ?? raw;
-      const parsed = typeof result === 'string' ? JSON.parse(result) : result as { success?: boolean; error?: string };
+      const parsed = unwrapAmplifyJson<{ success?: boolean; error?: string }>(raw);
       if (parsed?.success === false) throw new Error(parsed.error || 'End failed');
       toast.success(`Season #${season.seasonNumber} ended.`);
       // Notify all players about season end (via a broadcast mechanism)

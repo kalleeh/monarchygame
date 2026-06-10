@@ -3,6 +3,7 @@ import { getClient } from '../../../utils/amplifyClient';
 import toast from 'react-hot-toast';
 import { isDemoMode } from '../../../utils/authMode';
 import { parseResources, calcNetworth, type KingdomRow } from '../adminShared';
+import { unwrapAmplifyJson } from '../../../utils/unwrapAmplifyJson';
 
 export function KingdomOverviewPanel() {
   const [kingdoms, setKingdoms] = useState<KingdomRow[]>([]);
@@ -21,8 +22,7 @@ export function KingdomOverviewPanel() {
     try {
       // Use Lambda to bypass Amplify field-level auth (resources is owner-restricted via AppSync)
       const raw = await getClient().mutations.manageSeason({ action: 'list_kingdoms_admin' });
-      const result = typeof raw === 'string' ? JSON.parse(raw) : (raw as { data?: unknown }).data ?? raw;
-      const parsed = typeof result === 'string' ? JSON.parse(result) : result as { success?: boolean; kingdoms?: KingdomRow[]; error?: string };
+      const parsed = unwrapAmplifyJson<{ success?: boolean; kingdoms?: KingdomRow[]; error?: string }>(raw);
       if (!parsed?.success) throw new Error(parsed?.error || 'Failed');
       setKingdoms((parsed.kingdoms ?? []) as KingdomRow[]);
     } catch (err) {

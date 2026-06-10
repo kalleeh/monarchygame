@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { isDemoMode } from '../../../utils/authMode';
 import { cleanupKingdom } from '../../../services/amplifyFunctionService';
 import { parseResources, calcNetworth, type KingdomRow } from '../adminShared';
+import { unwrapAmplifyJson } from '../../../utils/unwrapAmplifyJson';
 
 export function KingdomManagementPanel() {
   const [kingdoms, setKingdoms] = useState<KingdomRow[]>([]);
@@ -28,8 +29,7 @@ export function KingdomManagementPanel() {
     setLoading(true);
     try {
       const raw = await getClient().mutations.manageSeason({ action: 'list_kingdoms_admin' });
-      const result = typeof raw === 'string' ? JSON.parse(raw) : (raw as { data?: unknown }).data ?? raw;
-      const parsed = typeof result === 'string' ? JSON.parse(result) : result as { success?: boolean; kingdoms?: KingdomRow[]; error?: string };
+      const parsed = unwrapAmplifyJson<{ success?: boolean; kingdoms?: KingdomRow[]; error?: string }>(raw);
       if (!parsed?.success) throw new Error(parsed?.error || 'Failed');
       setKingdoms((parsed.kingdoms ?? []) as KingdomRow[]);
     } catch (err) {
