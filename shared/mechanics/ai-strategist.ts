@@ -415,7 +415,12 @@ export function scoreTrains(
 const ATTACKS_BEFORE_WAR = 3;          // combat-processor war rule
 const LAND_GAIN_PCT = 0.07;            // full-strike "with ease" land share
 const GOLD_PER_LAND = 1000;            // networth/loot valuation
-const CASUALTY_FRACTION = 0.02;        // expected own-army value lost (2% per attack)
+// Expected own-army value risked per attack, as a fraction of standing army.
+// Kept low because troops are continually retrained each tick and a favorable
+// attack (the only kind the safety gate allows) loses only a small slice of the
+// army — without this, a large standing army makes every attack EV-negative and
+// the AI never fights. Deliberate balance choice.
+const CASUALTY_FRACTION = 0.02;
 const WOUNDED_BONUS = 1.2;             // target that just lost land
 
 export interface AttackChoice {

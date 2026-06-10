@@ -258,9 +258,12 @@ describe('scoreAttack', () => {
   it('schemer prioritizes its grudge over a juicier neutral target', () => {
     const mem = emptyMemory();
     mem.grudges['attacker'] = { count: 2, lastAt: new Date().toISOString() };
+    // Both targets are safely attackable; 'richer' (600k) is the juicier neutral
+    // (more land = more loot), but the schemer's grudge multiplier on 'attacker'
+    // (500k) overrides that. This tests grudge priority, not the safety gate.
     const r = scoreAttack(
       strongSelf(),
-      [mkView('attacker', 900_000), mkView('richer', 700_000)],
+      [mkView('attacker', 500_000), mkView('richer', 600_000)],
       attackCtx({ persona: 'schemer', memory: mem }),
     );
     expect(r.attackTarget).toBe('attacker');
