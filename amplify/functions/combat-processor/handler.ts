@@ -24,48 +24,41 @@ type BattleReportType = Record<string, unknown>;
 type TerritoryType = { id: string; kingdomId?: string; type?: string; defenseLevel?: number; terrainType?: string };
 type WarDeclarationType = { id: string; attackerId?: string; defenderId?: string; status?: string; attackCount?: number };
 
-export const handler: Schema["processCombat"]["functionHandler"] = async (event) => {
-  const { attackerId, defenderId, attackType, units, formationId, terrainId } = event.arguments;
+// Exported types for resolveCombat
+export interface ResolveCombatParams {
+  attacker: KingdomType;
+  defender: KingdomType;
+  attackerUnits: Record<string, number>;
+  attackType?: 'standard' | 'raid' | 'siege' | 'pillage';
+  formationId?: string;
+  terrainId?: string;
+  ownerSub: string; // For BattleReport/notification ownership
+}
+
+export interface CombatProcessResult {
+  success: boolean;
+  result?: string;
+  error?: string;
+  errorCode?: string;
+}
+
+/**
+ * resolveCombat — core combat resolution logic, extracted from processCombat.
+ *
+ * This function encapsulates all combat mechanics: unit validation, newbie protection,
+ * turn costs, war-declaration enforcement, combat calculation, casualties, land/gold
+ * transfer, territory changes, battle reports, and notifications.
+ *
+ * Used by both the player-facing processCombat HTTP handler (via AppSync) and the
+ * AI strategist in turn-ticker (server-side attacks), ensuring AI attacks follow
+ * the SAME fairness rules as players (no backdoor combat path).
+ */
+export async function resolveCombat(params: ResolveCombatParams): Promise<CombatProcessResult> {
+  const { attacker, defender, attackerUnits, attackType = 'standard', formationId, terrainId, ownerSub } = params;
+  const attackerId = attacker.id as string;
+  const defenderId = defender.id as string;
 
   try {
-    if (!attackerId || !defenderId) {
-      return { success: false, error: 'Missing attacker or defender ID', errorCode: ErrorCode.MISSING_PARAMS };
-    }
-
-    if (attackerId === defenderId) {
-      return { success: false, error: 'Cannot attack your own kingdom', errorCode: ErrorCode.INVALID_PARAM };
-    }
-
-    if (!units) {
-      return { success: false, error: 'No units specified for attack', errorCode: ErrorCode.MISSING_PARAMS };
-    }
-
-    // Verify caller identity
-    const identity = event.identity as { sub?: string; username?: string } | null;
-    if (!identity?.sub) {
-      return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
-    }
-
-    const [attacker, defender] = await Promise.all([
-      dbGet<KingdomType>('Kingdom', attackerId),
-      dbGet<KingdomType>('Kingdom', defenderId)
-    ]);
-
-    if (!attacker) {
-      return { success: false, error: 'Attacker kingdom not found', errorCode: ErrorCode.NOT_FOUND };
-    }
-    if (!defender) {
-      return { success: false, error: 'Defender kingdom not found', errorCode: ErrorCode.NOT_FOUND };
-    }
-
-    // Verify kingdom ownership (attacker only)
-    const denied = verifyOwnership(identity, attacker.owner as string | null);
-    if (denied) return denied;
-
-    // Rate limit check
-    const rateLimited = await checkRateLimit(identity.sub, 'combat');
-    if (rateLimited) return rateLimited;
-
     // Targeted BattleReport queries — reused across alliance bonus, war check, and kill bounty
     let cachedDefenderReports: Array<{ id?: string; attackerId: string; defenderId: string; landGained?: number; timestamp?: string }> | null = null;
     let cachedAttackerReports: Array<{ id?: string; attackerId: string; defenderId: string; landGained?: number; timestamp?: string }> | null = null;
@@ -83,6 +76,14 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       }
       return cachedAttackerReports;
     };
+
+    // Validate that attacker has enough units
+    const ownedUnits = parseJsonField<Record<string, number>>(attacker.totalUnits, {});
+    for (const [unitType, count] of Object.entries(attackerUnits)) {
+      if (count > (ownedUnits[unitType] ?? 0)) {
+        return { success: false, error: `Insufficient ${unitType}: sending ${count}, but only have ${ownedUnits[unitType] ?? 0}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
+      }
+    }
 
     // Alliance coordination bonus: +10% if an ally attacked this defender recently
     let allianceCoordBonus = 1.0;
@@ -121,16 +122,6 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       }
     }
 
-    const attackerUnits: Record<string, number> = parseJsonField<Record<string, number>>(units, {});
-    const ownedUnits = parseJsonField<Record<string, number>>(attacker.totalUnits, {});
-
-    // Validate that attacker has enough units
-    for (const [unitType, count] of Object.entries(attackerUnits)) {
-      if (count > (ownedUnits[unitType] ?? 0)) {
-        return { success: false, error: `Insufficient ${unitType}: sending ${count}, but only have ${ownedUnits[unitType] ?? 0}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
-      }
-    }
-
     // Newbie protection: kingdoms < 72 hours old that are 3x+ smaller than attacker
     const defenderCreatedAt = new Date((defender.createdAt as string) ?? 0);
     const defenderAgeHours = (Date.now() - defenderCreatedAt.getTime()) / (1000 * 60 * 60);
@@ -155,8 +146,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
 
     // Siege: validate minimum unit count early (before any resource deduction)
     if (attackType === 'siege') {
-      const parsedUnitsForSiege = parseJsonField<Record<string, number>>(units, {});
-      const totalUnitsForSiege = Object.values(parsedUnitsForSiege).reduce((s, v) => s + (v as number), 0);
+      const totalUnitsForSiege = Object.values(attackerUnits).reduce((s, v) => s + v, 0);
       if (totalUnitsForSiege < 50) {
         return { success: false, error: 'Siege requires at least 50 units', errorCode: 'VALIDATION_FAILED' };
       }
@@ -632,7 +622,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
       casualties: JSON.stringify(combatResult.casualties),
       landGained: finalLandGained,
       timestamp: new Date().toISOString(),
-      owner: identity.sub
+      owner: ownerSub
     });
 
     // Check if defender should enter restoration after severe damage
@@ -676,7 +666,7 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
               data: JSON.stringify({ defenderId, killerKingdomId: attackerId }),
               isRead: false,
               createdAt: new Date().toISOString(),
-              owner: identity.sub,
+              owner: ownerSub,
             });
           }
         }
@@ -859,6 +849,67 @@ export const handler: Schema["processCombat"]["functionHandler"] = async (event)
         message: `Combat ${combatResult.result}: ${finalLandGained} land gained, ${combatResult.goldLooted + extraGoldStolen} gold looted`
       })
     };
+  } catch (error) {
+    await persistErrorLog('combat-processor', error, { attackerId, defenderId });
+    log.error('combat-processor', error, { attackerId, defenderId });
+    return { success: false, error: 'Combat processing failed', errorCode: ErrorCode.INTERNAL_ERROR };
+  }
+}
+
+export const handler: Schema["processCombat"]["functionHandler"] = async (event) => {
+  const { attackerId, defenderId, attackType, units, formationId, terrainId } = event.arguments;
+
+  try {
+    if (!attackerId || !defenderId) {
+      return { success: false, error: 'Missing attacker or defender ID', errorCode: ErrorCode.MISSING_PARAMS };
+    }
+
+    if (attackerId === defenderId) {
+      return { success: false, error: 'Cannot attack your own kingdom', errorCode: ErrorCode.INVALID_PARAM };
+    }
+
+    if (!units) {
+      return { success: false, error: 'No units specified for attack', errorCode: ErrorCode.MISSING_PARAMS };
+    }
+
+    // Verify caller identity
+    const identity = event.identity as { sub?: string; username?: string } | null;
+    if (!identity?.sub) {
+      return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
+    }
+
+    const [attacker, defender] = await Promise.all([
+      dbGet<KingdomType>('Kingdom', attackerId),
+      dbGet<KingdomType>('Kingdom', defenderId)
+    ]);
+
+    if (!attacker) {
+      return { success: false, error: 'Attacker kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+    }
+    if (!defender) {
+      return { success: false, error: 'Defender kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+    }
+
+    // Verify kingdom ownership (attacker only)
+    const denied = verifyOwnership(identity, attacker.owner as string | null);
+    if (denied) return denied;
+
+    // Rate limit check
+    const rateLimited = await checkRateLimit(identity.sub, 'combat');
+    if (rateLimited) return rateLimited;
+
+    const attackerUnits: Record<string, number> = parseJsonField<Record<string, number>>(units, {});
+
+    // Call the extracted combat resolution function
+    return await resolveCombat({
+      attacker,
+      defender,
+      attackerUnits,
+      attackType,
+      formationId: formationId ?? undefined,
+      terrainId: terrainId ?? undefined,
+      ownerSub: identity.sub,
+    });
   } catch (error) {
     await persistErrorLog('combat-processor', error, { attackerId, defenderId });
     log.error('combat-processor', error, { attackerId, defenderId });
