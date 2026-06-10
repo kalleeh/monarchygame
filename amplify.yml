@@ -7,15 +7,14 @@ applications:
           commands:
             # Install root deps for ampx CLI
             - npm install
-            # Deploy backend only when backend files changed; skip for frontend-only commits.
-            - |
-              if git diff --name-only HEAD~1 HEAD 2>/dev/null | grep -qE '^amplify/|^shared/|^package(-lock)?\.json|^amplify\.yml'; then
-                echo "Backend files changed — deploying backend..."
-                npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
-                npx ampx generate outputs --branch $AWS_BRANCH --app-id $AWS_APP_ID
-              else
-                echo "Frontend-only change — using committed amplify_outputs.json"
-              fi
+            # Always deploy the backend. CDK/CloudFormation is idempotent, so a
+            # frontend-only commit is a fast no-op. The previous `HEAD~1 HEAD`
+            # gate silently SKIPPED the backend deploy whenever a push's TOP
+            # commit was frontend-only (e.g. the backend change sat in HEAD~1),
+            # shipping a frontend that called not-yet-deployed APIs. Correctness
+            # over the minute saved.
+            - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+            - npx ampx generate outputs --branch $AWS_BRANCH --app-id $AWS_APP_ID
             - cp amplify_outputs.json frontend/amplify_outputs.json
             - npm install --prefix frontend
         build:
