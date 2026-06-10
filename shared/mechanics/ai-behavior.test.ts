@@ -255,7 +255,7 @@ describe('decideAIActions', () => {
       turnsAvailable: 50,
       gold: 200_000,
       totalUnits: { peasants: 200, militia: 100, knights: 50 },
-      buildings: { buildrate: 240, troop: 240, fortress: 120, income: 80, peasant: 80 },
+      buildings: { mine: 240, barracks: 240, wall: 120, tower: 80, farm: 80 },
     });
     const target = makeTarget({ networth: 350_000 });
     // rand=0.01 should be below aggressive late chance of 0.25
@@ -263,11 +263,24 @@ describe('decideAIActions', () => {
     expect(d.attackTarget).toBe('target-1');
   });
 
-  it('respects gold floor — never spends below 10k', () => {
-    const kingdom = makeAIKingdom({ gold: 15_000, turnsAvailable: 30, buildings: {} });
+  it('keeps a scaled gold reserve (>= 10% of starting gold)', () => {
+    const kingdom = makeAIKingdom({ gold: 100_000, turnsAvailable: 30, buildings: {} });
     const d = decideAIActions(kingdom, 'builder', 'early', []);
-    // Should only spend up to 5k (15k - 10k floor)
+    // Reserve is max(500, 10% of gold) = 10_000 here; never spends below it.
     expect(kingdom.gold - d.goldSpent).toBeGreaterThanOrEqual(10_000);
+  });
+
+  it('a player-sized AI (low gold, no buildings) can still act on its first tick', () => {
+    // ~player start: 100 land, 2000 gold, no buildings. Reserve = max(500, 200) = 500.
+    const kingdom = makeAIKingdom({
+      gold: 2000, land: 100, turnsAvailable: 30,
+      buildings: {}, totalUnits: { peasants: 40 },
+    });
+    const d = decideAIActions(kingdom, 'builder', 'early', []);
+    // It must DO something (build and/or train), not sit frozen.
+    expect(d.builds.length + d.trains.length).toBeGreaterThan(0);
+    // And it must keep at least the 500 minimum reserve.
+    expect(kingdom.gold - d.goldSpent).toBeGreaterThanOrEqual(500);
   });
 
   it('caps turns at 72', () => {

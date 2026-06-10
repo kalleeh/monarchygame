@@ -61,8 +61,15 @@ const BUILDING_TYPES = ['mine', 'farm', 'tower', 'castle', 'barracks', 'temple',
 // Gold cost per building (matches building-constructor: flat 250g, 1 turn each)
 const BUILDING_GOLD_COST = 250;
 
-// Minimum gold reserve — AI won't spend below this
-const GOLD_FLOOR = 10_000;
+// Gold reserve the AI keeps unspent each tick. Scales with the kingdom's gold
+// so a player-sized AI (~2k gold) can actually act on its first ticks instead
+// of sitting frozen below a flat 10k floor, while large AI still keep a sensible
+// buffer. Reserve = max(500, 10% of current gold).
+const GOLD_FLOOR_MIN = 500;
+const GOLD_FLOOR_FRACTION = 0.10;
+function goldFloor(gold: number): number {
+  return Math.max(GOLD_FLOOR_MIN, Math.floor(gold * GOLD_FLOOR_FRACTION));
+}
 
 // Turn cost for one build action
 const BUILD_TURN_COST = 1;
@@ -282,8 +289,12 @@ export function decideAIActions(
   let turnsLeft = turnBudget;
   let goldLeft = kingdom.gold;
 
+  // Gold reserve held back this tick — scales with the kingdom's gold so small
+  // (player-sized) AI can still act on their first ticks.
+  const reserve = goldFloor(kingdom.gold);
+
   // --- PHASE 1: BUILD ---
-  if (turnsLeft >= BUILD_TURN_COST && goldLeft > GOLD_FLOOR + BUILDING_GOLD_COST) {
+  if (turnsLeft >= BUILD_TURN_COST && goldLeft > reserve + BUILDING_GOLD_COST) {
     const maxBuildings = Math.floor(kingdom.land * 0.8);
     const currentTotal = Object.values(kingdom.buildings).reduce((s, n) => s + (n ?? 0), 0);
     let buildSlots = Math.max(0, maxBuildings - currentTotal);
@@ -291,13 +302,13 @@ export function decideAIActions(
     if (buildSlots > 0) {
       const ratios = BUILD_RATIOS[personality];
       for (const bType of BUILDING_TYPES) {
-        if (turnsLeft < BUILD_TURN_COST || goldLeft <= GOLD_FLOOR || buildSlots <= 0) break;
+        if (turnsLeft < BUILD_TURN_COST || goldLeft <= reserve || buildSlots <= 0) break;
         const target = Math.floor(maxBuildings * (ratios[bType] ?? 0));
         const current = kingdom.buildings[bType] ?? 0;
         const deficit = target - current;
         if (deficit <= 0) continue;
 
-        const affordable = Math.floor((goldLeft - GOLD_FLOOR) / BUILDING_GOLD_COST);
+        const affordable = Math.floor((goldLeft - reserve) / BUILDING_GOLD_COST);
         const toBuild = Math.min(deficit, affordable, buildSlots);
         if (toBuild <= 0) continue;
 
@@ -312,7 +323,7 @@ export function decideAIActions(
   // --- PHASE 2: TRAIN ---
   const raceUnits = RACE_UNITS[kingdom.race] ?? RACE_UNITS.Human;
   const econMult = RACE_ECON_MULT[kingdom.race] ?? 1.0;
-  const trainBudget = Math.floor((goldLeft - GOLD_FLOOR) * TRAIN_BUDGET_FRAC[personality]);
+  const trainBudget = Math.floor((goldLeft - reserve) * TRAIN_BUDGET_FRAC[personality]);
 
   // Troop cap — SAME ceiling the unit-trainer Lambda enforces for players:
   // total gold invested in troops cannot exceed land*1000 + barracks*2000 (min 2M).

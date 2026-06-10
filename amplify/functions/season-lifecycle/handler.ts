@@ -240,60 +240,46 @@ async function seedAIKingdoms(seasonId: string): Promise<{ created: number }> {
   const tableSuffix = await getTableSuffix();
   const tableName = `Kingdom-${tableSuffix}-NONE`;
 
-  // Build tier distribution: 100 small, 200 medium, 150 large, 50 huge
-  const tiers: Array<{ count: number; goldMin: number; goldMax: number; landMin: number; landMax: number }> = [
-    { count: 100, goldMin: 5000,    goldMax: 20000,   landMin: 100,  landMax: 300   },
-    { count: 200, goldMin: 50000,   goldMax: 200000,  landMin: 500,  landMax: 1500  },
-    { count: 150, goldMin: 200000,  goldMax: 500000,  landMin: 2000, landMax: 5000  },
-    { count: 50,  goldMin: 500000,  goldMax: 2000000, landMin: 5000, landMax: 15000 },
-  ];
+  // AI start EXACTLY like a fresh player — same ballpark land/gold/units, no
+  // buildings — and grow organically via the turn-ticker over the season. A new
+  // season is genuinely fresh; nobody is seeded 100× ahead. The scaled AI gold
+  // reserve (goldFloor in ai-behavior) lets these small kingdoms act from tick 1.
+  const TOTAL_AI = 500;
 
   // Pre-generate all kingdom items
   const items: Record<string, unknown>[] = [];
   let nameIndex = 0;
-  let tierKingdomIndex = 0;
 
-  for (const tier of tiers) {
-    for (let t = 0; t < tier.count; t++) {
+  for (let t = 0; t < TOTAL_AI; t++) {
+    {
       const prefix = NAME_PREFIXES[nameIndex % NAME_PREFIXES.length];
       const suffix = NAME_SUFFIXES[(nameIndex + Math.floor(nameIndex / NAME_PREFIXES.length)) % NAME_SUFFIXES.length];
-      const disambiguator = Math.floor(tierKingdomIndex / (NAME_PREFIXES.length * NAME_SUFFIXES.length));
+      const disambiguator = Math.floor(t / (NAME_PREFIXES.length * NAME_SUFFIXES.length));
       const name = disambiguator > 0 ? `${prefix} ${suffix} ${disambiguator + 1}` : `${prefix} ${suffix}`;
       nameIndex++;
-      tierKingdomIndex++;
 
       const race = ALL_RACES[nameIndex % ALL_RACES.length];
       const raceStats = RACE_STATS[race] ?? { warOffense: 1.0, warDefense: 1.0 };
 
-      const gold = randInt(rng, tier.goldMin, tier.goldMax);
-      const land = randInt(rng, tier.landMin, tier.landMax);
-      const population = randInt(rng, 1000, 50000);
+      // Player-equivalent start: ~100 land, ~2000 gold, small starter army, no
+      // buildings (small spread so they aren't identical).
+      const gold = randInt(rng, 1500, 2500);
+      const land = randInt(rng, 90, 130);
+      const population = randInt(rng, 400, 700);
 
-      const peasants = randInt(rng, 50, 300);
-      const militia  = randInt(rng, 20, 150);
-      const knights  = randInt(rng, 10, 80);
-      const cavalry  = randInt(rng, 5,  40);
+      const peasants = randInt(rng, 20, 60);
+      const militia  = randInt(rng, 5, 25);
+      const knights  = 0;
+      const cavalry  = 0;
       const totalUnitsCount = peasants + militia + knights + cavalry;
       const networth = land * 1000 + gold + totalUnitsCount * 100;
 
       const warOffense = raceStats.warOffense + (rng() * 3 + 2) / 10; // 2–5 range contribution
       const warDefense = raceStats.warDefense + (rng() * 3 + 2) / 10;
 
-      // Seed a believable starting economy: an established kingdom of this size
-      // would already have buildings on ~50% of its land. Without this, the
-      // earned-income model (AI no longer gets free gold) would leave fresh AI
-      // near-static for hours. Uses REAL building types so it feeds the same
-      // income/troop-cap formulas — this is a realistic starting state, not a cheat.
-      const developed = Math.floor(land * 0.5);
-      const buildings = {
-        mine:     Math.floor(developed * 0.25),
-        tower:    Math.floor(developed * 0.15),
-        farm:     Math.floor(developed * 0.20),
-        barracks: Math.floor(developed * 0.20),
-        castle:   Math.floor(developed * 0.05),
-        wall:     Math.floor(developed * 0.10),
-        temple:   Math.floor(developed * 0.05),
-      };
+      // No starting buildings — exactly like a new player. The AI builds its own
+      // economy from tick 1 (turn-ticker + ai-behavior), using its starting gold.
+      const buildings = {};
 
       items.push({
         id: crypto.randomUUID(),
