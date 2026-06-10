@@ -289,6 +289,7 @@ export function scoreBuilds(
   goldBudget: number,
   rng: () => number,
   troopGoldInvested: number,
+  utilityNoise: number = 0,
 ): Array<{ type: string; qty: number }> {
   const maxBuildings = Math.floor(me.land * 0.8);
   const currentTotal = Object.values(me.buildings).reduce((s, n) => s + (n ?? 0), 0);
@@ -308,9 +309,11 @@ export function scoreBuilds(
     return u;
   };
 
-  // Rank types by utility (tiny rng jitter for stable tiebreak).
+  // Difficulty noise perturbs the perceived utility of each building, so lower
+  // difficulties mis-rank options (e.g. build farms over towers); hard ranks
+  // near-optimally. Default 0 keeps unit tests deterministic.
   const ranked = [...BUILDING_TYPES]
-    .map(t => ({ t, u: utility(t) * (1 + (rng() * 2 - 1) * 0.0001) }))
+    .map(t => ({ t, u: utility(t) * (1 + (rng() * 2 - 1) * utilityNoise) }))
     .sort((a, b) => b.u - a.u);
 
   const out: Array<{ type: string; qty: number }> = [];
@@ -576,7 +579,7 @@ export function decide(
   const trainBudget = Math.floor(spendable * milShare);
 
   // BUILD
-  const builds = scoreBuilds(me, w, threat, turnsLeft, buildBudget, ctx.rng, invested);
+  const builds = scoreBuilds(me, w, threat, turnsLeft, buildBudget, ctx.rng, invested, params.utilityNoise);
   const buildGold = builds.reduce((s, b) => s + b.qty * BUILDING_GOLD_COST, 0);
   goldLeft -= buildGold;
   turnsLeft -= builds.length * BUILD_TURN_COST;
