@@ -7,6 +7,9 @@ import {
   DIFFICULTY_PARAMS,
   armyCombatPower,
   estimateDefense,
+  scoreBuilds,
+  threatLevel,
+  emptyMemory,
   type Persona,
   type Difficulty,
 } from './ai-strategist';
@@ -97,5 +100,57 @@ describe('estimateDefense (information-fair)', () => {
     const h = estimateDefense(view(500_000, 'Human'), 'hard', makeRng(7));
     const v = estimateDefense(view(500_000, 'Vampire'), 'hard', makeRng(7));
     expect(v).toBeGreaterThan(h);
+  });
+});
+
+function self(over: Partial<import('./ai-strategist').SelfState> = {}) {
+  return {
+    id: 'me', race: 'Human', land: 1000, gold: 100_000, turnsAvailable: 50,
+    networth: 1_000_000, buildings: {}, totalUnits: {},
+    ...over,
+  };
+}
+
+describe('scoreBuilds', () => {
+  it('economist concentrates on income buildings (tower has highest marginal gold)', () => {
+    const builds = scoreBuilds(self(), PERSONAS.economist, 1, 30, 90_000, makeRng(1), 0);
+    const total = builds.reduce((s, b) => s + b.qty, 0);
+    const towers = builds.find(b => b.type === 'tower')?.qty ?? 0;
+    expect(total).toBeGreaterThan(0);
+    expect(towers / total).toBeGreaterThan(0.4); // towers dominate econ value
+  });
+
+  it('turtle under threat builds far more walls than a safe economist', () => {
+    const turtleBuilds = scoreBuilds(self(), PERSONAS.turtle, 5, 30, 90_000, makeRng(2), 0);
+    const econBuilds = scoreBuilds(self(), PERSONAS.economist, 1, 30, 90_000, makeRng(2), 0);
+    const walls = (bs: Array<{ type: string; qty: number }>) =>
+      bs.find(b => b.type === 'wall')?.qty ?? 0;
+    expect(walls(turtleBuilds)).toBeGreaterThan(walls(econBuilds));
+  });
+
+  it('barracks utility spikes when troop-cap headroom is low', () => {
+    // troopGoldInvested near cap (land 1000, 0 barracks -> cap 2M floor; invested 1.9M)
+    const tight = scoreBuilds(self(), PERSONAS.warlord, 1, 30, 90_000, makeRng(3), 1_900_000);
+    const loose = scoreBuilds(self(), PERSONAS.warlord, 1, 30, 90_000, makeRng(3), 0);
+    const barracks = (bs: Array<{ type: string; qty: number }>) =>
+      bs.find(b => b.type === 'barracks')?.qty ?? 0;
+    expect(barracks(tight)).toBeGreaterThan(barracks(loose));
+  });
+
+  it('never exceeds buildable slots (80% of land) or the gold budget', () => {
+    const small = self({ land: 100, buildings: { mine: 70 } }); // 80 slots, 70 used
+    const builds = scoreBuilds(small, PERSONAS.economist, 1, 30, 5_000, makeRng(4), 0);
+    const total = builds.reduce((s, b) => s + b.qty, 0);
+    expect(total).toBeLessThanOrEqual(10);
+    expect(total * 250).toBeLessThanOrEqual(5_000);
+  });
+});
+
+describe('threatLevel', () => {
+  it('rises with grudges and recent attacks on me', () => {
+    const mem = emptyMemory();
+    mem.grudges['enemy'] = { count: 2, lastAt: new Date().toISOString() };
+    const recent = [{ attackerId: 'enemy', defenderId: 'me', landGained: 50, timestamp: new Date().toISOString() }];
+    expect(threatLevel('me', mem, recent)).toBeGreaterThan(threatLevel('me', emptyMemory(), []));
   });
 });

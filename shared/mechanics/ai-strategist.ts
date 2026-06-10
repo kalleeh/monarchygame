@@ -253,3 +253,81 @@ export function estimateDefense(
   const noise = 1 + (rng() * 2 - 1) * params.estNoise;
   return Math.max(1, base * noise);
 }
+
+// ── Threat assessment ───────────────────────────────────────────────────────
+
+export const GRUDGE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // grudges decay after 7 days
+
+/** 1 = calm. +1 per remembered grudge, +2 per attack on me this tick window. */
+export function threatLevel(
+  selfId: string,
+  memory: AIMemory,
+  recentBattles: PublicBattleEvent[],
+): number {
+  const grudgeCount = Object.values(memory.grudges).reduce((s, g) => s + g.count, 0);
+  const justAttacked = recentBattles.filter(b => b.defenderId === selfId).length;
+  return 1 + grudgeCount + justAttacked * 2;
+}
+
+// ── Build scoring ───────────────────────────────────────────────────────────
+//
+// Utility per building = persona-weighted value over a payback horizon, per
+// 250g spent. Income value comes from the REAL buildingPerTurnContribution so
+// the AI optimizes the same numbers players face. Greedy allocation.
+
+const PAYBACK_HORIZON_TURNS = 50;   // value income ~50 turns out
+const GOLD_PER_POP = 0.5;           // population is a weak resource currently
+const GOLD_PER_ELAN = 300;          // elan is scarce (cap 500)
+const WALL_THREAT_GOLD = 120;       // gold-equivalent of one wall per threat point
+const BARRACKS_CAP_GOLD = 350;      // gold-equivalent of +2000 troop-cap headroom when tight
+
+export function scoreBuilds(
+  me: SelfState,
+  w: PersonaWeights,
+  threat: number,
+  turnsBudget: number,
+  goldBudget: number,
+  rng: () => number,
+  troopGoldInvested: number,
+): Array<{ type: string; qty: number }> {
+  const maxBuildings = Math.floor(me.land * 0.8);
+  const currentTotal = Object.values(me.buildings).reduce((s, n) => s + (n ?? 0), 0);
+  let slots = Math.max(0, maxBuildings - currentTotal);
+  if (slots <= 0 || turnsBudget < BUILD_TURN_COST || goldBudget < BUILDING_GOLD_COST) return [];
+
+  const troopCap = calculateTroopCapGold({ land: me.land, barracks: me.buildings.barracks ?? 0 });
+  const capPressure = troopGoldInvested / Math.max(1, troopCap); // 0..1+
+
+  const utility = (type: string): number => {
+    const c = buildingPerTurnContribution(type, me.race);
+    let u = (c.gold * PAYBACK_HORIZON_TURNS) * w.econ
+          + (c.population * GOLD_PER_POP * PAYBACK_HORIZON_TURNS) * w.econ
+          + (c.elan * GOLD_PER_ELAN * PAYBACK_HORIZON_TURNS) * w.econ;
+    if (type === 'wall') u += threat * WALL_THREAT_GOLD * w.defense;
+    if (type === 'barracks' && capPressure > 0.8) u += BARRACKS_CAP_GOLD * w.military;
+    return u;
+  };
+
+  // Rank types by utility (tiny rng jitter for stable tiebreak).
+  const ranked = [...BUILDING_TYPES]
+    .map(t => ({ t, u: utility(t) * (1 + (rng() * 2 - 1) * 0.0001) }))
+    .sort((a, b) => b.u - a.u);
+
+  const out: Array<{ type: string; qty: number }> = [];
+  let gold = goldBudget;
+  let turns = turnsBudget;
+
+  for (const { t, u } of ranked) {
+    if (u <= 0 || slots <= 0 || gold < BUILDING_GOLD_COST || turns < BUILD_TURN_COST) break;
+    const totalU = ranked.reduce((s, r) => s + Math.max(0, r.u), 0) || 1;
+    const share = Math.max(0.15, u / totalU);
+    const byGold = Math.floor((gold * share) / BUILDING_GOLD_COST);
+    const qty = Math.min(byGold, slots);
+    if (qty <= 0) continue;
+    out.push({ type: t, qty });
+    gold -= qty * BUILDING_GOLD_COST;
+    slots -= qty;
+    turns -= BUILD_TURN_COST;
+  }
+  return out;
+}
