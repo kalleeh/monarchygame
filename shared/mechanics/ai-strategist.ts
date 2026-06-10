@@ -467,16 +467,26 @@ export function scoreAttack(
 
     const pWin = ratio >= 2.0 * params.attackMargin ? 0.9 : 0.6;
     const estLand = Math.max(50, t.networth * EST_LAND_PER_NETWORTH);
-    const landValue = estLand * LAND_GAIN_PCT * GOLD_PER_LAND;
-    const loot = estLand * LAND_GAIN_PCT * GOLD_PER_LAND;     // goldLooted ≈ landGained·1000
+    // A win yields TWO distinct rewards, both proportional to land taken (~7%):
+    //   landValue — the permanent acres captured (valued at GOLD_PER_LAND each)
+    //   loot       — one-time gold stolen (combat sets goldLooted ≈ landGained·1000)
+    // They share a formula but are separate terms; only loot is weighted by the
+    // persona's lootFocus.
+    const gainPerLand = estLand * LAND_GAIN_PCT * GOLD_PER_LAND;
+    const landValue = gainPerLand;
+    const loot = gainPerLand;
     const casualty = armyValue * CASUALTY_FRACTION;
 
-    let ev = pWin * (landValue + loot * w.lootFocus) - casualty;
-    ev *= w.aggression;
+    // Persona multipliers compound intentionally — e.g. a warlord schemer with a
+    // grudge against a wounded human player stacks aggression × vengeance ×
+    // playerFocus × wounded for a large (3-4x) preference toward that target.
+    let personaMult = w.aggression;
     const grudge = ctx.memory.grudges[t.id];
-    if (grudge) ev *= 1 + w.vengeance * Math.min(grudge.count, 4) * 0.5;
-    if (!t.isAI) ev *= w.playerFocus;
-    if (woundedIds.has(t.id)) ev *= WOUNDED_BONUS;
+    if (grudge) personaMult *= 1 + w.vengeance * Math.min(grudge.count, 4) * 0.5;
+    if (!t.isAI) personaMult *= w.playerFocus;
+    if (woundedIds.has(t.id)) personaMult *= WOUNDED_BONUS;
+
+    let ev = (pWin * (landValue + loot * w.lootFocus) - casualty) * personaMult;
     ev *= 1 + (ctx.rng() * 2 - 1) * params.utilityNoise;      // judgment jitter
 
     if (ev <= 0) continue;
