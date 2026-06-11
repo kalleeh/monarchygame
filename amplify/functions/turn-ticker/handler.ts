@@ -196,7 +196,7 @@ export const handler = async (_event: unknown): Promise<{ success: boolean; tick
         const buildingsMap = parseJsonField<Record<string, number>>((kingdom as KingdomRow).buildings, {});
         const statsMap = parseJsonField<Record<string, unknown>>((kingdom as KingdomRow).stats, {});
 
-        const persona = assignPersona(kingdom.id);
+        const persona = assignPersona(kingdom.id, (kingdom.race as string) ?? 'Human');
         const difficulty = assignDifficulty(kingdom.id);
         const seasonAge: SeasonAge = ((kingdom as KingdomRow).currentAge as SeasonAge) ?? 'early';
 

@@ -30,6 +30,35 @@ describe('persona & difficulty assignment', () => {
     expect(seen.size).toBe(6);
   });
 
+  it('is deterministic per (kingdom id, race)', () => {
+    expect(assignPersona('kingdom-abc', 'Vampire')).toBe(assignPersona('kingdom-abc', 'Vampire'));
+  });
+
+  it('biases toward race strengths but keeps full variety', () => {
+    // Vampire: +35% defense, 2× costs → should lean turtle/schemer.
+    const vampire: Record<Persona, number> = { warlord: 0, raider: 0, economist: 0, turtle: 0, opportunist: 0, schemer: 0 };
+    const droben: Record<Persona, number> = { warlord: 0, raider: 0, economist: 0, turtle: 0, opportunist: 0, schemer: 0 };
+    for (let i = 0; i < 1000; i++) {
+      vampire[assignPersona(`k-${i}`, 'Vampire')]++;
+      droben[assignPersona(`k-${i}`, 'Droben')]++;
+    }
+    // Bias holds: a Vampire turtles far more than a Droben does.
+    expect(vampire.turtle).toBeGreaterThan(droben.turtle);
+    // Droben (+20% offense, highest) is the more warlike of the two.
+    expect(droben.warlord).toBeGreaterThan(vampire.warlord);
+    // Variety survives: every persona still appears for each race.
+    for (const p of Object.keys(vampire) as Persona[]) {
+      expect(vampire[p]).toBeGreaterThan(0);
+      expect(droben[p]).toBeGreaterThan(0);
+    }
+  });
+
+  it('falls back to a uniform pick for an unknown race', () => {
+    const seen = new Set<Persona>();
+    for (let i = 0; i < 600; i++) seen.add(assignPersona(`k-${i}`, 'Nonexistent'));
+    expect(seen.size).toBe(6);
+  });
+
   it('difficulty distribution is roughly 25/50/25', () => {
     const counts: Record<Difficulty, number> = { easy: 0, medium: 0, hard: 0 };
     for (let i = 0; i < 2000; i++) counts[assignDifficulty(`k-${i}`)]++;

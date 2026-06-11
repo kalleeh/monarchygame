@@ -185,8 +185,60 @@ export function makeRng(seed: number): () => number {
 
 const PERSONA_LIST: Persona[] = ['warlord', 'raider', 'economist', 'turtle', 'opportunist', 'schemer'];
 
-export function assignPersona(kingdomId: string): Persona {
-  return PERSONA_LIST[hashString(kingdomId, 0x9e3779b9) % PERSONA_LIST.length];
+/**
+ * Extra weight added to a persona when the race's real mechanics reward that
+ * playstyle (combat bonuses in combat-mechanics.ts, economy bonuses in
+ * economy-mechanics.ts). Every persona keeps an implicit baseline weight of
+ * PERSONA_BASE_WEIGHT so a coherent-but-varied spread survives — a Vampire is
+ * MORE likely to turtle, but can still roll any persona. Race is the innate
+ * capability; persona is the behaviour. This makes them compose rather than
+ * stay orthogonal, so AI tend to play to their strengths.
+ */
+const PERSONA_BASE_WEIGHT = 1.0;
+const RACE_PERSONA_AFFINITY: Record<string, Partial<Record<Persona, number>>> = {
+  // Human: +40% caravan gold, balanced stats → economy & flexible opportunism.
+  Human:     { economist: 2.0, opportunist: 1.5 },
+  // Elven: +10% defense, building/magic defense → patient turtle/economy.
+  Elven:     { turtle: 2.0, economist: 1.0 },
+  // Goblin: +10% offense, cheap early raiding → raider/warlord.
+  Goblin:    { raider: 2.0, warlord: 1.5 },
+  // Droben: +20% offense (highest), elite combat → warlord first, raider second.
+  Droben:    { warlord: 2.5, raider: 1.5 },
+  // Vampire: +35% defense (highest) but 2× costs → fortress turtle, patient schemer.
+  Vampire:   { turtle: 2.5, schemer: 1.5 },
+  // Elemental: +10% offense, magic+combat hybrid → flexible aggression.
+  Elemental: { warlord: 1.5, opportunist: 1.5 },
+  // Centaur: espionage/disruption identity → grudge-driven schemer/opportunist.
+  Centaur:   { schemer: 2.0, opportunist: 1.5 },
+  // Sidhe: sorcery focus, fast élan → calculating schemer/economist.
+  Sidhe:     { schemer: 2.0, economist: 1.5 },
+  // Dwarven: +20% defense, fortifications & mining → turtle/economy.
+  Dwarven:   { turtle: 2.0, economist: 1.5 },
+  // Fae: high income, versatile magic → economy with flexible opportunism.
+  Fae:       { economist: 2.0, opportunist: 1.5 },
+};
+
+/**
+ * Assign a behavioural persona, biased toward the race's mechanical strengths
+ * when `race` is supplied. Deterministic per (kingdomId, race): same inputs
+ * always yield the same persona. Omitting `race` falls back to a uniform pick
+ * over all six personas (used by tests and any race-agnostic caller).
+ */
+export function assignPersona(kingdomId: string, race?: string): Persona {
+  const affinity = race ? RACE_PERSONA_AFFINITY[race] : undefined;
+  if (!affinity) {
+    return PERSONA_LIST[hashString(kingdomId, 0x9e3779b9) % PERSONA_LIST.length];
+  }
+  const weights = PERSONA_LIST.map((p) => PERSONA_BASE_WEIGHT + (affinity[p] ?? 0));
+  const total = weights.reduce((a, b) => a + b, 0);
+  // Deterministic point in [0, total). Seed the PRNG from the hash so the draw
+  // is uniformly distributed — the raw hash alone clusters badly for short ids.
+  let pick = makeRng(hashString(kingdomId, 0x9e3779b9))() * total;
+  for (let i = 0; i < PERSONA_LIST.length; i++) {
+    pick -= weights[i];
+    if (pick < 0) return PERSONA_LIST[i];
+  }
+  return PERSONA_LIST[PERSONA_LIST.length - 1]; // float-rounding fallback
 }
 
 /** 25% easy / 50% medium / 25% hard, deterministic per kingdom. */
