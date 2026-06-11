@@ -8,7 +8,6 @@ export const STORAGE_KEYS = {
   HAS_BATTLED: (kingdomId: string) => `has-battled-${kingdomId}`,
   TUTORIAL_PROGRESS: 'tutorial-progress',
   TUTORIAL: (tutorialId: string) => `tutorial-${tutorialId}`,
-  PENDING_PLAYSTYLE: 'pending-playstyle',
   THEME: 'monarchy-theme',
   LEADERBOARD_FILTERS: 'leaderboard-filters',
   PENDING_SETTLEMENTS: 'pendingSettlements',
