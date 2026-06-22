@@ -87,7 +87,7 @@ beforeEach(() => {
 
 describe('building-constructor handler', () => {
   describe('happy path', () => {
-    it('deducts 250 gold per building and increments building count', async () => {
+    it('deducts the land-scaled gold cost per building and increments building count', async () => {
       mockDbGet.mockResolvedValue(mockKingdom());
 
       const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 2 }));
@@ -96,9 +96,10 @@ describe('building-constructor handler', () => {
       const buildings = JSON.parse(result.buildings as string);
       expect(buildings.mine).toBe(2);
 
-      // Verify update called with correct resource deduction (2 * 250 = 500)
+      // Verify update called with correct resource deduction.
+      // At 1000 land, gold/acre = round(300 + 0.017*1000) = 317 → 2 * 317 = 634.
       const updateCall = mockDbConditionalUpdate.mock.calls[0];
-      expect(updateCall[2].resources.gold).toBe(10000 - 500);
+      expect(updateCall[2].resources.gold).toBe(10000 - 634);
     });
 
     it('works for every valid building type', async () => {
@@ -194,7 +195,7 @@ describe('building-constructor handler', () => {
 
   describe('INSUFFICIENT_RESOURCES', () => {
     it('returns INSUFFICIENT_RESOURCES when gold is below cost', async () => {
-      // 3 mines = 750 gold cost, but kingdom only has 500 gold
+      // 3 mines at 1000 land = 951 gold cost, but kingdom only has 500 gold
       mockDbGet.mockResolvedValue(
         mockKingdom({ resources: { gold: 500, population: 1000, mana: 500, land: 1000 } })
       );
@@ -208,9 +209,9 @@ describe('building-constructor handler', () => {
     });
 
     it('succeeds when gold is exactly equal to cost', async () => {
-      // 1 mine = 250 gold cost, kingdom has exactly 250 gold
+      // 1 mine at 1000 land = 317 gold cost, kingdom has exactly 317 gold
       mockDbGet.mockResolvedValue(
-        mockKingdom({ resources: { gold: 250, population: 1000, mana: 500, land: 1000 } })
+        mockKingdom({ resources: { gold: 317, population: 1000, mana: 500, land: 1000 } })
       );
 
       const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', buildingType: 'mine', quantity: 1 }));

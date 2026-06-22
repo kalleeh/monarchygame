@@ -18,6 +18,8 @@
 import { calculateTroopCapGold } from './troop-cap-mechanics';
 import { buildingPerTurnContribution } from './economy-mechanics';
 import { RACE_OFFENSE_BONUSES, RACE_DEFENSE_BONUSES } from './combat-mechanics';
+import { buildingGoldCostPerAcre } from './building-cost';
+import { calculateBRT, calculateBuildTurns } from './building-mechanics';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -102,8 +104,6 @@ export interface StrategistDecision {
 
 /** Real building types — building-constructor VALID_BUILDING_TYPES. */
 export const BUILDING_TYPES = ['mine', 'farm', 'tower', 'castle', 'barracks', 'temple', 'wall'] as const;
-export const BUILDING_GOLD_COST = 250;           // building-constructor
-export const BUILD_TURN_COST = 1;
 export const TRAIN_TURN_COST = 1;
 export const ATTACK_TURN_COST = 4;               // combat base cost
 export const MAX_TOTAL_UNITS = 100_000;          // unit-trainer MAX_TOTAL_UNITS
@@ -324,8 +324,11 @@ export function threatLevel(
 // ── Build scoring ───────────────────────────────────────────────────────────
 //
 // Utility per building = persona-weighted value over a payback horizon, per
-// 250g spent. Income value comes from the REAL buildingPerTurnContribution so
-// the AI optimizes the same numbers players face. Greedy allocation.
+// gold spent. Gold/acre scales with land (building-cost.ts) and turn cost is
+// BRT-based (building-mechanics.ts) — the SAME costs the building-constructor
+// Lambda charges players. Income value comes from the REAL
+// buildingPerTurnContribution so the AI optimizes the same numbers players
+// face. Greedy allocation.
 
 const PAYBACK_HORIZON_TURNS = 50;   // value income ~50 turns out
 const GOLD_PER_POP = 0.5;           // population is a weak resource currently
@@ -343,10 +346,16 @@ export function scoreBuilds(
   troopGoldInvested: number,
   utilityNoise: number = 0,
 ): Array<{ type: string; qty: number }> {
+  // Per-acre gold cost and BRT both scale with the kingdom — the same costs the
+  // building-constructor Lambda charges players.
+  const goldPerBuilding = buildingGoldCostPerAcre(me.land);
+  const quarries = me.buildings.mine ?? 0;
+  const brt = calculateBRT(me.land > 0 ? (quarries / me.land) * 100 : 0);
+
   const maxBuildings = Math.floor(me.land * 0.8);
   const currentTotal = Object.values(me.buildings).reduce((s, n) => s + (n ?? 0), 0);
   let slots = Math.max(0, maxBuildings - currentTotal);
-  if (slots <= 0 || turnsBudget < BUILD_TURN_COST || goldBudget < BUILDING_GOLD_COST) return [];
+  if (slots <= 0 || turnsBudget < 1 || goldBudget < goldPerBuilding) return [];
 
   const troopCap = calculateTroopCapGold({ land: me.land, barracks: me.buildings.barracks ?? 0 });
   const capPressure = troopGoldInvested / Math.max(1, troopCap); // 0..1+
@@ -376,16 +385,20 @@ export function scoreBuilds(
   // each type, weighted against the utility of the types not yet processed.
   let remainingU = ranked.reduce((s, r) => s + Math.max(0, r.u), 0) || 1;
   for (const { t, u } of ranked) {
-    if (u <= 0 || slots <= 0 || gold < BUILDING_GOLD_COST || turns < BUILD_TURN_COST) break;
+    if (u <= 0 || slots <= 0 || gold < goldPerBuilding || turns < 1) break;
     const share = Math.max(0.15, u / remainingU);
     remainingU = Math.max(1, remainingU - Math.max(0, u));
-    const byGold = Math.floor((gold * share) / BUILDING_GOLD_COST);
-    const qty = Math.min(byGold, slots);
+    const byGold = Math.floor((gold * share) / goldPerBuilding);
+    // Turn budget binds via BRT and is spread across types by the same share, so
+    // a single high-utility type can't consume the whole budget at low BRT —
+    // leaving room for lower-ranked-but-still-valued builds (e.g. walls).
+    const byTurns = Math.max(1, Math.floor(turns * share)) * brt;
+    const qty = Math.min(byGold, slots, byTurns);
     if (qty <= 0) continue;
     out.push({ type: t, qty });
-    gold -= qty * BUILDING_GOLD_COST;
+    gold -= qty * goldPerBuilding;
     slots -= qty;
-    turns -= BUILD_TURN_COST;
+    turns -= calculateBuildTurns(qty, brt);
   }
   return out;
 }
@@ -637,11 +650,21 @@ export function decide(
   const buildBudget = Math.floor(spendable * (1 - milShare));
   const trainBudget = Math.floor(spendable * milShare);
 
-  // BUILD
-  const builds = scoreBuilds(me, w, threat, turnsLeft, buildBudget, ctx.rng, invested, params.utilityNoise);
-  const buildGold = builds.reduce((s, b) => s + b.qty * BUILDING_GOLD_COST, 0);
+  // BUILD — gold/acre and BRT-based turn cost mirror the building-constructor Lambda.
+  // Reserve turns for training and (when combat is possible) one attack, so a
+  // low-BRT kingdom can't sink its whole turn pool into construction and starve
+  // its other actions — the same prioritisation a player makes.
+  // scoreAttack needs ATTACK_TURN_COST + 2 turns available to even consider a
+  // strike, so reserve that buffer (plus the train action) past the build phase.
+  const reservedTurns = TRAIN_TURN_COST + (ctx.age === 'early' ? 0 : ATTACK_TURN_COST + 2);
+  const buildTurnBudget = Math.max(0, turnsLeft - reservedTurns);
+  const builds = scoreBuilds(me, w, threat, buildTurnBudget, buildBudget, ctx.rng, invested, params.utilityNoise);
+  const goldPerBuilding = buildingGoldCostPerAcre(me.land);
+  const buildGold = builds.reduce((s, b) => s + b.qty * goldPerBuilding, 0);
+  const buildBrt = calculateBRT(me.land > 0 ? ((me.buildings.mine ?? 0) / me.land) * 100 : 0);
+  const buildTurns = builds.reduce((s, b) => s + calculateBuildTurns(b.qty, buildBrt), 0);
   goldLeft -= buildGold;
-  turnsLeft -= builds.length * BUILD_TURN_COST;
+  turnsLeft -= buildTurns;
 
   // TRAIN — account for barracks built this tick raising the cap.
   const barracksBuilt = builds.find(b => b.type === 'barracks')?.qty ?? 0;

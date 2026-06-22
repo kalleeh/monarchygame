@@ -6,6 +6,8 @@ import { dbGet, dbConditionalUpdate, dbQuery, parseJsonField, ensureTurnsBalance
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 import { isConditionalCheckFailed } from '../conditional-helpers';
+import { buildingGoldCost, kingdomBRT } from '../../../shared/mechanics/building-cost';
+import { calculateBuildTurns } from '../../../shared/mechanics/building-mechanics';
 
 const VALID_BUILDING_TYPES = ['castle', 'barracks', 'farm', 'mine', 'temple', 'tower', 'wall'] as const;
 type BuildingType = typeof VALID_BUILDING_TYPES[number];
@@ -70,7 +72,8 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
     }
 
     const resources = parseJsonField(kingdom.resources, {} as KingdomResources);
-    const goldCost = quantity * 250;
+    const buildings = parseJsonField(kingdom.buildings, {} as KingdomBuildings);
+    const goldCost = buildingGoldCost(quantity, resources.land ?? 0);
     const currentGold = resources.gold ?? 0;
 
     if (currentGold < goldCost) {
@@ -80,12 +83,12 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
     // Check and deduct turns from turnsBalance (server-side pool), falling back to resources.turns
     await ensureTurnsBalance(kingdom as Record<string, unknown>);
     const currentTurns = kingdom.turnsBalance ?? resources.turns ?? 72;
-    const turnCost = 1;
+    const brt = kingdomBRT(buildings, resources.land ?? 0);
+    const turnCost = calculateBuildTurns(quantity, brt);
     if (currentTurns < turnCost) {
       return { success: false, error: `Not enough turns. Need ${turnCost}, have ${currentTurns}`, errorCode: ErrorCode.INSUFFICIENT_RESOURCES };
     }
 
-    const buildings = parseJsonField(kingdom.buildings, {} as KingdomBuildings);
     const currentCount = buildings[buildingType as keyof KingdomBuildings] ?? 0;
 
     // VAL-1: enforce land-based building cap (80% of land, no per-type limit)
@@ -126,7 +129,7 @@ export const handler: Schema["constructBuildings"]["functionHandler"] = async (e
     }
 
     log.info('building-constructor', 'constructBuildings', { kingdomId, buildingType, quantity });
-    return { success: true, buildings: JSON.stringify(updatedBuildings) };
+    return { success: true, buildings: JSON.stringify(updatedBuildings), goldCost, turnCost };
   } catch (error) {
     await persistErrorLog('building-constructor', error, { kingdomId, buildingType, quantity });
     log.error('building-constructor', error, { kingdomId, buildingType, quantity });

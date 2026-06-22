@@ -4,7 +4,7 @@
  * Uses the building-constructor Lambda via BuildingService.
  *
  * Valid building types (from handler.ts): castle, barracks, farm, mine, temple, tower, wall
- * Cost: 250 gold per building, 1 turn per construction action.
+ * Cost: gold scales per-acre with kingdom size; turn cost = ceil(quantity / BRT).
  */
 
 import React, { useState, useCallback } from 'react';
@@ -17,6 +17,8 @@ import { refreshKingdomResources } from '../services/domain/CombatService';
 import { ToastService } from '../services/toastService';
 import { getBuildingName, getBuildingImage } from '../utils/buildingMechanics';
 import { buildingPerTurnContribution } from '../../../shared/mechanics/economy-mechanics';
+import { buildingGoldCost, kingdomBRT } from '../../../shared/mechanics/building-cost';
+import { calculateBuildTurns, getBuildEfficiencyWarning } from '../../../shared/mechanics/building-mechanics';
 import { isDemoMode } from '../utils/authMode';
 import { GoldIcon, TurnsIcon } from './ui/MenuIcons';
 import './BuildingManagement.css';
@@ -35,7 +37,6 @@ interface BuildingDef {
   category: string;
   description: string;
   effect: string;
-  goldCost: number;
 }
 
 // Lambda accepts exactly these building types
@@ -43,55 +44,46 @@ const BUILDING_DEFS: BuildingDef[] = [
   {
     id: 'mine',
     category: 'buildrate',
-    description: 'Increases your build rate (BRT), allowing faster construction.',
-    effect: '+BRT per turn',
-    goldCost: 250,
+    description: 'Increases your build rate (BRT), allowing faster construction, and generates gold.',
+    effect: '+BRT & gold',
   },
   {
     id: 'farm',
     category: 'peasant',
     description: 'Houses the peasant population and boosts food production.',
     effect: '+Population growth',
-    goldCost: 250,
   },
   {
     id: 'barracks',
     category: 'troop',
     description: 'Trains soldiers and lowers unit upkeep costs.',
     effect: '+Training rate',
-    goldCost: 250,
   },
   {
     id: 'tower',
     category: 'income',
     description: 'Generates tax revenue for your kingdom.',
     effect: '+Gold income',
-    goldCost: 250,
   },
   {
     id: 'temple',
     category: 'magic',
     description: 'Boosts magical power and elan generation.',
     effect: '+Elan/mana',
-    goldCost: 250,
   },
   {
     id: 'wall',
     category: 'fortress',
     description: 'Defensive fortifications protecting your kingdom from attacks.',
     effect: '+Defense bonus',
-    goldCost: 250,
   },
   {
     id: 'castle',
     category: 'castle',
     description: 'A grand castle — prestige structure providing defense and leadership.',
     effect: '+Defense + prestige',
-    goldCost: 250,
   },
 ];
-
-const GOLD_PER_BUILDING = 250;
 
 export default function BuildingManagement({
   kingdomId,
@@ -101,6 +93,7 @@ export default function BuildingManagement({
   const resources = useKingdomStore((state) => state.resources);
   const addGold = useKingdomStore((state) => state.addGold);
   const addTurns = useKingdomStore((state) => state.addTurns);
+  const setStoreBuildings = useKingdomStore((state) => state.setBuildings);
 
   // Store the raw kingdom buildings so we can display current counts
   const [kingdomBuildings, setKingdomBuildings] = useState<Record<string, number>>({});
@@ -160,6 +153,9 @@ export default function BuildingManagement({
 
   const gold = resources.gold ?? 0;
   const turns = resources.turns ?? 0;
+  const land = resources.land ?? 0;
+  // Build rate (structures per turn) from the player's quarry coverage.
+  const brt = kingdomBRT(kingdomBuildings, land);
 
   const handleQuantityChange = useCallback((buildingId: string, value: number) => {
     setQuantities((prev) => ({
@@ -172,7 +168,8 @@ export default function BuildingManagement({
     async (building: BuildingDef) => {
       if (loading[building.id]) return;
       const quantity = quantities[building.id] ?? 1;
-      const totalCost = quantity * GOLD_PER_BUILDING;
+      const totalCost = buildingGoldCost(quantity, land);
+      const turnCost = calculateBuildTurns(quantity, brt);
 
       if (gold < totalCost) {
         ToastService.error(
@@ -180,8 +177,8 @@ export default function BuildingManagement({
         );
         return;
       }
-      if (turns < 1) {
-        ToastService.error('Not enough turns to construct buildings.');
+      if (turns < turnCost) {
+        ToastService.error(`Not enough turns. Need ${turnCost} to construct ${quantity} buildings.`);
         return;
       }
 
@@ -203,7 +200,7 @@ export default function BuildingManagement({
         // In auth mode, refreshKingdomResources() below syncs authoritative state.
         if (isDemoMode()) {
           addGold(-totalCost);
-          addTurns(-1);
+          addTurns(-turnCost);
         }
 
         // Update displayed building counts from server response
@@ -212,6 +209,9 @@ export default function BuildingManagement({
           try {
             const updated = JSON.parse(buildingsStr) as Record<string, number>;
             setKingdomBuildings(updated);
+            // Push into the kingdom store so the dashboard's per-turn rates and BRT
+            // reflect the new buildings on navigate-back.
+            setStoreBuildings(updated);
             // Always write to localStorage as a fast local cache
             const stored = localStorage.getItem(`kingdom-${kingdomId}`);
             if (stored) {
@@ -226,10 +226,11 @@ export default function BuildingManagement({
           }
         } else {
           // Optimistically update local buildings count
-          setKingdomBuildings((prev) => ({
-            ...prev,
-            [building.id]: (prev[building.id] ?? 0) + quantity,
-          }));
+          setKingdomBuildings((prev) => {
+            const next = { ...prev, [building.id]: (prev[building.id] ?? 0) + quantity };
+            setStoreBuildings(next);
+            return next;
+          });
         }
 
         ToastService.success(
@@ -245,7 +246,7 @@ export default function BuildingManagement({
         setLoading((prev) => ({ ...prev, [building.id]: false }));
       }
     },
-    [kingdomId, race, quantities, gold, turns, addGold, addTurns, loading]
+    [kingdomId, race, quantities, gold, turns, land, brt, addGold, addTurns, setStoreBuildings, loading]
   );
 
   return (
@@ -280,15 +281,19 @@ export default function BuildingManagement({
             <span className="bm-resource-label">Turns:</span>
             <span className="bm-resource-value">{turns}</span>
           </span>
-          <span className="bm-resource-hint">Each construction costs 250 gold &amp; 1 turn</span>
+          <span className="bm-resource-hint">
+            {buildingGoldCost(1, land).toLocaleString()} gold/structure · BRT {brt} (build {brt} per turn)
+          </span>
         </div>
 
         {/* Building cards */}
         <div className="bm-grid">
           {BUILDING_DEFS.map((building) => {
             const quantity = quantities[building.id] ?? 1;
-            const totalCost = quantity * GOLD_PER_BUILDING;
-            const canAfford = gold >= totalCost && turns >= 1;
+            const totalCost = buildingGoldCost(quantity, land);
+            const turnCost = calculateBuildTurns(quantity, brt);
+            const efficiencyWarning = getBuildEfficiencyWarning(quantity, brt);
+            const canAfford = gold >= totalCost && turns >= turnCost;
             const currentCount = kingdomBuildings[building.id] ?? 0;
             const displayName = getBuildingName(race, building.category);
             const imageSrc = getBuildingImage(race, building.category);
@@ -368,9 +373,17 @@ export default function BuildingManagement({
                   <div className="bm-cost-row">
                     <span className="bm-cost-label">Cost:</span>
                     <span className={`bm-cost-value${!canAfford ? ' bm-cost--unaffordable' : ''}`}>
-                      <GoldIcon /> {totalCost.toLocaleString()} gold + 1 turn
+                      <GoldIcon /> {totalCost.toLocaleString()} gold + {turnCost} turn{turnCost !== 1 ? 's' : ''}
                     </span>
                   </div>
+                  <div className="bm-cost-row" style={{ fontSize: '0.72rem', color: '#9aa4b2' }}>
+                    Build {quantity} → {turnCost} turn{turnCost !== 1 ? 's' : ''} (BRT {brt})
+                  </div>
+                  {efficiencyWarning && (
+                    <div className="bm-cost-row" style={{ fontSize: '0.72rem', color: '#fbbf24' }}>
+                      {efficiencyWarning}
+                    </div>
+                  )}
 
                   <button
                     className="bm-build-btn"
@@ -378,7 +391,7 @@ export default function BuildingManagement({
                     disabled={!canAfford || isLoading}
                     title={
                       !canAfford
-                        ? `Need ${totalCost.toLocaleString()} gold and 1 turn`
+                        ? `Need ${totalCost.toLocaleString()} gold and ${turnCost} turn${turnCost !== 1 ? 's' : ''}`
                         : `Build ${quantity} ${displayName}`
                     }
                   >

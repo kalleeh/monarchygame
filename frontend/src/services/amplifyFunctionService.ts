@@ -524,7 +524,12 @@ export class AmplifyFunctionService {
               health: def?.stats.hitPoints ?? 10,
             };
           });
-        useKingdomStore.getState().syncFromServer({ resources, units: serverUnits });
+        const buildings = data.buildings
+          ? (typeof data.buildings === 'string'
+              ? JSON.parse(data.buildings) as Record<string, number>
+              : data.buildings as Record<string, number>)
+          : undefined;
+        useKingdomStore.getState().syncFromServer({ resources, units: serverUnits, buildings });
       }
     } catch (e) {
       console.error('[refreshKingdomResources] failed:', e);

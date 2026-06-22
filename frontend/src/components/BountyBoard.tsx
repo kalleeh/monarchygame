@@ -4,12 +4,13 @@
  * allows players to claim bounties, and shows completed bounty history.
  */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { useBountyStore } from '../stores/bountyStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { isDemoMode } from '../utils/authMode';
 import { useKingdomTargets } from '../hooks/useKingdomTargets';
+import { TargetPicker } from './common/TargetPicker';
 import { TopNavigation } from './TopNavigation';
 import { LandIcon, HammerIcon, TurnsIcon } from './ui/MenuIcons';
 import './BountyBoard.css';
@@ -39,19 +40,8 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId, onBack }) => {
   const { aiKingdoms, generateAIKingdoms } = useAIKingdomStore();
   const resources = useKingdomStore((state) => state.resources);
 
-  const [targetSearch, setTargetSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const { targets: kingdomTargets, loading: targetsLoading, hasMore: targetsHasMore, loadMore: loadMoreTargets } =
-    useKingdomTargets({ range: [0.3, 3.0], nameSearch: debouncedSearch });
-
-  // Debounce name search input (300ms)
-  useEffect(() => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => setDebouncedSearch(targetSearch), 300);
-    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
-  }, [targetSearch]);
+  // Feeds the bounty list (rewards/efficiency are computed per target by the store).
+  const { targets: kingdomTargets } = useKingdomTargets({ range: [0.3, 3.0] });
 
   // Seed AI kingdoms in demo mode, then generate bounties from them.
   // In auth mode, generate bounties from server-fetched kingdomTargets.
@@ -116,128 +106,72 @@ const BountyBoard: React.FC<BountyBoardProps> = ({ kingdomId, onBack }) => {
         <section className="bounty-section">
           <h2 className="section-title">Available Bounties</h2>
 
-          <input
-            type="text"
-            placeholder="Search kingdoms by name..."
-            value={targetSearch}
-            onChange={(e) => setTargetSearch(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '0.5rem 0.75rem',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(139,92,246,0.2)',
-              borderRadius: '6px',
-              color: '#fff',
-              fontSize: '0.9rem',
-              marginBottom: '1rem',
-              boxSizing: 'border-box',
-            }}
-          />
-
-          {(loading || targetsLoading) && (
+          {loading && (
             <div className="bounty-loading gm-loading">Scanning rival kingdoms...</div>
           )}
 
-          {!loading && !targetsLoading && availableBounties.length === 0 && (
-            <div className="bounty-empty gm-empty-state">
-              {debouncedSearch ? 'No kingdoms found matching your search.' : 'No bounties available yet. Rival kingdoms are being scouted — check back shortly.'}
-            </div>
-          )}
-
-          <div
-            className="bounty-grid"
-            style={{ maxHeight: '600px', overflowY: 'auto' }}
-          >
-            {availableBounties.map((bounty) => (
-              <div
-                key={bounty.target.kingdomId}
-                className={`bounty-card ${bounty.claimed ? 'claimed' : ''}`}
-              >
-                <div className="bounty-card-header">
-                  <h3 className="bounty-target-name">{bounty.targetName}</h3>
+          <TargetPicker
+            currentKingdomId={kingdomId}
+            range={[0.3, 3.0]}
+            variant="cards"
+            onSelect={(t) => {
+              const bounty = availableBounties.find(b => b.target.kingdomId === t.id);
+              if (bounty && !bounty.claimed) handleClaimBounty(t.id);
+            }}
+            metadataRenderer={(t) => {
+              const bounty = availableBounties.find(b => b.target.kingdomId === t.id);
+              if (!bounty) {
+                return <span className="bounty-meta-hint">Generating bounty…</span>;
+              }
+              return (
+                <div className="bounty-meta">
                   <span
                     className="bounty-difficulty"
                     style={{ backgroundColor: DIFFICULTY_COLORS[bounty.target.difficulty] || '#888' }}
                   >
                     {bounty.target.difficulty}
                   </span>
-                </div>
-
-                <div className="bounty-details">
-                  <div className="bounty-detail-row">
-                    <span className="detail-label">Race</span>
-                    <span className="detail-value">{bounty.targetRace}</span>
-                  </div>
-                  <div className="bounty-detail-row">
-                    <span className="detail-label">Land</span>
-                    <span className="detail-value">{bounty.target.totalLand.toLocaleString()} acres</span>
-                  </div>
-                  <div className="bounty-detail-row">
-                    <span className="detail-label">Structures</span>
-                    <span className="detail-value">{bounty.target.totalStructures.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <div className="bounty-rewards">
-                  <h4>Estimated Rewards</h4>
-                  <div className="reward-items">
-                    <span className="reward-item">
-                      <span className="reward-icon"><LandIcon /></span>
-                      {bounty.reward.landGained.toLocaleString()} land
-                    </span>
-                    <span className="reward-item">
-                      <span className="reward-icon"><HammerIcon /></span>
-                      {bounty.reward.structuresGained.toLocaleString()} structures
-                    </span>
-                    <span className="reward-item">
-                      <span className="reward-icon"><TurnsIcon /></span>
-                      {bounty.reward.turnsSaved.toLocaleString()} turns saved
-                    </span>
-                  </div>
-                </div>
-
-                <div className="bounty-footer">
-                  <div className="efficiency-score">
-                    <span className="efficiency-label">Efficiency</span>
-                    <span className="efficiency-value">{bounty.efficiency}</span>
-                  </div>
-
-                  {bounty.claimed ? (
-                    <div className="bounty-claimed-badge">
-                      <span className="claimed-text">Claimed</span>
-                      <span className="claimed-hint">Attack to Complete</span>
+                  <div className="bounty-rewards">
+                    <h4>Estimated Rewards</h4>
+                    <div className="reward-items">
+                      <span className="reward-item">
+                        <span className="reward-icon"><LandIcon /></span>
+                        {bounty.reward.landGained.toLocaleString()} land
+                      </span>
+                      <span className="reward-item">
+                        <span className="reward-icon"><HammerIcon /></span>
+                        {bounty.reward.structuresGained.toLocaleString()} structures
+                      </span>
+                      <span className="reward-item">
+                        <span className="reward-icon"><TurnsIcon /></span>
+                        {bounty.reward.turnsSaved.toLocaleString()} turns saved
+                      </span>
                     </div>
-                  ) : (
-                    <button
-                      className="claim-bounty-btn gm-btn gm-btn--primary"
-                      onClick={() => handleClaimBounty(bounty.target.kingdomId)}
-                      disabled={loading}
-                    >
-                      Claim Bounty
-                    </button>
-                  )}
+                  </div>
+                  <div className="bounty-footer">
+                    <div className="efficiency-score">
+                      <span className="efficiency-label">Efficiency</span>
+                      <span className="efficiency-value">{bounty.efficiency}</span>
+                    </div>
+                    {bounty.claimed ? (
+                      <div className="bounty-claimed-badge">
+                        <span className="claimed-text">Claimed</span>
+                        <span className="claimed-hint">Attack to Complete</span>
+                      </div>
+                    ) : (
+                      <button
+                        className="claim-bounty-btn gm-btn gm-btn--primary"
+                        onClick={(e) => { e.stopPropagation(); handleClaimBounty(bounty.target.kingdomId); }}
+                        disabled={loading}
+                      >
+                        Claim Bounty
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-          {targetsHasMore && (
-            <button
-              onClick={loadMoreTargets}
-              disabled={targetsLoading}
-              style={{
-                marginTop: '1rem',
-                padding: '0.5rem 1.25rem',
-                background: 'rgba(139,92,246,0.15)',
-                border: '1px solid rgba(139,92,246,0.4)',
-                borderRadius: '6px',
-                color: '#a78bfa',
-                fontSize: '0.9rem',
-                cursor: targetsLoading ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {targetsLoading ? 'Loading...' : 'Load more'}
-            </button>
-          )}
+              );
+            }}
+          />
         </section>
 
         {/* Completed Bounties */}

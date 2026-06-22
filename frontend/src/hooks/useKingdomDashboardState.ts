@@ -102,6 +102,7 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
   // Use centralized kingdom store for resources AND live units
   const resources = useKingdomStore((state) => state.resources);
   const liveUnits = useKingdomStore((state) => state.units);
+  const storeBuildings = useKingdomStore((state) => state.buildings);
   const setKingdomId = useKingdomStore((state) => state.setKingdomId);
   const setResources = useKingdomStore((state) => state.setResources);
   const addGold = useKingdomStore((state) => state.addGold);
@@ -172,7 +173,11 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
 
   const buildingStats = useMemo(() => {
     const totalLand = resources.land || 0;
-    const kingdomBuildings = (kingdom.buildings || {}) as Record<string, number>;
+    // Prefer the live store buildings (updated after each build) and fall back to
+    // the kingdom prop on initial mount before the store is populated.
+    const kingdomBuildings = (Object.keys(storeBuildings).length > 0
+      ? storeBuildings
+      : (kingdom.buildings || {})) as Record<string, number>;
 
     const actualQuarries = kingdomBuildings.buildrate || kingdomBuildings.quarries || kingdomBuildings.mine || 0;
     const quarries = actualQuarries > 0 ? actualQuarries : Math.floor(totalLand * 0.30);
@@ -206,7 +211,7 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
       quarryPercentage,
       brt
     };
-  }, [resources.land, kingdom.buildings]);
+  }, [resources.land, kingdom.buildings, storeBuildings]);
 
   // Alliance income multipliers (composition + active upgrades), fetched once per
   // guild so the displayed rate includes them — matching the server's tick math.
@@ -222,7 +227,11 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
   // Per-turn generation rates — computed via the SAME shared module the
   // resource-manager Lambda uses, so the displayed "+X/turn" matches what's granted.
   const generationRates = useMemo(() => {
-    const b = (kingdom.buildings || {}) as Record<string, number>;
+    // Prefer the live store buildings so the displayed rate updates right after a
+    // build; fall back to the kingdom prop before the store is populated.
+    const b = (Object.keys(storeBuildings).length > 0
+      ? storeBuildings
+      : (kingdom.buildings || {})) as Record<string, number>;
     const statsObj = (typeof kingdom.stats === 'string'
       ? (() => { try { return JSON.parse(kingdom.stats as string); } catch { return {}; } })()
       : (kingdom.stats ?? {})) as Record<string, unknown>;
@@ -252,7 +261,7 @@ export function useKingdomDashboardState(kingdom: Schema['Kingdom']['type']) {
       upgradeIncomeBonus: allianceIncomeBonuses.upgrade,
       hasEconomicFocus,
     });
-  }, [kingdom.buildings, kingdom.stats, kingdom.race, seasonInfo?.currentAge, ownedTerritories, allianceIncomeBonuses]);
+  }, [kingdom.buildings, kingdom.stats, kingdom.race, seasonInfo?.currentAge, ownedTerritories, allianceIncomeBonuses, storeBuildings]);
 
   // Flush any pending DB sync before navigating away from the dashboard
   const handleBack = useCallback((onBack: () => void) => {

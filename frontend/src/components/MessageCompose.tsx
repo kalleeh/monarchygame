@@ -11,6 +11,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { isDemoMode } from '../utils/authMode';
+import { TargetPicker } from './common/TargetPicker';
 import toast from 'react-hot-toast';
 import './MessageCompose.css';
 
@@ -26,8 +27,11 @@ export interface MessageComposeProps {
   senderKingdom: { id: string; name: string };
   /** Pre-selected target (e.g. when opened from envelope icon). May be undefined when opened generically. */
   defaultTarget?: MessageTarget;
-  /** All kingdoms the player can message (excludes their own). */
-  availableTargets: MessageTarget[];
+  /**
+   * @deprecated Targets are now loaded directly via TargetPicker / useKingdomTargets.
+   * Retained for backwards-compatible call sites; no longer read.
+   */
+  availableTargets?: MessageTarget[];
   /** Called when the modal should be closed. */
   onClose: () => void;
 }
@@ -35,12 +39,10 @@ export interface MessageComposeProps {
 export const MessageCompose: React.FC<MessageComposeProps> = ({
   senderKingdom,
   defaultTarget,
-  availableTargets,
   onClose,
 }) => {
-  const [selectedTargetId, setSelectedTargetId] = useState<string>(
-    defaultTarget?.id ?? (availableTargets[0]?.id ?? '')
-  );
+  const [selectedTargetId, setSelectedTargetId] = useState<string>(defaultTarget?.id ?? '');
+  const [selectedTargetName, setSelectedTargetName] = useState<string>(defaultTarget?.name ?? '');
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
 
@@ -66,20 +68,20 @@ export const MessageCompose: React.FC<MessageComposeProps> = ({
     if (e.target === overlayRef.current) onClose();
   };
 
-  const selectedTarget = availableTargets.find(t => t.id === selectedTargetId);
-  const canSend = selectedTargetId && messageText.trim().length > 0 && !isSending;
+  const canSend = !!selectedTargetId && messageText.trim().length > 0 && !isSending;
 
   const handleSend = async () => {
-    if (!canSend || !selectedTarget) return;
+    if (!canSend || !selectedTargetId) return;
 
     setIsSending(true);
     const trimmed = messageText.trim();
     const fullMessage = `[DIPLOMACY from ${senderKingdom.name}] ${trimmed}`;
+    const targetName = selectedTargetName || 'kingdom';
 
     if (isDemoMode()) {
       // Demo mode — simulate send without touching backend
       await new Promise(r => setTimeout(r, 400));
-      toast.success(`Message sent to ${selectedTarget.name}!`);
+      toast.success(`Message sent to ${targetName}!`);
       setIsSending(false);
       onClose();
       return;
@@ -88,14 +90,14 @@ export const MessageCompose: React.FC<MessageComposeProps> = ({
     try {
       const client = generateClient<Schema>();
       await client.models.CombatNotification.create({
-        recipientId: selectedTarget.id,
+        recipientId: selectedTargetId,
         type: 'alliance',
         message: fullMessage,
         isRead: false,
         createdAt: new Date().toISOString(),
         data: JSON.stringify({ senderId: senderKingdom.id, senderName: senderKingdom.name }),
       });
-      toast.success(`Message sent to ${selectedTarget.name}!`);
+      toast.success(`Message sent to ${targetName}!`);
       onClose();
     } catch (err) {
       console.error('[MessageCompose] Failed to send message:', err);
@@ -141,24 +143,14 @@ export const MessageCompose: React.FC<MessageComposeProps> = ({
 
         {/* To (kingdom selector) */}
         <div className="msg-field">
-          <label className="msg-label" htmlFor="msg-target-select">To</label>
-          {availableTargets.length === 0 ? (
-            <p className="msg-no-targets">No kingdoms available to message.</p>
-          ) : (
-            <select
-              id="msg-target-select"
-              className="msg-select"
-              value={selectedTargetId}
-              onChange={e => setSelectedTargetId(e.target.value)}
-              disabled={isSending}
-            >
-              {availableTargets.map(t => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          )}
+          <label className="msg-label">To</label>
+          <TargetPicker
+            currentKingdomId={senderKingdom.id}
+            variant="dropdown"
+            selectedId={selectedTargetId || undefined}
+            onSelect={(t) => { setSelectedTargetId(t.id); setSelectedTargetName(t.name); }}
+            placeholder="Search kingdoms by name..."
+          />
         </div>
 
         {/* Message body */}

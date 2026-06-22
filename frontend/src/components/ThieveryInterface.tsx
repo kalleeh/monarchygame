@@ -4,12 +4,13 @@
  * Follows existing component patterns (SpellCastingInterface, UnitSummonInterface)
  */
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useThieveryStore, type OperationType } from '../stores/thieveryStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { isDemoMode } from '../utils/authMode';
-import { useKingdomTargets } from '../hooks/useKingdomTargets';
+import { TargetPicker } from './common/TargetPicker';
+import type { TargetKingdom } from '../hooks/useKingdomTargets';
 import { TopNavigation } from './TopNavigation';
 import { ToastService } from '../services/toastService';
 import { StarIcon } from './ui/MenuIcons';
@@ -75,12 +76,9 @@ const OPERATION_CONFIG: Record<OperationType, { label: string; turnCost: number;
 };
 
 const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, onBack }) => {
-  const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
+  const [selectedKingdom, setSelectedKingdom] = useState<TargetKingdom | null>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [operationLoading, setOperationLoading] = useState(false);
-  const [targetSearch, setTargetSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     scumCount,
@@ -101,8 +99,6 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
   const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
   const generateAIKingdoms = useAIKingdomStore((state) => state.generateAIKingdoms);
 
-  const { targets: kingdomTargets, loading: targetsLoading, hasMore: targetsHasMore, loadMore: loadMoreTargets } = useKingdomTargets({ nameSearch: debouncedSearch });
-
   // Initialize on mount
   useEffect(() => {
     initializeThievery(kingdomId, race);
@@ -113,24 +109,22 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
     }
   }, [kingdomId, race, initializeThievery, aiKingdoms.length, generateAIKingdoms, resources.gold, resources.land]);
 
-  // Debounce name search input (300ms)
-  useEffect(() => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => setDebouncedSearch(targetSearch), 300);
-    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
-  }, [targetSearch]);
-
   const totalScum = scumCount + eliteScumCount;
 
-  const selectedKingdom = kingdomTargets.find((k) => k.id === selectedTarget);
+  const selectedTarget = selectedKingdom?.id ?? null;
+
+  // Detection-rate estimate for a given target (used in the picker metadata and stat card)
+  const detectionRateFor = useCallback(
+    (target: TargetKingdom) =>
+      getDetectionRate(
+        Math.floor((target.resources.land || target.networth / 1000) * 0.1),
+        target.race
+      ),
+    [getDetectionRate]
+  );
 
   // Calculate detection rate for selected target
-  const currentDetection = selectedKingdom
-    ? getDetectionRate(
-        Math.floor((selectedKingdom.resources.land || selectedKingdom.networth / 1000) * 0.1), // estimated enemy scum
-        selectedKingdom.race
-      )
-    : 0;
+  const currentDetection = selectedKingdom ? detectionRateFor(selectedKingdom) : 0;
 
   const handleExecuteOperation = useCallback(
     async (type: OperationType) => {
@@ -288,64 +282,18 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
         {/* Target Selection */}
         <section className="thievery-targets">
           <h3>Select Target</h3>
-          <input
-            type="text"
-            placeholder="Search kingdoms by name..."
-            value={targetSearch}
-            onChange={(e) => setTargetSearch(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '0.5rem 0.75rem',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(139,92,246,0.2)',
-              borderRadius: '6px',
-              color: '#fff',
-              fontSize: '0.9rem',
-              marginBottom: '0.75rem',
-              boxSizing: 'border-box',
-            }}
+          <TargetPicker
+            currentKingdomId={kingdomId}
+            range={[0.25, 2.0]}
+            variant="cards"
+            selectedId={selectedTarget ?? undefined}
+            onSelect={(k) => setSelectedKingdom(k)}
+            metadataRenderer={(t) => (
+              <span className="target-difficulty">
+                Detection {(detectionRateFor(t) * 100).toFixed(1)}%
+              </span>
+            )}
           />
-          {targetsLoading && kingdomTargets.length === 0 ? (
-            <p className="gm-empty-state">Loading targets...</p>
-          ) : kingdomTargets.length === 0 ? (
-            <p className="gm-empty-state">No kingdoms found matching your search.</p>
-          ) : (
-            <div
-              className="target-grid"
-              style={{ maxHeight: '300px', overflowY: 'auto' }}
-            >
-              {kingdomTargets.map((kingdom) => (
-                <button
-                  key={kingdom.id}
-                  className={`target-card ${selectedTarget === kingdom.id ? 'selected' : ''}`}
-                  onClick={() => setSelectedTarget(kingdom.id)}
-                >
-                  <h4>{kingdom.name}</h4>
-                  <p className="target-race">{kingdom.race}</p>
-                  {kingdom.difficulty && <p className="target-difficulty">{kingdom.difficulty}</p>}
-                  <p className="target-land">{kingdom.networth > 0 ? `${(kingdom.networth / 1000).toFixed(0)}k NW` : `${kingdom.resources.land.toLocaleString()} acres`}</p>
-                </button>
-              ))}
-            </div>
-          )}
-          {targetsHasMore && (
-            <button
-              onClick={loadMoreTargets}
-              disabled={targetsLoading}
-              style={{
-                marginTop: '0.75rem',
-                padding: '0.4rem 1rem',
-                background: 'rgba(139,92,246,0.15)',
-                border: '1px solid rgba(139,92,246,0.4)',
-                borderRadius: '6px',
-                color: '#a78bfa',
-                fontSize: '0.85rem',
-                cursor: targetsLoading ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {targetsLoading ? 'Loading...' : 'Load more'}
-            </button>
-          )}
         </section>
 
         {/* Operation Buttons */}

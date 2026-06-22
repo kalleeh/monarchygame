@@ -1,0 +1,164 @@
+/* TargetPicker — unified target-kingdom selection control */
+/* Reuses game-ui.css design tokens; mirrors thievery/bounty card styling. */
+
+.target-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ── Search box ──────────────────────────────────────────────────────── */
+.target-picker__search {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--gm-border, rgba(139, 92, 246, 0.2));
+  border-radius: var(--gm-radius-sm, 6px);
+  color: var(--gm-text, #fff);
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+
+.target-picker__search:focus {
+  outline: none;
+  border-color: var(--gm-text-gold, rgba(251, 191, 36, 0.5));
+}
+
+/* ── Load more button ────────────────────────────────────────────────── */
+.target-picker__load-more {
+  align-self: flex-start;
+  padding: 0.45rem 1.1rem;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: var(--gm-radius-sm, 6px);
+  color: #a78bfa;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.target-picker__load-more:hover:not(:disabled) { background: rgba(139, 92, 246, 0.25); }
+.target-picker__load-more:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Cards variant ───────────────────────────────────────────────────── */
+.target-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.target-picker__card {
+  background: var(--gm-bg-card, rgba(15, 15, 30, 0.8));
+  border: 1px solid var(--gm-border, rgba(99, 102, 241, 0.3));
+  border-radius: var(--gm-radius-md, 0.5rem);
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  color: var(--gm-text, #e2e8f0);
+  display: flex;
+  flex-direction: column;
+}
+
+.target-picker__card:hover {
+  border-color: var(--gm-border-gold, rgba(251, 191, 36, 0.3));
+  background: rgba(251, 191, 36, 0.04);
+}
+
+.target-picker__card.selected {
+  border-color: var(--gm-text-gold, #fbbf24);
+  background: rgba(251, 191, 36, 0.08);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.2);
+}
+
+.target-picker__card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.target-picker__card-header h4 { margin: 0 0 0.5rem 0; color: var(--gm-text-gold, #fbbf24); font-size: 1rem; }
+.target-picker__card-race       { margin: 0.25rem 0; color: var(--gm-text-muted, #94a3b8); font-size: 0.875rem; }
+.target-picker__card-difficulty { margin: 0.25rem 0; color: var(--gm-text-teal, #4ecdc4); font-size: 0.85rem; text-transform: capitalize; }
+.target-picker__card-networth   { margin: 0.25rem 0; color: var(--gm-text-faint, #64748b); font-size: 0.85rem; }
+.target-picker__card-extra      { margin-top: 0.5rem; }
+
+.target-picker__online-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.6);
+  flex-shrink: 0;
+  margin-bottom: 0.5rem;
+}
+
+/* ── List variant ────────────────────────────────────────────────────── */
+.target-picker__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.target-picker__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  background: var(--gm-bg-overlay, rgba(0, 0, 0, 0.25));
+  border: 1px solid var(--gm-border, rgba(99, 102, 241, 0.3));
+  border-radius: var(--gm-radius-sm, 0.375rem);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.target-picker__row:hover  { border-color: var(--gm-border-gold, rgba(251, 191, 36, 0.3)); background: rgba(251, 191, 36, 0.04); }
+.target-picker__row.selected {
+  border-color: var(--gm-text-gold, #fbbf24);
+  background: rgba(251, 191, 36, 0.08);
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.18);
+}
+
+.target-picker__row-name  { font-weight: 600; color: var(--gm-text-gold, #fbbf24); }
+.target-picker__row-meta  { color: var(--gm-text-muted, #94a3b8); font-size: 0.85rem; }
+.target-picker__row-extra { margin-left: auto; font-size: 0.85rem; color: var(--gm-text-faint, #64748b); }
+.target-picker__online    { color: #4ade80; }
+
+/* ── Dropdown variant ────────────────────────────────────────────────── */
+.target-picker--dropdown .target-picker__select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--gm-border, rgba(139, 92, 246, 0.2));
+  border-radius: var(--gm-radius-sm, 6px);
+  color: var(--gm-text, #fff);
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+
+.target-picker--dropdown .target-picker__select:focus {
+  outline: none;
+  border-color: var(--gm-text-gold, rgba(251, 191, 36, 0.5));
+}
+
+.target-picker--dropdown .target-picker__select option {
+  background: #1a1a2e;
+  color: #e2e8f0;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .target-picker__grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+}
+
+@media (max-width: 480px) {
+  .target-picker__grid { grid-template-columns: 1fr; }
+}

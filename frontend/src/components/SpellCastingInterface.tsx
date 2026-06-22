@@ -7,8 +7,8 @@
 import React, { useEffect, useCallback, useMemo } from 'react';
 import { useSpring, useTransition, animated, config } from '@react-spring/web';
 import { useSpellStore } from '../stores/spellStore';
-import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { useKingdomStore } from '../stores/kingdomStore';
+import { TargetPicker } from './common/TargetPicker';
 import { SPELLS, type Spell } from "../shared-spells";
 import { TopNavigation } from './TopNavigation';
 import { achievementTriggers } from '../utils/achievementTriggers';
@@ -58,7 +58,6 @@ const TIER_LABELS: Record<number, string> = {
 };
 
 const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId, onBack }) => {
-  const aiKingdoms = useAIKingdomStore((state) => state.aiKingdoms);
   const kingdomResources = useKingdomStore((state) => state.resources);
 
   const {
@@ -311,12 +310,13 @@ const SpellCastingInterface: React.FC<SpellCastingInterfaceProps> = ({ kingdomId
       {selectedSpell && SPELLS[selectedSpell]?.targetType.includes('enemy') && (
         <div className="target-selector">
           <h4>Select Target</h4>
+          <TargetPicker
+            currentKingdomId={kingdomId}
+            variant="list"
+            selectedId={selectedTarget ?? undefined}
+            onSelect={(k) => selectTarget(k.id)}
+          />
           <div className="target-options">
-            {aiKingdoms.map((kingdom) => (
-              <button key={kingdom.id} onClick={() => selectTarget(kingdom.id)}>
-                {kingdom.name}
-              </button>
-            ))}
             <button onClick={() => selectTarget(null)}>Cancel</button>
           </div>
         </div>

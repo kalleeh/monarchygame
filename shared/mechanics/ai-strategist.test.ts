@@ -17,6 +17,7 @@ import {
   type Persona,
   type Difficulty,
 } from './ai-strategist';
+import { buildingGoldCostPerAcre } from './building-cost';
 
 describe('persona & difficulty assignment', () => {
   it('is deterministic per kingdom id', () => {
@@ -175,7 +176,7 @@ describe('scoreBuilds', () => {
     const builds = scoreBuilds(small, PERSONAS.economist, 1, 30, 5_000, makeRng(4), 0);
     const total = builds.reduce((s, b) => s + b.qty, 0);
     expect(total).toBeLessThanOrEqual(10);
-    expect(total * 250).toBeLessThanOrEqual(5_000);
+    expect(total * buildingGoldCostPerAcre(small.land)).toBeLessThanOrEqual(5_000);
   });
 });
 

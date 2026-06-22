@@ -16,6 +16,8 @@ type LambdaResponse<T = unknown> = {
 };
 import type { Schema } from '../../../amplify/data/resource';
 import type { AttackRequest, CombatResult, DefenseSettings, AttackType } from '../types/combat';
+import { buildingGoldCost } from '../../../shared/mechanics/building-cost';
+import { useKingdomStore } from '../stores/kingdomStore';
 
 
 export class CombatService {
@@ -143,11 +145,12 @@ export class CombatService {
     territoryId?: string;
   }): Promise<LambdaResponse> {
     try {
+      const land = useKingdomStore.getState().resources.land ?? 0;
       return await AmplifyFunctionService.constructBuildings({
         kingdomId: request.kingdomId,
         buildingType: request.buildingType,
         quantity: request.quantity,
-        goldCost: request.quantity * 250 // Match Lambda expected cost
+        goldCost: buildingGoldCost(request.quantity, land) // Match Lambda land-scaled cost
       }) as LambdaResponse;
     } catch (error) {
       console.error('Building construction error:', error);
