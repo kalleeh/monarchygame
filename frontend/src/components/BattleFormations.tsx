@@ -167,22 +167,25 @@ function BattleResultModal({ battle, onClose, defenderName, attackerRace, defend
 const UnitCard: React.FC<UnitCardProps> = ({ unit, tier, race = 'Human' }) => {
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: '0.5rem',
-      padding: '0.4rem 0.6rem', background: 'rgba(255,255,255,0.04)',
-      borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem',
+      padding: '0.6rem 0.5rem', background: 'rgba(255,255,255,0.04)',
+      borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center',
     }}>
       <img src={getUnitImagePath(unit.type, race)} alt={unit.type}
-        style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 4 }}
+        style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 4 }}
         onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
       />
-      <span style={{ flex: 1, fontSize: '0.85rem', color: '#e2e8f0', textTransform: 'capitalize' }}>
+      <span style={{ fontSize: '0.8rem', color: '#e2e8f0', textTransform: 'capitalize', lineHeight: 1.2 }}>
         {unit.type.replace(/-/g, ' ')}
         {tier !== undefined && tier > 0 && (
-          <span style={{ marginLeft: 4, fontSize: '0.65rem', color: TIER_COLORS[tier], fontWeight: 700 }}>{TIER_LABELS[tier]}</span>
+          <span style={{ marginLeft: 4, fontSize: '0.6rem', color: TIER_COLORS[tier], fontWeight: 700 }}>{TIER_LABELS[tier]}</span>
         )}
       </span>
-      <span style={{ fontSize: '0.85rem', color: '#fbbf24', fontWeight: 600 }}>×{unit.count}</span>
-      <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}><SwordIcon />{unit.attack} <ShieldIcon />{unit.defense}</span>
+      <span style={{ fontSize: '0.95rem', color: '#fbbf24', fontWeight: 700 }}>×{unit.count.toLocaleString()}</span>
+      <span style={{ fontSize: '0.72rem', color: '#9ca3af', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}><SwordIcon />{unit.attack}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}><ShieldIcon />{unit.defense}</span>
+      </span>
     </div>
   );
 };
@@ -485,7 +488,11 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
             <button onClick={() => navigate(`/kingdom/${kingdomId}/summon`)}><WarfareIcon /> Train Units</button>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+            gap: '0.5rem',
+          }}>
             {availableUnits.map(unit => (
               <UnitCard key={unit.id} unit={unit} tier={raceDefs.find(u => u.id === unit.type)?.tier} race={attackerRace} />
             ))}
