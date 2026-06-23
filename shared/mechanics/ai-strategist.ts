@@ -15,9 +15,10 @@
  * Personas are weight vectors over one engine. Pure functions, no I/O.
  */
 
-import { calculateTroopCapGold } from './troop-cap-mechanics';
+import { calculateTroopCapGold, calculateUnitCountCap } from './troop-cap-mechanics';
 import { buildingPerTurnContribution } from './economy-mechanics';
 import { RACE_OFFENSE_BONUSES, RACE_DEFENSE_BONUSES } from './combat-mechanics';
+import { TIER_STATS } from './tier-stats';
 import { buildingGoldCostPerAcre } from './building-cost';
 import { calculateBRT, calculateBuildTurns } from './building-mechanics';
 
@@ -107,9 +108,11 @@ export const BUILDING_TYPES = ['mine', 'farm', 'tower', 'castle', 'barracks', 't
 export const TRAIN_TURN_COST = 1;
 export const ATTACK_TURN_COST = 4;               // combat base cost
 export const MAX_TOTAL_UNITS = 100_000;          // unit-trainer MAX_TOTAL_UNITS
-export const TIER_BASE_GOLD = [50, 350, 900, 2000];   // unit-costs.ts
-export const TIER_OFFENSE = [1, 3, 6, 10];       // combat-processor
-export const TIER_DEFENSE = [1, 2, 4, 7];
+// Tier stats re-exported from the single source of truth so the AI's combat-power
+// and cost math always match the combat-processor and unit-trainer.
+export const TIER_BASE_GOLD = TIER_STATS.GOLD;
+export const TIER_OFFENSE = TIER_STATS.OFFENSE;
+export const TIER_DEFENSE = TIER_STATS.DEFENSE;
 
 export const RACE_ECON_MULT: Record<string, number> = {
   Human: 1.0, Elven: 1.0, Goblin: 1.0, Droben: 1.0, Vampire: 2.0,
@@ -290,8 +293,11 @@ export function armyCombatPower(
 // difficulty noise dominates them anyway.
 
 const EST_LAND_PER_NETWORTH = 1 / 1100;
-const EST_ARMY_DEF_PER_LAND = 1.7;
-const EST_WALL_DEF_PER_LAND = 8;
+// Calibrated to the flattened unit curve (TIER_STATS): a typical mixed roster is
+// worth ~11 defense/land and walls add ~4 defense/land at typical densities.
+// Rough human-style heuristics — difficulty noise dominates the estimate.
+const EST_ARMY_DEF_PER_LAND = 11;
+const EST_WALL_DEF_PER_LAND = 4;
 
 export function estimateDefense(
   target: PublicKingdomView,
@@ -405,10 +411,13 @@ export function scoreBuilds(
 
 // ── Train scoring ───────────────────────────────────────────────────────────
 //
-// Optimal play: T1 maximizes power-per-gold (1/50 > 3/350 > 6/900 > 10/2000),
-// so train T1 until the 100k unit-count cap starts binding, then escalate to
-// tiers with more power per UNIT SLOT. Both the troop (gold) cap and the unit
-// cap are the same limits the unit-trainer Lambda enforces on players.
+// With the flattened cost curve all tiers are roughly gold-equal in power, so
+// the real constraints are the UNIT-COUNT cap (land-based) and combat-counter
+// COMPOSITION. The AI therefore builds a MIXED army across tiers/classes rather
+// than mono-spamming the cheapest unit (which is what produced the 40k-unit
+// walls). Higher tiers are favored under unit-slot pressure (more power/slot);
+// a spread keeps the army from being hard-countered. Both caps mirror the
+// unit-trainer Lambda's enforcement on players.
 
 export function troopGoldInvested(race: string, units: Record<string, number>): number {
   const list = RACE_UNITS[race] ?? RACE_UNITS.Human;
@@ -422,6 +431,11 @@ export function troopGoldInvested(race: string, units: Record<string, number>): 
 }
 
 const MAX_TRAIN_PER_ACTION = 1000; // unit-trainer per-action quantity limit
+
+// Target gold split across the 4 tiers — weighted toward higher tiers so armies
+// pack power per unit-slot (which the land cap rations) while keeping a spread of
+// classes so the army isn't hard-countered. Sums to 1.0.
+const TIER_TRAIN_WEIGHTS = [0.15, 0.25, 0.30, 0.30];
 
 export function scoreTrains(
   me: SelfState,
@@ -440,23 +454,29 @@ export function scoreTrains(
   let capRoom = Math.max(0, troopCap - invested);
 
   const currentCount = Object.values(me.totalUnits).reduce((s, n) => s + (n ?? 0), 0);
-  let unitSlots = Math.max(0, MAX_TOTAL_UNITS - currentCount);
+  // Head-count is bound by BOTH the land-based unit cap and the absolute ceiling.
+  const unitCountCap = Math.min(MAX_TOTAL_UNITS, calculateUnitCountCap({ land: me.land }));
+  let unitSlots = Math.max(0, unitCountCap - currentCount);
 
   let gold = Math.floor(goldBudget * Math.min(1, w.military));
   let turns = turnsBudget;
 
-  // If T1 alone can spend the gold within unit slots, T1 is optimal. When unit
-  // slots are scarce relative to gold, higher tiers carry more power per slot.
-  const t1Cost = Math.round(TIER_BASE_GOLD[0] * mult);
-  const goldFitsInSlots = Math.floor(gold / t1Cost) <= unitSlots;
-  const startTier = goldFitsInSlots ? 0 : 1; // skip T1 when slots are the bottleneck
-
+  // Build a mixed roster: allocate the gold budget across tiers by target weights,
+  // highest tier first (best power-per-slot under the unit cap), each capped by the
+  // per-action limit. One pass keeps the composition spread instead of dumping the
+  // whole budget into the cheapest tier.
+  const totalGoldBudget = gold;
   const out: Array<{ unitType: string; qty: number; cost: number }> = [];
-  for (let tier = startTier; tier < list.length; tier++) {
+  for (let tier = list.length - 1; tier >= 0; tier--) {
     if (gold <= 0 || capRoom <= 0 || unitSlots <= 0 || turns < TRAIN_TURN_COST) break;
     const costPer = Math.round(TIER_BASE_GOLD[tier] * mult);
 
-    const byGold = Math.floor(gold / costPer);
+    // Gold earmarked for this tier (jittered slightly so AIs aren't identical).
+    const jitter = 1 + (rng() * 2 - 1) * 0.2;
+    const tierGold = Math.min(gold, Math.floor(totalGoldBudget * TIER_TRAIN_WEIGHTS[tier] * jitter));
+    if (tierGold < costPer) continue;
+
+    const byGold = Math.floor(tierGold / costPer);
     const byCap = Math.floor(capRoom / costPer);
     const qty = Math.min(byGold, byCap, unitSlots, MAX_TRAIN_PER_ACTION);
     if (qty <= 0) continue;
@@ -667,13 +687,18 @@ export function decide(
   turnsLeft -= buildTurns;
 
   // TRAIN — account for barracks built this tick raising the cap.
+  // A mixed roster spans multiple tiers, each costing one training action/turn.
+  // Reserve turns for a possible attack so building a diverse army can't starve
+  // the strike (the same prioritisation a player makes).
   const barracksBuilt = builds.find(b => b.type === 'barracks')?.qty ?? 0;
   const meAfterBuild: SelfState = {
     ...me,
     buildings: { ...me.buildings, barracks: (me.buildings.barracks ?? 0) + barracksBuilt },
   };
-  const trains = turnsLeft >= TRAIN_TURN_COST
-    ? scoreTrains(meAfterBuild, w, turnsLeft, Math.min(trainBudget, goldLeft - reserve), ctx.rng)
+  const attackReserve = ctx.age === 'early' ? 0 : ATTACK_TURN_COST + 1;
+  const trainTurnBudget = Math.max(0, turnsLeft - attackReserve);
+  const trains = trainTurnBudget >= TRAIN_TURN_COST
+    ? scoreTrains(meAfterBuild, w, trainTurnBudget, Math.min(trainBudget, goldLeft - reserve), ctx.rng)
     : [];
   const trainGold = trains.reduce((s, t) => s + t.cost, 0);
   goldLeft -= trainGold;

@@ -5,8 +5,10 @@
  * and RACES in frontend/src/shared-races/index.ts.
  */
 
-// Base gold costs per tier — mirrors TIER_TEMPLATES in frontend/src/utils/units.ts
-const TIER_BASE_GOLD = [50, 350, 900, 2000];
+import { TIER_STATS } from './tier-stats';
+
+// Base gold costs per tier — single source of truth in shared/mechanics/tier-stats.ts
+const TIER_BASE_GOLD = TIER_STATS.GOLD;
 const SCOUT_BASE_GOLD = 200;
 
 // Minimal race data needed for cost computation — sourced from shared-races

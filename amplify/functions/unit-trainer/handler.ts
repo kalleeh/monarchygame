@@ -7,7 +7,7 @@ import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 import { isConditionalCheckFailed } from '../conditional-helpers';
 import { getUnitGoldCost } from '../../../shared/mechanics/unit-costs';
-import { calculateTroopCapGold } from '../../../shared/mechanics/troop-cap-mechanics';
+import { calculateTroopCapGold, calculateUnitCountCap } from '../../../shared/mechanics/troop-cap-mechanics';
 import type { KingdomBuildings } from '../../../shared/types/kingdom-resources';
 
 const UNIT_QUANTITY = { min: 1, max: 1000 } as const;
@@ -103,11 +103,19 @@ export const handler: Schema["trainUnits"]["functionHandler"] = async (event) =>
 
     const units = parseJsonField(kingdom.totalUnits, {} as KingdomUnits);
 
-    // VAL-2: enforce total unit cap
+    // VAL-2: enforce total unit cap (absolute ceiling)
     const currentTotal = Object.values(units).reduce((sum, n) => sum + (n ?? 0), 0);
     if (currentTotal + quantity > MAX_TOTAL_UNITS) {
       const available = Math.max(0, MAX_TOTAL_UNITS - currentTotal);
       return { success: false, error: `Unit limit reached: max ${MAX_TOTAL_UNITS} total units. You can train ${available} more.`, errorCode: ErrorCode.VALIDATION_FAILED };
+    }
+
+    // VAL-2b: enforce land-based unit-count cap — army head-count scales with land,
+    // so a small-land kingdom can't stack a mega-wall of cheap units.
+    const unitCountCap = calculateUnitCountCap({ land: resources.land ?? 0 });
+    if (currentTotal + quantity > unitCountCap) {
+      const available = Math.max(0, unitCountCap - currentTotal);
+      return { success: false, error: `Unit limit reached: max ${unitCountCap.toLocaleString()} units for your ${(resources.land ?? 0).toLocaleString()} land. Expand land to raise it. You can train ${available} more.`, errorCode: ErrorCode.VALIDATION_FAILED };
     }
 
     // Troop cap — ceiling on accumulated gold invested in troops, scaled by land +

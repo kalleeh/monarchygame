@@ -70,9 +70,10 @@ export const FORMATION_MODIFIERS: Record<string, FormationModifiers> = {
 };
 
 // ---------------------------------------------------------------------------
-// Tier-based offense/defense (matches frontend/src/utils/units.ts TIER_TEMPLATES)
-const TIER_OFFENSE = [1, 3, 6, 10];
-const TIER_DEFENSE = [1, 2, 4, 7];
+// Tier-based offense/defense — single source of truth in shared/mechanics/tier-stats.ts
+import { TIER_STATS } from '../mechanics/tier-stats';
+const TIER_OFFENSE = TIER_STATS.OFFENSE;
+const TIER_DEFENSE = TIER_STATS.DEFENSE;
 
 // Map every unit name (generic + race-specific) to its tier
 const UNIT_TIER: Record<string, number> = {
@@ -90,6 +91,11 @@ const UNIT_TIER: Record<string, number> = {
   'fae-sprites': 0, 'fae-warriors': 1, 'fae-nobles': 2, 'fae-lords': 3,
 };
 
+/** Tier index (0-3) for any unit type; 0 for unknown/legacy keys. */
+export function tierOf(type: string): number {
+  return UNIT_TIER[type] ?? UNIT_TIER[type.toLowerCase()] ?? 0;
+}
+
 /** Get offense stat for any unit type (generic or race-specific) */
 export function getUnitOffense(type: string): number {
   return TIER_OFFENSE[UNIT_TIER[type] ?? 0] ?? 1;
@@ -100,23 +106,24 @@ export function getUnitDefense(type: string): number {
   return TIER_DEFENSE[UNIT_TIER[type] ?? 0] ?? 1;
 }
 
-// Legacy UNIT_STATS table — takes precedence over tier-based stats for listed unit types.
-// These values are intentionally different from TIER_OFFENSE/TIER_DEFENSE for generic unit names.
-// Race-specific units (e.g. 'droben-bunar') fall through to tier-based lookup.
-const UNIT_STATS = {
-  peasant:  { attack: 1, defense: 1 },
-  infantry: { attack: 3, defense: 2 },
-  cavalry:  { attack: 5, defense: 3 },
-  archer:   { attack: 4, defense: 2 },
-  knight:   { attack: 6, defense: 4 },
-  mage:     { attack: 3, defense: 1 },
-  scout:    { attack: 2, defense: 1 },
-  militia:  { attack: 2, defense: 3 },
-  tier1:    { attack: 1, defense: 1 },
-  tier2:    { attack: 3, defense: 2 },
-  tier3:    { attack: 5, defense: 3 },
-  tier4:    { attack: 7, defense: 4 },
-} as const;
+// Generic-name unit stats, derived from the tier source of truth so they stay in
+// lockstep with the flattened curve. Keys map to their tier via UNIT_TIER above.
+// Race-specific units (e.g. 'droben-bunar') fall through to the same tier lookup.
+const statFor = (tier: number) => ({ attack: TIER_OFFENSE[tier], defense: TIER_DEFENSE[tier] });
+const UNIT_STATS: Record<string, { attack: number; defense: number }> = {
+  peasant:  statFor(0),
+  militia:  statFor(1),
+  infantry: statFor(1),
+  archer:   statFor(2),
+  knight:   statFor(2),
+  mage:     statFor(2),
+  cavalry:  statFor(3),
+  scout:    statFor(0),
+  tier1:    statFor(0),
+  tier2:    statFor(1),
+  tier3:    statFor(2),
+  tier4:    statFor(3),
+};
 
 // ---------------------------------------------------------------------------
 // Helper: compute a terrain-adjusted unit power sum.

@@ -8,6 +8,8 @@ import type { Kingdom, AttackType, Army, Territory } from '../../types/combat';
 import { hasStats } from '../../types/guards';
 import { COMBAT } from '../../constants/gameConfig';
 import { GoldIcon, PopulationIcon, LandIcon } from '../ui/MenuIcons';
+import { compositionAdjustedOffense } from '../../../../shared/mechanics/unit-classes';
+import { getUnitOffense, getUnitDefense } from '../../../../shared/combat/combatCache';
 
 interface AttackPreviewProps {
   attacker: Kingdom;
@@ -33,6 +35,8 @@ interface BattleEstimate {
   };
   riskLevel: 'low' | 'medium' | 'high';
   recommendation: string;
+  /** Unit-counter composition multiplier vs the defender's army (1.0 = neutral). */
+  compositionMultiplier: number;
 }
 
 export const AttackPreview: React.FC<AttackPreviewProps> = ({
@@ -60,11 +64,20 @@ export const AttackPreview: React.FC<AttackPreviewProps> = ({
       return power + ((count ?? 0) * unitPower * (targetWarDefense / 10));
     }, 0);
 
+    // Unit-counter composition multiplier — same RPS model the combat-processor
+    // applies, so the preview reflects how the army's classes match the defender's.
+    const { multiplier: compositionMultiplier } = compositionAdjustedOffense(
+      army as Record<string, number>,
+      target.totalUnits as Record<string, number>,
+      getUnitOffense,
+      getUnitDefense,
+    );
+
     // Add fortification bonus
     const fortBonus = targetTerritory?.fortificationLevel ? targetTerritory.fortificationLevel * 0.1 : 0;
     const adjustedDefenderPower = defenderPower * (1 + fortBonus);
 
-    const powerRatio = attackerPower / Math.max(adjustedDefenderPower, 1);
+    const powerRatio = (attackerPower * compositionMultiplier) / Math.max(adjustedDefenderPower, 1);
     let winProbability = Math.min(COMBAT.WIN_PROBABILITY.MAX, Math.max(COMBAT.WIN_PROBABILITY.MIN, powerRatio * 0.6));
 
     // Attack type modifiers
@@ -129,7 +142,8 @@ export const AttackPreview: React.FC<AttackPreviewProps> = ({
       estimatedCasualties,
       estimatedSpoils: baseSpoils,
       riskLevel,
-      recommendation
+      recommendation,
+      compositionMultiplier
     };
   }, [attacker, target, attackType, army, targetTerritory]);
 
@@ -193,6 +207,18 @@ export const AttackPreview: React.FC<AttackPreviewProps> = ({
               <span className="label">Your Forces:</span>
               <span className="value">{formatArmy(army)}</span>
             </div>
+            {Math.abs(battleEstimate.compositionMultiplier - 1) >= 0.01 && (
+              <div className="overview-item">
+                <span className="label">Composition:</span>
+                <span
+                  className="value"
+                  style={{ color: battleEstimate.compositionMultiplier >= 1 ? '#22c55e' : '#ef4444' }}
+                >
+                  {battleEstimate.compositionMultiplier >= 1 ? '+' : ''}
+                  {Math.round((battleEstimate.compositionMultiplier - 1) * 100)}% vs their army
+                </span>
+              </div>
+            )}
             {targetTerritory && (
               <div className="overview-item">
                 <span className="label">Fortification:</span>

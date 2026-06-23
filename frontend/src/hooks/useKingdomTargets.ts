@@ -19,6 +19,10 @@ export interface TargetKingdom {
   networth: number;
   difficulty?: string;
   isOnline?: boolean;
+  /** Public combat/espionage stats (warDefense, scum, etc.) — used by attack/scout previews. */
+  stats?: Record<string, number>;
+  /** Defender army composition — used by the attack preview to estimate the fight. */
+  totalUnits?: { peasants: number; militia: number; knights: number; cavalry: number } & Record<string, number>;
 }
 
 interface UseKingdomTargetsOptions {
@@ -60,6 +64,14 @@ export function useKingdomTargets(opts: UseKingdomTargetsOptions = {}) {
         networth: (k.resources.land ?? 0) * 1000 + (k.resources.gold ?? 0),
         difficulty: k.difficulty,
         isOnline: false,
+        // Demo AI kingdoms store units as tier1-4 — map to the combat unit keys
+        // the preview expects so estimates aren't computed against a zeroed army.
+        totalUnits: {
+          peasants: k.units.tier1 ?? 0,
+          militia: k.units.tier2 ?? 0,
+          knights: k.units.tier3 ?? 0,
+          cavalry: k.units.tier4 ?? 0,
+        },
       })));
       return;
     }
@@ -82,6 +94,8 @@ export function useKingdomTargets(opts: UseKingdomTargetsOptions = {}) {
           resources: k.resources,
           networth: k.networth,
           isOnline: k.isOnline,
+          stats: k.stats,
+          totalUnits: k.totalUnits,
         }));
         setTargets(prev => append ? [...prev, ...mapped] : mapped);
         setNextToken(result.nextToken);

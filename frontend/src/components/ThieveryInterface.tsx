@@ -113,14 +113,20 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
 
   const selectedTarget = selectedKingdom?.id ?? null;
 
+  // Estimate a target's defending scum: prefer the real scum stat from the
+  // search result, falling back to a land-based heuristic when unavailable.
+  const estimateEnemyScum = useCallback(
+    (target: TargetKingdom) =>
+      target.stats?.scum && target.stats.scum > 0
+        ? Math.floor(target.stats.scum)
+        : Math.floor((target.resources.land || target.networth / 1000) * 0.1),
+    []
+  );
+
   // Detection-rate estimate for a given target (used in the picker metadata and stat card)
   const detectionRateFor = useCallback(
-    (target: TargetKingdom) =>
-      getDetectionRate(
-        Math.floor((target.resources.land || target.networth / 1000) * 0.1),
-        target.race
-      ),
-    [getDetectionRate]
+    (target: TargetKingdom) => getDetectionRate(estimateEnemyScum(target), target.race),
+    [getDetectionRate, estimateEnemyScum]
   );
 
   // Calculate detection rate for selected target
@@ -131,7 +137,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
       if (!selectedKingdom) return;
       if (operationLoading) return;
 
-      const estimatedEnemyScum = Math.floor((selectedKingdom.resources.land || selectedKingdom.networth / 1000) * 0.1);
+      const estimatedEnemyScum = estimateEnemyScum(selectedKingdom);
       setOperationLoading(true);
       try {
         const spendTurnsFn = spendTurns; // Deduct locally for immediate UI; server deducts authoritatively
@@ -216,7 +222,7 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
         setOperationLoading(false);
       }
     },
-    [selectedKingdom, operationLoading, executeOperation, spendTurns, addGold, kingdomId]
+    [selectedKingdom, operationLoading, executeOperation, spendTurns, addGold, kingdomId, estimateEnemyScum]
   );
 
   return (

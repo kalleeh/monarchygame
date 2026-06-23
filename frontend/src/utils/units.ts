@@ -4,6 +4,7 @@
  */
 
 import { RACES } from '../shared-races';
+import { TIER_STATS } from '../../../shared/mechanics/tier-stats';
 
 /** @deprecated Use UnitType instead — kept for backward compatibility */
 export interface LegacyUnitType {
@@ -44,12 +45,17 @@ interface TierTemplate {
   baseUpkeep: number;
 }
 
-const TIER_TEMPLATES: TierTemplate[] = [
-  { tier: 0, baseGold: 50,   basePop: 1, baseOffense: 1,  baseDefense: 1,  baseHitPoints: 5,  baseUpkeep: 0  },
-  { tier: 1, baseGold: 350,  basePop: 1, baseOffense: 3,  baseDefense: 2,  baseHitPoints: 10, baseUpkeep: 2  },
-  { tier: 2, baseGold: 900,  basePop: 2, baseOffense: 6,  baseDefense: 4,  baseHitPoints: 20, baseUpkeep: 5  },
-  { tier: 3, baseGold: 2000, basePop: 3, baseOffense: 10, baseDefense: 7,  baseHitPoints: 35, baseUpkeep: 10 },
-];
+// Derived from the single source of truth (shared/mechanics/tier-stats.ts) so the
+// unit catalogue, combat, AI, and cost lookup never drift apart.
+const TIER_TEMPLATES: TierTemplate[] = TIER_STATS.OFFENSE.map((_, tier) => ({
+  tier,
+  baseGold: TIER_STATS.GOLD[tier],
+  basePop: TIER_STATS.POP[tier],
+  baseOffense: TIER_STATS.OFFENSE[tier],
+  baseDefense: TIER_STATS.DEFENSE[tier],
+  baseHitPoints: TIER_STATS.HIT_POINTS[tier],
+  baseUpkeep: TIER_STATS.UPKEEP[tier],
+}));
 
 // ── Helpers ───────────────────────────────────────────────────────
 

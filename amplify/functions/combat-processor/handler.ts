@@ -7,6 +7,8 @@ import {
   type TerrainModifiers
 } from '../../../shared/combat/combatCache';
 import { calculateCombatResult, RACE_OFFENSE_BONUSES, RACE_DEFENSE_BONUSES } from '../../../shared/mechanics/combat-mechanics';
+import { TIER_STATS } from '../../../shared/mechanics/tier-stats';
+import { compositionAdjustedOffense } from '../../../shared/mechanics/unit-classes';
 import type { AttackForce, DefenseForce } from '../../../shared/mechanics/combat-mechanics';
 import type { KingdomResources, CombatResultData } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
@@ -299,9 +301,9 @@ export async function resolveCombat(params: ResolveCombatParams): Promise<Combat
     // terrain table, except the 'defense' key — which only boosts the defender's
     // effective units (home-field defensive advantage).
     // -------------------------------------------------------------------------
-    // Tier-based offense/defense (matches shared/utils/units.ts TIER_TEMPLATES)
-    const TIER_OFFENSE = [1, 3, 6, 10]; // tier 0-3
-    const TIER_DEFENSE = [1, 2, 4, 7];
+    // Tier-based offense/defense — single source of truth in shared/mechanics/tier-stats.ts
+    const TIER_OFFENSE = TIER_STATS.OFFENSE; // tier 0-3
+    const TIER_DEFENSE = TIER_STATS.DEFENSE;
     const UNIT_TIER: Record<string, number> = {
       peasant: 0, peasants: 0, militia: 1, knight: 2, knights: 2, cavalry: 3,
       infantry: 1, archer: 2, mage: 2, scout: 0, scouts: 0,
@@ -479,15 +481,19 @@ export async function resolveCombat(params: ResolveCombatParams): Promise<Combat
     // -------------------------------------------------------------------------
 
     // Unit stat tables for computing aggregate offense/defense totals
-    const totalAttackerOffense = Object.entries(effectiveAttackerUnits).reduce(
-      (sum, [type, count]) => sum + getOffense(type) * count, 0
-    );
     const totalAttackerDefense = Object.entries(effectiveAttackerUnits).reduce(
       (sum, [type, count]) => sum + getDefense(type) * count, 0
     );
     const totalDefenderDefense = Object.entries(effectiveDefenderUnits).reduce(
       (sum, [type, count]) => sum + getDefense(type) * count, 0
     );
+
+    // Unit-counter system: scale attacker offense by how its class composition
+    // matches up against the defender's defensive composition (soft ±25% RPS).
+    // Mono-spam gets punished by the defender's countering classes; a balanced
+    // or well-targeted army gets a bonus. Defender total is unchanged.
+    const { effectiveOffense: totalAttackerOffense, multiplier: compositionMultiplier } =
+      compositionAdjustedOffense(effectiveAttackerUnits, effectiveDefenderUnits, getOffense, getDefense);
 
     const attackForce: AttackForce = {
       units: attackerUnits,
@@ -546,6 +552,7 @@ export async function resolveCombat(params: ResolveCombatParams): Promise<Combat
       formationId: formationId || 'none',
       formationOffenseFactor,
       defenseTerrainBonus,
+      compositionMultiplier: Number(compositionMultiplier.toFixed(3)),
     });
 
     // -------------------------------------------------------------------------

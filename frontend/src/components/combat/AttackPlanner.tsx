@@ -63,19 +63,29 @@ export function AttackPlanner({
   }, []);
 
   // Map a TargetKingdom (from the unified picker) into the Kingdom shape the
-  // planner/preview expect. Territories are not available from search, so
-  // territory selection stays disabled for picked targets.
+  // planner/preview expect. Stats and army come from the search result so the
+  // preview estimates against the real defender. Territories are not available
+  // from search, so territory selection stays disabled for picked targets.
   const handlePickTarget = useCallback((t: TargetKingdom) => {
+    const s = t.stats ?? {};
     handleTargetSelect({
       id: t.id,
       name: t.name,
       race: t.race,
       resources: t.resources,
       stats: {
-        warOffense: 0, warDefense: 0, sorcery: 0, scum: 0, forts: 0,
-        tithe: 0, training: 0, siege: 0, economy: 0, building: 0,
+        warOffense: s.warOffense ?? 0,
+        warDefense: s.warDefense ?? 0,
+        sorcery: s.sorcery ?? 0,
+        scum: s.scum ?? 0,
+        forts: s.forts ?? 0,
+        tithe: s.tithe ?? 0,
+        training: s.training ?? 0,
+        siege: s.siege ?? 0,
+        economy: s.economy ?? 0,
+        building: s.building ?? 0,
       },
-      totalUnits: { peasants: 0, militia: 0, knights: 0, cavalry: 0 },
+      totalUnits: t.totalUnits ?? { peasants: 0, militia: 0, knights: 0, cavalry: 0 },
       isOnline: t.isOnline,
       networth: t.networth,
     });

@@ -100,8 +100,9 @@ describe('armyCombatPower', () => {
     const { offense, defense } = armyCombatPower('Human', {
       peasants: 10, militia: 10, knights: 10, cavalry: 10, scouts: 100,
     });
-    expect(offense).toBe(10 * 1 + 10 * 3 + 10 * 6 + 10 * 10); // 200
-    expect(defense).toBe(10 * 1 + 10 * 2 + 10 * 4 + 10 * 7);  // 140
+    // Flattened curve: TIER_STATS.OFFENSE = [1,7,18,40], DEFENSE = [1,5,13,30]
+    expect(offense).toBe(10 * 1 + 10 * 7 + 10 * 18 + 10 * 40); // 660
+    expect(defense).toBe(10 * 1 + 10 * 5 + 10 * 13 + 10 * 30); // 490
   });
 });
 
@@ -190,26 +191,25 @@ describe('threatLevel', () => {
 });
 
 describe('scoreTrains', () => {
-  it('prefers T1 (best power-per-gold) when unit-count headroom is ample', () => {
-    const trains = scoreTrains(self(), PERSONAS.warlord, 30, 50_000, makeRng(1));
+  it('builds a MIXED army across tiers rather than mono-spamming the cheapest unit', () => {
+    // Ample land + gold + turns: the AI should spread across multiple tiers.
+    const k = self({ land: 30_000, gold: 5_000_000, buildings: { barracks: 5_000 }, totalUnits: {} });
+    const trains = scoreTrains(k, PERSONAS.warlord, 72, 4_000_000, makeRng(1));
+    const tiersUsed = new Set(trains.map(t => t.unitType));
     expect(trains.length).toBeGreaterThan(0);
-    expect(trains[0].unitType).toBe('peasants');
+    expect(tiersUsed.size).toBeGreaterThanOrEqual(3); // not a single-tier wall
+    // No single tier should dominate the whole gold spend.
+    const totalCost = trains.reduce((s, t) => s + t.cost, 0);
+    const maxTierCost = Math.max(...trains.map(t => t.cost));
+    expect(maxTierCost / totalCost).toBeLessThan(0.6);
   });
 
-  it('escalates to higher tiers when the 100k unit cap binds', () => {
-    // 99k units already: only 1k unit slots left, but lots of gold/cap room ->
-    // higher tiers pack more power per unit slot.
-    const crowded = self({
-      land: 30_000,
-      totalUnits: { peasants: 99_000 },
-      buildings: { barracks: 10_000 },
-      gold: 5_000_000,
-    });
-    const trains = scoreTrains(crowded, PERSONAS.warlord, 30, 4_000_000, makeRng(2));
-    const t1 = trains.find(t => t.unitType === 'peasants')?.qty ?? 0;
-    const higher = trains.filter(t => t.unitType !== 'peasants').reduce((s, t) => s + t.qty, 0);
-    expect(t1 + higher).toBeLessThanOrEqual(1_000); // never exceeds unit cap
-    expect(higher).toBeGreaterThan(0);              // shifted up-tier
+  it('respects the land-based unit-count cap (no mega-wall on small land)', () => {
+    // 100 land → cap 5,000 units. Already at 4,900 → at most 100 more, despite huge gold.
+    const tight = self({ land: 100, totalUnits: { peasants: 4_900 }, gold: 10_000_000, buildings: {} });
+    const trains = scoreTrains(tight, PERSONAS.warlord, 72, 5_000_000, makeRng(2));
+    const trained = trains.reduce((s, t) => s + t.qty, 0);
+    expect(trained).toBeLessThanOrEqual(100);
   });
 
   it('never exceeds the troop cap players are bound by', () => {

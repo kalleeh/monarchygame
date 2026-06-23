@@ -23,6 +23,7 @@ type SummonView = 'dashboard' | 'summon';
 
 // Helper to get race-specific image for universal units
 import { getUnitImagePath } from '../utils/unitImages';
+import { calculateUnitCountCap } from '../../../shared/mechanics/troop-cap-mechanics';
 
 const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({ 
   kingdomId,
@@ -65,6 +66,10 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
   const totalUpkeep = getTotalUpkeep();
   const TROOP_CAP_GOLD = troopCapGold;
 
+  // Land-based unit head-count cap (separate from the gold cap above)
+  const currentUnitCount = currentUnits.reduce((sum, u) => sum + u.count, 0);
+  const unitCountCap = calculateUnitCountCap({ land: resources.land ?? 0 });
+
   // On mount: refresh gold balance from server so affordability is accurate
   useEffect(() => {
     void AmplifyFunctionService.refreshKingdomResources(kingdomId);
@@ -99,7 +104,8 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
       <div className="summon-stats">
         <div className="stat-card">
           <h4>Current Army</h4>
-          <span className="stat-value">{currentUnits.reduce((sum, u) => sum + u.count, 0)}</span>
+          <span className="stat-value">{currentUnitCount.toLocaleString()}</span>
+          <small>of {unitCountCap.toLocaleString()} unit cap ({(resources.land ?? 0).toLocaleString()} land)</small>
         </div>
         <div className="stat-card">
           <h4>Army Value</h4>

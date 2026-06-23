@@ -41,3 +41,25 @@ export function calculateTroopCapGold({ land, barracks }: TroopCapInput): number
     + Math.max(0, barracks) * TROOP_CAP.GOLD_PER_BARRACKS;
   return Math.max(TROOP_CAP.MIN_CAP_GOLD, scaled);
 }
+
+/**
+ * Land-based UNIT-COUNT cap (separate from the gold cap above).
+ *
+ * Without this, the cheapest unit + a 2M gold floor let a 100-land kingdom field
+ * ~40,000 tier-0 units — an unbeatable defensive wall regardless of attacker size.
+ * Tying the head-count to land makes army size scale with the kingdom and kills
+ * the small-land mega-wall. Both caps apply; training must satisfy each.
+ */
+export const UNIT_COUNT_CAP = {
+  /** Max units per acre of land. */
+  PER_LAND: 50,
+  /** Floor so brand-new/small kingdoms can still field a starter army. */
+  MIN_UNITS: 2_000,
+  /** Absolute ceiling (matches unit-trainer MAX_TOTAL_UNITS). */
+  MAX_UNITS: 100_000,
+} as const;
+
+export function calculateUnitCountCap({ land }: { land: number }): number {
+  const scaled = Math.floor(Math.max(0, land) * UNIT_COUNT_CAP.PER_LAND);
+  return Math.min(UNIT_COUNT_CAP.MAX_UNITS, Math.max(UNIT_COUNT_CAP.MIN_UNITS, scaled));
+}
