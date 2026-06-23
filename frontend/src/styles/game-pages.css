@@ -1,11 +1,14 @@
 /* Consistent Page Styling — uses --gm-* variables */
 
-/* Base page container */
+/* Base page container.
+ * NOTE: .diplomacy-interface and .guild-management are intentionally excluded —
+ * they hold a flush full-width TopNavigation and pad their own inner content
+ * area (.diplomacy-content / .guild-content). Adding root padding here too
+ * produced a double-padded inset ("border/margin around the content"). They
+ * follow the .trade-system-page / .territory-expansion pattern instead. */
 .leaderboard-container,
-.diplomacy-interface,
 .trade-economy,
 .unit-training-interface,
-.guild-management,
 .world-map-container {
   padding: 1.5rem;
   background-color: var(--gm-bg-page, #0f0f1a);
@@ -106,13 +109,11 @@
   gap: 1rem;
 }
 
-/* Mobile responsive */
+/* Mobile responsive (diplomacy/guild excluded — see note above) */
 @media (max-width: 768px) {
   .leaderboard-container,
-  .diplomacy-interface,
   .trade-economy,
   .unit-training-interface,
-  .guild-management,
   .world-map-container {
     padding: 1rem;
   }
