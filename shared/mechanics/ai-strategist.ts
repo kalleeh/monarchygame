@@ -430,7 +430,7 @@ export function troopGoldInvested(race: string, units: Record<string, number>): 
   return invested;
 }
 
-const MAX_TRAIN_PER_ACTION = 1000; // unit-trainer per-action quantity limit
+const MAX_TRAIN_PER_ACTION = 1000; // AI pacing cap per tier per tick (≤ unit-trainer's 10000 limit)
 
 // Target gold split across the 4 tiers — weighted toward higher tiers so armies
 // pack power per unit-slot (which the land cap rations) while keeping a spread of

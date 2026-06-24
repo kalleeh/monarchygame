@@ -519,6 +519,17 @@ const schema = a.schema({
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(spellCaster)),
 
+  // Live spell status: real temples/land/race/elan for the caster's kingdom,
+  // so the client computes maxElan and temple gates from authoritative data.
+  getSpellStatus: a
+    .query()
+    .arguments({
+      kingdomId: a.string().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(spellCaster)),
+
   claimTerritory: a
     .mutation()
     .arguments({

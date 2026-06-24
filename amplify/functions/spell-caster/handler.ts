@@ -6,6 +6,8 @@ import { dbGet, dbUpdate, dbConditionalUpdate, dbQuery, parseJsonField, ensureTu
 import { verifyOwnership } from '../verify-ownership';
 import { checkRateLimit } from '../rate-limiter';
 import { isConditionalCheckFailed } from '../conditional-helpers';
+import { calculateMaxElan } from '../../../shared/mechanics/elan-mechanics';
+import type { KingdomBuildings } from '../../../shared/types/kingdom-resources';
 
 const SPELL_ELAN_COSTS: Record<string, number> = {
   calming_chant: 5,        // No damage, cheapest
@@ -38,8 +40,61 @@ const OFFENSIVE_SPELL_TYPES = new Set(['rousing_wind', 'shattering_calm', 'hurri
 
 type KingdomType = Record<string, unknown>;
 
+/**
+ * getSpellStatus — live spell status for a kingdom, computed from the real
+ * Kingdom record (temples, land, race, elan) so the client's maxElan and temple
+ * gates use authoritative data instead of mock values. Routed here because the
+ * same Lambda backs the castSpell mutation.
+ */
+async function getSpellStatus(
+  kingdomId: string,
+  identity: { sub?: string } | null,
+): Promise<Record<string, unknown>> {
+  if (!identity?.sub) {
+    return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
+  }
+  const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
+  if (!kingdom) {
+    return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+  }
+  const denied = verifyOwnership(identity, (kingdom.owner as string | null) ?? null);
+  if (denied) return denied;
+
+  const resources = parseJsonField<KingdomResources>(kingdom.resources, {} as KingdomResources);
+  const buildings = parseJsonField<KingdomBuildings>(kingdom.buildings, {} as KingdomBuildings);
+  const templeCount = buildings.temple ?? 0;
+  const landCount = resources.land ?? 0;
+  const raceId = (kingdom.race as string | undefined) ?? 'HUMAN';
+  const currentElan = resources.elan ?? 0;
+  const maxElan = calculateMaxElan(templeCount, landCount, raceId);
+  const templePercentage = landCount > 0 ? (templeCount / landCount) * 100 : 0;
+
+  return {
+    success: true,
+    kingdomId,
+    templeCount,
+    landCount,
+    raceId,
+    currentElan,
+    maxElan,
+    templePercentage,
+  };
+}
+
 export const handler: Schema["castSpell"]["functionHandler"] = async (event) => {
   const { casterId, spellId, targetId } = event.arguments;
+  const args = event.arguments as Record<string, unknown>;
+
+  // getSpellStatus query routes to this same Lambda — detect it by its kingdomId arg.
+  if (args.kingdomId && !casterId) {
+    try {
+      return await getSpellStatus(args.kingdomId as string, event.identity as { sub?: string } | null) as never;
+    } catch (error) {
+      await persistErrorLog('spell-caster', error, { action: 'getSpellStatus', kingdomId: args.kingdomId });
+      log.error('spell-caster', error, { action: 'getSpellStatus' });
+      return { success: false, error: 'Failed to load spell status', errorCode: ErrorCode.INTERNAL_ERROR } as never;
+    }
+  }
 
   try {
     if (!casterId || !spellId) {

@@ -358,6 +358,11 @@ export class AmplifyFunctionService {
       switch (action) {
         case 'cast':
           return { success: true, spellResult: 'cast', spellId, casterId: kingdomId, elanCost: this.getSpellManaCost(spellId), damage: 0 };
+        case 'validate':
+        case 'status':
+          // Derive real temple/land/elan from the demo kingdom store so maxElan and
+          // the temple gate aren't computed from bogus zeros (same fix as auth mode).
+          return this.getDemoSpellStatus();
         default:
           return this.getMockSpellData(action, spellId);
       }
@@ -370,16 +375,50 @@ export class AmplifyFunctionService {
           spellId,
           targetId: targetId || ''
         }));
-      
+
       case 'validate':
       case 'status':
+        // Live spell status from the server: real temples/land/race/elan.
+        return AmplifyFunctionService.parseResult(await getClient().queries.getSpellStatus({
+          kingdomId,
+        }));
+
       case 'history':
-        // For now, return mock data until we implement these as queries
+        // History is not yet persisted server-side.
         return this.getMockSpellData(action, spellId);
-      
+
       default:
         throw new Error(`Unknown spell action: ${action}`);
     }
+  }
+
+  /**
+   * Demo-mode spell status — mirrors the server getSpellStatus shape using the
+   * demo kingdom's real buildings/resources from the store, so maxElan and the
+   * temple gate are computed from authentic values (not the old mock zeros).
+   */
+  private static async getDemoSpellStatus(): Promise<Record<string, unknown>> {
+    const { useKingdomStore } = await import('../stores/kingdomStore');
+    const { calculateMaxElan } = await import('../../../shared/mechanics/elan-mechanics');
+    const state = useKingdomStore.getState();
+    const buildings = state.buildings ?? {};
+    const resources = state.resources ?? {};
+    const templeCount = Number((buildings as Record<string, number>).temple ?? 0);
+    const landCount = Number((resources as { land?: number }).land ?? 0);
+    const currentElan = Number((resources as { elan?: number }).elan ?? 0);
+    // Race isn't in the store; read it from the demo kingdom record if present.
+    let raceId = 'HUMAN';
+    try {
+      const kid = state.kingdomId;
+      const stored = kid ? localStorage.getItem(`kingdom-${kid}`) : null;
+      if (stored) raceId = (JSON.parse(stored) as { race?: string }).race ?? 'HUMAN';
+    } catch { /* default race */ }
+    const maxElan = calculateMaxElan(templeCount, landCount, raceId);
+    const templePercentage = landCount > 0 ? (templeCount / landCount) * 100 : 0;
+    return {
+      success: true, canCast: true, templeCount, landCount, raceId,
+      currentElan, maxElan, templePercentage, activeCooldowns: [],
+    };
   }
 
   /**

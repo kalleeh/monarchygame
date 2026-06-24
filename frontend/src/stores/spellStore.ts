@@ -73,17 +73,17 @@ export const useSpellStore = create(
         try {
           const status = await SpellService.validateSpell(kingdomId, 'default');
           const history = await SpellService.getSpellHistory(kingdomId, 20);
-          
-          // Calculate max elan from server data
-          const templeCount = Number((status as unknown as Record<string, unknown>).templeCount) || 0;
-          const landCount = Number((status as unknown as Record<string, unknown>).landCount) || 100;
-          const raceId = String((status as unknown as Record<string, unknown>).raceId) || 'HUMAN';
-          
-          const calculatedMaxElan = calculateMaxElan(templeCount, landCount, raceId);
-          const templePercentage = landCount > 0 ? (templeCount / landCount) * 100 : 0;
-          
+
+          // Real status fields from the server (getSpellStatus) / demo store.
+          const templeCount = status.templeCount ?? 0;
+          const landCount = status.landCount ?? 0;
+          const raceId = status.raceId ?? 'HUMAN';
+          // Prefer the server-computed maxElan; fall back to the shared formula.
+          const calculatedMaxElan = status.maxElan ?? calculateMaxElan(templeCount, landCount, raceId);
+          const templePercentage = status.templePercentage ?? (landCount > 0 ? (templeCount / landCount) * 100 : 0);
+
           set({
-            currentElan: Number((status as unknown as Record<string, unknown>).currentElan) || 0,
+            currentElan: status.currentElan || 0,
             maxElan: calculatedMaxElan,
             templeCount,
             templePercentage,

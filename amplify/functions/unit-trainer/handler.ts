@@ -10,7 +10,7 @@ import { getUnitGoldCost } from '../../../shared/mechanics/unit-costs';
 import { calculateTroopCapGold, calculateUnitCountCap } from '../../../shared/mechanics/troop-cap-mechanics';
 import type { KingdomBuildings } from '../../../shared/types/kingdom-resources';
 
-const UNIT_QUANTITY = { min: 1, max: 1000 } as const;
+const UNIT_QUANTITY = { min: 1, max: 10000 } as const;
 const MAX_TOTAL_UNITS = 100000;
 
 type KingdomType = {

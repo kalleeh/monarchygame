@@ -27,6 +27,13 @@ export interface SpellValidationResponse {
   reason?: string;
   requiredMana: number;
   currentElan: number;
+  // Live status fields (from server getSpellStatus / demo store) so the client
+  // computes maxElan and temple gates from real data.
+  templeCount?: number;
+  landCount?: number;
+  raceId?: string;
+  maxElan?: number;
+  templePercentage?: number;
 }
 
 export class SpellService {
@@ -117,11 +124,17 @@ export class SpellService {
         kingdomId
       });
 
+      const r = response as Record<string, unknown>;
       return {
-        canCast: Boolean((response as Record<string, unknown>).canCast) || false,
-        reason: String((response as Record<string, unknown>).reason || ''),
-        requiredMana: Number((response as Record<string, unknown>).requiredMana) || 0,
-        currentElan: Number((response as Record<string, unknown>).currentElan) || 0
+        canCast: Boolean(r.canCast) || false,
+        reason: String(r.reason || ''),
+        requiredMana: Number(r.requiredMana) || 0,
+        currentElan: Number(r.currentElan) || 0,
+        templeCount: r.templeCount != null ? Number(r.templeCount) : undefined,
+        landCount: r.landCount != null ? Number(r.landCount) : undefined,
+        raceId: r.raceId != null ? String(r.raceId) : undefined,
+        maxElan: r.maxElan != null ? Number(r.maxElan) : undefined,
+        templePercentage: r.templePercentage != null ? Number(r.templePercentage) : undefined,
       };
     } catch (error) {
       console.error('Failed to validate spell:', error);

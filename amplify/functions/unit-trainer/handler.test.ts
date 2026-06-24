@@ -180,8 +180,8 @@ describe('unit-trainer handler', () => {
       expect(result.errorCode).toBe('INVALID_PARAM');
     });
 
-    it('returns INVALID_PARAM when quantity exceeds 1000', async () => {
-      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry', quantity: 1001 }));
+    it('returns INVALID_PARAM when quantity exceeds 10000', async () => {
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1', unitType: 'infantry', quantity: 10001 }));
 
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INVALID_PARAM');

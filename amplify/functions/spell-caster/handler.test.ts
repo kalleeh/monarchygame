@@ -86,6 +86,37 @@ beforeEach(() => {
 });
 
 describe('spell-caster handler', () => {
+  describe('getSpellStatus query', () => {
+    it('returns real temples/land/race/elan and a nonzero maxElan when temples exist', async () => {
+      mockDbGet.mockResolvedValue(mockKingdom({
+        resources: { gold: 10000, population: 1000, elan: 199, land: 1000 },
+        buildings: { temple: 50, mine: 0 },
+        race: 'Human',
+      }));
+
+      // getSpellStatus is detected by the kingdomId arg (no casterId).
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1' })) as unknown as Record<string, unknown>;
+
+      expect(result.success).toBe(true);
+      expect(result.templeCount).toBe(50);
+      expect(result.landCount).toBe(1000);
+      expect(result.currentElan).toBe(199);
+      expect(result.maxElan).toBe(500); // 50 temples × 10 × Human 1.0
+      expect(result.templePercentage).toBeCloseTo(5); // 50/1000
+    });
+
+    it('reports maxElan 0 and 0% temples for a templeless kingdom (gate is honest)', async () => {
+      mockDbGet.mockResolvedValue(mockKingdom({
+        resources: { gold: 0, population: 0, elan: 0, land: 800 },
+        buildings: { temple: 0 },
+      }));
+      const result = await callHandler(makeEvent({ kingdomId: 'kingdom-1' })) as unknown as Record<string, unknown>;
+      expect(result.success).toBe(true);
+      expect(result.maxElan).toBe(0);
+      expect(result.templePercentage).toBe(0);
+    });
+  });
+
   describe('happy path — self-targeted spell', () => {
     it('deducts elan from caster for calming_chant (no-damage spell)', async () => {
       mockDbGet.mockResolvedValue(mockKingdom());

@@ -21,6 +21,9 @@ interface UnitSummonInterfaceProps {
 
 type SummonView = 'dashboard' | 'summon';
 
+// Max units per single summon action — must match unit-trainer UNIT_QUANTITY.max.
+const PER_SUMMON_CAP = 10000;
+
 // Helper to get race-specific image for universal units
 import { getUnitImagePath } from '../utils/unitImages';
 import { calculateUnitCountCap } from '../../../shared/mechanics/troop-cap-mechanics';
@@ -185,7 +188,9 @@ const UnitSummonContent: React.FC<UnitSummonInterfaceProps> = ({
         </p>
         <div className="units-grid">
           {availableUnits.map(unitType => {
-            const maxAffordable = calculateMaxAffordable(unitType.goldCost);
+            // Clamp to the server's per-summon cap so the Max button/input can never
+            // request more than one trainUnits call accepts (which would fail).
+            const maxAffordable = Math.min(PER_SUMMON_CAP, calculateMaxAffordable(unitType.goldCost));
             const canAfford = maxAffordable > 0 && (resources.turns || 0) >= 1;
             
             return (
