@@ -446,6 +446,45 @@ const WorldMapDesktop: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
     setSelectedTerritory(null);
   }, []);
 
+  // React Flow instance + a one-shot guard so we auto-focus the player's kingdom
+  // exactly once, after their territories have loaded (ownership loads async, so
+  // it usually isn't ready at onInit time).
+  const rfInstanceRef = React.useRef<{ fitView: (opts?: Record<string, unknown>) => void } | null>(null);
+  const didFocusPlayerRef = React.useRef(false);
+
+  const focusPlayer = useCallback(() => {
+    const inst = rfInstanceRef.current;
+    if (!inst) return;
+    const playerNodes = nodes.filter(
+      (n) => n.id !== 'map-bg' && (n as TerritoryNode).data?.ownership === 'player',
+    );
+    inst.fitView(
+      playerNodes.length > 0
+        ? { nodes: playerNodes.map((n) => ({ id: n.id })), padding: 0.5, duration: 600, maxZoom: 0.5 }
+        : { padding: 0.2, duration: 600 },
+    );
+  }, [nodes]);
+
+  const handleInit = useCallback(
+    (instance: { fitView: (opts?: Record<string, unknown>) => void }) => {
+      rfInstanceRef.current = instance;
+      focusPlayer();
+    },
+    [focusPlayer],
+  );
+
+  // Once the player's territories appear (async load after mount), re-focus once.
+  useEffect(() => {
+    if (didFocusPlayerRef.current) return;
+    const hasPlayerNodes = nodes.some(
+      (n) => n.id !== 'map-bg' && (n as TerritoryNode).data?.ownership === 'player',
+    );
+    if (hasPlayerNodes && rfInstanceRef.current) {
+      didFocusPlayerRef.current = true;
+      focusPlayer();
+    }
+  }, [nodes, focusPlayer]);
+
   const handleAttackTerritory = useCallback((territoryId: string) => {
     // Resolve the enemy kingdom that owns this world territory so combat opens
     // with the right defender preselected. Fall back to no preselection.
@@ -474,8 +513,9 @@ const WorldMapDesktop: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onNodeClick={handleNodeClick}
+          onInit={handleInit}
           nodeTypes={nodeTypes}
-          defaultViewport={{ x: 560, y: 420, zoom: 0.09 }}
+          minZoom={0.05}
           attributionPosition="bottom-left"
           style={{ background: 'var(--gm-bg-page)' }}
         >
@@ -493,6 +533,8 @@ const WorldMapDesktop: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
               return '#374151';
             }}
             position="top-right"
+            pannable
+            zoomable
             style={{ backgroundColor: 'rgba(15,22,41,0.92)', border: '1px solid rgba(255,255,255,0.12)' }}
           />
           <Panel
