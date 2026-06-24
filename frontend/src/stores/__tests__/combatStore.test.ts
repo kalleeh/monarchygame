@@ -30,15 +30,21 @@ vi.mock('../../services/amplifyFunctionService', () => ({
   }
 }))
 
-// Mock ToastService (including warn used by combatStore error handler)
+// Mock ToastService (warning used by combatStore error handlers)
 vi.mock('../../services/toastService', () => ({
   ToastService: {
     success: vi.fn(),
     error: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
+    warning: vi.fn(),
     promise: vi.fn().mockResolvedValue({}),
   }
+}))
+
+// Mock the active-season lookup so declareWar's persist path is deterministic.
+vi.mock('../../utils/currentSeason', () => ({
+  getCurrentSeasonId: vi.fn().mockResolvedValue('season-test'),
 }))
 
 // Mock kingdomStore

@@ -17,6 +17,7 @@ import type { Schema } from '../../../amplify/data/resource';
 import { WorldStateService } from '../services/WorldStateService';
 import { useTerritoryStore } from '../stores/territoryStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
+import { useScoutStore } from '../stores/scoutStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { ToastService } from '../services/toastService';
 import { achievementTriggers } from '../utils/achievementTriggers';
@@ -29,7 +30,7 @@ import {
   nodeTypes,
   hashId,
   getRegionTerrain,
-  terrainEmoji,
+  terrainGlyph,
   buildNodeStyle,
   getLandCategory,
   isInFogOfWar,
@@ -81,6 +82,7 @@ const WorldMapDesktop: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
   const ownedTerritories = useTerritoryStore((s) => s.ownedTerritories);
   const pendingSettlements = useTerritoryStore((s) => s.pendingSettlements);
   const aiKingdoms = useAIKingdomStore((s) => s.aiKingdoms);
+  const scoutedKingdomIds = useScoutStore((s) => s.scoutedKingdomIds);
   const resources = useKingdomStore((s) => s.resources);
   const addGold = useKingdomStore((s) => s.addGold);
   const addTurns = useKingdomStore((s) => s.addTurns);
@@ -191,7 +193,10 @@ const WorldMapDesktop: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
   const worldNodes = useMemo((): TerritoryNode[] => {
     return WORLD_REGIONS.map((wt) => {
       const ownership = territoryOwnership[wt.id] ?? 'neutral';
-      const inFog = isInFogOfWar(wt.position, playerPositions);
+      // A territory is revealed (no fog) if it's within range OR its owning enemy
+      // kingdom has been successfully scouted.
+      const ownerScouted = !!aiOwnerMap[wt.id] && scoutedKingdomIds.includes(aiOwnerMap[wt.id]);
+      const inFog = !ownerScouted && isInFogOfWar(wt.position, playerPositions);
 
       const settling = pendingSettlements.find(ps => ps.regionId === wt.id && ps.kingdomId === 'current-player');
       const enemySettling = pendingSettlements.find(ps => ps.regionId === wt.id && ps.kingdomId !== 'current-player');
@@ -225,7 +230,7 @@ const WorldMapDesktop: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
       const terrain = getRegionTerrain(wt.id, aiTerrainRaw);
 
       const isFogNode = inFog && (ownership === 'neutral' || ownership === 'enemy');
-      const labelWithTerrain = isFogNode ? label : `${label} ${terrainEmoji(terrain)}`;
+      const labelWithTerrain = isFogNode ? label : `${label} ${terrainGlyph(terrain)}`;
 
       const style = buildNodeStyle(
         wt.type,
@@ -275,7 +280,7 @@ const WorldMapDesktop: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
         style,
       } as TerritoryNode;
     });
-  }, [territoryOwnership, playerPositions, aiKingdoms, aiOwnerMap, ownedTerritories, kingdom, pendingSettlements, allianceControlledRegions]);
+  }, [territoryOwnership, playerPositions, aiKingdoms, aiOwnerMap, scoutedKingdomIds, ownedTerritories, kingdom, pendingSettlements, allianceControlledRegions]);
 
   const worldEdges: Edge[] = [];
 
@@ -441,9 +446,13 @@ const WorldMapDesktop: React.FC<WorldMapProps> = ({ kingdom, onBack }) => {
     setSelectedTerritory(null);
   }, []);
 
-  const handleAttackTerritory = useCallback((_territoryId: string) => {
-    navigate(`/kingdom/${kingdom.id}/combat`);
-  }, [navigate, kingdom.id]);
+  const handleAttackTerritory = useCallback((territoryId: string) => {
+    // Resolve the enemy kingdom that owns this world territory so combat opens
+    // with the right defender preselected. Fall back to no preselection.
+    const wtId = selectedTerritoryNode?.data?.worldTerritoryId ?? territoryId;
+    const targetKingdomId = aiOwnerMap[wtId] ?? aiOwnerMap[territoryId];
+    navigate(`/kingdom/${kingdom.id}/combat`, targetKingdomId ? { state: { targetKingdomId } } : undefined);
+  }, [navigate, kingdom.id, selectedTerritoryNode, aiOwnerMap]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 

@@ -286,6 +286,23 @@ export function terrainEmoji(terrain: string): React.ReactNode {
   }
 }
 
+/**
+ * Plain-text terrain glyph for use inside STRING labels (e.g. map node labels).
+ * terrainEmoji() returns a JSX icon, which renders as "[object Object]" when
+ * interpolated into a template string — use this for text contexts.
+ */
+export function terrainGlyph(terrain: string): string {
+  switch (terrain.toLowerCase()) {
+    case 'plains':    return '🌾';
+    case 'forest':    return '🌲';
+    case 'mountains': return '⛰️';
+    case 'swamp':     return '🥦';
+    case 'desert':    return '🏜️';
+    case 'coastal':   return '🌊';
+    default:          return '🌾';
+  }
+}
+
 export function terrainModSummary(terrain: string): string {
   const terrainDef = TERRAINS.find(t => t.type.toLowerCase() === terrain.toLowerCase());
   if (!terrainDef) return terrain.charAt(0).toUpperCase() + terrain.slice(1) + ': no modifiers';

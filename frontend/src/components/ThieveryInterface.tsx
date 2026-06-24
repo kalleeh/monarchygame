@@ -8,6 +8,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useThieveryStore, type OperationType } from '../stores/thieveryStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
+import { useScoutStore } from '../stores/scoutStore';
 import { isDemoMode } from '../utils/authMode';
 import { TargetPicker } from './common/TargetPicker';
 import type { TargetKingdom } from '../hooks/useKingdomTargets';
@@ -167,6 +168,8 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
           if (result.success) {
             switch (type) {
               case 'scout':
+                // Record the target as scouted so the world map reveals it (clears fog).
+                useScoutStore.getState().markScouted(selectedKingdom.id);
                 message = `Scout successful! Intel gathered on ${selectedKingdom.name}.`;
                 if (result.result.informationGained) {
                   const info = result.result.informationGained;

@@ -24,7 +24,8 @@ const RACE_DEFENSE: Record<string, number> = {
   Elemental: 3, Centaur: 2, Sidhe: 3, Dwarven: 5, Fae: 3,
 };
 import { isDemoMode } from '../utils/authMode';
-import { useKingdomTargets } from '../hooks/useKingdomTargets';
+import { useKingdomTargets, type TargetKingdom } from '../hooks/useKingdomTargets';
+import { TargetPicker } from './common/TargetPicker';
 import { TopNavigation } from './TopNavigation';
 import { VictoryIcon, DefeatIcon, SwordIcon, ShieldIcon, SkullIcon, LandIcon, GoldIcon, WarfareIcon, TrophyIcon, KingdomIcon, WarningIcon, CombatIcon } from './ui/MenuIcons';
 import './BattleFormations.css';
@@ -240,6 +241,9 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
   }, [aiKingdoms, serverTargets]);
 
   const [selectedTarget, setSelectedTarget] = useState<string>('');
+  // Full picked target from the unified TargetPicker — carries real stats/units so
+  // the battle preview can estimate defense without a separate lookup.
+  const [selectedTargetData, setSelectedTargetData] = useState<TargetKingdom | null>(null);
   const [showBattleResult, setShowBattleResult] = useState(false);
   const [selectedAttackType, setSelectedAttackType] = useState<'standard' | 'raid' | 'pillage' | 'siege'>('standard');
   const [ambushActive, setAmbushActive] = useState(false);
@@ -277,11 +281,14 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     //   tier2 → defense = 3 * defenseScale
     //   tier3 → defense = 4 * defenseScale
     //   tier4 → defense = 2 * defenseScale
-    const targetKingdom = kingdomTargets.find(k => k.id === selectedTarget);
+    // Prefer the full picked target (has real stats/units); fall back to the
+    // local kingdomTargets list for any legacy/preselected id.
+    const targetKingdom = selectedTargetData ?? kingdomTargets.find(k => k.id === selectedTarget);
     let defenderPower: number;
     if (targetKingdom) {
       const defenseScale = RACE_DEFENSE[targetKingdom.race] ?? 3;
       const aiTarget = aiKingdoms.find(k => k.id === selectedTarget);
+      const realUnits = (targetKingdom as TargetKingdom).totalUnits;
       if (aiTarget) {
         const units = aiTarget.units || { tier1: 0, tier2: 0, tier3: 0, tier4: 0 };
         defenderPower =
@@ -289,8 +296,15 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
           (units.tier2 || 0) * 3 * defenseScale +
           (units.tier3 || 0) * 4 * defenseScale +
           (units.tier4 || 0) * 2 * defenseScale;
+      } else if (realUnits) {
+        // Server target with a real army (peasants/militia/knights/cavalry = tier 0-3).
+        defenderPower =
+          (realUnits.peasants || 0) * 1 * defenseScale +
+          (realUnits.militia || 0) * 3 * defenseScale +
+          (realUnits.knights || 0) * 4 * defenseScale +
+          (realUnits.cavalry || 0) * 2 * defenseScale;
       } else {
-        // Server kingdom: estimate defense from networth (land * 1000 + gold)
+        // Estimate defense from networth (land * 1000 + gold)
         const nw = targetKingdom.networth ?? ((targetKingdom.resources?.land ?? 0) * 1000 + (targetKingdom.resources?.gold ?? 0));
         defenderPower = Math.max(200, nw * 0.003 * defenseScale);
       }
@@ -333,7 +347,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
       defenderCasualtyRate,
       landGainPercent
     };
-  }, [selectedUnits, selectedTarget, aiKingdoms, kingdomTargets, attackerRace]);
+  }, [selectedUnits, selectedTarget, selectedTargetData, aiKingdoms, kingdomTargets, attackerRace]);
 
   // Initialize combat data on mount (also initializes formations via formationStore)
   useEffect(() => {
@@ -349,12 +363,26 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     }
   }, [aiKingdoms.length, generateAIKingdoms, resources.gold, resources.land]);
 
-  // Pre-select target when navigated from KingdomBrowser with a target id
+  // Pre-select target when navigated from the world map / KingdomBrowser with a
+  // target id. Also resolve the full target object (from server targets or AI
+  // kingdoms) so the picker highlights it and the battle preview can estimate.
   useEffect(() => {
-    if (preselectedTargetId) {
-      setSelectedTarget(preselectedTargetId);
+    if (!preselectedTargetId) return;
+    setSelectedTarget(preselectedTargetId);
+    const fromServer = serverTargets.find(t => t.id === preselectedTargetId);
+    if (fromServer) { setSelectedTargetData(fromServer); return; }
+    const ai = aiKingdoms.find(k => k.id === preselectedTargetId);
+    if (ai) {
+      setSelectedTargetData({
+        id: ai.id, name: ai.name, race: ai.race,
+        resources: ai.resources, networth: ai.networth,
+        totalUnits: {
+          peasants: ai.units?.tier1 ?? 0, militia: ai.units?.tier2 ?? 0,
+          knights: ai.units?.tier3 ?? 0, cavalry: ai.units?.tier4 ?? 0,
+        },
+      } as TargetKingdom);
     }
-  }, [preselectedTargetId]);
+  }, [preselectedTargetId, serverTargets, aiKingdoms]);
 
   // Battle stats animation
   const battleStats = getBattleStats();
@@ -448,35 +476,14 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
         marginBottom: '1.5rem'
       }}>
         <h3 style={{ color: '#fff', marginBottom: '1rem' }}><CombatIcon /> Select Target</h3>
-        {kingdomTargets.length === 0 && !preselectedTargetId ? (
-          <p style={{ color: '#a0a0a0' }}>Loading targets…</p>
-        ) : (
-          <select
-            value={selectedTarget}
-            onChange={(e) => { setSelectedTarget(e.target.value); clearError(); }}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(139, 92, 246, 0.3)',
-              borderRadius: '8px',
-              color: '#fff',
-              fontSize: '1rem',
-            }}
-          >
-            <option value="">-- Select a target kingdom --</option>
-            {kingdomTargets.map(kingdom => (
-              <option key={kingdom.id} value={kingdom.id}>
-                {kingdom.name} ({kingdom.race}) - NW: {(kingdom.networth ?? ((kingdom.resources?.land ?? 0) * 1000 + (kingdom.resources?.gold ?? 0))).toLocaleString()}
-              </option>
-            ))}
-            {preselectedTargetId && !kingdomTargets.some(k => k.id === preselectedTargetId) && (
-              <option key={preselectedTargetId} value={preselectedTargetId}>
-                Real Kingdom (ID: {preselectedTargetId})
-              </option>
-            )}
-          </select>
-        )}
+        <TargetPicker
+          currentKingdomId={kingdomId}
+          range={[0.25, 2.0]}
+          variant="cards"
+          selectedId={selectedTarget || undefined}
+          onSelect={(k) => { setSelectedTarget(k.id); setSelectedTargetData(k); clearError(); }}
+          placeholder="Search kingdoms by name…"
+        />
       </div>
 
       {/* Army — compact grid */}

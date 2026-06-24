@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Schema } from '../../../amplify/data/resource';
 import { useTerritoryStore } from '../stores/territoryStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
+import { useScoutStore } from '../stores/scoutStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { ToastService } from '../services/toastService';
 import { achievementTriggers } from '../utils/achievementTriggers';
@@ -47,6 +48,7 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
   const ownedTerritories = useTerritoryStore((s) => s.ownedTerritories);
   const pendingSettlements = useTerritoryStore((s) => s.pendingSettlements);
   const aiKingdoms = useAIKingdomStore((s) => s.aiKingdoms);
+  const scoutedKingdomIds = useScoutStore((s) => s.scoutedKingdomIds);
 
   // Season age for atmosphere
   const seasonAge = useMemo((): 'early' | 'middle' | 'late' => {
@@ -125,8 +127,8 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
 
   // ── Build AI kingdom → region mapping ───────────────────────────────────────
 
-  const aiRegionMap = useMemo((): Record<string, { race: string; isAI: boolean; power: number }> => {
-    const map: Record<string, { race: string; isAI: boolean; power: number }> = {};
+  const aiRegionMap = useMemo((): Record<string, { ownerId: string; race: string; isAI: boolean; power: number }> => {
+    const map: Record<string, { ownerId: string; race: string; isAI: boolean; power: number }> = {};
     aiKingdoms.forEach((k) => {
       const h = hashId(k.id);
       const slotCount = 1 + (h % 3);
@@ -135,8 +137,9 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
       for (let offset = 0; offset < WORLD_REGIONS.length && claimed < slotCount; offset++) {
         const idx = (startIdx + offset) % WORLD_REGIONS.length;
         const r = WORLD_REGIONS[idx];
-        if (territoryOwnership[r.id] === 'enemy') {
+        if (territoryOwnership[r.id] === 'enemy' && !map[r.id]) {
           map[r.id] = {
+            ownerId: k.id,
             race: (k as unknown as Record<string, unknown>).race as string ?? 'Human',
             isAI: true,
             power: (k as unknown as Record<string, unknown>).networth as number ?? 1000,
@@ -153,7 +156,8 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
   const categorised = useMemo((): CategorisedRegion[] => {
     return WORLD_REGIONS.map((region) => {
       const ownership = territoryOwnership[region.id] ?? 'neutral';
-      const inFog = isInFogOfWar(region.position, playerPositions);
+      const ownerScouted = !!aiRegionMap[region.id]?.ownerId && scoutedKingdomIds.includes(aiRegionMap[region.id].ownerId);
+      const inFog = !ownerScouted && isInFogOfWar(region.position, playerPositions);
       const settling = pendingSettlements.find(
         (ps) => ps.regionId === region.id && ps.kingdomId === 'current-player',
       );
@@ -187,7 +191,7 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
         power: aiInfo?.power,
       };
     });
-  }, [territoryOwnership, playerPositions, pendingSettlements, serverPendingSettlements, aiRegionMap, kingdom.race]);
+  }, [territoryOwnership, playerPositions, pendingSettlements, serverPendingSettlements, aiRegionMap, scoutedKingdomIds, kingdom.race]);
 
   const owned     = categorised.filter((c) => c.category === 'owned');
   const available = categorised.filter((c) => c.category === 'available');
@@ -276,24 +280,9 @@ export const WorldMapMobile: React.FC<WorldMapMobileProps> = ({ kingdom, onBack 
   };
 
   const handleAttack = (item: CategorisedRegion) => {
-    // Find which AI kingdom owns this region
-    const aiInfo = aiRegionMap[item.region.id];
-    let targetKingdomId: string | undefined;
-    if (aiInfo) {
-      // Match back to the AI kingdom by finding which one hashes to this region
-      const match = aiKingdoms.find((k) => {
-        const h = hashId(k.id);
-        const slotCount = 1 + (h % 3);
-        const startIdx = h % WORLD_REGIONS.length;
-        for (let offset = 0; offset < WORLD_REGIONS.length && offset < slotCount + WORLD_REGIONS.length; offset++) {
-          const idx = (startIdx + offset) % WORLD_REGIONS.length;
-          if (WORLD_REGIONS[idx].id === item.region.id) return true;
-        }
-        return false;
-      });
-      targetKingdomId = match?.id;
-    }
-    navigate(`/kingdom/${kingdom.id}/combat`, { state: { targetKingdomId } });
+    // The owning AI kingdom id is recorded directly on the region map.
+    const targetKingdomId = aiRegionMap[item.region.id]?.ownerId;
+    navigate(`/kingdom/${kingdom.id}/combat`, targetKingdomId ? { state: { targetKingdomId } } : undefined);
   };
 
   // ── Resources summary for card affordability checks ───────────────────────

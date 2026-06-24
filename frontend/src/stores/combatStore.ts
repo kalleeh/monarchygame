@@ -14,6 +14,7 @@ import { isDemoMode } from '../utils/authMode';
 import { ToastService } from '../services/toastService';
 import type { BattleReportEvent } from '../services/subscriptionManager';
 import { processCombat, declareWar as declareWarApi, refreshKingdomResources } from '../services/domain/CombatService';
+import { getCurrentSeasonId } from '../utils/currentSeason';
 import { achievementTriggers } from '../utils/achievementTriggers';
 import { GuildService } from '../services/GuildService';
 import { useCombatReplayStore } from './combatReplayStore';
@@ -494,18 +495,32 @@ export const useCombatStore = create(
           declaredAt: Date.now(),
           isActive: true
         };
-        // Persist to backend (fire-and-forget — local state is source of truth for UI)
-        void declareWarApi({
-          action: 'declareWar',
-          kingdomId: attackerId,
-          attackerId,
-          defenderKingdomId: defenderId,
-          seasonId: undefined,
-          reason: 'Formal war declaration',
-        }).catch((err: unknown) => {
-          console.warn('[combatStore] war declaration persist failed:', err);
-          ToastService.warning('War declaration may not have saved — please try again if needed');
-        });
+        // Persist to backend. The declareWar mutation REQUIRES a seasonId, so fetch
+        // the active season first — passing undefined fails GraphQL validation and
+        // the WarDeclaration row never gets created (which then blocks further
+        // attacks with "must declare war"). Demo mode skips the server call.
+        if (!isDemoMode()) {
+          void (async () => {
+            try {
+              const seasonId = await getCurrentSeasonId(attackerId);
+              if (!seasonId) {
+                ToastService.warning('No active season — war declaration could not be saved.');
+                return;
+              }
+              await declareWarApi({
+                action: 'declareWar',
+                kingdomId: attackerId,
+                attackerId,
+                defenderKingdomId: defenderId,
+                seasonId,
+                reason: 'Formal war declaration',
+              });
+            } catch (err: unknown) {
+              console.warn('[combatStore] war declaration persist failed:', err);
+              ToastService.warning('War declaration may not have saved — please try again if needed');
+            }
+          })();
+        }
         set((state) => ({
           warDeclarations: [...state.warDeclarations, warDeclaration]
         }));
