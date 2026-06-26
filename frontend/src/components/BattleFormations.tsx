@@ -196,7 +196,6 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
   const location = useLocation();
   const preselectedTargetId = (location.state as { targetKingdomId?: string } | null)?.targetKingdomId;
   const {
-    selectedUnits,
     formations,
     activeFormation,
     setActiveFormation,
@@ -262,7 +261,10 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
   // Mirrors the simulateBattle logic in combatStore.ts so the prediction
   // matches the actual combat outcome for AI/demo targets.
   const battlePreview = useMemo(() => {
-    if (selectedUnits.length === 0 || !selectedTarget) {
+    // Combat sends the WHOLE army automatically (no per-unit selection on this
+    // screen), so the preview must estimate from availableUnits — not the
+    // formation store's selectedUnits, which is never populated here.
+    if (availableUnits.length === 0 || !selectedTarget) {
       return null;
     }
 
@@ -272,7 +274,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     const attackerOffenseScale = RACE_OFFENSE[attackerRace] ?? 3;
 
     // Calculate attacker power with race offense scaling applied (matches simulateBattle)
-    const attackerPower = selectedUnits.reduce((sum, u) => sum + (u.attack * u.count * attackerOffenseScale), 0);
+    const attackerPower = availableUnits.reduce((sum, u) => sum + (u.attack * u.count * attackerOffenseScale), 0);
 
     // Calculate defender power matching simulateBattle's per-tier defense values
     // scaled by the defender's race warDefense rating.
@@ -347,7 +349,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
       defenderCasualtyRate,
       landGainPercent
     };
-  }, [selectedUnits, selectedTarget, selectedTargetData, aiKingdoms, kingdomTargets, attackerRace]);
+  }, [availableUnits, selectedTarget, selectedTargetData, aiKingdoms, kingdomTargets, attackerRace]);
 
   // Initialize combat data on mount (also initializes formations via formationStore)
   useEffect(() => {

@@ -191,7 +191,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ kingdoms, currentKingdom, onS
       for (const k of converted) {
         const newVal = k.stats.previousSeasonNumber;
         const oldVal = prevSeasonNumbersRef.current[k.id];
-        if (!isFirstLoad && newVal != null && newVal !== oldVal) {
+        // Only treat this as a season-end transition for a kingdom we were ALREADY
+        // tracking whose season number actually advanced to a real (>0) value.
+        // Newly-seen kingdoms (oldVal === undefined, e.g. from "Load more"
+        // pagination) must NOT fire — their previousSeasonNumber defaults to 0,
+        // which previously triggered a bogus "Season 0 complete" popup.
+        if (!isFirstLoad && oldVal != null && newVal != null && newVal > 0 && newVal !== oldVal) {
           seasonEndDetected = true;
           detectedSeasonNumber = newVal;
         }
