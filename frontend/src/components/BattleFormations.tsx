@@ -14,15 +14,14 @@ import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
 import { getUnitsForRace } from '../utils/units';
 import { getUnitImagePath } from '../utils/unitImages';
-// Inline race offense/defense scales to avoid circular import via __mocks__
-const RACE_OFFENSE: Record<string, number> = {
-  Human: 3, Elven: 2, Goblin: 4, Droben: 5, Vampire: 3,
-  Elemental: 4, Centaur: 2, Sidhe: 2, Dwarven: 3, Fae: 3,
-};
-const RACE_DEFENSE: Record<string, number> = {
-  Human: 3, Elven: 4, Goblin: 3, Droben: 3, Vampire: 4,
-  Elemental: 3, Centaur: 2, Sidhe: 3, Dwarven: 5, Fae: 3,
-};
+// Real combat math shared with the server (combat-processor) so the preview
+// matches the actual battle outcome: flat per-tier unit stats + the unit-counter
+// composition multiplier + race offense/defense bonuses + the same tier/casualty
+// thresholds. (The old local RACE_OFFENSE/RACE_DEFENSE tables produced a wildly
+// different — and misleading — estimate.)
+import { getUnitOffense, getUnitDefense, getBattleResult, getCasualtyRates } from '../../../shared/combat/combatCache';
+import { compositionAdjustedOffense } from '../../../shared/mechanics/unit-classes';
+import { RACE_OFFENSE_BONUSES, RACE_DEFENSE_BONUSES } from '../../../shared/mechanics/combat-mechanics';
 import { isDemoMode } from '../utils/authMode';
 import { useKingdomTargets, type TargetKingdom } from '../hooks/useKingdomTargets';
 import { TargetPicker } from './common/TargetPicker';
@@ -268,86 +267,68 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
       return null;
     }
 
-    // Attacker race scaling: matches simulateBattle's attackerOffenseScale.
-    // Units in the kingdom store already have race-scaled .attack stats, but
-    // simulateBattle multiplies by the raw warOffense rating a second time.
-    const attackerOffenseScale = RACE_OFFENSE[attackerRace] ?? 3;
+    // Build the attacker's unit-count map by real unit-type key (e.g.
+    // 'elven-lords'), matching what the server reads from totalUnits.
+    const attackerUnitCounts: Record<string, number> = {};
+    for (const u of availableUnits) {
+      attackerUnitCounts[u.type] = (attackerUnitCounts[u.type] || 0) + u.count;
+    }
 
-    // Calculate attacker power with race offense scaling applied (matches simulateBattle)
-    const attackerPower = availableUnits.reduce((sum, u) => sum + (u.attack * u.count * attackerOffenseScale), 0);
-
-    // Calculate defender power matching simulateBattle's per-tier defense values
-    // scaled by the defender's race warDefense rating.
-    // simulateBattle builds defender units as:
-    //   tier1 → defense = 1 * defenseScale
-    //   tier2 → defense = 3 * defenseScale
-    //   tier3 → defense = 4 * defenseScale
-    //   tier4 → defense = 2 * defenseScale
-    // Prefer the full picked target (has real stats/units); fall back to the
-    // local kingdomTargets list for any legacy/preselected id.
+    // Build the defender's unit-count map. AI/demo kingdoms use tier1-4 keys;
+    // server targets expose peasants/militia/knights/cavalry. Both resolve to the
+    // correct tier via getUnitOffense/getUnitDefense's UNIT_TIER table.
     const targetKingdom = selectedTargetData ?? kingdomTargets.find(k => k.id === selectedTarget);
-    let defenderPower: number;
+    const defenderUnitCounts: Record<string, number> = {};
     if (targetKingdom) {
-      const defenseScale = RACE_DEFENSE[targetKingdom.race] ?? 3;
       const aiTarget = aiKingdoms.find(k => k.id === selectedTarget);
       const realUnits = (targetKingdom as TargetKingdom).totalUnits;
-      if (aiTarget) {
-        const units = aiTarget.units || { tier1: 0, tier2: 0, tier3: 0, tier4: 0 };
-        defenderPower =
-          (units.tier1 || 0) * 1 * defenseScale +
-          (units.tier2 || 0) * 3 * defenseScale +
-          (units.tier3 || 0) * 4 * defenseScale +
-          (units.tier4 || 0) * 2 * defenseScale;
+      if (aiTarget?.units) {
+        Object.assign(defenderUnitCounts, aiTarget.units);
       } else if (realUnits) {
-        // Server target with a real army (peasants/militia/knights/cavalry = tier 0-3).
-        defenderPower =
-          (realUnits.peasants || 0) * 1 * defenseScale +
-          (realUnits.militia || 0) * 3 * defenseScale +
-          (realUnits.knights || 0) * 4 * defenseScale +
-          (realUnits.cavalry || 0) * 2 * defenseScale;
-      } else {
-        // Estimate defense from networth (land * 1000 + gold)
-        const nw = targetKingdom.networth ?? ((targetKingdom.resources?.land ?? 0) * 1000 + (targetKingdom.resources?.gold ?? 0));
-        defenderPower = Math.max(200, nw * 0.003 * defenseScale);
+        Object.assign(defenderUnitCounts, realUnits);
       }
-    } else {
-      defenderPower = 200;
     }
 
-    // Calculate offense ratio
+    const defenderHasUnits = Object.values(defenderUnitCounts).some(n => (n ?? 0) > 0);
+
+    // Defender defense: Σ(unit defense) × race defense bonus (same as the server).
+    const defenseScale = RACE_DEFENSE_BONUSES[targetKingdom?.race ?? 'Human'] ?? 1.0;
+    let defenderPower: number;
+    if (defenderHasUnits) {
+      const rawDef = Object.entries(defenderUnitCounts)
+        .reduce((sum, [type, count]) => sum + getUnitDefense(type) * (count ?? 0), 0);
+      defenderPower = Math.round(rawDef * defenseScale);
+    } else {
+      // No known army (e.g. unscouted server kingdom): estimate from networth.
+      const nw = targetKingdom?.networth ?? ((targetKingdom?.resources?.land ?? 0) * 1000 + (targetKingdom?.resources?.gold ?? 0));
+      defenderPower = Math.max(200, Math.round(nw * 0.003 * defenseScale));
+    }
+
+    // Attacker offense: composition-adjusted (unit-counter RPS) × race offense
+    // bonus — exactly the combat-processor path.
+    const offenseBonus = RACE_OFFENSE_BONUSES[attackerRace] ?? 1.0;
+    const { effectiveOffense } = compositionAdjustedOffense(
+      attackerUnitCounts, defenderUnitCounts, getUnitOffense, getUnitDefense,
+    );
+    const attackerPower = Math.round(effectiveOffense * offenseBonus);
+
     const offenseRatio = defenderPower === 0 ? 999 : attackerPower / defenderPower;
 
-    // Determine expected result — thresholds match combatCache.ts getBattleResult
-    let resultType: 'with_ease' | 'good_fight' | 'failed';
-    let attackerCasualtyRate: number;
-    let defenderCasualtyRate: number;
-    let landGainPercent: string;
-
-    if (offenseRatio >= 2.0) {
-      resultType = 'with_ease';
-      attackerCasualtyRate = 0.05;
-      defenderCasualtyRate = 0.20;
-      landGainPercent = '7.0-7.35%';
-    } else if (offenseRatio >= 1.2) {
-      resultType = 'good_fight';
-      attackerCasualtyRate = 0.15;
-      defenderCasualtyRate = 0.15;
-      landGainPercent = '6.79-7.0%';
-    } else {
-      resultType = 'failed';
-      attackerCasualtyRate = 0.25;
-      defenderCasualtyRate = 0.05;
-      landGainPercent = '0%';
-    }
+    // Tier + casualty rates from the shared tables (single source of truth).
+    const resultType = getBattleResult(offenseRatio) as 'with_ease' | 'good_fight' | 'failed';
+    const rates = getCasualtyRates(resultType);
+    const landGainPercent =
+      resultType === 'with_ease' ? '7.0-7.35%' : resultType === 'good_fight' ? '6.79-7.0%' : '0%';
 
     return {
       attackerPower,
       defenderPower,
       offenseRatio,
       resultType,
-      attackerCasualtyRate,
-      defenderCasualtyRate,
-      landGainPercent
+      attackerCasualtyRate: rates.attacker,
+      defenderCasualtyRate: rates.defender,
+      landGainPercent,
+      defenderHasUnits,
     };
   }, [availableUnits, selectedTarget, selectedTargetData, aiKingdoms, kingdomTargets, attackerRace]);
 
@@ -557,6 +538,11 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
             <p style={{ color: '#a0a0a0', fontSize: '0.875rem' }}>
               Offense Ratio: {battlePreview.offenseRatio.toFixed(2)}x
             </p>
+            {!battlePreview.defenderHasUnits && (
+              <p style={{ color: '#9ca3af', fontSize: '0.75rem', fontStyle: 'italic', marginTop: '0.25rem' }}>
+                Defender army unknown — estimated from networth. Scout for exact intel.
+              </p>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', fontSize: '0.875rem' }}>
