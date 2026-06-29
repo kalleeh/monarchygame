@@ -819,4 +819,42 @@ describe('combat-processor handler', () => {
       expect(parsed.landGained).toBeGreaterThan(0);
     });
   });
+
+  describe('getBattlePreview (read-only, no units arg)', () => {
+    it('predicts a failed attack when the defender out-defends a thin attacker', async () => {
+      // Attacker: mostly tier-0 (low offense). Defender: knights+cavalry (high defense).
+      const attackerKingdom = mockKingdom('attacker-1', {
+        race: 'Elven',
+        totalUnits: { 'elven-scouts': 5129, 'elven-warriors': 8, 'elven-archers': 8, 'elven-lords': 402, scouts: 2200 },
+      });
+      const defenderKingdom = mockKingdom('defender-1', {
+        race: 'Human',
+        totalUnits: { peasants: 3408, militia: 897, knights: 840, cavalry: 401 },
+      });
+      mockDbGet
+        .mockResolvedValueOnce(attackerKingdom)
+        .mockResolvedValueOnce(defenderKingdom);
+
+      // No `units` arg => routes to previewCombat.
+      const result = await callHandler(makeEvent({ attackerId: 'attacker-1', defenderId: 'defender-1', preview: true })) as unknown as Record<string, unknown>;
+
+      expect(result.success).toBe(true);
+      expect(result.resultType).toBe('failed');
+      expect(result.offenseRatio as number).toBeLessThan(1.2);
+      expect(result.defenderHasArmy).toBe(true);
+      // Espionage scouts must NOT inflate attacker offense.
+      expect(result.attackerOffense as number).toBeGreaterThan(0);
+    });
+
+    it('does not mutate kingdoms (no dbUpdate / dbCreate)', async () => {
+      mockDbGet
+        .mockResolvedValueOnce(mockKingdom('attacker-1', { race: 'Human', totalUnits: { cavalry: 5000 } }))
+        .mockResolvedValueOnce(mockKingdom('defender-1', { race: 'Human', totalUnits: { peasants: 10 } }));
+
+      await callHandler(makeEvent({ attackerId: 'attacker-1', defenderId: 'defender-1', preview: true }));
+
+      expect(mockDbUpdate).not.toHaveBeenCalled();
+      expect(mockDbCreate).not.toHaveBeenCalled();
+    });
+  });
 });

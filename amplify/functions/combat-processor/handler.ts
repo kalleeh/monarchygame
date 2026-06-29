@@ -863,8 +863,100 @@ export async function resolveCombat(params: ResolveCombatParams): Promise<Combat
   }
 }
 
+/**
+ * previewCombat — read-only battle prediction. Reads both kingdoms (the defender's
+ * army is owner-private, so only the server can see it), sends the attacker's full
+ * combat army (scouts excluded, as in a real attack), and computes the expected
+ * offense/defense/ratio/tier/casualty-rates using the SAME primitives resolveCombat
+ * uses (tier stats, race bonuses, composition counter). Deterministic core factors
+ * only — no terrain/alliance/faith/formation and no DB writes — so the predicted
+ * tier and loss rates match a real attack's dominant math.
+ */
+async function previewCombat(
+  attackerId: string,
+  defenderId: string,
+  identity: { sub?: string } | null,
+): Promise<Record<string, unknown>> {
+  if (!identity?.sub) {
+    return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
+  }
+  const [attacker, defender] = await Promise.all([
+    dbGet<KingdomType>('Kingdom', attackerId),
+    dbGet<KingdomType>('Kingdom', defenderId),
+  ]);
+  if (!attacker) return { success: false, error: 'Attacker kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+  if (!defender) return { success: false, error: 'Defender kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+  // Only the attacker's owner may preview (don't leak enemy army composition).
+  const denied = verifyOwnership(identity, (attacker.owner as string | null) ?? null);
+  if (denied) return denied;
+
+  const TIER_OFFENSE = TIER_STATS.OFFENSE;
+  const TIER_DEFENSE = TIER_STATS.DEFENSE;
+  const UNIT_TIER: Record<string, number> = {
+    peasant: 0, peasants: 0, militia: 1, knight: 2, knights: 2, cavalry: 3,
+    infantry: 1, archer: 2, mage: 2, scout: 0, scouts: 0,
+    tier1: 0, tier2: 1, tier3: 2, tier4: 3,
+    'elven-scouts': 0, 'elven-warriors': 1, 'elven-archers': 2, 'elven-lords': 3,
+    goblins: 0, hobgoblins: 1, kobolds: 2, 'goblin-riders': 3,
+    'droben-warriors': 0, 'droben-berserkers': 1, 'droben-bunar': 2, 'droben-champions': 3,
+    thralls: 0, 'vampire-spawn': 1, 'vampire-lords': 2, 'ancient-vampires': 3,
+    'earth-elementals': 0, 'fire-elementals': 1, 'water-elementals': 2, 'air-elementals': 3,
+    'centaur-scouts': 0, 'centaur-warriors': 1, 'centaur-archers': 2, 'centaur-chiefs': 3,
+    'sidhe-nobles': 0, 'sidhe-elders': 1, 'sidhe-mages': 2, 'sidhe-lords': 3,
+    'dwarven-militia': 0, 'dwarven-guards': 1, 'dwarven-warriors': 2, 'dwarven-lords': 3,
+    'fae-sprites': 0, 'fae-warriors': 1, 'fae-nobles': 2, 'fae-lords': 3,
+  };
+  const getOffense = (t: string) => TIER_OFFENSE[UNIT_TIER[t] ?? 0] ?? 1;
+  const getDefense = (t: string) => TIER_DEFENSE[UNIT_TIER[t] ?? 0] ?? 1;
+
+  const allAttacker = parseJsonField<Record<string, number>>(attacker.totalUnits, {});
+  // Match a real attack: send the whole army, excluding espionage scouts.
+  const attackerUnits: Record<string, number> = {};
+  for (const [t, c] of Object.entries(allAttacker)) {
+    if (t !== 'scouts' && t !== 'elite_scouts' && (c ?? 0) > 0) attackerUnits[t] = c;
+  }
+  const defenderUnits = parseJsonField<Record<string, number>>(defender.totalUnits, {});
+
+  const raceOffenseBonus = RACE_OFFENSE_BONUSES[(attacker.race as string) ?? 'Human'] ?? 1.0;
+  const raceDefenseBonus = RACE_DEFENSE_BONUSES[(defender.race as string) ?? 'Human'] ?? 1.0;
+
+  const rawDefenderDefense = Object.entries(defenderUnits)
+    .reduce((s, [t, c]) => s + getDefense(t) * (c ?? 0), 0);
+  const totalDefenderDefense = Math.round(rawDefenderDefense * raceDefenseBonus);
+
+  const { effectiveOffense } = compositionAdjustedOffense(attackerUnits, defenderUnits, getOffense, getDefense);
+  const totalAttackerOffense = Math.round(effectiveOffense * raceOffenseBonus);
+
+  const ratio = totalDefenderDefense > 0 ? totalAttackerOffense / totalDefenderDefense : 999;
+  const resultType = ratio >= 2.0 ? 'with_ease' : ratio >= 1.2 ? 'good_fight' : 'failed';
+  const rates = getCasualtyRates(resultType);
+
+  return {
+    success: true,
+    attackerOffense: totalAttackerOffense,
+    defenderDefense: totalDefenderDefense,
+    offenseRatio: Number(ratio.toFixed(2)),
+    resultType,
+    attackerCasualtyRate: rates.attacker,
+    defenderCasualtyRate: rates.defender,
+    defenderHasArmy: Object.values(defenderUnits).some(n => (n ?? 0) > 0),
+  };
+}
+
 export const handler: Schema["processCombat"]["functionHandler"] = async (event) => {
   const { attackerId, defenderId, attackType, units, formationId, terrainId } = event.arguments;
+
+  // getBattlePreview query routes to this same Lambda — it passes an explicit
+  // `preview: true` flag (a real attack never does). Serve a read-only prediction.
+  if ((event.arguments as Record<string, unknown>).preview === true) {
+    try {
+      return await previewCombat(attackerId, defenderId, event.identity as { sub?: string } | null) as never;
+    } catch (error) {
+      await persistErrorLog('combat-processor', error, { action: 'getBattlePreview', attackerId, defenderId });
+      log.error('combat-processor', error, { attackerId, defenderId });
+      return { success: false, error: 'Battle preview failed', errorCode: ErrorCode.INTERNAL_ERROR } as never;
+    }
+  }
 
   try {
     if (!attackerId || !defenderId) {

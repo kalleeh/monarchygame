@@ -9,6 +9,7 @@ import { useSpring, animated, config } from '@react-spring/web';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { useCombatStore } from '../stores/combatStore';
+import { CombatService } from '../services/combatService';
 import { useFormationStore } from '../stores/formationStore';
 import { useKingdomStore } from '../stores/kingdomStore';
 import { useAIKingdomStore } from '../stores/aiKingdomStore';
@@ -256,10 +257,10 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
   });
   const [defensiveFormationSaved, setDefensiveFormationSaved] = useState(false);
 
-  // Battle preview calculation (useMemo for performance)
-  // Mirrors the simulateBattle logic in combatStore.ts so the prediction
-  // matches the actual combat outcome for AI/demo targets.
-  const battlePreview = useMemo(() => {
+  // Local (client-side) battle estimate — used in demo mode and as a fallback.
+  // In auth mode the defender's army is owner-private, so this can't be accurate;
+  // the server-side preview (below) takes precedence there.
+  const localPreview = useMemo(() => {
     // Combat sends the WHOLE army automatically (no per-unit selection on this
     // screen), so the preview must estimate from availableUnits — not the
     // formation store's selectedUnits, which is never populated here.
@@ -331,6 +332,41 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
       defenderHasUnits,
     };
   }, [availableUnits, selectedTarget, selectedTargetData, aiKingdoms, kingdomTargets, attackerRace]);
+
+  // Server-side battle preview (auth mode): the defender's army is owner-private,
+  // so only the server can compute an accurate prediction. Fetched whenever the
+  // selected target changes; falls back to the local estimate while loading or in
+  // demo mode.
+  const [serverPreview, setServerPreview] = useState<{
+    attackerPower: number; defenderPower: number; offenseRatio: number;
+    resultType: 'with_ease' | 'good_fight' | 'failed';
+    attackerCasualtyRate: number; defenderCasualtyRate: number;
+    landGainPercent: string; defenderHasUnits: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (isDemoMode() || !selectedTarget) { setServerPreview(null); return; }
+    let cancelled = false;
+    void CombatService.getBattlePreview(kingdomId, selectedTarget).then((p) => {
+      if (cancelled || !p) { if (!cancelled) setServerPreview(null); return; }
+      const landGainPercent =
+        p.resultType === 'with_ease' ? '7.0-7.35%' : p.resultType === 'good_fight' ? '6.79-7.0%' : '0%';
+      setServerPreview({
+        attackerPower: p.attackerOffense,
+        defenderPower: p.defenderDefense,
+        offenseRatio: p.offenseRatio,
+        resultType: p.resultType,
+        attackerCasualtyRate: p.attackerCasualtyRate,
+        defenderCasualtyRate: p.defenderCasualtyRate,
+        landGainPercent,
+        defenderHasUnits: p.defenderHasArmy,
+      });
+    });
+    return () => { cancelled = true; };
+  }, [kingdomId, selectedTarget]);
+
+  // Prefer the authoritative server preview; fall back to the local estimate.
+  const battlePreview = serverPreview ?? localPreview;
 
   // Initialize combat data on mount (also initializes formations via formationStore)
   useEffect(() => {

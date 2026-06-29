@@ -225,6 +225,34 @@ export class CombatService {
   }
 
   /**
+   * Read-only battle prediction from the server (reads the defender's
+   * owner-private army that the client can't see). Returns ratio/tier/loss-rates
+   * matching the real combat math. Demo mode resolves to null so callers fall
+   * back to a local estimate against visible AI kingdoms.
+   */
+  static async getBattlePreview(attackerId: string, defenderId: string): Promise<{
+    success: boolean;
+    attackerOffense: number;
+    defenderDefense: number;
+    offenseRatio: number;
+    resultType: 'with_ease' | 'good_fight' | 'failed';
+    attackerCasualtyRate: number;
+    defenderCasualtyRate: number;
+    defenderHasArmy: boolean;
+  } | null> {
+    try {
+      const { data } = await getClient().queries.getBattlePreview({ attackerId, defenderId, preview: true });
+      if (data == null) return null;
+      const parsed = (typeof data === 'string' ? JSON.parse(data) : data) as Record<string, unknown>;
+      if (!parsed || parsed.success !== true) return null;
+      return parsed as never;
+    } catch (error) {
+      console.error('Battle preview error:', error);
+      return null;
+    }
+  }
+
+  /**
    * Resolve an active war
    */
   static async resolveWar(request: {

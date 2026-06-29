@@ -466,6 +466,21 @@ const schema = a.schema({
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(combatProcessor)),
 
+  // Read-only battle prediction: runs the real combat power calc server-side
+  // (reading the defender's owner-private army) and returns the expected ratio,
+  // tier, and casualty rates WITHOUT mutating anything. The client can't compute
+  // this itself because enemy totalUnits is owner-only.
+  getBattlePreview: a
+    .query()
+    .arguments({
+      attackerId: a.string().required(),
+      defenderId: a.string().required(),
+      preview: a.boolean().required(),
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(combatProcessor)),
+
   updateResources: a
     .mutation()
     .arguments({
