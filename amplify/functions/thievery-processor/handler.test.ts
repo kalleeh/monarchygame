@@ -458,6 +458,148 @@ describe('thievery-processor handler', () => {
     });
   });
 
+  describe('planScoutStrike', () => {
+    const messageCreates = () => mockDbCreate.mock.calls.filter(([model]) => model === 'AllianceMessage');
+    const strikeCreates = () => mockDbCreate.mock.calls.filter(([model]) => model === 'PlannedStrike');
+    const freshIntel = (overrides: Record<string, unknown> = {}) => ({
+      id: 'intel-1',
+      scouterId: 'kingdom-1',
+      targetId: 'target-1',
+      expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+      defenderSnapshot: JSON.stringify({ totalDefense: 42000, fortLevel: 2, goldEstimate: 90000, defenderName: 'Targetania' }),
+      ...overrides,
+    });
+
+    beforeEach(() => {
+      mockDbCreate.mockResolvedValue({ id: 'strike-1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), __typename: 'PlannedStrike' });
+    });
+
+    it('creates a PlannedStrike row and posts a strike rally message (own intel)', async () => {
+      mockDbGet.mockResolvedValueOnce(mockKingdom('kingdom-1', { name: 'Caller', guildId: 'guild-9' }));
+      mockDbQuery.mockResolvedValueOnce([freshIntel()]); // own intel index hit
+
+      const result = await callHandler(
+        makeEvent({ kingdomId: 'kingdom-1', targetKingdomId: 'target-1' }, 'planScoutStrike')
+      );
+
+      expect(result.success).toBe(true);
+      const strikes = strikeCreates();
+      expect(strikes).toHaveLength(1);
+      const row = strikes[0][1] as Record<string, unknown>;
+      expect(row.guildId).toBe('guild-9');
+      expect(row.targetId).toBe('target-1');
+      expect(row.createdBy).toBe('kingdom-1');
+      expect(typeof row.until).toBe('string');
+
+      const msgs = messageCreates();
+      expect(msgs).toHaveLength(1);
+      const msg = msgs[0][1] as Record<string, unknown>;
+      expect(msg.type).toBe('strike');
+      expect(String(msg.content)).toContain('Targetania');
+    });
+
+    it('defaults the window to 2h and honours the cap', async () => {
+      mockDbGet.mockResolvedValueOnce(mockKingdom('kingdom-1', { name: 'Caller', guildId: 'guild-9' }));
+      mockDbQuery.mockResolvedValueOnce([freshIntel()]);
+      const now = Date.now();
+
+      await callHandler(makeEvent({ kingdomId: 'kingdom-1', targetKingdomId: 'target-1' }, 'planScoutStrike'));
+
+      const row = strikeCreates()[0][1] as Record<string, unknown>;
+      const windowMs = new Date(row.until as string).getTime() - now;
+      const MIN = 60_000;
+      expect(windowMs).toBeGreaterThan(119 * MIN);
+      expect(windowMs).toBeLessThan(121 * MIN);
+    });
+
+    it('caps an oversized duration to the max window (6h)', async () => {
+      mockDbGet.mockResolvedValueOnce(mockKingdom('kingdom-1', { name: 'Caller', guildId: 'guild-9' }));
+      mockDbQuery.mockResolvedValueOnce([freshIntel()]);
+      const now = Date.now();
+
+      await callHandler(makeEvent({ kingdomId: 'kingdom-1', targetKingdomId: 'target-1', durationMinutes: 10000 }, 'planScoutStrike'));
+
+      const row = strikeCreates()[0][1] as Record<string, unknown>;
+      const windowMs = new Date(row.until as string).getTime() - now;
+      const MIN = 60_000;
+      expect(windowMs).toBeLessThanOrEqual(361 * MIN);
+      expect(windowMs).toBeGreaterThan(359 * MIN);
+    });
+
+    it('allows planning off a guildmate-shared intel (no personal intel)', async () => {
+      mockDbGet.mockResolvedValueOnce(mockKingdom('kingdom-1', { name: 'Caller', guildId: 'guild-9' }));
+      // Own intel index → empty; shared-guild index → a fresh shared row.
+      mockDbQuery.mockImplementation(async (_model: string, indexName: string) => {
+        if (indexName === 'scoutIntelsBySharedWithGuildIdAndExpiresAt') {
+          return [freshIntel({ scouterId: 'mate-2', sharedWithGuildId: 'guild-9' })];
+        }
+        return [];
+      });
+
+      const result = await callHandler(
+        makeEvent({ kingdomId: 'kingdom-1', targetKingdomId: 'target-1' }, 'planScoutStrike')
+      );
+
+      expect(result.success).toBe(true);
+      expect(strikeCreates()).toHaveLength(1);
+    });
+
+    it('rejects planning when the caller has no guild', async () => {
+      mockDbGet.mockResolvedValueOnce(mockKingdom('kingdom-1', { name: 'Caller' }));
+
+      const result = await callHandler(
+        makeEvent({ kingdomId: 'kingdom-1', targetKingdomId: 'target-1' }, 'planScoutStrike')
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('VALIDATION_FAILED');
+      expect(strikeCreates()).toHaveLength(0);
+    });
+
+    it('returns NOT_FOUND when the guild has no fresh intel on the target', async () => {
+      mockDbGet.mockResolvedValueOnce(mockKingdom('kingdom-1', { guildId: 'guild-9' }));
+      mockDbQuery.mockResolvedValue([]); // neither own nor shared intel
+
+      const result = await callHandler(
+        makeEvent({ kingdomId: 'kingdom-1', targetKingdomId: 'target-1' }, 'planScoutStrike')
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('NOT_FOUND');
+      expect(strikeCreates()).toHaveLength(0);
+    });
+  });
+
+  describe('getActivePlannedStrikes', () => {
+    it('returns only non-expired strikes for the caller guild', async () => {
+      mockDbGet.mockResolvedValueOnce(mockKingdom('kingdom-1', { guildId: 'guild-9' }));
+      mockDbQuery.mockResolvedValue([
+        { id: 's1', guildId: 'guild-9', targetId: 'target-1', createdBy: 'kingdom-1', until: new Date(Date.now() + 3600_000).toISOString() },
+        { id: 's2', guildId: 'guild-9', targetId: 'target-2', createdBy: 'mate-2', until: new Date(Date.now() - 1000).toISOString() },
+      ]);
+
+      const result = await callHandler(
+        makeEvent({ kingdomId: 'kingdom-1' }, 'getActivePlannedStrikes')
+      );
+
+      expect(result.success).toBe(true);
+      const parsed = JSON.parse(result.result as string) as { strikes: Array<{ targetId: string }> };
+      expect(parsed.strikes).toHaveLength(1);
+      expect(parsed.strikes[0].targetId).toBe('target-1');
+    });
+
+    it('returns an empty list when the caller has no guild', async () => {
+      mockDbGet.mockResolvedValueOnce(mockKingdom('kingdom-1'));
+
+      const result = await callHandler(
+        makeEvent({ kingdomId: 'kingdom-1' }, 'getActivePlannedStrikes')
+      );
+
+      expect(result.success).toBe(true);
+      expect(JSON.parse(result.result as string).strikes).toHaveLength(0);
+    });
+  });
+
   describe('detection counts both scum tiers', () => {
     it('a defender with only elite scouts can still detect the intruder', async () => {
       // Attacker has 1000 green scum; defender has 0 green but 100000 elite.

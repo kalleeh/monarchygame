@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
-import { GuildService, type GuildData, type GuildMessage, type GuildInvitation } from '../services/GuildService';
+import { GuildService, toGuildMessage, type GuildData, type GuildMessage, type GuildInvitation } from '../services/GuildService';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
 import { ToastService } from '../services/toastService';
 import { isDemoMode } from '../utils/authMode';
@@ -118,15 +118,7 @@ const GuildManagementContent: React.FC<GuildManagementProps> = ({ kingdom, onBac
             next: ({ items, isSynced }) => {
               if (!isSynced) return;
               const mapped: GuildMessage[] = items
-                .map(item => ({
-                  id: item.id,
-                  guildId: item.guildId,
-                  senderId: item.senderId,
-                  senderName: item.senderId, // AllianceMessage has no senderName field
-                  content: item.content,
-                  messageType: 'CHAT' as const,
-                  createdAt: item.createdAt ?? new Date().toISOString(),
-                }))
+                .map(item => toGuildMessage(item))
                 .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                 .slice(-50); // Keep last 50 messages
               setMessages(mapped);

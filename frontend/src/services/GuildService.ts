@@ -140,8 +140,54 @@ export interface GuildMessage {
   senderId: string;
   senderName: string;
   content: string;
-  messageType: 'CHAT' | 'ANNOUNCEMENT' | 'SYSTEM';
+  messageType: 'CHAT' | 'ANNOUNCEMENT' | 'SYSTEM' | 'INTEL' | 'STRIKE';
   createdAt: string;
+  /** For STRIKE messages: kingdom id the strike targets (drives the "Plan strike" CTA). */
+  targetId?: string;
+}
+
+// Maps the AppSync AllianceMessage.type enum to the frontend GuildMessage.messageType.
+// Intel/strike messages (Workstream A/C) render distinctly and carry a CTA.
+export function mapAllianceMessageType(type: string | null | undefined): GuildMessage['messageType'] {
+  switch (type) {
+    case 'intel': return 'INTEL';
+    case 'strike': return 'STRIKE';
+    case 'announcement': return 'ANNOUNCEMENT';
+    default: return 'CHAT';
+  }
+}
+
+// Intel messages carry a trailing [strike:<targetId>] marker so the chat can offer
+// a "Plan strike" CTA wired to the right target. Extract the id and strip the
+// marker from the displayed content.
+const STRIKE_MARKER = /\s*\[strike:([^\]]+)\]\s*$/;
+export function parseStrikeTarget(content: string): { content: string; targetId?: string } {
+  const match = content.match(STRIKE_MARKER);
+  if (!match) return { content };
+  return { content: content.replace(STRIKE_MARKER, '').trimEnd(), targetId: match[1] };
+}
+
+// Builds a GuildMessage from a raw AppSync AllianceMessage item (shared by the
+// list query, the subscription, and GuildManagement's observeQuery).
+export function toGuildMessage(item: {
+  id: string;
+  guildId: string;
+  senderId: string;
+  content: string;
+  type?: string | null;
+  createdAt?: string | null;
+}): GuildMessage {
+  const { content, targetId } = parseStrikeTarget(item.content);
+  return {
+    id: item.id,
+    guildId: item.guildId,
+    senderId: item.senderId,
+    senderName: item.senderId, // AllianceMessage has no senderName; use senderId as fallback
+    content,
+    messageType: mapAllianceMessageType(item.type),
+    createdAt: item.createdAt ?? new Date().toISOString(),
+    targetId,
+  };
 }
 
 // Demo mode mock data
@@ -523,15 +569,7 @@ export class GuildService {
         throw new Error(`Failed to fetch messages: ${response.errors[0].message}`);
       }
 
-      return (response.data ?? []).map(item => ({
-        id: item.id,
-        guildId: item.guildId,
-        senderId: item.senderId,
-        senderName: item.senderId, // AllianceMessage has no senderName; use senderId as fallback
-        content: item.content,
-        messageType: 'CHAT' as const,
-        createdAt: item.createdAt ?? new Date().toISOString(),
-      }));
+      return (response.data ?? []).map(item => toGuildMessage(item));
     } catch (error) {
       console.error('[GuildService] Error fetching alliance messages:', error);
       throw error;
@@ -558,15 +596,7 @@ export class GuildService {
     }).subscribe({
       next: (item) => {
         if (item) {
-          onMessage({
-            id: item.id,
-            guildId: item.guildId,
-            senderId: item.senderId,
-            senderName: item.senderId,
-            content: item.content,
-            messageType: 'CHAT',
-            createdAt: item.createdAt ?? new Date().toISOString(),
-          });
+          onMessage(toGuildMessage(item));
         }
       },
       error: (error: unknown) => {
@@ -575,6 +605,37 @@ export class GuildService {
     });
 
     return sub;
+  }
+
+  /**
+   * Flag a shared-intel target as a guild "planned strike" with a time window
+   * (default 2h). Posts a 'strike' rally message into guild chat and primes the
+   * combat coordination bonus for guildmates who attack within the window.
+   * Auth mode only (demo mode has no server-side intel to strike against).
+   */
+  static async planScoutStrike(data: {
+    kingdomId: string;
+    targetKingdomId: string;
+    durationMinutes?: number;
+  }): Promise<{ until: string }> {
+    if (isDemoMode()) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return { until: new Date(Date.now() + (data.durationMinutes ?? 120) * 60 * 1000).toISOString() };
+    }
+
+    const { data: result, errors } = await getClient().mutations.planScoutStrike({
+      kingdomId: data.kingdomId,
+      targetKingdomId: data.targetKingdomId,
+      durationMinutes: data.durationMinutes,
+    });
+    const parsed = result
+      ? (typeof result === 'string' ? JSON.parse(result) : result) as { success?: boolean; error?: string; result?: string }
+      : null;
+    if (errors?.length || parsed?.success === false) {
+      throw new Error(parsed?.error ?? errors?.[0]?.message ?? 'Failed to plan strike');
+    }
+    const inner = parsed?.result ? (JSON.parse(parsed.result) as { until?: string }) : {};
+    return { until: inner.until ?? new Date(Date.now() + (data.durationMinutes ?? 120) * 60 * 1000).toISOString() };
   }
 
   // =========================================================================

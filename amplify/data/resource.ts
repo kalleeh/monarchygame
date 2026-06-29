@@ -32,7 +32,7 @@ const TerritoryType = a.enum(['capital', 'settlement', 'outpost', 'fortress']);
 const TerrainType = a.enum(['plains', 'forest', 'mountains', 'desert', 'swamp', 'coastal']);
 const NotificationType = a.enum(['attack', 'defense', 'victory', 'defeat', 'alliance', 'trade']);
 const InvitationStatus = a.enum(['pending', 'accepted', 'declined']);
-const MessageType = a.enum(['general', 'announcement', 'war', 'diplomacy', 'intel']);
+const MessageType = a.enum(['general', 'announcement', 'war', 'diplomacy', 'intel', 'strike']);
 const SeasonStatus = a.enum(['active', 'transitioning', 'completed']);
 const WarStatus = a.enum(['declared', 'active', 'resolved', 'ceasefire']);
 const TradeOfferStatus = a.enum(['open', 'accepted', 'cancelled', 'expired']);
@@ -435,6 +435,32 @@ const schema = a.schema({
       allow.owner(),
     ]),
 
+  // A guild-scoped marker that flags one target kingdom as a coordinated "planned
+  // strike" within a time window. Unlike ScoutIntel (which is per-scouter), a
+  // planned strike belongs to the GUILD — any member can read the active marker,
+  // and combat-processor grants the coordination bonus to the first attacker in
+  // the window. Stored as its own model (not an overloaded ScoutIntel field) so
+  // the guildId+targetId lookup is a single clean GSI query and the personal-scout
+  // gate on ScoutIntel stays untouched. Members read via the guildId GSI then
+  // filter `until > now`.
+  PlannedStrike: a
+    .model({
+      guildId: a.id().required(),     // guild that planned the strike
+      targetId: a.id().required(),    // kingdom to be struck
+      createdBy: a.id().required(),   // kingdom that flagged it
+      until: a.datetime().required(), // strike window expiry
+      seasonId: a.id(),
+    })
+    .secondaryIndexes((index) => [
+      // Guild listing of planned strikes: rows for a guild, soonest-expiring last.
+      // Readers (members + combat-processor) then filter until > now.
+      index('guildId').sortKeys(['until']).name('plannedStrikesByGuildIdAndUntil'),
+    ])
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+      allow.owner(),
+    ]),
+
   WorldState: a
     .model({
       seasonId: a.id().required(),
@@ -755,6 +781,33 @@ const schema = a.schema({
     .arguments({
       kingdomId: a.string().required(),
       targetKingdomId: a.string().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(thieveryProcessor)),
+
+  // Flag a shared-intel target as a guild "planned strike" with a time window
+  // (defaults to 2h). Creates a PlannedStrike row and drops a 'strike' rally
+  // message into guild chat. Routed to the espionage Lambda (thievery-processor)
+  // which already owns intel writes and the data-access grant.
+  planScoutStrike: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
+      targetKingdomId: a.string().required(),
+      durationMinutes: a.integer()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(thieveryProcessor)),
+
+  // Read the guild's active planned strikes (rows where until > now). Routed to
+  // thievery-processor so the read uses the Lambda data-access grant rather than
+  // exposing every member's guildId via a client-side model query.
+  getActivePlannedStrikes: a
+    .query()
+    .arguments({
+      kingdomId: a.string().required()
     })
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])

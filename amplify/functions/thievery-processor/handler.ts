@@ -519,7 +519,9 @@ const shareScoutIntel: Schema["shareScoutIntel"]["functionHandler"] = async (eve
     const fort = snapshot.fortLevel ?? 0;
     const gold = snapshot.goldEstimate ?? 0;
     const scouterName = (kingdom.name as string | undefined) ?? 'A guildmate';
-    const content = `🔍 Scout report on ${defenderName}: ~${Math.round(defense / 1000)}k defense, fort lv ${fort}, ~${Math.round(gold / 1000)}k gold. Shared by ${scouterName}.`;
+    // Trailing [strike:<targetId>] marker lets GuildChat offer a "Plan strike" CTA
+    // wired to the right target. The frontend strips the marker before display.
+    const content = `🔍 Scout report on ${defenderName}: ~${Math.round(defense / 1000)}k defense, fort lv ${fort}, ~${Math.round(gold / 1000)}k gold. Shared by ${scouterName}. [strike:${targetKingdomId}]`;
     try {
       await dbCreate('AllianceMessage', {
         guildId,
@@ -542,15 +544,163 @@ const shareScoutIntel: Schema["shareScoutIntel"]["functionHandler"] = async (eve
   }
 };
 
-// Single handler export — dispatch based on which mutation was called. Both
-// executeThievery and shareScoutIntel route to this espionage Lambda. AppSync
-// invokes with a single event argument; the functionHandler types declare the
-// 3-arg Lambda signature, so call the sub-handlers as single-arg callables.
+interface PlannedStrikeRecord {
+  id: string;
+  guildId: string;
+  targetId: string;
+  createdBy: string;
+  until: string;
+  seasonId?: string | null;
+}
+
+const DEFAULT_STRIKE_MINUTES = 120; // 2h default window
+const MAX_STRIKE_MINUTES = 360;     // cap the window so a strike can't be parked open
+
+/**
+ * planScoutStrike — flag a shared-intel target as a guild "planned strike" with a
+ * time window. Creates a PlannedStrike row (guildId+targetId) and posts a 'strike'
+ * rally message into guild chat. Requires fresh intel the caller's guild can see
+ * (their own scout OR a guildmate's shared intel) so a strike can only be planned
+ * on a target the guild actually has numbers on.
+ */
+const planScoutStrike: Schema["planScoutStrike"]["functionHandler"] = async (event) => {
+  const { kingdomId, targetKingdomId, durationMinutes } = event.arguments;
+  try {
+    if (!kingdomId || !targetKingdomId) {
+      return { success: false, error: 'Missing required parameters: kingdomId, targetKingdomId', errorCode: ErrorCode.MISSING_PARAMS };
+    }
+
+    const identity = event.identity as { sub?: string; username?: string } | null;
+    if (!identity?.sub) {
+      return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
+    }
+
+    const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
+    if (!kingdom) {
+      return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+    }
+    const denied = verifyOwnership(identity, kingdom.owner as string | null);
+    if (denied) return denied;
+
+    const guildId = (kingdom as Record<string, unknown>).guildId as string | undefined;
+    if (!guildId) {
+      return { success: false, error: 'You must be in a guild to plan a strike', errorCode: ErrorCode.VALIDATION_FAILED };
+    }
+
+    // Require fresh intel the guild can use: the caller's own scout OR a guildmate's
+    // shared intel for this guild. Otherwise there's nothing to coordinate against.
+    const nowIso = new Date().toISOString();
+    const ownIntel = await dbQuery<ScoutIntelRecord>(
+      'ScoutIntel', 'scoutIntelsByScouterIdAndExpiresAt', { field: 'scouterId', value: kingdomId },
+    );
+    let intel = ownIntel.find(i => i.targetId === targetKingdomId && (i.expiresAt ?? '') > nowIso);
+    if (!intel) {
+      const sharedIntel = await dbQuery<ScoutIntelRecord>(
+        'ScoutIntel', 'scoutIntelsBySharedWithGuildIdAndExpiresAt', { field: 'sharedWithGuildId', value: guildId },
+      );
+      intel = sharedIntel.find(i => i.targetId === targetKingdomId && (i.expiresAt ?? '') > nowIso);
+    }
+    if (!intel) {
+      return { success: false, error: 'No fresh guild intel on this target. Scout or share intel first.', errorCode: ErrorCode.NOT_FOUND };
+    }
+
+    const minutes = Math.min(MAX_STRIKE_MINUTES, Math.max(1, durationMinutes ?? DEFAULT_STRIKE_MINUTES));
+    const until = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+
+    const created = await dbCreate('PlannedStrike', {
+      guildId,
+      targetId: targetKingdomId,
+      createdBy: kingdomId,
+      until,
+      seasonId: (kingdom.seasonId as string | undefined) ?? undefined,
+      owner: identity.sub,
+    });
+
+    // Drop a 'strike' rally message into guild chat. Best-effort.
+    const snapshot = parseJsonField<Partial<DefenderSnapshot>>(intel.defenderSnapshot, {});
+    const defenderName = snapshot.defenderName ?? 'an enemy kingdom';
+    const planner = (kingdom.name as string | undefined) ?? 'A guildmate';
+    const content = `⚔️ Planned strike on ${defenderName} — coordinate within ${minutes} min for the assault bonus. Called by ${planner}.`;
+    try {
+      await dbCreate('AllianceMessage', {
+        guildId,
+        senderId: kingdomId,
+        content,
+        type: 'strike',
+        createdAt: nowIso,
+      });
+    } catch (err) {
+      log.warn('thievery-processor', 'plan-strike-message-failed', { kingdomId, targetKingdomId, error: err instanceof Error ? err.message : String(err) });
+    }
+
+    log.info('thievery-processor', 'planScoutStrike', { kingdomId, targetKingdomId, guildId, until });
+    return { success: true, result: JSON.stringify({ plannedStrikeId: created.id, guildId, targetKingdomId, until }) };
+  } catch (error) {
+    await persistErrorLog('thievery-processor', error, { kingdomId, targetKingdomId, action: 'planScoutStrike' });
+    log.error('thievery-processor', error, { kingdomId, targetKingdomId });
+    return { success: false, error: 'Plan strike operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
+  }
+};
+
+/**
+ * getActivePlannedStrikes — return the caller's guild's active planned strikes
+ * (rows where until > now), newest window last. Read-only.
+ */
+const getActivePlannedStrikes: Schema["getActivePlannedStrikes"]["functionHandler"] = async (event) => {
+  const { kingdomId } = event.arguments;
+  try {
+    if (!kingdomId) {
+      return { success: false, error: 'Missing required parameter: kingdomId', errorCode: ErrorCode.MISSING_PARAMS };
+    }
+    const identity = event.identity as { sub?: string; username?: string } | null;
+    if (!identity?.sub) {
+      return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
+    }
+
+    const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
+    if (!kingdom) {
+      return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+    }
+    const denied = verifyOwnership(identity, kingdom.owner as string | null);
+    if (denied) return denied;
+
+    const guildId = (kingdom as Record<string, unknown>).guildId as string | undefined;
+    if (!guildId) {
+      return { success: true, result: JSON.stringify({ strikes: [] }) };
+    }
+
+    const nowIso = new Date().toISOString();
+    const rows = await dbQuery<PlannedStrikeRecord>(
+      'PlannedStrike', 'plannedStrikesByGuildIdAndUntil', { field: 'guildId', value: guildId },
+    );
+    const active = rows
+      .filter(r => (r.until ?? '') > nowIso)
+      .map(r => ({ targetId: r.targetId, until: r.until, createdBy: r.createdBy }));
+
+    return { success: true, result: JSON.stringify({ strikes: active }) };
+  } catch (error) {
+    await persistErrorLog('thievery-processor', error, { kingdomId, action: 'getActivePlannedStrikes' });
+    log.error('thievery-processor', error, { kingdomId });
+    return { success: false, error: 'Get planned strikes failed', errorCode: ErrorCode.INTERNAL_ERROR };
+  }
+};
+
+// Single handler export — dispatch based on which mutation/query was called.
+// executeThievery, shareScoutIntel, planScoutStrike and getActivePlannedStrikes
+// all route to this espionage Lambda. AppSync invokes with a single event
+// argument; the functionHandler types declare the 3-arg Lambda signature, so
+// call the sub-handlers as single-arg callables.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const handler = async (event: any) => {
   const fieldName = event.info?.fieldName as string | undefined;
   if (fieldName === 'shareScoutIntel') {
     return (shareScoutIntel as unknown as (e: unknown) => Promise<unknown>)(event);
+  }
+  if (fieldName === 'planScoutStrike') {
+    return (planScoutStrike as unknown as (e: unknown) => Promise<unknown>)(event);
+  }
+  if (fieldName === 'getActivePlannedStrikes') {
+    return (getActivePlannedStrikes as unknown as (e: unknown) => Promise<unknown>)(event);
   }
   return (executeThievery as unknown as (e: unknown) => Promise<unknown>)(event);
 };
