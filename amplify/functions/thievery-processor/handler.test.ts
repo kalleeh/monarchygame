@@ -336,6 +336,73 @@ describe('thievery-processor handler', () => {
       expect(snapshot.armyByTier.knights).toBe(1000);
       vi.restoreAllMocks();
     });
+
+    it('scales expiry + detail with the scouter race scum (high scum = full, longer)', async () => {
+      // Human scum = 4 → full detail, 39h expiry.
+      mockDbGet
+        .mockResolvedValueOnce(mockKingdom('kingdom-1', { race: 'Human', totalUnits: { scouts: 100000 } }))
+        .mockResolvedValueOnce(mockKingdom('target-1', {
+          name: 'Targetania', owner: 'defender-sub', race: 'Human',
+          resources: { gold: 247000, population: 5000, mana: 0, land: 1830 },
+          buildings: { fortress: 3 },
+          totalUnits: { knights: 1000, cavalry: 503, scouts: 50 },
+        }));
+      vi.spyOn(Math, 'random').mockReturnValue(1);
+      const now = Date.now();
+
+      const result = await callHandler(
+        makeEvent({ kingdomId: 'kingdom-1', operation: 'scout', targetKingdomId: 'target-1' })
+      );
+      expect(result.success).toBe(true);
+
+      const row = scoutIntelCreates()[0][1] as Record<string, unknown>;
+      const snapshot = JSON.parse(row.defenderSnapshot as string);
+      expect(snapshot.detail).toBe('full');
+      // Full intel keeps exact values + fort level.
+      expect(snapshot.goldEstimate).toBe(247000);
+      expect(snapshot.fortLevel).toBe(3);
+      expect(snapshot.armyByTier.knights).toBe(1000);
+
+      const expiryMs = new Date(row.expiresAt as string).getTime() - now;
+      const HOUR = 3600_000;
+      expect(expiryMs).toBeGreaterThan(38 * HOUR);
+      expect(expiryMs).toBeLessThan(40 * HOUR);
+      vi.restoreAllMocks();
+    });
+
+    it('low-scum scouter gets coarse, shorter-lived intel (banded numbers, hidden fort)', async () => {
+      // Goblin scum = 2 → coarse detail, 21h expiry.
+      mockDbGet
+        .mockResolvedValueOnce(mockKingdom('kingdom-1', { race: 'Goblin', totalUnits: { scouts: 100000 } }))
+        .mockResolvedValueOnce(mockKingdom('target-1', {
+          name: 'Targetania', owner: 'defender-sub', race: 'Human',
+          resources: { gold: 247000, population: 5000, mana: 0, land: 1830 },
+          buildings: { fortress: 3 },
+          totalUnits: { knights: 1000, cavalry: 503, scouts: 50 },
+        }));
+      vi.spyOn(Math, 'random').mockReturnValue(1);
+      const now = Date.now();
+
+      const result = await callHandler(
+        makeEvent({ kingdomId: 'kingdom-1', operation: 'scout', targetKingdomId: 'target-1' })
+      );
+      expect(result.success).toBe(true);
+
+      const row = scoutIntelCreates()[0][1] as Record<string, unknown>;
+      const snapshot = JSON.parse(row.defenderSnapshot as string);
+      expect(snapshot.detail).toBe('coarse');
+      // Coarse: exact unit types hidden, numbers banded, fort hidden.
+      expect(snapshot.armyByTier.knights).toBeUndefined();
+      expect(snapshot.goldEstimate).toBe(250000); // banded from 247000
+      expect(snapshot.fortLevel).toBe(-1);
+      expect(snapshot.defenderName).toBe('Targetania');
+
+      const expiryMs = new Date(row.expiresAt as string).getTime() - now;
+      const HOUR = 3600_000;
+      expect(expiryMs).toBeGreaterThan(20 * HOUR);
+      expect(expiryMs).toBeLessThan(22 * HOUR);
+      vi.restoreAllMocks();
+    });
   });
 
   describe('shareScoutIntel', () => {
