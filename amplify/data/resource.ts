@@ -32,7 +32,7 @@ const TerritoryType = a.enum(['capital', 'settlement', 'outpost', 'fortress']);
 const TerrainType = a.enum(['plains', 'forest', 'mountains', 'desert', 'swamp', 'coastal']);
 const NotificationType = a.enum(['attack', 'defense', 'victory', 'defeat', 'alliance', 'trade']);
 const InvitationStatus = a.enum(['pending', 'accepted', 'declined']);
-const MessageType = a.enum(['general', 'announcement', 'war', 'diplomacy']);
+const MessageType = a.enum(['general', 'announcement', 'war', 'diplomacy', 'intel']);
 const SeasonStatus = a.enum(['active', 'transitioning', 'completed']);
 const WarStatus = a.enum(['declared', 'active', 'resolved', 'ceasefire']);
 const TradeOfferStatus = a.enum(['open', 'accepted', 'cancelled', 'expired']);
@@ -415,9 +415,20 @@ const schema = a.schema({
       seasonId: a.id(),
       expiresAt: a.datetime().required(),
       scoutedAt: a.datetime().required(),
+      // Guild intel-sharing: null = private (scouter only); set = the intel is
+      // visible to that guild so members get the same defender numbers. The
+      // battle PREDICTION stays per-attacker — only the defender snapshot is shared.
+      sharedWithGuildId: a.id(),
+      // Revealed defender numbers captured at scout time (a snapshot, not live):
+      // { totalDefense, armyByTier, fortLevel, land, goldEstimate, defenderName }.
+      // Lets a guildmate's preview run their army vs this defense without re-scouting.
+      defenderSnapshot: a.json(),
     })
     .secondaryIndexes((index) => [
       index('scouterId').sortKeys(['expiresAt']),
+      // Guild listing of active shared intel: rows shared with a guild, newest-
+      // expiring last. Members read this then filter expiresAt > now.
+      index('sharedWithGuildId').sortKeys(['expiresAt']).name('scoutIntelsBySharedWithGuildIdAndExpiresAt'),
     ])
     .authorization((allow) => [
       allow.authenticated().to(['read']),
@@ -729,6 +740,20 @@ const schema = a.schema({
     .arguments({
       kingdomId: a.string().required(),
       operation: a.string().required(),
+      targetKingdomId: a.string().required()
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(thieveryProcessor)),
+
+  // Share a player's existing ScoutIntel row with their guild: stamps
+  // sharedWithGuildId on the row and drops an intel AllianceMessage into guild
+  // chat. Routed to the espionage Lambda (thievery-processor) which already owns
+  // ScoutIntel writes and has the data-access grant.
+  shareScoutIntel: a
+    .mutation()
+    .arguments({
+      kingdomId: a.string().required(),
       targetKingdomId: a.string().required()
     })
     .returns(a.json())

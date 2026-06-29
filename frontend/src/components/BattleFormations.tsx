@@ -330,6 +330,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
       defenderCasualtyRate: rates.defender,
       landGainPercent,
       defenderHasUnits,
+      sharedFrom: null as string | null,
     };
   }, [availableUnits, selectedTarget, selectedTargetData, aiKingdoms, kingdomTargets, attackerRace]);
 
@@ -342,6 +343,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     resultType: 'with_ease' | 'good_fight' | 'failed';
     attackerCasualtyRate: number; defenderCasualtyRate: number;
     landGainPercent: string; defenderHasUnits: boolean;
+    sharedFrom: string | null;
   } | null>(null);
   // True when the server says we haven't scouted this target — exact prediction
   // is hidden until a successful scout (intel expires after 24h).
@@ -366,6 +368,7 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
         defenderCasualtyRate: p.defenderCasualtyRate ?? 0,
         landGainPercent,
         defenderHasUnits: p.defenderHasArmy ?? false,
+        sharedFrom: p.sharedFrom ?? null,
       });
     });
     return () => { cancelled = true; };
@@ -564,7 +567,13 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
           marginBottom: '1.5rem'
         }}>
           <h3 style={{ color: '#fff', marginBottom: '1rem' }}><WarfareIcon /> Battle Preview</h3>
-          
+
+          {battlePreview.sharedFrom && (
+            <p style={{ color: '#8b5cf6', fontSize: '0.8125rem', fontStyle: 'italic', marginBottom: '0.75rem' }}>
+              🔍 Intel shared by {battlePreview.sharedFrom}
+            </p>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
             <div>
               <p style={{ color: '#a0a0a0', fontSize: '0.875rem' }}>Your Offense</p>

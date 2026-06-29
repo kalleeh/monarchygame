@@ -240,6 +240,7 @@ export class CombatService {
     attackerCasualtyRate?: number;
     defenderCasualtyRate?: number;
     defenderHasArmy?: boolean;
+    sharedFrom?: string | null;
   } | null> {
     try {
       const { data } = await getClient().queries.getBattlePreview({ attackerId, defenderId, preview: true });

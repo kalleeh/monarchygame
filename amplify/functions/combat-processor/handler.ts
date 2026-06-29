@@ -891,14 +891,36 @@ async function previewCombat(
   if (denied) return denied;
 
   // Scout gating: an exact prediction is only available for a kingdom this
-  // attacker has scouted recently (fresh ScoutIntel). Otherwise reveal nothing
-  // about the enemy army — the player must scout first.
-  const intel = await dbQuery<{ scouterId: string; targetId: string; expiresAt: string }>(
+  // attacker has scouted recently (fresh ScoutIntel) OR a kingdom a guildmate has
+  // scouted and SHARED with the attacker's guild. Otherwise reveal nothing about
+  // the enemy army — the player (or guild) must scout first. The prediction is
+  // still per-attacker; only the defender intel is shared.
+  const nowIso = new Date().toISOString();
+  const ownIntel = await dbQuery<{ scouterId: string; targetId: string; expiresAt: string }>(
     'ScoutIntel', 'scoutIntelsByScouterIdAndExpiresAt', { field: 'scouterId', value: attackerId },
   );
-  const nowIso = new Date().toISOString();
-  const hasFreshIntel = intel.some(i => i.targetId === defenderId && (i.expiresAt ?? '') > nowIso);
-  if (!hasFreshIntel) {
+  const hasOwnIntel = ownIntel.some(i => i.targetId === defenderId && (i.expiresAt ?? '') > nowIso);
+
+  // Shared intel: a fresh row a guildmate flagged for the attacker's guild.
+  let sharedFrom: string | null = null;
+  if (!hasOwnIntel) {
+    const attackerGuildId = (attacker as { guildId?: string | null }).guildId ?? null;
+    if (attackerGuildId) {
+      const sharedIntel = await dbQuery<{ scouterId: string; targetId: string; expiresAt: string; sharedWithGuildId?: string | null }>(
+        'ScoutIntel', 'scoutIntelsBySharedWithGuildIdAndExpiresAt', { field: 'sharedWithGuildId', value: attackerGuildId },
+      );
+      const sharedRow = sharedIntel
+        .filter(i => i.targetId === defenderId && (i.expiresAt ?? '') > nowIso)
+        .sort((a, b) => (b.expiresAt ?? '').localeCompare(a.expiresAt ?? ''))[0];
+      if (sharedRow) {
+        // Resolve the guildmate's kingdom name for provenance (best-effort).
+        const scout = await dbGet<{ name?: string }>('Kingdom', sharedRow.scouterId);
+        sharedFrom = scout?.name ?? sharedRow.scouterId;
+      }
+    }
+  }
+
+  if (!hasOwnIntel && !sharedFrom) {
     return { success: true, scouted: false };
   }
 
@@ -953,6 +975,10 @@ async function previewCombat(
     attackerCasualtyRate: rates.attacker,
     defenderCasualtyRate: rates.defender,
     defenderHasArmy: Object.values(defenderUnits).some(n => (n ?? 0) > 0),
+    // Provenance: when the exact preview was unlocked by a guildmate's shared
+    // scout (not the attacker's own), name them so the UI can show it. Null when
+    // the attacker scouted the target themselves.
+    sharedFrom,
   };
 }
 

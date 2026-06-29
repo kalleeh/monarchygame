@@ -16,12 +16,14 @@ import { TopNavigation } from './TopNavigation';
 import { ToastService } from '../services/toastService';
 import { StarIcon } from './ui/MenuIcons';
 import { AmplifyFunctionService } from '../services/amplifyFunctionService';
+import { getClient } from '../utils/amplifyClient';
 import { THIEVERY_MECHANICS } from '../../../shared/mechanics/thievery-mechanics';
 import './ThieveryInterface.css';
 
 interface ThieveryInterfaceProps {
   kingdomId: string;
   race: string;
+  guildId?: string;
   onBack: () => void;
 }
 
@@ -76,10 +78,14 @@ const OPERATION_CONFIG: Record<OperationType, { label: string; turnCost: number;
   },
 };
 
-const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, onBack }) => {
+const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, guildId, onBack }) => {
   const [selectedKingdom, setSelectedKingdom] = useState<TargetKingdom | null>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [operationLoading, setOperationLoading] = useState(false);
+  // After a successful scout, remember the target so a "Share with guild" button
+  // can offer to broadcast the intel to guildmates. Cleared once shared/dismissed.
+  const [lastScouted, setLastScouted] = useState<{ id: string; name: string } | null>(null);
+  const [shareLoading, setShareLoading] = useState(false);
 
   const {
     scumCount,
@@ -170,6 +176,11 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
               case 'scout':
                 // Record the target as scouted so the world map reveals it (clears fog).
                 useScoutStore.getState().markScouted(selectedKingdom.id);
+                // Offer to share the fresh intel with the guild (auth mode only —
+                // demo mode has no server-side ScoutIntel row to share).
+                if (!isDemoMode() && guildId) {
+                  setLastScouted({ id: selectedKingdom.id, name: selectedKingdom.name });
+                }
                 message = `Scout successful! Intel gathered on ${selectedKingdom.name}.`;
                 if (result.result.informationGained) {
                   const info = result.result.informationGained;
@@ -225,8 +236,33 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
         setOperationLoading(false);
       }
     },
-    [selectedKingdom, operationLoading, executeOperation, spendTurns, addGold, kingdomId, estimateEnemyScum]
+    [selectedKingdom, operationLoading, executeOperation, spendTurns, addGold, kingdomId, estimateEnemyScum, guildId]
   );
+
+  // Share the freshly-scouted target's intel with the guild. The server stamps
+  // the ScoutIntel row with the player's guildId and posts an intel message to
+  // guild chat; guildmates then get the same exact battle preview on that target.
+  const handleShareIntel = useCallback(async () => {
+    if (!lastScouted || shareLoading) return;
+    setShareLoading(true);
+    try {
+      const { data, errors } = await getClient().mutations.shareScoutIntel({
+        kingdomId,
+        targetKingdomId: lastScouted.id,
+      });
+      const parsed = data ? (typeof data === 'string' ? JSON.parse(data) : data) as { success?: boolean; error?: string } : null;
+      if (errors?.length || parsed?.success === false) {
+        ToastService.error(parsed?.error ?? 'Failed to share intel with guild.');
+        return;
+      }
+      ToastService.success(`Intel on ${lastScouted.name} shared with your guild.`);
+      setLastScouted(null);
+    } catch (err) {
+      ToastService.error('Failed to share intel: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    } finally {
+      setShareLoading(false);
+    }
+  }, [lastScouted, shareLoading, kingdomId]);
 
   return (
     <div className="thievery-interface">
@@ -253,6 +289,23 @@ const ThieveryInterface: React.FC<ThieveryInterfaceProps> = ({ kingdomId, race, 
         <div className="thievery-result-banner gm-success-banner">
           <span>{lastResult}</span>
           <button onClick={() => setLastResult(null)} aria-label="Dismiss result">
+            x
+          </button>
+        </div>
+      )}
+
+      {/* Share-with-guild prompt after a successful scout (auth + in a guild) */}
+      {lastScouted && (
+        <div className="thievery-result-banner gm-success-banner">
+          <span>Share intel on {lastScouted.name} with your guild so guildmates can plan a strike.</span>
+          <button
+            onClick={handleShareIntel}
+            disabled={shareLoading}
+            aria-label="Share intel with guild"
+          >
+            {shareLoading ? 'Sharing…' : '🔍 Share with guild'}
+          </button>
+          <button onClick={() => setLastScouted(null)} aria-label="Dismiss share prompt">
             x
           </button>
         </div>

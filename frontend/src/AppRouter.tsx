@@ -287,6 +287,7 @@ function KingdomRoutes({ kingdoms, loading }: { kingdoms: Schema['Kingdom']['typ
             <ThieveryInterface
               kingdomId={kingdom.id}
               race={kingdom.race || 'Human'}
+              guildId={kingdom.guildId ?? undefined}
               onBack={handleBackToDashboard}
             />
           </Suspense>
