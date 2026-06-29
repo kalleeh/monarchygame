@@ -88,6 +88,13 @@ export async function resolveCombat(params: ResolveCombatParams): Promise<Combat
     }
 
     // Alliance coordination bonus: +10% if an ally attacked this defender recently
+    // OR if the attacker's guild has an active "planned strike" on this defender.
+    // The planned strike "primes" the coordination so the FIRST attacker in the
+    // window gets the bonus too (they don't have to wait for an ally to hit first).
+    // The two paths share the SAME bonus and cap — they never stack, so the max is
+    // unchanged whether the bonus came from a recent ally hit, a planned strike, or
+    // both.
+    const COORD_BONUS = 1.10;
     let allianceCoordBonus = 1.0;
     let attackerGuildId: string | undefined;
     try {
@@ -105,8 +112,21 @@ export async function resolveCombat(params: ResolveCombatParams): Promise<Combat
           // Verify the other attacker is in the same alliance
           const allyKingdom = await dbGet<{ guildId?: string }>('Kingdom', allyRecentAttack.attackerId);
           if (allyKingdom?.guildId === attackerGuildId) {
-            allianceCoordBonus = 1.10;
-            log.info('combat-processor', 'alliance-coord-bonus', { attackerId, allianceBonus: '10%' });
+            allianceCoordBonus = COORD_BONUS;
+            log.info('combat-processor', 'alliance-coord-bonus', { attackerId, allianceBonus: '10%', source: 'ally-recent-attack' });
+          }
+        }
+        // Planned-strike priming: if no ally has hit yet, an active guild planned
+        // strike on this defender still grants the (capped, non-stacking) bonus.
+        if (allianceCoordBonus === 1.0) {
+          const nowIso = new Date().toISOString();
+          const strikes = await dbQuery<{ guildId: string; targetId: string; until: string }>(
+            'PlannedStrike', 'plannedStrikesByGuildIdAndUntil', { field: 'guildId', value: attackerGuildId },
+          );
+          const activeStrike = strikes.some(s => s.targetId === defenderId && (s.until ?? '') > nowIso);
+          if (activeStrike) {
+            allianceCoordBonus = COORD_BONUS;
+            log.info('combat-processor', 'alliance-coord-bonus', { attackerId, allianceBonus: '10%', source: 'planned-strike' });
           }
         }
       }

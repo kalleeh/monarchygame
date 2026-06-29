@@ -820,6 +820,144 @@ describe('combat-processor handler', () => {
     });
   });
 
+  describe('planned-strike coordination bonus', () => {
+    // Helper: run combat with a chosen dbQuery behaviour and return the powerRatio
+    // the handler computed (a proxy for the attacker's effective offense — a higher
+    // ratio means the coordination bonus inflated offense).
+    const runAndGetRatio = async (opts: {
+      attackerGuildId?: string;
+      defenderGuildId?: string;
+      queryImpl: (model: string, indexName: string) => Promise<unknown[]>;
+    }): Promise<number> => {
+      const attackerKingdom = mockKingdom('attacker-1', {
+        guildId: opts.attackerGuildId,
+        totalUnits: { cavalry: 1000 },
+      });
+      const defenderKingdom = mockKingdom('defender-1', {
+        guildId: opts.defenderGuildId,
+        totalUnits: { infantry: 1000 },
+        resources: { gold: 10000, population: 1000, mana: 100, land: 5000 },
+      });
+      mockDbGet.mockImplementation(async (model: string, id: string) => {
+        if (model === 'Kingdom' && id === 'attacker-1') return attackerKingdom;
+        if (model === 'Kingdom' && id === 'defender-1') return defenderKingdom;
+        if (model === 'Kingdom' && id === 'ally-2') return { id: 'ally-2', guildId: opts.attackerGuildId };
+        return null;
+      });
+      mockDbQuery.mockImplementation((model: string, indexName: string) => opts.queryImpl(model, indexName));
+
+      const result = await callHandler(
+        makeEvent({ attackerId: 'attacker-1', defenderId: 'defender-1', attackType: 'standard', units: JSON.stringify({ cavalry: 1000 }) })
+      );
+      expect(result.success).toBe(true);
+      return JSON.parse(result.result as string).powerRatio as number;
+    };
+
+    const futureUntil = () => new Date(Date.now() + 30 * 60 * 1000).toISOString();
+    const pastUntil = () => new Date(Date.now() - 60 * 1000).toISOString();
+
+    it('grants the bonus to the FIRST attacker when an active planned strike exists', async () => {
+      const baseline = await runAndGetRatio({
+        attackerGuildId: 'guild-7',
+        defenderGuildId: 'guild-def',
+        queryImpl: async () => [], // no strike, no ally hit
+      });
+      vi.clearAllMocks();
+      mockDbUpdate.mockResolvedValue(undefined);
+      mockDbCreate.mockResolvedValue({ id: 'b', createdAt: '', updatedAt: '', __typename: 'BattleReport' });
+      const withStrike = await runAndGetRatio({
+        attackerGuildId: 'guild-7',
+        defenderGuildId: 'guild-def',
+        queryImpl: async (model, indexName) => {
+          if (model === 'PlannedStrike' && indexName === 'plannedStrikesByGuildIdAndUntil') {
+            return [{ guildId: 'guild-7', targetId: 'defender-1', until: futureUntil() }];
+          }
+          return [];
+        },
+      });
+      // The coordination bonus inflates attacker offense → higher powerRatio.
+      expect(withStrike).toBeGreaterThan(baseline);
+    });
+
+    it('does NOT grant the bonus when the planned strike has expired', async () => {
+      const baseline = await runAndGetRatio({
+        attackerGuildId: 'guild-7',
+        defenderGuildId: 'guild-def',
+        queryImpl: async () => [],
+      });
+      vi.clearAllMocks();
+      mockDbUpdate.mockResolvedValue(undefined);
+      mockDbCreate.mockResolvedValue({ id: 'b', createdAt: '', updatedAt: '', __typename: 'BattleReport' });
+      const withExpired = await runAndGetRatio({
+        attackerGuildId: 'guild-7',
+        defenderGuildId: 'guild-def',
+        queryImpl: async (model, indexName) => {
+          if (model === 'PlannedStrike' && indexName === 'plannedStrikesByGuildIdAndUntil') {
+            return [{ guildId: 'guild-7', targetId: 'defender-1', until: pastUntil() }];
+          }
+          return [];
+        },
+      });
+      expect(withExpired).toBeCloseTo(baseline, 5);
+    });
+
+    it('does not double-stack: planned strike + recent ally hit caps at the single bonus', async () => {
+      const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+      // Strike only.
+      const strikeOnly = await runAndGetRatio({
+        attackerGuildId: 'guild-7',
+        defenderGuildId: 'guild-def',
+        queryImpl: async (model, indexName) => {
+          if (model === 'PlannedStrike' && indexName === 'plannedStrikesByGuildIdAndUntil') {
+            return [{ guildId: 'guild-7', targetId: 'defender-1', until: futureUntil() }];
+          }
+          return [];
+        },
+      });
+      vi.clearAllMocks();
+      mockDbUpdate.mockResolvedValue(undefined);
+      mockDbCreate.mockResolvedValue({ id: 'b', createdAt: '', updatedAt: '', __typename: 'BattleReport' });
+      // Strike AND a recent ally hit — both paths active, must NOT stack.
+      const both = await runAndGetRatio({
+        attackerGuildId: 'guild-7',
+        defenderGuildId: 'guild-def',
+        queryImpl: async (model, indexName) => {
+          if (model === 'BattleReport') {
+            return [{ id: 'br', attackerId: 'ally-2', defenderId: 'defender-1', timestamp: twoMinAgo }];
+          }
+          if (model === 'PlannedStrike' && indexName === 'plannedStrikesByGuildIdAndUntil') {
+            return [{ guildId: 'guild-7', targetId: 'defender-1', until: futureUntil() }];
+          }
+          return [];
+        },
+      });
+      expect(both).toBeCloseTo(strikeOnly, 5);
+    });
+
+    it('does not grant the bonus when attacker has no guild', async () => {
+      const baseline = await runAndGetRatio({
+        attackerGuildId: 'guild-7',
+        defenderGuildId: 'guild-def',
+        queryImpl: async () => [],
+      });
+      vi.clearAllMocks();
+      mockDbUpdate.mockResolvedValue(undefined);
+      mockDbCreate.mockResolvedValue({ id: 'b', createdAt: '', updatedAt: '', __typename: 'BattleReport' });
+      const noGuild = await runAndGetRatio({
+        attackerGuildId: undefined,
+        defenderGuildId: 'guild-def',
+        queryImpl: async (model, indexName) => {
+          if (model === 'PlannedStrike' && indexName === 'plannedStrikesByGuildIdAndUntil') {
+            return [{ guildId: 'guild-7', targetId: 'defender-1', until: futureUntil() }];
+          }
+          return [];
+        },
+      });
+      // No guild → coordination block skipped entirely.
+      expect(noGuild).toBeCloseTo(baseline, 5);
+    });
+  });
+
   describe('getBattlePreview (read-only, no units arg)', () => {
     // Fresh scout intel so the prediction isn't gated.
     const freshIntel = () => [{ scouterId: 'attacker-1', targetId: 'defender-1', expiresAt: new Date(Date.now() + 3600_000).toISOString() }];
