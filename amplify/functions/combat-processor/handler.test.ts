@@ -874,5 +874,41 @@ describe('combat-processor handler', () => {
       expect(mockDbUpdate).not.toHaveBeenCalled();
       expect(mockDbCreate).not.toHaveBeenCalled();
     });
+
+    it('unlocks the prediction via a guildmate-shared intel and names the provenance', async () => {
+      mockDbGet
+        .mockResolvedValueOnce(mockKingdom('attacker-1', { race: 'Human', guildId: 'guild-7', totalUnits: { cavalry: 5000 } }))
+        .mockResolvedValueOnce(mockKingdom('defender-1', { race: 'Human', totalUnits: { peasants: 10 } }))
+        .mockResolvedValueOnce(mockKingdom('scout-9', { name: 'Eagle Eye' })); // provenance lookup
+      // No personal intel; a guildmate shared one for the attacker's guild.
+      mockDbQuery.mockImplementation(async (_model: string, indexName: string) => {
+        if (indexName === 'scoutIntelsBySharedWithGuildIdAndExpiresAt') {
+          return [{ scouterId: 'scout-9', targetId: 'defender-1', expiresAt: new Date(Date.now() + 3600_000).toISOString(), sharedWithGuildId: 'guild-7' }];
+        }
+        return []; // attacker's own intel index → none
+      });
+
+      const result = await callHandler(makeEvent({ attackerId: 'attacker-1', defenderId: 'defender-1', preview: true })) as unknown as Record<string, unknown>;
+
+      expect(result.success).toBe(true);
+      expect(result.scouted).toBe(true);
+      // Prediction is still per-attacker (their cavalry vs the defender).
+      expect(result.attackerOffense as number).toBeGreaterThan(0);
+      expect(result.sharedFrom).toBe('Eagle Eye');
+    });
+
+    it('does not use shared intel from a different guild', async () => {
+      mockDbGet
+        .mockResolvedValueOnce(mockKingdom('attacker-1', { race: 'Human', guildId: 'guild-7', totalUnits: { cavalry: 5000 } }))
+        .mockResolvedValueOnce(mockKingdom('defender-1', { race: 'Human', totalUnits: { peasants: 10 } }));
+      // The shared-intel GSI is partitioned by guild, so a query for guild-7
+      // returns nothing when only guild-99 shared intel exists.
+      mockDbQuery.mockResolvedValue([]);
+
+      const result = await callHandler(makeEvent({ attackerId: 'attacker-1', defenderId: 'defender-1', preview: true })) as unknown as Record<string, unknown>;
+
+      expect(result.success).toBe(true);
+      expect(result.scouted).toBe(false);
+    });
   });
 });

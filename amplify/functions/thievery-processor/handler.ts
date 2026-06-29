@@ -7,13 +7,70 @@ import { verifyOwnership } from '../verify-ownership';
 import { THIEVERY_MECHANICS, calculateDetectionRate } from '../../../shared/mechanics/thievery-mechanics';
 import { checkRateLimit } from '../rate-limiter';
 import { isConditionalCheckFailed } from '../conditional-helpers';
+import { TIER_STATS } from '../../../shared/mechanics/tier-stats';
+import { RACE_DEFENSE_BONUSES } from '../../../shared/mechanics/combat-mechanics';
 
 const VALID_OPERATIONS = ['scout', 'steal', 'sabotage', 'burn', 'desecrate', 'spread_dissention', 'intercept_caravans', 'scum_kill'] as const;
 const MIN_SCOUTS = 100;
 
 type KingdomType = Record<string, unknown> & { turnsBalance?: number | null };
 
-export const handler: Schema["executeThievery"]["functionHandler"] = async (event) => {
+// Unit-type → defensive tier, mirroring combat-processor's previewCombat map so a
+// scouted snapshot's totalDefense matches the number the battle preview computes.
+const UNIT_TIER: Record<string, number> = {
+  peasant: 0, peasants: 0, militia: 1, knight: 2, knights: 2, cavalry: 3,
+  infantry: 1, archer: 2, mage: 2, scout: 0, scouts: 0,
+  tier1: 0, tier2: 1, tier3: 2, tier4: 3,
+  'elven-scouts': 0, 'elven-warriors': 1, 'elven-archers': 2, 'elven-lords': 3,
+  goblins: 0, hobgoblins: 1, kobolds: 2, 'goblin-riders': 3,
+  'droben-warriors': 0, 'droben-berserkers': 1, 'droben-bunar': 2, 'droben-champions': 3,
+  thralls: 0, 'vampire-spawn': 1, 'vampire-lords': 2, 'ancient-vampires': 3,
+  'earth-elementals': 0, 'fire-elementals': 1, 'water-elementals': 2, 'air-elementals': 3,
+  'centaur-scouts': 0, 'centaur-warriors': 1, 'centaur-archers': 2, 'centaur-chiefs': 3,
+  'sidhe-nobles': 0, 'sidhe-elders': 1, 'sidhe-mages': 2, 'sidhe-lords': 3,
+  'dwarven-militia': 0, 'dwarven-guards': 1, 'dwarven-warriors': 2, 'dwarven-lords': 3,
+  'fae-sprites': 0, 'fae-warriors': 1, 'fae-nobles': 2, 'fae-lords': 3,
+};
+
+// The revealed defender numbers captured at scout time. A snapshot, not live —
+// guildmates run their own battle preview against this defense without re-scouting.
+// Detail level is FULL for now; Workstream B will scale it down by the scouter's
+// scum rating (the per-tier army + exact gold are the fields it will coarsen).
+interface DefenderSnapshot {
+  detail: 'full';
+  totalDefense: number;       // matches previewCombat's defenderDefense math
+  armyByTier: Record<string, number>;  // exact units the defender fields (combat only)
+  fortLevel: number;          // buildings.fortress
+  land: number;
+  goldEstimate: number;       // revealed gold at scout time
+  defenderName: string;
+}
+
+function buildDefenderSnapshot(targetKingdom: KingdomType): DefenderSnapshot {
+  const TIER_DEFENSE = TIER_STATS.DEFENSE;
+  const getDefense = (t: string) => TIER_DEFENSE[UNIT_TIER[t] ?? 0] ?? 1;
+  const units = parseJsonField<Record<string, number>>(targetKingdom.totalUnits, {});
+  const resources = parseJsonField<KingdomResources>(targetKingdom.resources, {} as KingdomResources);
+  const buildings = parseJsonField<Record<string, number>>(targetKingdom.buildings, {});
+  // Combat army only — espionage scouts never defend.
+  const armyByTier: Record<string, number> = {};
+  for (const [t, c] of Object.entries(units)) {
+    if (t !== 'scouts' && t !== 'elite_scouts' && (c ?? 0) > 0) armyByTier[t] = c;
+  }
+  const raceDefenseBonus = RACE_DEFENSE_BONUSES[(targetKingdom.race as string) ?? 'Human'] ?? 1.0;
+  const rawDefense = Object.entries(armyByTier).reduce((s, [t, c]) => s + getDefense(t) * (c ?? 0), 0);
+  return {
+    detail: 'full',
+    totalDefense: Math.round(rawDefense * raceDefenseBonus),
+    armyByTier,
+    fortLevel: buildings.fortress ?? 0,
+    land: resources.land ?? 0,
+    goldEstimate: resources.gold ?? 0,
+    defenderName: (targetKingdom.name as string | undefined) ?? 'Unknown kingdom',
+  };
+}
+
+const executeThievery: Schema["executeThievery"]["functionHandler"] = async (event) => {
   const { kingdomId, operation, targetKingdomId } = event.arguments;
 
   try {
@@ -156,6 +213,9 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
             seasonId: (targetKingdom.seasonId as string | undefined) ?? (attackerKingdom.seasonId as string | undefined),
             scoutedAt: new Date(nowMs).toISOString(),
             expiresAt: new Date(nowMs + 24 * 60 * 60 * 1000).toISOString(),
+            // Revealed defender numbers, captured now (snapshot, not live). Lets a
+            // guildmate's battle preview run without re-scouting once it's shared.
+            defenderSnapshot: JSON.stringify(buildDefenderSnapshot(targetKingdom)),
             owner: identity.sub,
           });
         } catch (err) {
@@ -391,4 +451,100 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     log.error('thievery-processor', error, { kingdomId, operation, targetKingdomId });
     return { success: false, error: 'Thievery operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
   }
+};
+
+interface ScoutIntelRecord {
+  id: string;
+  scouterId: string;
+  targetId: string;
+  expiresAt: string;
+  sharedWithGuildId?: string | null;
+  defenderSnapshot?: unknown;
+}
+
+/**
+ * shareScoutIntel — stamp the caller's fresh ScoutIntel on a target with their
+ * guildId so guildmates' battle previews can use the same defender snapshot, and
+ * drop an intel AllianceMessage into guild chat summarising the revealed numbers.
+ * The prediction stays per-attacker — only the defender intel is shared.
+ */
+const shareScoutIntel: Schema["shareScoutIntel"]["functionHandler"] = async (event) => {
+  const { kingdomId, targetKingdomId } = event.arguments;
+  try {
+    if (!kingdomId || !targetKingdomId) {
+      return { success: false, error: 'Missing required parameters: kingdomId, targetKingdomId', errorCode: ErrorCode.MISSING_PARAMS };
+    }
+
+    const identity = event.identity as { sub?: string; username?: string } | null;
+    if (!identity?.sub) {
+      return { success: false, error: 'Authentication required', errorCode: ErrorCode.UNAUTHORIZED };
+    }
+
+    const kingdom = await dbGet<KingdomType>('Kingdom', kingdomId);
+    if (!kingdom) {
+      return { success: false, error: 'Kingdom not found', errorCode: ErrorCode.NOT_FOUND };
+    }
+    const denied = verifyOwnership(identity, kingdom.owner as string | null);
+    if (denied) return denied;
+
+    const guildId = (kingdom as Record<string, unknown>).guildId as string | undefined;
+    if (!guildId) {
+      return { success: false, error: 'You must be in a guild to share intel', errorCode: ErrorCode.VALIDATION_FAILED };
+    }
+
+    // Find the caller's freshest non-expired intel on this target.
+    const nowIso = new Date().toISOString();
+    const intel = await dbQuery<ScoutIntelRecord>(
+      'ScoutIntel', 'scoutIntelsByScouterIdAndExpiresAt', { field: 'scouterId', value: kingdomId },
+    );
+    const fresh = intel
+      .filter(i => i.targetId === targetKingdomId && (i.expiresAt ?? '') > nowIso)
+      .sort((a, b) => (b.expiresAt ?? '').localeCompare(a.expiresAt ?? ''))[0];
+    if (!fresh) {
+      return { success: false, error: 'No fresh scout intel on this target to share. Scout it first.', errorCode: ErrorCode.NOT_FOUND };
+    }
+
+    await dbUpdate('ScoutIntel', fresh.id, { sharedWithGuildId: guildId });
+
+    // Drop an intel message into guild chat summarising the revealed numbers.
+    const snapshot = parseJsonField<Partial<DefenderSnapshot>>(fresh.defenderSnapshot, {});
+    const defenderName = snapshot.defenderName ?? 'an enemy kingdom';
+    const defense = snapshot.totalDefense ?? 0;
+    const fort = snapshot.fortLevel ?? 0;
+    const gold = snapshot.goldEstimate ?? 0;
+    const scouterName = (kingdom.name as string | undefined) ?? 'A guildmate';
+    const content = `🔍 Scout report on ${defenderName}: ~${Math.round(defense / 1000)}k defense, fort lv ${fort}, ~${Math.round(gold / 1000)}k gold. Shared by ${scouterName}.`;
+    try {
+      await dbCreate('AllianceMessage', {
+        guildId,
+        senderId: kingdomId,
+        content,
+        type: 'intel',
+        createdAt: nowIso,
+      });
+    } catch (err) {
+      // Chat post is best-effort: the intel is already shared.
+      log.warn('thievery-processor', 'share-intel-message-failed', { kingdomId, targetKingdomId, error: err instanceof Error ? err.message : String(err) });
+    }
+
+    log.info('thievery-processor', 'shareScoutIntel', { kingdomId, targetKingdomId, guildId });
+    return { success: true, result: JSON.stringify({ scoutIntelId: fresh.id, guildId, targetKingdomId }) };
+  } catch (error) {
+    await persistErrorLog('thievery-processor', error, { kingdomId, targetKingdomId, action: 'shareScoutIntel' });
+    log.error('thievery-processor', error, { kingdomId, targetKingdomId });
+    return { success: false, error: 'Share intel operation failed', errorCode: ErrorCode.INTERNAL_ERROR };
+  }
+};
+
+// Single handler export — dispatch based on which mutation was called. Both
+// executeThievery and shareScoutIntel route to this espionage Lambda. AppSync
+// invokes with a single event argument; the functionHandler types declare the
+// 3-arg Lambda signature, so call the sub-handlers as single-arg callables.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const handler = async (event: any) => {
+  const fieldName = event.info?.fieldName as string | undefined;
+  if (fieldName === 'shareScoutIntel') {
+    return (shareScoutIntel as unknown as (e: unknown) => Promise<unknown>)(event);
+  }
+  return (executeThievery as unknown as (e: unknown) => Promise<unknown>)(event);
 };

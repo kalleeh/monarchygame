@@ -56,8 +56,12 @@ const callHandler = handler as unknown as (event: unknown) => Promise<HandlerRes
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeEvent(args: Record<string, unknown>) {
-  return { arguments: args, identity: { sub: 'test-sub-123', username: 'test-user' } } as any;
+function makeEvent(args: Record<string, unknown>, fieldName?: string) {
+  return {
+    arguments: args,
+    identity: { sub: 'test-sub-123', username: 'test-user' },
+    ...(fieldName ? { info: { fieldName } } : {}),
+  } as any;
 }
 
 function mockKingdom(id: string, overrides: Record<string, unknown> = {}) {
@@ -293,6 +297,97 @@ describe('thievery-processor handler', () => {
 
       expect(combatNotifications()).toHaveLength(0);
       vi.restoreAllMocks();
+    });
+  });
+
+  describe('scout intel snapshot', () => {
+    const scoutIntelCreates = () => mockDbCreate.mock.calls.filter(([model]) => model === 'ScoutIntel');
+
+    it('writes a defender snapshot on a successful scout', async () => {
+      mockDbGet
+        .mockResolvedValueOnce(mockKingdom('kingdom-1', { totalUnits: { scouts: 100000 } }))
+        .mockResolvedValueOnce(mockKingdom('target-1', {
+          name: 'Targetania',
+          owner: 'defender-sub',
+          race: 'Human',
+          resources: { gold: 250000, population: 5000, mana: 0, land: 1800 },
+          buildings: { fortress: 3 },
+          totalUnits: { knights: 1000, cavalry: 500, scouts: 50 },
+        }));
+      vi.spyOn(Math, 'random').mockReturnValue(1); // never detected → success
+
+      const result = await callHandler(
+        makeEvent({ kingdomId: 'kingdom-1', operation: 'scout', targetKingdomId: 'target-1' })
+      );
+
+      expect(result.success).toBe(true);
+      const creates = scoutIntelCreates();
+      expect(creates).toHaveLength(1);
+      const row = creates[0][1] as Record<string, unknown>;
+      const snapshot = JSON.parse(row.defenderSnapshot as string);
+      expect(snapshot.detail).toBe('full');
+      expect(snapshot.totalDefense).toBeGreaterThan(0);
+      expect(snapshot.fortLevel).toBe(3);
+      expect(snapshot.land).toBe(1800);
+      expect(snapshot.goldEstimate).toBe(250000);
+      expect(snapshot.defenderName).toBe('Targetania');
+      // Espionage scouts must NOT appear in the defender army snapshot.
+      expect(snapshot.armyByTier.scouts).toBeUndefined();
+      expect(snapshot.armyByTier.knights).toBe(1000);
+      vi.restoreAllMocks();
+    });
+  });
+
+  describe('shareScoutIntel', () => {
+    const messageCreates = () => mockDbCreate.mock.calls.filter(([model]) => model === 'AllianceMessage');
+    const freshIntel = (overrides: Record<string, unknown> = {}) => ({
+      id: 'intel-1',
+      scouterId: 'kingdom-1',
+      targetId: 'target-1',
+      expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+      defenderSnapshot: JSON.stringify({ totalDefense: 42000, fortLevel: 2, goldEstimate: 90000, defenderName: 'Targetania' }),
+      ...overrides,
+    });
+
+    it('stamps the guild id on the intel row and posts an intel message', async () => {
+      mockDbGet.mockResolvedValueOnce(mockKingdom('kingdom-1', { name: 'Scouty', guildId: 'guild-9' }));
+      mockDbQuery.mockResolvedValue([freshIntel()]);
+
+      const result = await callHandler(
+        makeEvent({ kingdomId: 'kingdom-1', targetKingdomId: 'target-1' }, 'shareScoutIntel')
+      );
+
+      expect(result.success).toBe(true);
+      expect(mockDbUpdate).toHaveBeenCalledWith('ScoutIntel', 'intel-1', { sharedWithGuildId: 'guild-9' });
+      const msgs = messageCreates();
+      expect(msgs).toHaveLength(1);
+      const msg = msgs[0][1] as Record<string, unknown>;
+      expect(msg.guildId).toBe('guild-9');
+      expect(msg.type).toBe('intel');
+      expect(String(msg.content)).toContain('Targetania');
+    });
+
+    it('rejects sharing when the caller has no guild', async () => {
+      mockDbGet.mockResolvedValueOnce(mockKingdom('kingdom-1', { name: 'Scouty' }));
+
+      const result = await callHandler(
+        makeEvent({ kingdomId: 'kingdom-1', targetKingdomId: 'target-1' }, 'shareScoutIntel')
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('VALIDATION_FAILED');
+    });
+
+    it('returns NOT_FOUND when there is no fresh intel on the target', async () => {
+      mockDbGet.mockResolvedValueOnce(mockKingdom('kingdom-1', { guildId: 'guild-9' }));
+      mockDbQuery.mockResolvedValue([freshIntel({ expiresAt: new Date(Date.now() - 1000).toISOString() })]);
+
+      const result = await callHandler(
+        makeEvent({ kingdomId: 'kingdom-1', targetKingdomId: 'target-1' }, 'shareScoutIntel')
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('NOT_FOUND');
     });
   });
 
