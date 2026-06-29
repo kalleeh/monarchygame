@@ -4,7 +4,7 @@ import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
 import { dbGet, dbCreate, dbUpdate, dbConditionalUpdate, dbQuery, dbAtomicAdd, parseJsonField, ensureTurnsBalance, persistErrorLog } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
-import { THIEVERY_MECHANICS } from '../../../shared/mechanics/thievery-mechanics';
+import { THIEVERY_MECHANICS, calculateDetectionRate } from '../../../shared/mechanics/thievery-mechanics';
 import { checkRateLimit } from '../rate-limiter';
 import { isConditionalCheckFailed } from '../conditional-helpers';
 
@@ -111,14 +111,16 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     const targetUnits = parseJsonField<Record<string, number>>(targetKingdom.totalUnits, {});
     const targetResources = parseJsonField<KingdomResources>(targetKingdom.resources, {} as KingdomResources);
 
-    // Calculate detection rate
-    let detectionRate = Math.min(0.95, ((targetUnits.scouts ?? 0) / Math.max(1, attackerScouts)) * 0.85);
-
-    // Fae Glamour: 30% reduction in detection rate
+    // Calculate detection rate using the canonical shared formula. Detection is
+    // the DEFENDER catching the intruder, so the defender's scum are "your scum"
+    // and the attacker's are the "enemy". This applies both races' effectiveness
+    // (RACIAL_SCUM_EFFECTIVENESS) and counts both green + elite scum on each side
+    // (elite are the trained operatives and must contribute to the comparison).
     const attackerRace = (attackerKingdom.race as string | undefined) ?? '';
-    if (attackerRace.toLowerCase() === 'fae') {
-      detectionRate = detectionRate * 0.70;
-    }
+    const defenderRace = (targetKingdom.race as string | undefined) ?? '';
+    const attackerScum = attackerScouts + (attackerUnits.elite_scouts ?? 0);
+    const defenderScum = (targetUnits.scouts ?? 0) + (targetUnits.elite_scouts ?? 0);
+    const detectionRate = calculateDetectionRate(defenderScum, defenderRace, attackerScum, attackerRace);
 
     // Apply espionage bonus (reduces detection rate)
     const adjustedDetectionRate = espionageBonus > 0
@@ -190,6 +192,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
         await dbUpdate('Kingdom', targetKingdomId, {
           totalUnits: updatedTargetUnits,
         });
+        (intelligence as Record<string, unknown>).scoutsDestroyed = scoutsDestroyed;
       } else if (operation === 'burn') {
         const scoutsDestroyed = Math.floor((targetUnits.scouts ?? 0) * 0.05);
         const updatedTargetUnits: KingdomUnits = {
@@ -199,6 +202,7 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
         await dbUpdate('Kingdom', targetKingdomId, {
           totalUnits: updatedTargetUnits,
         });
+        (intelligence as Record<string, unknown>).scoutsDestroyed = scoutsDestroyed;
       } else if (operation === 'desecrate') {
         // Desecrate Temples: destroy ~10% of target's temples, reducing their elan generation.
         // This is the primary counter to sorcery-focused kingdoms (Sidhe, Vampire).
@@ -311,21 +315,76 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
     }
     await dbAtomicAdd('Kingdom', kingdomId, 'turnsBalance', -turnCost);
 
-    // BL-6: If operation was detected (spy caught), record detection on the target kingdom
-    if (!succeeded) {
-      const targetStats = parseJsonField<Record<string, unknown>>(targetKingdom.stats, {});
-      const updatedTargetStats = {
-        ...targetStats,
-        lastDetectedThievery: new Date().toISOString(),
-      };
-      await dbUpdate('Kingdom', targetKingdomId, { stats: updatedTargetStats });
-      log.info('thievery-processor', 'thieveryDetected', { targetKingdomId, operation, attackerKingdomId: kingdomId });
+    // Register the operation on the DEFENDER's side. `recipientId` is the target
+    // kingdom id (NotificationCenter filters by recipientId) and `owner` must be
+    // the target's owner string so the defender — not the attacker — can read it
+    // under owner-based auth.
+    const targetOwner = targetKingdom.owner as string | undefined;
+    const intel = intelligence as Record<string, unknown>;
+    const nowIso = new Date().toISOString();
+    try {
+      if (!succeeded) {
+        // Detected (spy caught): record the timestamp and alert the defender,
+        // naming both the operation and the attacking kingdom.
+        const targetStats = parseJsonField<Record<string, unknown>>(targetKingdom.stats, {});
+        await dbUpdate('Kingdom', targetKingdomId, {
+          stats: { ...targetStats, lastDetectedThievery: nowIso },
+        });
+        log.info('thievery-processor', 'thieveryDetected', { targetKingdomId, operation, attackerKingdomId: kingdomId });
+
+        if (targetOwner) {
+          const attackerName = (attackerKingdom.name as string | undefined) ?? 'an unknown kingdom';
+          await dbCreate('CombatNotification', {
+            recipientId: targetKingdomId,
+            type: 'defense',
+            message: `Your guards caught a ${operation.replace(/_/g, ' ')} attempt by ${attackerName}!`,
+            data: JSON.stringify({ operation, attackerKingdomId: kingdomId, detected: true }),
+            isRead: false,
+            createdAt: nowIso,
+            owner: targetOwner,
+          });
+        }
+      } else if (targetOwner && operation !== 'scout') {
+        // Undetected operation with a real effect: the defender's staff notices the
+        // damage but never learns who did it (the reward for espionage superiority).
+        let flavor: string | null = null;
+        if (operation === 'steal') {
+          flavor = `Your treasurer reports ${goldStolen.toLocaleString()} gold missing from the vaults.`;
+        } else if (operation === 'intercept_caravans') {
+          const amt = (intel.goldIntercepted as number | undefined) ?? 0;
+          flavor = `Your merchants report a caravan ambushed — ${amt.toLocaleString()} gold never arrived.`;
+        } else if (operation === 'sabotage' || operation === 'burn' || operation === 'scum_kill') {
+          const n = (intel.scoutsDestroyed as number | undefined) ?? (intel.scoutsKilled as number | undefined) ?? 0;
+          flavor = `Your spymaster found ${n.toLocaleString()} scouts dead — sabotage is suspected.`;
+        } else if (operation === 'desecrate') {
+          const n = (intel.templesDestroyed as number | undefined) ?? 0;
+          flavor = `Your temple keepers discovered ${n.toLocaleString()} temples desecrated overnight.`;
+        } else if (operation === 'spread_dissention') {
+          const n = (intel.populationKilled as number | undefined) ?? 0;
+          flavor = `Unrest spreads — ${n.toLocaleString()} of your people were turned against the crown.`;
+        }
+
+        if (flavor) {
+          await dbCreate('CombatNotification', {
+            recipientId: targetKingdomId,
+            type: 'defense',
+            message: flavor,
+            data: JSON.stringify({ operation, detected: false }),
+            isRead: false,
+            createdAt: nowIso,
+            owner: targetOwner,
+          });
+        }
+      }
+    } catch (err) {
+      // Defender notification is non-fatal: the operation already succeeded.
+      log.warn('thievery-processor', 'defender-notification-failed', { targetKingdomId, operation, error: err instanceof Error ? err.message : String(err) });
     }
 
     log.info('thievery-processor', 'executeThievery', { kingdomId, operation, targetKingdomId });
     return {
       success: true,
-      result: JSON.stringify({ operation, succeeded, casualties, goldStolen, intelligence, promoted }),
+      result: JSON.stringify({ operation, succeeded, casualties, goldStolen, intelligence, promoted, detectionLevel: adjustedDetectionRate }),
     };
   } catch (error) {
     await persistErrorLog('thievery-processor', error, { kingdomId, operation, targetKingdomId });

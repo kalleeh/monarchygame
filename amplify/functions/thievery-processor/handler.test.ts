@@ -225,4 +225,97 @@ describe('thievery-processor handler', () => {
       expect(result.errorCode).toBe('NOT_FOUND');
     });
   });
+
+  describe('defender registration', () => {
+    const combatNotifications = () =>
+      mockDbCreate.mock.calls.filter(([model]) => model === 'CombatNotification');
+
+    it('alerts the defender by name when the spy is detected', async () => {
+      // Force detection: target has far more scum than attacker, and Math.random
+      // returns 0 so `Math.random() > detectionRate` is false (detected).
+      mockDbGet
+        .mockResolvedValueOnce(mockKingdom('kingdom-1', { name: 'Aggressor', totalUnits: { scouts: 100 } }))
+        .mockResolvedValueOnce(mockKingdom('target-1', { owner: 'defender-sub', totalUnits: { scouts: 100000 } }));
+      vi.spyOn(Math, 'random').mockReturnValue(0);
+
+      const result = await callHandler(
+        makeEvent({ kingdomId: 'kingdom-1', operation: 'steal', targetKingdomId: 'target-1' })
+      );
+
+      expect(result.success).toBe(true);
+      expect(JSON.parse(result.result as string).succeeded).toBe(false);
+
+      const notifs = combatNotifications();
+      expect(notifs).toHaveLength(1);
+      const payload = notifs[0][1] as Record<string, unknown>;
+      expect(payload.recipientId).toBe('target-1');
+      expect(payload.owner).toBe('defender-sub');
+      expect(payload.message).toContain('Aggressor');
+      expect(JSON.parse(payload.data as string)).toMatchObject({ detected: true, attackerKingdomId: 'kingdom-1' });
+      vi.restoreAllMocks();
+    });
+
+    it('sends an anonymous effect notice when an op succeeds undetected', async () => {
+      mockDbGet
+        .mockResolvedValueOnce(mockKingdom('kingdom-1', { name: 'Aggressor', totalUnits: { scouts: 100000 } }))
+        .mockResolvedValueOnce(mockKingdom('target-1', {
+          owner: 'defender-sub',
+          resources: { gold: 1000000, population: 5000, mana: 500, land: 1000 },
+          totalUnits: { scouts: 0 },
+        }));
+      vi.spyOn(Math, 'random').mockReturnValue(1); // never detected
+
+      const result = await callHandler(
+        makeEvent({ kingdomId: 'kingdom-1', operation: 'steal', targetKingdomId: 'target-1' })
+      );
+
+      expect(JSON.parse(result.result as string).succeeded).toBe(true);
+      const notifs = combatNotifications();
+      expect(notifs).toHaveLength(1);
+      const payload = notifs[0][1] as Record<string, unknown>;
+      expect(payload.recipientId).toBe('target-1');
+      expect(payload.message).not.toContain('Aggressor');
+      expect(String(payload.message).toLowerCase()).toContain('treasurer');
+      expect(JSON.parse(payload.data as string)).toMatchObject({ detected: false });
+      expect(JSON.parse(payload.data as string).attackerKingdomId).toBeUndefined();
+      vi.restoreAllMocks();
+    });
+
+    it('does not notify the defender for an undetected scout (pure intel)', async () => {
+      mockDbGet
+        .mockResolvedValueOnce(mockKingdom('kingdom-1', { totalUnits: { scouts: 100000 } }))
+        .mockResolvedValueOnce(mockKingdom('target-1', { owner: 'defender-sub', totalUnits: { scouts: 0 } }));
+      vi.spyOn(Math, 'random').mockReturnValue(1); // never detected
+
+      await callHandler(
+        makeEvent({ kingdomId: 'kingdom-1', operation: 'scout', targetKingdomId: 'target-1' })
+      );
+
+      expect(combatNotifications()).toHaveLength(0);
+      vi.restoreAllMocks();
+    });
+  });
+
+  describe('detection counts both scum tiers', () => {
+    it('a defender with only elite scouts can still detect the intruder', async () => {
+      // Attacker has 1000 green scum; defender has 0 green but 100000 elite.
+      // If elite were ignored, detectionRate would be ~0 and the op would always
+      // succeed; counting elite makes detection near-certain.
+      mockDbGet
+        .mockResolvedValueOnce(mockKingdom('kingdom-1', { totalUnits: { scouts: 1000 } }))
+        .mockResolvedValueOnce(mockKingdom('target-1', {
+          owner: 'defender-sub',
+          totalUnits: { scouts: 0, elite_scouts: 100000 },
+        }));
+      // Math.random = 0.5: detected only if detectionRate >= 0.5.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const result = await callHandler(
+        makeEvent({ kingdomId: 'kingdom-1', operation: 'steal', targetKingdomId: 'target-1' })
+      );
+
+      expect(JSON.parse(result.result as string).succeeded).toBe(false);
+      vi.restoreAllMocks();
+    });
+  });
 });

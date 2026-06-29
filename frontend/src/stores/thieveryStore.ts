@@ -158,7 +158,8 @@ export const useThieveryStore = create(
             detectionLevel: calculateDetectionRate(targetScum, targetRace, totalScum, state.race),
           };
         } else if (type === 'scout') {
-          const detection = calculateDetectionRate(totalScum, state.race, targetScum, targetRace);
+          // Detection = defender catching the intruder (defender scum vs attacker scum).
+          const detection = calculateDetectionRate(targetScum, targetRace, totalScum, state.race);
           const success = Math.random() > detection * 0.5; // Scouting has better success odds
           result = {
             success,
@@ -224,7 +225,7 @@ export const useThieveryStore = create(
                 } : null,
                 casualtiesInflicted: serverData.intelligence?.scoutsKilled ?? 0,
                 casualtiesSuffered: serverData.casualties ?? 0,
-                detectionLevel: 0,
+                detectionLevel: serverData.detectionLevel ?? 0,
                 templesDestroyed: serverData.intelligence?.templesDestroyed ?? 0,
                 populationKilled: serverData.intelligence?.populationKilled ?? 0,
                 goldIntercepted: serverData.intelligence?.goldIntercepted ?? 0,
@@ -281,12 +282,14 @@ export const useThieveryStore = create(
       },
 
       /**
-       * Wrapper around shared calculateDetectionRate
+       * Chance the attacker is detected by the target, matching the server:
+       * detection = the DEFENDER's scum catching the intruder, so the enemy is
+       * "your scum" and our own scum is the "enemy" in calculateDetectionRate.
        */
       getDetectionRate: (enemyScum: number, enemyRace: string): number => {
         const state = get();
         const totalScum = state.scumCount + state.eliteScumCount;
-        return calculateDetectionRate(totalScum, state.race, enemyScum, enemyRace);
+        return calculateDetectionRate(enemyScum, enemyRace, totalScum, state.race);
       },
 
       /**
