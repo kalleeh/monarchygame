@@ -9,6 +9,7 @@ import { checkRateLimit } from '../rate-limiter';
 import { isConditionalCheckFailed } from '../conditional-helpers';
 import { TIER_STATS } from '../../../shared/mechanics/tier-stats';
 import { RACE_DEFENSE_BONUSES } from '../../../shared/mechanics/combat-mechanics';
+import { scumRatingForRace, scoutIntelExpiryMs, scoutIntelDetail, coarsenSnapshot, type DefenderSnapshot } from '../../../shared/mechanics/scout-mechanics';
 
 const VALID_OPERATIONS = ['scout', 'steal', 'sabotage', 'burn', 'desecrate', 'spread_dissention', 'intercept_caravans', 'scum_kill'] as const;
 const MIN_SCOUTS = 100;
@@ -34,17 +35,14 @@ const UNIT_TIER: Record<string, number> = {
 
 // The revealed defender numbers captured at scout time. A snapshot, not live —
 // guildmates run their own battle preview against this defense without re-scouting.
-// Detail level is FULL for now; Workstream B will scale it down by the scouter's
-// scum rating (the per-tier army + exact gold are the fields it will coarsen).
-interface DefenderSnapshot {
-  detail: 'full';
-  totalDefense: number;       // matches previewCombat's defenderDefense math
-  armyByTier: Record<string, number>;  // exact units the defender fields (combat only)
-  fortLevel: number;          // buildings.fortress
-  land: number;
-  goldEstimate: number;       // revealed gold at scout time
-  defenderName: string;
-}
+// The `DefenderSnapshot` shape lives in shared/mechanics/scout-mechanics so the
+// Lambda and the (pure) scout-mechanics module reference one type. buildDefenderSnapshot
+// always produces a FULL snapshot; the scout branch then coarsens it by the
+// scouter's scum rating (Workstream B) before persisting.
+
+// Maps a unit type to its defensive tier index, used both to build the snapshot
+// and to bucket the army when coarsening low-scum intel.
+const tierOf = (unitType: string): number => UNIT_TIER[unitType] ?? 0;
 
 function buildDefenderSnapshot(targetKingdom: KingdomType): DefenderSnapshot {
   const TIER_DEFENSE = TIER_STATS.DEFENSE;
@@ -203,19 +201,27 @@ const executeThievery: Schema["executeThievery"]["functionHandler"] = async (eve
           targetScouts: targetUnits.scouts ?? 0,
           defenseRating: (targetUnits.scouts ?? 0) * 10,
         };
-        // Record server-side intel so the battle preview can reveal an exact
-        // prediction for this target (expires after 24h). Non-fatal on failure.
+        // Record server-side intel so the battle preview can reveal a prediction
+        // for this target. Intel QUALITY scales with the scouter's race scum
+        // rating (Workstream B): higher scum → longer-lasting + more detailed
+        // intel, making a high-scum "designated scout" a real guild role.
+        // Non-fatal on failure.
         try {
           const nowMs = Date.now();
+          const scum = scumRatingForRace(attackerRace);
+          const detail = scoutIntelDetail(scum);
+          const snapshot = coarsenSnapshot(buildDefenderSnapshot(targetKingdom), detail, tierOf);
           await dbCreate('ScoutIntel', {
             scouterId: kingdomId,
             targetId: targetKingdomId,
             seasonId: (targetKingdom.seasonId as string | undefined) ?? (attackerKingdom.seasonId as string | undefined),
             scoutedAt: new Date(nowMs).toISOString(),
-            expiresAt: new Date(nowMs + 24 * 60 * 60 * 1000).toISOString(),
-            // Revealed defender numbers, captured now (snapshot, not live). Lets a
-            // guildmate's battle preview run without re-scouting once it's shared.
-            defenderSnapshot: JSON.stringify(buildDefenderSnapshot(targetKingdom)),
+            // Expiry scales with scum: scum 1 → 12h … scum 5 → 48h.
+            expiresAt: new Date(nowMs + scoutIntelExpiryMs(scum)).toISOString(),
+            // Revealed defender numbers, captured now (snapshot, not live), at a
+            // precision set by the scout's scum. Lets a guildmate's battle preview
+            // run without re-scouting once it's shared.
+            defenderSnapshot: JSON.stringify(snapshot),
             owner: identity.sub,
           });
         } catch (err) {
