@@ -821,7 +821,23 @@ describe('combat-processor handler', () => {
   });
 
   describe('getBattlePreview (read-only, no units arg)', () => {
-    it('predicts a failed attack when the defender out-defends a thin attacker', async () => {
+    // Fresh scout intel so the prediction isn't gated.
+    const freshIntel = () => [{ scouterId: 'attacker-1', targetId: 'defender-1', expiresAt: new Date(Date.now() + 3600_000).toISOString() }];
+
+    it('hides the prediction when the target has not been scouted', async () => {
+      mockDbGet
+        .mockResolvedValueOnce(mockKingdom('attacker-1', { race: 'Human', totalUnits: { cavalry: 5000 } }))
+        .mockResolvedValueOnce(mockKingdom('defender-1', { race: 'Human', totalUnits: { peasants: 10 } }));
+      mockDbQuery.mockResolvedValue([]); // no ScoutIntel
+
+      const result = await callHandler(makeEvent({ attackerId: 'attacker-1', defenderId: 'defender-1', preview: true })) as unknown as Record<string, unknown>;
+
+      expect(result.success).toBe(true);
+      expect(result.scouted).toBe(false);
+      expect(result.offenseRatio).toBeUndefined(); // no army numbers leaked
+    });
+
+    it('predicts a failed attack when the defender out-defends a thin attacker (scouted)', async () => {
       // Attacker: mostly tier-0 (low offense). Defender: knights+cavalry (high defense).
       const attackerKingdom = mockKingdom('attacker-1', {
         race: 'Elven',
@@ -834,11 +850,12 @@ describe('combat-processor handler', () => {
       mockDbGet
         .mockResolvedValueOnce(attackerKingdom)
         .mockResolvedValueOnce(defenderKingdom);
+      mockDbQuery.mockResolvedValue(freshIntel());
 
-      // No `units` arg => routes to previewCombat.
       const result = await callHandler(makeEvent({ attackerId: 'attacker-1', defenderId: 'defender-1', preview: true })) as unknown as Record<string, unknown>;
 
       expect(result.success).toBe(true);
+      expect(result.scouted).toBe(true);
       expect(result.resultType).toBe('failed');
       expect(result.offenseRatio as number).toBeLessThan(1.2);
       expect(result.defenderHasArmy).toBe(true);
@@ -850,6 +867,7 @@ describe('combat-processor handler', () => {
       mockDbGet
         .mockResolvedValueOnce(mockKingdom('attacker-1', { race: 'Human', totalUnits: { cavalry: 5000 } }))
         .mockResolvedValueOnce(mockKingdom('defender-1', { race: 'Human', totalUnits: { peasants: 10 } }));
+      mockDbQuery.mockResolvedValue(freshIntel());
 
       await callHandler(makeEvent({ attackerId: 'attacker-1', defenderId: 'defender-1', preview: true }));
 

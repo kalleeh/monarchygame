@@ -890,6 +890,18 @@ async function previewCombat(
   const denied = verifyOwnership(identity, (attacker.owner as string | null) ?? null);
   if (denied) return denied;
 
+  // Scout gating: an exact prediction is only available for a kingdom this
+  // attacker has scouted recently (fresh ScoutIntel). Otherwise reveal nothing
+  // about the enemy army — the player must scout first.
+  const intel = await dbQuery<{ scouterId: string; targetId: string; expiresAt: string }>(
+    'ScoutIntel', 'scoutIntelsByScouterIdAndExpiresAt', { field: 'scouterId', value: attackerId },
+  );
+  const nowIso = new Date().toISOString();
+  const hasFreshIntel = intel.some(i => i.targetId === defenderId && (i.expiresAt ?? '') > nowIso);
+  if (!hasFreshIntel) {
+    return { success: true, scouted: false };
+  }
+
   const TIER_OFFENSE = TIER_STATS.OFFENSE;
   const TIER_DEFENSE = TIER_STATS.DEFENSE;
   const UNIT_TIER: Record<string, number> = {
@@ -933,6 +945,7 @@ async function previewCombat(
 
   return {
     success: true,
+    scouted: true,
     attackerOffense: totalAttackerOffense,
     defenderDefense: totalDefenderDefense,
     offenseRatio: Number(ratio.toFixed(2)),

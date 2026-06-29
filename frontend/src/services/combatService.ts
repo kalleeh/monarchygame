@@ -232,13 +232,14 @@ export class CombatService {
    */
   static async getBattlePreview(attackerId: string, defenderId: string): Promise<{
     success: boolean;
-    attackerOffense: number;
-    defenderDefense: number;
-    offenseRatio: number;
-    resultType: 'with_ease' | 'good_fight' | 'failed';
-    attackerCasualtyRate: number;
-    defenderCasualtyRate: number;
-    defenderHasArmy: boolean;
+    scouted: boolean;
+    attackerOffense?: number;
+    defenderDefense?: number;
+    offenseRatio?: number;
+    resultType?: 'with_ease' | 'good_fight' | 'failed';
+    attackerCasualtyRate?: number;
+    defenderCasualtyRate?: number;
+    defenderHasArmy?: boolean;
   } | null> {
     try {
       const { data } = await getClient().queries.getBattlePreview({ attackerId, defenderId, preview: true });

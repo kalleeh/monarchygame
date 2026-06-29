@@ -343,30 +343,37 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
     attackerCasualtyRate: number; defenderCasualtyRate: number;
     landGainPercent: string; defenderHasUnits: boolean;
   } | null>(null);
+  // True when the server says we haven't scouted this target — exact prediction
+  // is hidden until a successful scout (intel expires after 24h).
+  const [needsScout, setNeedsScout] = useState(false);
 
   useEffect(() => {
-    if (isDemoMode() || !selectedTarget) { setServerPreview(null); return; }
+    if (isDemoMode() || !selectedTarget) { setServerPreview(null); setNeedsScout(false); return; }
     let cancelled = false;
     void CombatService.getBattlePreview(kingdomId, selectedTarget).then((p) => {
-      if (cancelled || !p) { if (!cancelled) setServerPreview(null); return; }
+      if (cancelled) return;
+      if (!p) { setServerPreview(null); setNeedsScout(false); return; }
+      if (p.scouted === false) { setServerPreview(null); setNeedsScout(true); return; }
+      setNeedsScout(false);
       const landGainPercent =
         p.resultType === 'with_ease' ? '7.0-7.35%' : p.resultType === 'good_fight' ? '6.79-7.0%' : '0%';
       setServerPreview({
-        attackerPower: p.attackerOffense,
-        defenderPower: p.defenderDefense,
-        offenseRatio: p.offenseRatio,
-        resultType: p.resultType,
-        attackerCasualtyRate: p.attackerCasualtyRate,
-        defenderCasualtyRate: p.defenderCasualtyRate,
+        attackerPower: p.attackerOffense ?? 0,
+        defenderPower: p.defenderDefense ?? 0,
+        offenseRatio: p.offenseRatio ?? 0,
+        resultType: p.resultType ?? 'failed',
+        attackerCasualtyRate: p.attackerCasualtyRate ?? 0,
+        defenderCasualtyRate: p.defenderCasualtyRate ?? 0,
         landGainPercent,
-        defenderHasUnits: p.defenderHasArmy,
+        defenderHasUnits: p.defenderHasArmy ?? false,
       });
     });
     return () => { cancelled = true; };
   }, [kingdomId, selectedTarget]);
 
-  // Prefer the authoritative server preview; fall back to the local estimate.
-  const battlePreview = serverPreview ?? localPreview;
+  // Auth mode hides the exact prediction until scouted; demo mode keeps the local
+  // estimate (AI armies are visible there). Prefer server preview when present.
+  const battlePreview = needsScout ? null : (serverPreview ?? (isDemoMode() ? localPreview : null));
 
   // Initialize combat data on mount (also initializes formations via formationStore)
   useEffect(() => {
@@ -525,6 +532,27 @@ const BattleFormations: React.FC<BattleFormationsProps> = ({ kingdomId, race = '
           </div>
         )}
       </div>
+
+      {/* Scout-gated: exact prediction hidden until this target is scouted */}
+      {needsScout && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%)',
+          border: '1px dashed rgba(139, 92, 246, 0.5)',
+          borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem', textAlign: 'center',
+        }}>
+          <h3 style={{ color: '#fff', marginBottom: '0.5rem' }}><WarfareIcon /> Battle Preview</h3>
+          <p style={{ color: '#c4b5fd', marginBottom: '0.75rem' }}>
+            You haven't scouted this kingdom. Scout it to reveal a battle prediction
+            (enemy army strength, win chance, expected losses).
+          </p>
+          <button
+            className="execute-battle-btn"
+            onClick={() => navigate(`/kingdom/${kingdomId}/espionage`, { state: { targetKingdomId: selectedTarget } })}
+          >
+            🔍 Scout this kingdom
+          </button>
+        </div>
+      )}
 
       {/* Battle Preview */}
       {battlePreview && (

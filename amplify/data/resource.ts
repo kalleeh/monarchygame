@@ -405,6 +405,25 @@ const schema = a.schema({
       allow.owner()
     ]),
 
+  // Espionage intel: written by thievery-processor on a successful scout. Gates
+  // the server-side battle preview — you only get an exact prediction on kingdoms
+  // you've scouted recently. Owner-readable so a player sees their own intel.
+  ScoutIntel: a
+    .model({
+      scouterId: a.id().required(),   // kingdom that performed the scout
+      targetId: a.id().required(),    // kingdom that was scouted
+      seasonId: a.id(),
+      expiresAt: a.datetime().required(),
+      scoutedAt: a.datetime().required(),
+    })
+    .secondaryIndexes((index) => [
+      index('scouterId').sortKeys(['expiresAt']),
+    ])
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+      allow.owner(),
+    ]),
+
   WorldState: a
     .model({
       seasonId: a.id().required(),

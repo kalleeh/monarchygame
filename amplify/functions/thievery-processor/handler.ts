@@ -2,7 +2,7 @@ import type { Schema } from '../../data/resource';
 import type { KingdomResources, KingdomUnits } from '../../../shared/types/kingdom';
 import { ErrorCode } from '../../../shared/types/kingdom';
 import { log } from '../logger';
-import { dbGet, dbUpdate, dbConditionalUpdate, dbQuery, dbAtomicAdd, parseJsonField, ensureTurnsBalance, persistErrorLog } from '../data-client';
+import { dbGet, dbCreate, dbUpdate, dbConditionalUpdate, dbQuery, dbAtomicAdd, parseJsonField, ensureTurnsBalance, persistErrorLog } from '../data-client';
 import { verifyOwnership } from '../verify-ownership';
 import { THIEVERY_MECHANICS } from '../../../shared/mechanics/thievery-mechanics';
 import { checkRateLimit } from '../rate-limiter';
@@ -144,6 +144,21 @@ export const handler: Schema["executeThievery"]["functionHandler"] = async (even
           targetScouts: targetUnits.scouts ?? 0,
           defenseRating: (targetUnits.scouts ?? 0) * 10,
         };
+        // Record server-side intel so the battle preview can reveal an exact
+        // prediction for this target (expires after 24h). Non-fatal on failure.
+        try {
+          const nowMs = Date.now();
+          await dbCreate('ScoutIntel', {
+            scouterId: kingdomId,
+            targetId: targetKingdomId,
+            seasonId: (targetKingdom.seasonId as string | undefined) ?? (attackerKingdom.seasonId as string | undefined),
+            scoutedAt: new Date(nowMs).toISOString(),
+            expiresAt: new Date(nowMs + 24 * 60 * 60 * 1000).toISOString(),
+            owner: identity.sub,
+          });
+        } catch (err) {
+          log.warn('thievery-processor', 'scout-intel-write-failed', { kingdomId, targetKingdomId, error: err instanceof Error ? err.message : String(err) });
+        }
       } else if (operation === 'steal') {
         goldStolen = Math.min(3500000, Math.floor((targetResources.gold ?? 0) * 0.05));
         attackerGoldDelta = goldStolen;
